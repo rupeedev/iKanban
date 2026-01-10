@@ -49,6 +49,7 @@ export interface StorageProviderConfigProps {
   onProviderChange: (provider: StorageProvider | null) => void;
   onConfigChange: (config: StorageConfig) => void;
   disabled?: boolean;
+  teamId?: string;
 }
 
 const STORAGE_PROVIDERS = [
@@ -77,6 +78,7 @@ export function StorageProviderConfig({
   onProviderChange,
   onConfigChange,
   disabled = false,
+  teamId,
 }: StorageProviderConfigProps) {
   const [pathValidation, setPathValidation] = useState<{
     status: 'idle' | 'validating' | 'valid' | 'invalid';
@@ -191,6 +193,7 @@ export function StorageProviderConfig({
           config={config}
           onConfigChange={handleConfigUpdate}
           disabled={disabled}
+          teamId={teamId}
         />
       )}
 
@@ -199,6 +202,7 @@ export function StorageProviderConfig({
           config={config}
           onConfigChange={handleConfigUpdate}
           disabled={disabled}
+          teamId={teamId}
         />
       )}
     </div>
@@ -365,9 +369,39 @@ interface GoogleDriveConfigProps {
   config: StorageConfig;
   onConfigChange: (updates: Partial<StorageConfig>) => void;
   disabled: boolean;
+  teamId?: string;
 }
 
-function GoogleDriveConfig({ config, onConfigChange, disabled }: GoogleDriveConfigProps) {
+function GoogleDriveConfig({ config, onConfigChange, disabled, teamId }: GoogleDriveConfigProps) {
+  const handleConnect = async () => {
+    if (!teamId) {
+      alert('Please save the team first before connecting cloud storage.');
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/storage/google-drive/auth-url`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ team_id: teamId }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.error || 'Failed to start Google Drive connection');
+        return;
+      }
+
+      const data = await response.json();
+      window.location.href = data.url;
+    } catch {
+      alert('Failed to connect to Google Drive. Please try again.');
+    }
+  };
+
   return (
     <div className="space-y-4 rounded-lg border p-4">
       {!config.google_drive_connected ? (
@@ -379,24 +413,33 @@ function GoogleDriveConfig({ config, onConfigChange, disabled }: GoogleDriveConf
           <Button
             type="button"
             variant="outline"
-            disabled={disabled}
-            onClick={() => {
-              // TODO: Implement Google OAuth flow
-              alert('Google Drive integration coming soon!');
-            }}
+            disabled={disabled || !teamId}
+            onClick={handleConnect}
           >
             <Cloud className="h-4 w-4 mr-2" />
             Connect with Google
           </Button>
-          <p className="text-xs text-muted-foreground mt-4">
-            Coming soon - OAuth integration in development
-          </p>
+          {!teamId && (
+            <p className="text-xs text-amber-600 mt-4">
+              Save the team first to enable cloud storage connection
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm text-green-600">
-            <CheckCircle className="h-4 w-4" />
-            Connected to Google Drive
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-green-600">
+              <CheckCircle className="h-4 w-4" />
+              Connected to Google Drive
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onConfigChange({ google_drive_connected: false })}
+            >
+              Disconnect
+            </Button>
           </div>
           <div className="space-y-2">
             <Label htmlFor="gdrive-folder">Folder ID (Optional)</Label>
@@ -423,9 +466,39 @@ interface DropboxConfigProps {
   config: StorageConfig;
   onConfigChange: (updates: Partial<StorageConfig>) => void;
   disabled: boolean;
+  teamId?: string;
 }
 
-function DropboxConfig({ config, onConfigChange, disabled }: DropboxConfigProps) {
+function DropboxConfig({ config, onConfigChange, disabled, teamId }: DropboxConfigProps) {
+  const handleConnect = async () => {
+    if (!teamId) {
+      alert('Please save the team first before connecting cloud storage.');
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/storage/dropbox/auth-url`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ team_id: teamId }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.error || 'Failed to start Dropbox connection');
+        return;
+      }
+
+      const data = await response.json();
+      window.location.href = data.url;
+    } catch {
+      alert('Failed to connect to Dropbox. Please try again.');
+    }
+  };
+
   return (
     <div className="space-y-4 rounded-lg border p-4">
       {!config.dropbox_connected ? (
@@ -437,24 +510,33 @@ function DropboxConfig({ config, onConfigChange, disabled }: DropboxConfigProps)
           <Button
             type="button"
             variant="outline"
-            disabled={disabled}
-            onClick={() => {
-              // TODO: Implement Dropbox OAuth flow
-              alert('Dropbox integration coming soon!');
-            }}
+            disabled={disabled || !teamId}
+            onClick={handleConnect}
           >
             <Cloud className="h-4 w-4 mr-2" />
             Connect with Dropbox
           </Button>
-          <p className="text-xs text-muted-foreground mt-4">
-            Coming soon - OAuth integration in development
-          </p>
+          {!teamId && (
+            <p className="text-xs text-amber-600 mt-4">
+              Save the team first to enable cloud storage connection
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm text-green-600">
-            <CheckCircle className="h-4 w-4" />
-            Connected to Dropbox
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-green-600">
+              <CheckCircle className="h-4 w-4" />
+              Connected to Dropbox
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onConfigChange({ dropbox_connected: false })}
+            >
+              Disconnect
+            </Button>
           </div>
           <div className="space-y-2">
             <Label htmlFor="dropbox-folder">Folder Path</Label>

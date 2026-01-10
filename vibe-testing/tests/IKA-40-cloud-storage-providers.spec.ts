@@ -211,9 +211,9 @@ test.describe('IKA-40: Cloud Storage Providers in Team Settings', () => {
             const connectButton = page.getByRole('button', { name: /Connect with Google/i });
             await expect(connectButton).toBeVisible();
 
-            // Verify "coming soon" message
+            // Integration is now implemented (IKA-55) - "Coming soon" should NOT be visible
             const comingSoonText = page.locator('text=Coming soon');
-            await expect(comingSoonText).toBeVisible();
+            await expect(comingSoonText).not.toBeVisible();
         }
     });
 
@@ -253,9 +253,9 @@ test.describe('IKA-40: Cloud Storage Providers in Team Settings', () => {
             const connectButton = page.getByRole('button', { name: /Connect with Dropbox/i });
             await expect(connectButton).toBeVisible();
 
-            // Verify "coming soon" message
+            // Integration is now implemented (IKA-57) - "Coming soon" should NOT be visible
             const comingSoonText = page.locator('text=Coming soon');
-            await expect(comingSoonText).toBeVisible();
+            await expect(comingSoonText).not.toBeVisible();
         }
     });
 
