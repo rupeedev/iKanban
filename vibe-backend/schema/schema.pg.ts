@@ -633,6 +633,27 @@ export const teamRegistry = pgTable("team_registry", {
     idxTeamRegistrySlug: uniqueIndex("idx_team_registry_slug").on(table.slug),
 }));
 
+// Team Storage Configs (for cloud storage provider configurations)
+export const teamStorageConfigs = pgTable("team_storage_configs", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(), // 'google_drive', 's3', 'dropbox'
+    accessToken: text("access_token"), // Encrypted OAuth access token
+    refreshToken: text("refresh_token"), // Encrypted OAuth refresh token
+    tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
+    folderId: text("folder_id"), // Provider-specific folder/bucket path
+    configData: jsonb("config_data").default({}).notNull(), // Provider-specific config (bucket, region, etc.)
+    isActive: boolean("is_active").default(true).notNull(),
+    connectedEmail: text("connected_email"), // Email of connected account
+    connectedAccountId: text("connected_account_id"), // Provider account ID
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+    idxTeamStorageConfigsTeamId: index("idx_team_storage_configs_team_id").on(table.teamId),
+    idxTeamStorageConfigsProvider: index("idx_team_storage_configs_provider").on(table.provider),
+    uniqTeamStorageConfigsTeamProvider: uniqueIndex("uniq_team_storage_configs_team_provider").on(table.teamId, table.provider),
+}));
+
 
 
 
