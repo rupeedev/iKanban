@@ -66,40 +66,61 @@ except ImportError:
     pass
 
 # ============================================================================
-# CONFIGURATION
+# CONFIGURATION - Loaded from teams-config.json (single source of truth)
 # ============================================================================
 
-VERSION = "2.3.0"
+VERSION = "2.4.0"
 
-KNOWN_TEAMS = {
-    "ikanban": "a263e43f-43d3-4af7-a947-5f70e6670921",
-    "schild": "a2f22deb-901e-436b-9755-644cb26753b7",
-    "ika": "a263e43f-43d3-4af7-a947-5f70e6670921",
-    "sch": "a2f22deb-901e-436b-9755-644cb26753b7",
-}
+def load_config():
+    """Load configuration from teams-config.json"""
+    config_path = Path(__file__).parent / "teams-config.json"
 
-TEAM_DEFAULT_PROJECTS = {
-    "a263e43f-43d3-4af7-a947-5f70e6670921": "ff89ece5-eb49-4d8b-a349-4fc227773cbc",
-    "a2f22deb-901e-436b-9755-644cb26753b7": "ec364e49-b620-48e1-9dd1-8744eaedb5e2",
-}
+    if not config_path.exists():
+        print(f"Error: Configuration file not found: {config_path}", file=sys.stderr)
+        sys.exit(1)
 
-IKA_PROJECTS = {
-    "frontend": "ff89ece5-eb49-4d8b-a349-4fc227773cbc",
-    "backend": "use-dynamic-lookup",
-    "integration": "use-dynamic-lookup",
-}
+    with open(config_path, "r") as f:
+        return json.load(f)
 
-SCH_PROJECTS = {
-    "backend": "ec364e49-b620-48e1-9dd1-8744eaedb5e2",
-    "frontend": "a0838686-0c56-4492-bf6d-65847451496a",
-    "data-layer": "20f980e2-9cd8-427d-a11f-99cbff31acad",
-    "temporal": "0ea3cbc6-11c3-4d68-bb99-7493a40de833",
-    "elevenlabs": "e09697e8-c605-46a0-9dbc-877918fdca08",
-    "infra": "b40b5eca-1856-4b69-928f-0ec3ecd2737b",
-}
+def build_config_from_json(config):
+    """Build runtime configuration from JSON config"""
+    teams_data = config.get("teams", {})
 
-STATUSES = ["todo", "inprogress", "inreview", "done", "cancelled"]
-PRIORITIES = {"none": 0, "urgent": 1, "high": 2, "medium": 3, "low": 4}
+    # Build KNOWN_TEAMS: maps team name/identifier (lowercase) -> team_id
+    known_teams = {}
+    for identifier, team_info in teams_data.items():
+        team_id = team_info["id"]
+        # Add by identifier (e.g., "ika", "sch", "ver")
+        known_teams[identifier.lower()] = team_id
+        # Add by full name (e.g., "ikanban", "schild", "verteam")
+        known_teams[team_info["name"].lower()] = team_id
+
+    # Build TEAM_DEFAULT_PROJECTS: maps team_id -> default_project_id
+    team_default_projects = {}
+    for identifier, team_info in teams_data.items():
+        team_id = team_info["id"]
+        default_proj_name = team_info.get("default_project")
+        if default_proj_name and default_proj_name in team_info.get("projects", {}):
+            team_default_projects[team_id] = team_info["projects"][default_proj_name]["id"]
+
+    # Build TEAM_PROJECTS: maps team_id -> {project_name: project_id}
+    team_projects = {}
+    for identifier, team_info in teams_data.items():
+        team_id = team_info["id"]
+        team_projects[team_id] = {
+            name: proj["id"]
+            for name, proj in team_info.get("projects", {}).items()
+        }
+
+    return known_teams, team_default_projects, team_projects
+
+# Load configuration at module initialization
+_CONFIG = load_config()
+KNOWN_TEAMS, TEAM_DEFAULT_PROJECTS, TEAM_PROJECTS = build_config_from_json(_CONFIG)
+
+# Static configuration
+STATUSES = _CONFIG.get("statuses", ["todo", "inprogress", "inreview", "done", "cancelled"])
+PRIORITIES = {"none": 0, **_CONFIG.get("priorities", {"urgent": 1, "high": 2, "medium": 3, "low": 4})}
 
 # ============================================================================
 # API HELPERS
@@ -232,25 +253,31 @@ def resolve_team_id(team_ref):
     return KNOWN_TEAMS.get(lower_ref, team_ref)
 
 def resolve_project_id(project_ref, team_id=None):
+    """Resolve project reference to project ID using TEAM_PROJECTS from config"""
     if not project_ref:
         return TEAM_DEFAULT_PROJECTS.get(team_id) if team_id else None
 
     lower_ref = project_ref.lower()
-    if team_id == "a263e43f-43d3-4af7-a947-5f70e6670921":
-        if lower_ref in IKA_PROJECTS:
-            proj_id = IKA_PROJECTS[lower_ref]
-            if not proj_id.startswith("use-"):
-                return proj_id
-    elif team_id == "a2f22deb-901e-436b-9755-644cb26753b7":
-        if lower_ref in SCH_PROJECTS:
-            return SCH_PROJECTS[lower_ref]
+
+    # Look up in team-specific projects from config
+    if team_id and team_id in TEAM_PROJECTS:
+        team_projs = TEAM_PROJECTS[team_id]
+        if lower_ref in team_projs:
+            return team_projs[lower_ref]
+
+    # Return as-is if not found (assume it's a UUID)
     return project_ref
 
 def get_team_identifier(team_id):
+    """Get the short identifier (e.g., IKA, SCH, VER) for a team ID"""
     for key, value in KNOWN_TEAMS.items():
         if value == team_id and len(key) == 3:
             return key.upper()
     return None
+
+def get_available_teams():
+    """Get list of available team identifiers from config"""
+    return sorted(set(key.upper() for key in KNOWN_TEAMS.keys() if len(key) == 3))
 
 def parse_priority(priority_str):
     if priority_str is None:
@@ -297,7 +324,8 @@ def resolve_task_id(task_ref):
     # Resolve team ID
     team_id = KNOWN_TEAMS.get(team_key)
     if not team_id:
-        print(f"Unknown team: {team_key.upper()}. Use IKA or SCH.", file=sys.stderr)
+        available = ", ".join(get_available_teams())
+        print(f"Unknown team: {team_key.upper()}. Use: {available}", file=sys.stderr)
         sys.exit(1)
 
     # Fetch issues for this team and find the one with matching issue_number
@@ -1109,11 +1137,15 @@ def run_mcp_server():
 # ============================================================================
 
 def main():
+    # Build dynamic teams list for help text
+    teams_list = ", ".join(get_available_teams())
+    statuses_list = ", ".join(STATUSES)
+
     parser = argparse.ArgumentParser(
         prog="ikanban",
         description="iKanban - Unified CLI & MCP Server for Task Management",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog=f"""
 Examples:
   ikanban teams                              List all teams
   ikanban issues IKA                         List iKanban issues
@@ -1123,8 +1155,8 @@ Examples:
   ikanban delete <id> --force                Delete task
   ikanban serve                              Start MCP server
 
-Teams: IKA (iKanban), SCH (Schild)
-Statuses: todo, inprogress, inreview, done, cancelled
+Teams: {teams_list} (see teams-config.json)
+Statuses: {statuses_list}
 Priorities: urgent, high, medium, low (or 1-4)
         """
     )
