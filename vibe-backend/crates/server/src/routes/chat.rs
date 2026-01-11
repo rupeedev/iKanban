@@ -434,18 +434,18 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/chat/conversations", get(list_conversations))
         .route("/chat/conversations/direct", post(create_direct_conversation))
         .route("/chat/conversations/group", post(create_group_conversation))
-        .route("/chat/conversations/:id", get(get_conversation))
-        .route("/chat/conversations/:id/leave", post(leave_conversation))
-        .route("/chat/conversations/:id/read", post(mark_read))
+        .route("/chat/conversations/{id}", get(get_conversation))
+        .route("/chat/conversations/{id}/leave", post(leave_conversation))
+        .route("/chat/conversations/{id}/read", post(mark_read))
         // Messages
-        .route("/chat/conversations/:id/messages", get(get_messages))
-        .route("/chat/conversations/:id/messages", post(send_message))
+        .route("/chat/conversations/{id}/messages", get(get_messages))
+        .route("/chat/conversations/{id}/messages", post(send_message))
         .route(
-            "/chat/conversations/:id/messages/:message_id",
+            "/chat/conversations/{id}/messages/{message_id}",
             put(update_message),
         )
         .route(
-            "/chat/conversations/:id/messages/:message_id",
+            "/chat/conversations/{id}/messages/{message_id}",
             delete(delete_message),
         )
 }
