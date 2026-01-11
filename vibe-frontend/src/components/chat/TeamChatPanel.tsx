@@ -1,3 +1,4 @@
+import { useMemo, useCallback, useEffect } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -9,24 +10,78 @@ import { useChatPanelStore } from '@/stores/chatPanelStore';
 import { OnlineMembersList } from './OnlineMembersList';
 import { ChatMessageList } from './ChatMessageList';
 import { ChatInput } from './ChatInput';
-import type { OnlineMember, ChatMessage } from '@/types/chat';
+import {
+  useConversations,
+  useMessages,
+  useSendMessage,
+  useMarkAsRead,
+} from '@/hooks/useTeamChat';
+import type { OnlineMember, ChatMessage, ChatMessageFromApi } from '@/types/chat';
 
 interface TeamChatPanelProps {
   workspaceName?: string;
   teamNames?: string[];
   members?: OnlineMember[];
-  messages?: ChatMessage[];
+}
+
+// Convert API message format to display format
+function apiMessageToDisplay(msg: ChatMessageFromApi): ChatMessage {
+  return {
+    id: msg.id,
+    senderId: msg.sender_id,
+    senderName: msg.sender_name || 'Unknown',
+    senderAvatarUrl: msg.sender_avatar,
+    senderTeam: null, // Not available in API response yet
+    content: msg.content,
+    timestamp: msg.created_at,
+  };
 }
 
 export function TeamChatPanel({
   workspaceName = 'Workspace',
   teamNames = [],
   members = [],
-  messages = [],
 }: TeamChatPanelProps) {
-  const { isOpen, close } = useChatPanelStore();
+  const { isOpen, close, activeTeamId, activeConversationId } = useChatPanelStore();
+
+  // Fetch conversations for the active team
+  const { data: conversations, isLoading: conversationsLoading } = useConversations(activeTeamId || undefined);
+
+  // Get the active conversation or the first one
+  const currentConversationId = activeConversationId || conversations?.[0]?.id;
+
+  // Fetch messages for the current conversation
+  const { data: messagesData, isLoading: messagesLoading } = useMessages(currentConversationId);
+
+  // Send message mutation
+  const sendMessage = useSendMessage();
+  const markAsRead = useMarkAsRead();
+
+  // Convert messages to display format
+  const displayMessages = useMemo(() => {
+    if (!messagesData?.messages) return [];
+    return messagesData.messages.map(apiMessageToDisplay);
+  }, [messagesData]);
+
+  // Handle sending a message
+  const handleSend = useCallback(
+    (content: string) => {
+      if (!currentConversationId) return;
+      sendMessage.mutate({ conversationId: currentConversationId, content });
+    },
+    [currentConversationId, sendMessage]
+  );
+
+  // Mark messages as read when conversation changes or panel opens
+  useEffect(() => {
+    if (isOpen && currentConversationId) {
+      markAsRead.mutate(currentConversationId);
+    }
+  }, [isOpen, currentConversationId, markAsRead]);
 
   const onlineCount = members.filter((m) => m.isOnline).length;
+  const isLoading = conversationsLoading || messagesLoading;
+  const hasConversation = !!currentConversationId;
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
@@ -61,9 +116,15 @@ export function TeamChatPanel({
 
         <OnlineMembersList members={members} />
 
-        <ChatMessageList messages={messages} />
+        <ChatMessageList
+          messages={displayMessages}
+          isLoading={isLoading}
+        />
 
-        <ChatInput disabled />
+        <ChatInput
+          disabled={!hasConversation || sendMessage.isPending}
+          onSend={handleSend}
+        />
       </SheetContent>
     </Sheet>
   );

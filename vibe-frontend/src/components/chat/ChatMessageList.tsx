@@ -1,4 +1,4 @@
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ChatMessage } from './ChatMessage';
 import type { ChatMessage as ChatMessageType } from '@/types/chat';
@@ -6,9 +6,19 @@ import type { ChatMessage as ChatMessageType } from '@/types/chat';
 interface ChatMessageListProps {
   messages?: ChatMessageType[];
   className?: string;
+  isLoading?: boolean;
 }
 
-export function ChatMessageList({ messages = [], className }: ChatMessageListProps) {
+export function ChatMessageList({ messages = [], className, isLoading = false }: ChatMessageListProps) {
+  if (isLoading) {
+    return (
+      <div className={cn('flex-1 flex flex-col items-center justify-center px-4 py-8', className)}>
+        <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" aria-hidden="true" />
+        <p className="text-sm text-muted-foreground mt-2">Loading messages...</p>
+      </div>
+    );
+  }
+
   if (messages.length === 0) {
     return (
       <div className={cn('flex-1 flex flex-col items-center justify-center px-4 py-8', className)}>

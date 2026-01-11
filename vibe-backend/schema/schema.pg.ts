@@ -669,3 +669,57 @@ export const aiProviderKeys = pgTable("ai_provider_keys", {
     idxAiProviderKeysTenantWorkspace: index("idx_ai_provider_keys_tenant_workspace").on(table.tenantWorkspaceId),
     uniqAiProviderKeysTenantProvider: uniqueIndex("uniq_ai_provider_keys_tenant_provider").on(table.tenantWorkspaceId, table.provider),
 }));
+
+// ============================================================================
+// Chat Tables (IKA-65: Team Chat with Privacy Controls)
+// ============================================================================
+
+// Conversations (DMs and group chats within a team)
+export const conversations = pgTable("conversations", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+    tenantWorkspaceId: uuid("tenant_workspace_id").notNull().references(() => tenantWorkspaces.id, { onDelete: "cascade" }),
+    name: text("name"), // NULL for direct messages, required for groups
+    conversationType: text("conversation_type").default("direct").notNull(), // 'direct' or 'group'
+    createdBy: text("created_by").notNull(), // Clerk user ID
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+    idxConversationsTeam: index("idx_conversations_team").on(table.teamId),
+    idxConversationsWorkspace: index("idx_conversations_workspace").on(table.tenantWorkspaceId),
+    idxConversationsType: index("idx_conversations_type").on(table.conversationType),
+    idxConversationsCreatedBy: index("idx_conversations_created_by").on(table.createdBy),
+}));
+
+// Conversation Participants (who's in each conversation)
+export const conversationParticipants = pgTable("conversation_participants", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(), // Clerk user ID
+    teamMemberId: uuid("team_member_id").notNull().references(() => teamMembers.id, { onDelete: "cascade" }),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).defaultNow().notNull(),
+    lastReadAt: timestamp("last_read_at", { withTimezone: true }), // For unread message tracking
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+    idxConversationParticipantsConversation: index("idx_conversation_participants_conversation").on(table.conversationId),
+    idxConversationParticipantsUser: index("idx_conversation_participants_user").on(table.userId),
+    idxConversationParticipantsTeamMember: index("idx_conversation_participants_team_member").on(table.teamMemberId),
+    uniqConversationParticipant: uniqueIndex("uniq_conversation_participant").on(table.conversationId, table.userId),
+}));
+
+// Chat Messages
+export const chatMessages = pgTable("chat_messages", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+    senderId: text("sender_id").notNull(), // Clerk user ID
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }), // Soft delete
+}, (table) => ({
+    idxChatMessagesConversation: index("idx_chat_messages_conversation").on(table.conversationId),
+    idxChatMessagesSender: index("idx_chat_messages_sender").on(table.senderId),
+    idxChatMessagesCreated: index("idx_chat_messages_created").on(table.conversationId, table.createdAt),
+    idxChatMessagesNotDeleted: index("idx_chat_messages_not_deleted").on(table.conversationId).where(sql`deleted_at IS NULL`),
+}));

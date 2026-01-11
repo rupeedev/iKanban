@@ -10,7 +10,7 @@ interface ChatInputProps {
   onSend?: (message: string) => void;
 }
 
-export function ChatInput({ className, disabled = true, onSend }: ChatInputProps) {
+export function ChatInput({ className, disabled = false, onSend }: ChatInputProps) {
   const [message, setMessage] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -21,12 +21,17 @@ export function ChatInput({ className, disabled = true, onSend }: ChatInputProps
     }
   };
 
+  // Show helpful message when no conversation is selected
+  const placeholderText = disabled
+    ? 'Select a team member to start chatting'
+    : 'Type a message...';
+
   return (
     <form onSubmit={handleSubmit} className={cn('px-4 py-3 border-t', className)}>
       <div className="flex gap-2">
         <Input
           type="text"
-          placeholder={disabled ? 'Chat coming soon...' : 'Type a message...'}
+          placeholder={placeholderText}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           disabled={disabled}
@@ -42,11 +47,6 @@ export function ChatInput({ className, disabled = true, onSend }: ChatInputProps
           <Send className="h-4 w-4" />
         </Button>
       </div>
-      {disabled && (
-        <p className="text-xs text-muted-foreground mt-2 text-center">
-          Real-time chat will be available soon
-        </p>
-      )}
     </form>
   );
 }
