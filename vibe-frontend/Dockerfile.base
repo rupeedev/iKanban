@@ -1,0 +1,19 @@
+# Frontend Builder Base Image
+# This image contains Node.js, pnpm, and pre-installed dependencies
+# Tag: rupeedev/ikanban-frontend-builder:v1
+
+FROM node:20-alpine AS builder
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /app
+
+# Copy package files for dependency caching
+COPY vibe-frontend/package.json vibe-frontend/pnpm-lock.yaml ./vibe-frontend/
+COPY shared/ ./shared/
+
+# Install dependencies (this gets cached in the base image)
+RUN cd vibe-frontend && pnpm install --frozen-lockfile
+
+# This base image stops here - actual source code is added in incremental build
