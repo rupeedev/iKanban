@@ -5,12 +5,14 @@
 # ===========================================
 FROM rust:latest
 
-# Install build dependencies
+# Install build dependencies (including libclang for bindgen)
 RUN apt-get update && apt-get install -y \
     build-essential \
     pkg-config \
     libssl-dev \
     libsqlite3-dev \
+    libclang-dev \
+    clang \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
