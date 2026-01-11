@@ -1,0 +1,39 @@
+# ===========================================
+# Runtime-Only Docker Image
+# Expects pre-built binary to be copied in
+# Used with sccache-based CI builds
+# ===========================================
+FROM ubuntu:24.04
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    tini \
+    libssl3 \
+    libsqlite3-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app user
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -s /bin/bash appuser
+
+# Copy binary from CI build artifacts
+COPY server /usr/local/bin/server
+RUN chmod +x /usr/local/bin/server
+
+# Copy entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Create data directories
+RUN mkdir -p /repos /data /seed && \
+    chown -R appuser:appgroup /repos /data /seed
+
+ENV HOST=0.0.0.0
+ENV PORT=3000
+ENV CLOUD_DEPLOYMENT=true
+EXPOSE 3000
+
+WORKDIR /repos
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["docker-entrypoint.sh"]
