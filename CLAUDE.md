@@ -2,6 +2,26 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+---
+
+## ⚠️ MANDATORY - READ BEFORE ANY TASK
+
+**These documents MUST be read before starting any work:**
+
+| Priority | Document | Path | Contains |
+|----------|----------|------|----------|
+| **1** | **WORKFLOW.md** | `.claude/WORKFLOW.md` | 8-phase TDD workflow, task management, git process |
+| **2** | **CODING-GUIDELINES.md** | `.claude/CODING-GUIDELINES.md` | File size limits, lint rules, pre-commit checks |
+
+### Key Rules (from CODING-GUIDELINES.md):
+- **Max 400 lines per file** - Split into multiple files if larger
+- **Zero warnings** - `cargo check` + `pnpm lint` must pass before commit
+- **No unused code** - Remove unused imports, variables, functions
+
+**Do NOT skip these documents. Violations will cause CI failures and rework.**
+
+---
+
 ## Context Commands
 
 | Command | Purpose |
@@ -14,11 +34,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Tech Context Files (in .claude/)
 
-| File | Contents |
-|------|----------|
-| `TECHSTACK.md` | Package versions, imports, env vars |
-| `PATTERNS.md` | Component, hook, handler patterns |
-| `API.md` | All API endpoints with examples |
+| File | Contents | Priority |
+|------|----------|----------|
+| **`WORKFLOW.md`** | **8-phase TDD process, task management** | **READ FIRST** |
+| **`CODING-GUIDELINES.md`** | **File limits, lint rules, pre-commit** | **READ FIRST** |
+| `TECHSTACK.md` | Package versions, imports, env vars | When coding |
+| `PATTERNS.md` | Component, hook, handler patterns | When coding |
+| `API.md` | All API endpoints with examples | Backend tasks |
 
 ## Project Documentation
 
@@ -37,6 +59,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Core Rules
 
+- **File size**: Max 400 lines per file. Split if larger.
+- **No warnings**: `cargo check` and `pnpm lint` must pass with zero warnings
+- **No unused code**: Remove unused imports, variables, functions before commit
 - **UI**: shadcn/ui only (`npx shadcn-ui@latest add <component>`)
 - **Auth**: Clerk only (modal sign-in, not full-page)
 - **SQLx types**: `DateTime<Utc>` → `TIMESTAMPTZ`, `i64` → `bigint`

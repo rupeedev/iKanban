@@ -87,18 +87,12 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Create Proxy Dockerfile
-        run: |
-          mkdir deploy_payload
-          echo "FROM ${{ env.DOCKER_IMAGE }}:${{ github.sha }}" > deploy_payload/Dockerfile
-          echo "ENV PORT=3000" >> deploy_payload/Dockerfile
-          echo "EXPOSE 3000" >> deploy_payload/Dockerfile
-
-      - name: Deploy to Railway
+      - name: Redeploy Railway Service
         id: deploy
-        working-directory: ./deploy_payload
         continue-on-error: true
-        run: railway up --service ${{ env.RAILWAY_SERVICE_ID }}
+        run: |
+          echo "Triggering redeploy for image: ${{ env.DOCKER_IMAGE }}:latest"
+          railway redeploy --service ${{ env.RAILWAY_SERVICE_ID }} --yes
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_GITHUB_BACKEND_TOKEN }}
 
@@ -112,5 +106,5 @@ jobs:
       - name: Deployment Success
         if: steps.deploy.outcome == 'success'
         run: |
-          echo "Successfully deployed commit ${{ github.sha }} to Railway"
-          echo "Image: ${{ env.DOCKER_IMAGE }}:${{ github.sha }}"
+          echo "Successfully triggered redeploy for commit ${{ github.sha }}"
+          echo "Image: ${{ env.DOCKER_IMAGE }}:latest"
