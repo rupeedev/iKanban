@@ -54,6 +54,7 @@ import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useAdminInvitations, useAdminInvitationMutations } from '@/hooks/useAdmin';
 import { toast } from 'sonner';
+import { MemberRole } from 'shared/types';
 
 type TabValue = 'all' | 'pending' | 'accepted' | 'expired';
 
@@ -223,8 +224,7 @@ export function AdminInvitations() {
     try {
       await createInvitation({
         email,
-        role,
-        workspace_id: currentWorkspaceId!,
+        role: role === 'ADMIN' ? MemberRole.ADMIN : MemberRole.MEMBER,
       });
       toast.success('Invitation sent successfully');
       setShowSendDialog(false);
