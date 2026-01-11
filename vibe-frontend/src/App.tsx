@@ -34,6 +34,14 @@ import {
   SettingsLayout,
   WorkspaceSettings,
 } from '@/pages/settings/';
+import {
+  AdminLayout,
+  AdminDashboard,
+  AdminInvitations,
+  AdminPermissions,
+  AdminConfiguration,
+  AdminUsers,
+} from '@/pages/admin/';
 import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { SearchProvider } from '@/contexts/SearchContext';
@@ -216,6 +224,14 @@ function AppContent() {
                   <Route path="agents" element={<AgentSettings />} />
                   <Route path="mcp" element={<McpSettings />} />
                   <Route path="api-keys" element={<ApiKeysSettings />} />
+                </Route>
+                {/* Admin panel routes */}
+                <Route path="/admin/*" element={<AdminLayout />}>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="invitations" element={<AdminInvitations />} />
+                  <Route path="permissions" element={<AdminPermissions />} />
+                  <Route path="configuration" element={<AdminConfiguration />} />
+                  <Route path="users" element={<AdminUsers />} />
                 </Route>
                 <Route
                   path="/mcp-servers"
