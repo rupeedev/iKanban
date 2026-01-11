@@ -150,7 +150,33 @@ Here's what your settings might look like:
 
 ---
 
-## Step 4: Restart Claude Code
+## Step 4: Set Up Teams Configuration
+
+The MCP server needs a `teams-config.json` file to map team/project shortcuts to IDs.
+
+### Create Your Config File
+
+1. Copy the example template:
+```bash
+cp mcp/teams-config.example.json mcp/teams-config.json
+```
+
+2. Get your team and project IDs:
+```bash
+# List your teams (shows team IDs)
+python3 mcp/ikanban.py teams --json
+
+# List your projects (shows project IDs)
+python3 mcp/ikanban.py projects --json
+```
+
+3. Edit `teams-config.json` and replace the placeholder UUIDs with your actual IDs.
+
+**Important:** The `teams-config.json` file contains your workspace IDs and is excluded from git. Never commit this file to a public repository.
+
+---
+
+## Step 5: Restart Claude Code
 
 After saving the settings file:
 
@@ -160,7 +186,7 @@ After saving the settings file:
 
 ---
 
-## Step 5: Test It Out!
+## Step 6: Test It Out!
 
 Now you can ask Claude to manage your tasks! Here are some things you can say:
 
@@ -264,8 +290,11 @@ These team names are shortcuts you can use:
 |------------|-----------|-------------|
 | `IKA` | iKanban | The iKanban team |
 | `SCH` | Schild | The Schild team |
+| `VER` | verTeam | The VerWorkSpace team |
 
-You can also use full names like `ikanban` or `schild` (case-insensitive).
+You can also use full names like `ikanban`, `schild`, or `verteam` (case-insensitive).
+
+> **Note:** Team and project IDs are stored locally in `teams-config.json` (not committed to repo).
 
 ---
 
@@ -289,6 +318,18 @@ You can also use full names like `ikanban` or `schild` (case-insensitive).
 | `temporal` | Temporal workflows |
 | `elevenlabs` | ElevenLabs integration |
 | `infra` | Infrastructure |
+
+### verTeam (VER) Projects
+
+| Short Name | Description |
+|------------|-------------|
+| `frontend` | Frontend UI (default) |
+| `architecture` | Architecture & infrastructure design |
+| `documentation` | Documentation |
+| `infra` | Infrastructure |
+| `meeting` | Meetings & planning |
+| `ai-agent` | AI Agent development |
+| `engine-postcall` | Post-call engine |
 
 ---
 
@@ -431,7 +472,7 @@ Print this out and keep it handy:
 |   ikanban_list_comments   - List task comments   |
 |   ikanban_add_comment     - Add comment          |
 +--------------------------------------------------+
-| TEAMS: IKA (iKanban), SCH (Schild)               |
+| TEAMS: IKA (iKanban), SCH (Schild), VER (verTeam)|
 | STATUSES: todo, inprogress, inreview, done       |
 | PRIORITIES: urgent, high, medium, low (1-4)      |
 +--------------------------------------------------+
