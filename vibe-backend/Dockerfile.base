@@ -3,7 +3,7 @@
 # Contains Rust toolchain + pre-compiled dependencies
 # Push as: rupeedev/ikanban-backend-builder:v1
 # ===========================================
-FROM rust:1.85-slim-bookworm
+FROM rust:latest
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
