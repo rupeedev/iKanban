@@ -70,7 +70,10 @@ export function useTeams(): UseTeamsResult {
   }, [queryClient, queryKey]);
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateTeam) => teamsApi.create(data),
+    mutationFn: (data: CreateTeam) => teamsApi.create({
+      ...data,
+      tenant_workspace_id: currentWorkspaceId,
+    }),
     onSuccess: (newTeam) => {
       // Optimistically add the new team to the cache
       queryClient.setQueryData<Team[]>(queryKey, (old) =>

@@ -56,7 +56,7 @@ export type Team = { id: string, name: string, slug: string | null, identifier: 
 
 export type TeamProject = { team_id: string, project_id: string, created_at: Date, };
 
-export type CreateTeam = { name: string, slug: string, identifier: string | null, icon: string | null, color: string | null, };
+export type CreateTeam = { name: string, slug: string, identifier: string | null, icon: string | null, color: string | null, tenant_workspace_id: string | null, };
 
 export type UpdateTeam = { name: string | null, identifier: string | null, icon: string | null, color: string | null, document_storage_path: string | null, };
 

@@ -178,13 +178,20 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(({ editTeam }) 
           slug: slug.trim(),
           identifier: null, // Auto-generated from name on backend
           icon: icon,
-          color: null
+          color: null,
+          tenant_workspace_id: null, // Injected by useTeams hook
         });
       }
       modal.resolve('saved' as TeamFormDialogResult);
       modal.hide();
     } catch (err) {
-      setError(err instanceof Error ? err.message : isEditing ? 'Failed to update team' : 'Failed to create team');
+      const errorMessage = err instanceof Error ? err.message : isEditing ? 'Failed to update team' : 'Failed to create team';
+      // Check for duplicate slug error and provide user-friendly message
+      if (errorMessage.includes('idx_teams_slug') || errorMessage.includes('duplicate key')) {
+        setError('A team with this database slug already exists. Please choose a different slug.');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
