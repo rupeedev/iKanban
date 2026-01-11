@@ -26,6 +26,7 @@ import { usePreviousPath } from '@/hooks/usePreviousPath';
 
 import {
   AgentSettings,
+  AiProviderKeysSettings,
   ApiKeysSettings,
   GeneralSettings,
   McpSettings,
@@ -224,6 +225,7 @@ function AppContent() {
                   <Route path="agents" element={<AgentSettings />} />
                   <Route path="mcp" element={<McpSettings />} />
                   <Route path="api-keys" element={<ApiKeysSettings />} />
+                  <Route path="ai-provider-keys" element={<AiProviderKeysSettings />} />
                 </Route>
                 {/* Admin panel routes */}
                 <Route path="/admin/*" element={<AdminLayout />}>

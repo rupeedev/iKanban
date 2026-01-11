@@ -15,6 +15,7 @@ use crate::middleware::{
 };
 use deployment::Deployment;
 
+pub mod ai_keys;
 pub mod api_keys;
 pub mod approvals;
 pub mod config;
@@ -73,6 +74,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
 
     // Protected routes (auth required when enabled)
     let protected_routes = Router::new()
+        .merge(ai_keys::router(&deployment))
         .merge(api_keys::router(&deployment))
         .merge(containers::router(&deployment))
         .merge(projects::router(&deployment))
