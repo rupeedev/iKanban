@@ -187,6 +187,111 @@ impl AvailabilityInfo {
             AvailabilityInfo::LoginDetected { .. } | AvailabilityInfo::InstallationFound
         )
     }
+
+    /// Convert to CLI status for enhanced availability
+    pub fn to_cli_status(&self) -> CliStatus {
+        match self {
+            AvailabilityInfo::LoginDetected { .. } => CliStatus::LoginDetected,
+            AvailabilityInfo::InstallationFound => CliStatus::InstallationFound,
+            AvailabilityInfo::NotFound => CliStatus::NotFound,
+        }
+    }
+
+    /// Extract last auth timestamp if available
+    pub fn last_auth_timestamp(&self) -> Option<i64> {
+        match self {
+            AvailabilityInfo::LoginDetected {
+                last_auth_timestamp,
+            } => Some(*last_auth_timestamp),
+            _ => None,
+        }
+    }
+}
+
+/// Enhanced availability information for IKA-53
+/// Reports both CLI and API availability for agents
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct EnhancedAvailabilityInfo {
+    /// Whether CLI installation is available
+    pub cli_available: bool,
+    /// Whether API key is configured
+    pub api_available: bool,
+    /// Combined availability mode
+    pub mode: AvailabilityMode,
+    /// Last authentication timestamp (if CLI login detected)
+    pub last_auth_timestamp: Option<i64>,
+    /// Detailed CLI status
+    pub cli_status: CliStatus,
+}
+
+/// Availability mode indicating how the agent can be used
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
+pub enum AvailabilityMode {
+    /// Only CLI installation available
+    CliOnly,
+    /// Only API key available
+    ApiOnly,
+    /// Both CLI and API available
+    Both,
+    /// Neither available - setup required
+    None,
+}
+
+/// Detailed CLI availability status
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
+pub enum CliStatus {
+    /// User has logged in (auth file found with timestamp)
+    LoginDetected,
+    /// Installation found but no login
+    InstallationFound,
+    /// Not installed
+    NotFound,
+}
+
+impl EnhancedAvailabilityInfo {
+    /// Create enhanced availability from CLI info and API availability
+    pub fn new(cli_info: &AvailabilityInfo, api_available: bool) -> Self {
+        let cli_available = cli_info.is_available();
+        let mode = match (cli_available, api_available) {
+            (true, true) => AvailabilityMode::Both,
+            (true, false) => AvailabilityMode::CliOnly,
+            (false, true) => AvailabilityMode::ApiOnly,
+            (false, false) => AvailabilityMode::None,
+        };
+
+        Self {
+            cli_available,
+            api_available,
+            mode,
+            last_auth_timestamp: cli_info.last_auth_timestamp(),
+            cli_status: cli_info.to_cli_status(),
+        }
+    }
+}
+
+impl BaseCodingAgent {
+    /// Maps agent to its corresponding API provider for key lookup
+    ///
+    /// Returns None for CLI-only agents that don't support API mode
+    pub fn api_provider(&self) -> Option<&'static str> {
+        match self {
+            BaseCodingAgent::ClaudeCode => Some("anthropic"),
+            BaseCodingAgent::Codex => Some("openai"),
+            BaseCodingAgent::Gemini => Some("google"),
+            BaseCodingAgent::Amp => Some("anthropic"), // Uses Claude API
+            BaseCodingAgent::Opencode => Some("openai"),
+            BaseCodingAgent::Droid => Some("anthropic"),
+            BaseCodingAgent::QwenCode => None, // Uses Qwen's own API
+            // CLI-only agents have no API provider mapping
+            BaseCodingAgent::CursorAgent => None,
+            BaseCodingAgent::Copilot => None, // GitHub-specific auth
+        }
+    }
 }
 
 #[async_trait]
