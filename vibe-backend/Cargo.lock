@@ -1662,6 +1662,7 @@ name = "db"
 version = "0.0.142"
 dependencies = [
  "anyhow",
+ "base64",
  "chrono",
  "executors",
  "rand 0.8.5",
@@ -4746,6 +4747,7 @@ dependencies = [
  "js-sys",
  "log",
  "mime",
+ "mime_guess",
  "native-tls",
  "percent-encoding",
  "pin-project-lite",

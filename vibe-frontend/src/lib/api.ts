@@ -187,6 +187,21 @@ export interface CreateApiKeyRequest {
   expires_in_days?: number;
 }
 
+// AI Provider Key types (for Claude, Gemini, OpenAI)
+export interface AiProviderKeyInfo {
+  id: string;
+  provider: string;
+  key_prefix: string;
+  is_valid: boolean;
+  last_validated_at: string | null;
+  created_at: string;
+}
+
+export interface UpsertAiProviderKey {
+  provider: string;
+  api_key: string;
+}
+
 export class ApiError<E = unknown> extends Error {
   public status?: number;
   public error_data?: E;
@@ -2370,6 +2385,36 @@ export const apiKeysApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+};
+
+// AI Provider Keys API (for Claude, Gemini, OpenAI)
+export const aiProviderKeysApi = {
+  list: async (): Promise<AiProviderKeyInfo[]> => {
+    const response = await makeRequest('/api/ai-keys');
+    return handleApiResponse<AiProviderKeyInfo[]>(response);
+  },
+
+  upsert: async (data: UpsertAiProviderKey): Promise<AiProviderKeyInfo> => {
+    const response = await makeRequest('/api/ai-keys', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<AiProviderKeyInfo>(response);
+  },
+
+  delete: async (provider: string): Promise<void> => {
+    const response = await makeRequest(`/api/ai-keys/${provider}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  test: async (provider: string): Promise<boolean> => {
+    const response = await makeRequest(`/api/ai-keys/${provider}/test`, {
+      method: 'POST',
+    });
+    return handleApiResponse<boolean>(response);
   },
 };
 
