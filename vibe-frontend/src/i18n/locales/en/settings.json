@@ -16,7 +16,9 @@
         "workspace": "Workspace",
         "workspaceDesc": "Manage workspace settings and members",
         "api-keys": "API Keys",
-        "api-keysDesc": "Manage API keys for programmatic access"
+        "api-keysDesc": "Manage API keys for programmatic access",
+        "ai-provider-keys": "AI Provider Keys",
+        "ai-provider-keysDesc": "Configure API keys for Claude, Gemini, and OpenAI"
       }
     },
     "general": {
@@ -437,6 +439,56 @@
         "cancel": "Cancel",
         "revoke": "Revoke Only",
         "delete": "Delete Permanently"
+      }
+    },
+    "aiProviderKeys": {
+      "title": "AI Provider Keys",
+      "description": "Configure API keys for AI providers (Claude, Gemini, OpenAI) to enable AI-powered features in the application.",
+      "loading": "Loading AI provider keys...",
+      "addButton": "Add Key",
+      "updateButton": "Update",
+      "deleteButton": "Delete",
+      "testButton": "Test Key",
+      "noKeys": "No AI provider keys configured",
+      "noKeysHint": "Add your AI provider API keys to enable AI-powered features.",
+      "saveSuccess": "API key saved successfully",
+      "deleteSuccess": "API key deleted successfully",
+      "testSuccess": "API key for {{provider}} is valid",
+      "testFailed": "API key for {{provider}} is invalid",
+      "table": {
+        "provider": "Provider",
+        "added": "Added",
+        "validated": "Validated"
+      },
+      "status": {
+        "valid": "Valid",
+        "invalid": "Invalid"
+      },
+      "errors": {
+        "loadFailed": "Failed to load AI provider keys",
+        "saveFailed": "Failed to save API key",
+        "deleteFailed": "Failed to delete API key",
+        "testFailed": "Failed to test API key"
+      },
+      "info": {
+        "title": "Supported Providers",
+        "description": "Add API keys for the AI providers you want to use. These keys are securely stored and used for AI-powered features within the application."
+      },
+      "addDialog": {
+        "title": "Add AI Provider Key",
+        "description": "Enter your API key for the selected provider. The key will be securely stored.",
+        "providerLabel": "Provider",
+        "keyLabel": "API Key",
+        "keyHint": "API key should start with: {{prefix}}",
+        "cancel": "Cancel",
+        "save": "Save Key"
+      },
+      "deleteDialog": {
+        "title": "Delete AI Provider Key",
+        "description": "Are you sure you want to delete the API key for {{provider}}?",
+        "warning": "AI-powered features that depend on this provider will stop working. This action cannot be undone.",
+        "cancel": "Cancel",
+        "delete": "Delete"
       }
     }
   },

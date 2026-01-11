@@ -654,6 +654,18 @@ export const teamStorageConfigs = pgTable("team_storage_configs", {
     uniqTeamStorageConfigsTeamProvider: uniqueIndex("uniq_team_storage_configs_team_provider").on(table.teamId, table.provider),
 }));
 
-
-
-
+// AI Provider Keys (for Claude, Gemini, OpenAI API access)
+export const aiProviderKeys = pgTable("ai_provider_keys", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantWorkspaceId: uuid("tenant_workspace_id").notNull().references(() => tenantWorkspaces.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(), // 'anthropic', 'google', 'openai'
+    keyPrefix: text("key_prefix").notNull(), // First 8 chars for identification
+    encryptedKey: text("encrypted_key").notNull(), // AES-256-GCM encrypted
+    isValid: boolean("is_valid").default(true).notNull(),
+    lastValidatedAt: timestamp("last_validated_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+    idxAiProviderKeysTenantWorkspace: index("idx_ai_provider_keys_tenant_workspace").on(table.tenantWorkspaceId),
+    uniqAiProviderKeysTenantProvider: uniqueIndex("uniq_ai_provider_keys_tenant_provider").on(table.tenantWorkspaceId, table.provider),
+}));

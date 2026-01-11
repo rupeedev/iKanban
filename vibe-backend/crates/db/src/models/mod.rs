@@ -1,3 +1,4 @@
+pub mod ai_provider_key;
 pub mod api_key;
 pub mod coding_agent_turn;
 pub mod document;
