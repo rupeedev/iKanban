@@ -435,13 +435,6 @@ export function Sidebar() {
           >
             <div className="space-y-0.5">
               <SidebarItem
-                icon={Users}
-                label="Members"
-                to="/settings/organizations"
-                isActive={location.pathname === '/settings/organizations'}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarItem
                 icon={FolderKanban}
                 label="Projects"
                 to="/projects"
