@@ -9,6 +9,7 @@ use axum::{
     Json, Router,
 };
 use db::models::ai_provider_key::{AiProviderKey, AiProviderKeyInfo, UpsertAiProviderKey};
+use db::models::tenant_workspace::TenantWorkspace;
 use utils::response::ApiResponse;
 
 use crate::{
@@ -19,11 +20,13 @@ use crate::{
 use deployment::Deployment;
 
 /// Get the tenant workspace ID for the current user
-/// For now, we use a simple approach - the first workspace the user has access to
+/// Auto-provisions user to default workspace if no membership exists
 async fn get_user_tenant_workspace(
     pool: &sqlx::PgPool,
     user_id: &str,
+    email: Option<&str>,
 ) -> Result<uuid::Uuid, ApiError> {
+    // First, try to find existing membership
     let workspace_id: Option<uuid::Uuid> = sqlx::query_scalar!(
         r#"SELECT tenant_workspace_id as "id: uuid::Uuid"
            FROM tenant_workspace_members
@@ -34,7 +37,33 @@ async fn get_user_tenant_workspace(
     .fetch_optional(pool)
     .await?;
 
-    workspace_id.ok_or_else(|| ApiError::NotFound("No tenant workspace found for user".to_string()))
+    if let Some(id) = workspace_id {
+        return Ok(id);
+    }
+
+    // Auto-provision: find or create default workspace and add user as member
+    tracing::info!("Auto-provisioning user {} to default workspace", user_id);
+
+    let default_workspace = TenantWorkspace::find_or_create_default(pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to create default workspace: {}", e);
+            ApiError::BadRequest(format!("Failed to initialize workspace: {}", e))
+        })?;
+
+    // Use provided email or generate a placeholder
+    let generated_email = format!("{}@user.local", user_id);
+    let user_email = email.unwrap_or(&generated_email);
+
+    TenantWorkspace::ensure_user_is_member(pool, default_workspace.id, user_id, user_email)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to add user to workspace: {}", e);
+            ApiError::BadRequest(format!("Failed to add user to workspace: {}", e))
+        })?;
+
+    tracing::info!("User {} added to workspace {}", user_id, default_workspace.id);
+    Ok(default_workspace.id)
 }
 
 /// List all configured AI provider keys
@@ -42,7 +71,11 @@ pub async fn list_ai_keys(
     user: ClerkUser,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<AiProviderKeyInfo>>>, ApiError> {
-    let tenant_workspace_id = get_user_tenant_workspace(&deployment.db().pool, &user.user_id).await?;
+    let tenant_workspace_id = get_user_tenant_workspace(
+        &deployment.db().pool,
+        &user.user_id,
+        user.email.as_deref(),
+    ).await?;
     let keys = AiProviderKey::list(&deployment.db().pool, tenant_workspace_id).await?;
     Ok(ResponseJson(ApiResponse::success(keys)))
 }
@@ -77,7 +110,11 @@ pub async fn upsert_ai_key(
         )));
     }
 
-    let tenant_workspace_id = get_user_tenant_workspace(&deployment.db().pool, &user.user_id).await?;
+    let tenant_workspace_id = get_user_tenant_workspace(
+        &deployment.db().pool,
+        &user.user_id,
+        user.email.as_deref(),
+    ).await?;
     let key = AiProviderKey::upsert(&deployment.db().pool, tenant_workspace_id, &request).await?;
     Ok(ResponseJson(ApiResponse::success(key)))
 }
@@ -88,7 +125,11 @@ pub async fn delete_ai_key(
     State(deployment): State<DeploymentImpl>,
     Path(provider): Path<String>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let tenant_workspace_id = get_user_tenant_workspace(&deployment.db().pool, &user.user_id).await?;
+    let tenant_workspace_id = get_user_tenant_workspace(
+        &deployment.db().pool,
+        &user.user_id,
+        user.email.as_deref(),
+    ).await?;
     let deleted = AiProviderKey::delete(&deployment.db().pool, tenant_workspace_id, &provider).await?;
 
     if deleted {
@@ -107,7 +148,11 @@ pub async fn test_ai_key(
     State(deployment): State<DeploymentImpl>,
     Path(provider): Path<String>,
 ) -> Result<ResponseJson<ApiResponse<bool>>, ApiError> {
-    let tenant_workspace_id = get_user_tenant_workspace(&deployment.db().pool, &user.user_id).await?;
+    let tenant_workspace_id = get_user_tenant_workspace(
+        &deployment.db().pool,
+        &user.user_id,
+        user.email.as_deref(),
+    ).await?;
 
     let api_key = AiProviderKey::get_key(&deployment.db().pool, tenant_workspace_id, &provider)
         .await?
