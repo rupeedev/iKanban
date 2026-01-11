@@ -7,13 +7,14 @@ on:
       tag:
         description: 'Image tag (e.g., v1, v2)'
         required: true
-        default: 'v1'
+        default: 'v2'
 
 env:
-  DOCKER_IMAGE: rupeedev/ikanban-backend-builder
+  DOCKER_IMAGE: rupeedev/ikanban-backend
+  CARGO_TERM_COLOR: always
 
 jobs:
-  build-base:
+  build-and-push:
     name: Build & Push Base Image
     environment: dve
     runs-on: ubuntu-latest
@@ -21,6 +22,47 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            libssl-dev \
+            libsqlite3-dev \
+            libclang-dev \
+            clang
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.7
+
+      - name: Cache cargo registry and git
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-registry-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-${{ runner.os }}-
+
+      - name: Build release binary
+        working-directory: vibe-backend
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: sccache
+          SQLX_OFFLINE: "true"
+        run: |
+          echo "::group::Building with sccache"
+          cargo build --release --bin server
+          echo "::endgroup::"
+          echo "::group::sccache statistics"
+          sccache --show-stats
+          echo "::endgroup::"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -31,19 +73,24 @@ jobs:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PAT }}
 
-      - name: Build and Push Base Image
+      - name: Prepare Docker context
+        working-directory: vibe-backend
+        run: |
+          mkdir -p docker-build
+          cp target/release/server docker-build/
+          cp docker-entrypoint.sh docker-build/
+          cp Dockerfile.runtime docker-build/Dockerfile
+
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
-          context: ./vibe-backend
-          file: ./vibe-backend/Dockerfile.base
+          context: ./vibe-backend/docker-build
           push: true
           tags: |
             ${{ env.DOCKER_IMAGE }}:${{ github.event.inputs.tag }}
             ${{ env.DOCKER_IMAGE }}:latest
-          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache
-          cache-to: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache,mode=max
 
       - name: Output Image Info
         run: |
-          echo "Base image pushed: ${{ env.DOCKER_IMAGE }}:${{ github.event.inputs.tag }}"
-          echo "Update deploy-backend.yml BASE_IMAGE to use this tag"
+          echo "Image pushed: ${{ env.DOCKER_IMAGE }}:${{ github.event.inputs.tag }}"
+          echo "sccache stats saved to GitHub Actions cache"
