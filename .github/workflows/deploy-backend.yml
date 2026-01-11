@@ -10,13 +10,14 @@ on:
 
 env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_USER }}/ikanban-backend
-  RAILWAY_SERVICE_NAME: ikanban-api
+  RAILWAY_SERVICE_ID: db8a22cf-beb2-4d00-bc0e-0e80c1e1e661
 
 jobs:
   build-binary:
     name: Build Rust Binary
     environment: dve
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -61,6 +62,7 @@ jobs:
     needs: build-binary
     environment: dve
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -100,6 +102,7 @@ jobs:
     needs: push-docker
     environment: dve
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
@@ -116,7 +119,7 @@ jobs:
         id: deploy
         working-directory: ./deploy_payload
         continue-on-error: true
-        run: railway up --service ${{ env.RAILWAY_SERVICE_NAME }}
+        run: railway up --service ${{ env.RAILWAY_SERVICE_ID }}
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
