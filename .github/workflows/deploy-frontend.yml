@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKER_IMAGE: ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend
+  DOCKER_IMAGE: ${{ secrets.DOCKER_USER }}/ikanban-frontend
   RAILWAY_SERVICE_ID: fd827df3-1f51-483c-a798-7c5d39610c46
 
 jobs:
@@ -32,8 +32,8 @@ jobs:
           file: vibe-frontend/Dockerfile.frontend
           push: true
           tags: |
-            ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend:${{ github.sha }}
-            ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend:latest
+            ${{ secrets.DOCKER_USER }}/ikanban-frontend:${{ github.sha }}
+            ${{ secrets.DOCKER_USER }}/ikanban-frontend:latest
           build-args: |
             VITE_CLERK_PUBLISHABLE_KEY=${{ secrets.CLERK_PUBLISHABLE_KEY }}
             VITE_API_URL=https://api.scho1ar.com
@@ -53,7 +53,7 @@ jobs:
         run: |
           mkdir deploy_payload
           # Use commit SHA tag for traceability
-          echo "FROM ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend:${{ github.sha }}" > deploy_payload/Dockerfile
+          echo "FROM ${{ secrets.DOCKER_USER }}/ikanban-frontend:${{ github.sha }}" > deploy_payload/Dockerfile
           echo "ENV PORT=80" >> deploy_payload/Dockerfile
           echo "EXPOSE 80" >> deploy_payload/Dockerfile
 
@@ -76,4 +76,4 @@ jobs:
         if: steps.deploy.outcome == 'success'
         run: |
           echo "Successfully deployed commit ${{ github.sha }} to Railway"
-          echo "Image: ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend:${{ github.sha }}"
+          echo "Image: ${{ secrets.DOCKER_USER }}/ikanban-frontend:${{ github.sha }}"

@@ -300,7 +300,7 @@ function AboutContent({ isSignedIn, isApproved = false, welcomeMessage }: AboutC
           </div>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <a
-              href="https://github.com/rupeedev/vibe-kanban"
+              href="https://github.com/rupeedev/iKanban"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-foreground transition-colors"
