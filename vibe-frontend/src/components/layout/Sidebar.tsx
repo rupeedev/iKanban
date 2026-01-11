@@ -16,7 +16,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Inbox,
+  ShieldCheck,
   ListTodo,
   FolderKanban,
   Layers,
@@ -410,10 +410,10 @@ export function Sidebar() {
         {/* Top Items */}
         <div className="px-2 space-y-0.5">
           <SidebarItem
-            icon={Inbox}
-            label="Inbox"
-            to="/inbox"
-            isActive={location.pathname === '/inbox'}
+            icon={ShieldCheck}
+            label="Admin"
+            to="/admin"
+            isActive={location.pathname.startsWith('/admin')}
             isCollapsed={isCollapsed}
           />
           <SidebarItem
