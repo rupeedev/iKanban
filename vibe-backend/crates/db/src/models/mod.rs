@@ -1,6 +1,9 @@
 pub mod ai_provider_key;
 pub mod api_key;
+pub mod chat_message;
 pub mod coding_agent_turn;
+pub mod conversation;
+pub mod conversation_participant;
 pub mod document;
 pub mod execution_process;
 pub mod github_connection;

@@ -2772,3 +2772,124 @@ export const adminApi = {
     return handleApiResponse<AdminConfiguration>(response);
   },
 };
+
+// ============================================================================
+// Chat API (IKA-65: Team Chat with Privacy Controls)
+// ============================================================================
+import type {
+  ConversationListItem,
+  MessagesResponse,
+  Conversation,
+  ChatMessageFromApi,
+  CreateDirectConversation,
+  CreateGroupConversation,
+  CreateChatMessage,
+  UpdateChatMessage,
+} from '@/types/chat';
+
+export const chatApi = {
+  // List conversations for the current user in a team
+  listConversations: async (teamId: string): Promise<ConversationListItem[]> => {
+    const response = await makeRequest(`/api/chat/conversations?team_id=${teamId}`);
+    return handleApiResponse<ConversationListItem[]>(response);
+  },
+
+  // Get a single conversation with details
+  getConversation: async (conversationId: string): Promise<ConversationListItem> => {
+    const response = await makeRequest(`/api/chat/conversations/${conversationId}`);
+    return handleApiResponse<ConversationListItem>(response);
+  },
+
+  // Create a direct message conversation
+  createDirectConversation: async (
+    teamId: string,
+    data: CreateDirectConversation
+  ): Promise<Conversation> => {
+    const response = await makeRequest(`/api/chat/conversations/direct?team_id=${teamId}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Conversation>(response);
+  },
+
+  // Create a group conversation
+  createGroupConversation: async (
+    teamId: string,
+    data: CreateGroupConversation
+  ): Promise<Conversation> => {
+    const response = await makeRequest(`/api/chat/conversations/group?team_id=${teamId}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Conversation>(response);
+  },
+
+  // Get messages in a conversation with pagination
+  getMessages: async (
+    conversationId: string,
+    options?: { before?: string; limit?: number }
+  ): Promise<MessagesResponse> => {
+    const params = new URLSearchParams();
+    if (options?.before) params.set('before', options.before);
+    if (options?.limit) params.set('limit', options.limit.toString());
+    const queryString = params.toString();
+    const url = `/api/chat/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ''}`;
+    const response = await makeRequest(url);
+    return handleApiResponse<MessagesResponse>(response);
+  },
+
+  // Send a message to a conversation
+  sendMessage: async (
+    conversationId: string,
+    data: CreateChatMessage
+  ): Promise<ChatMessageFromApi> => {
+    const response = await makeRequest(`/api/chat/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ChatMessageFromApi>(response);
+  },
+
+  // Update a message (only sender can update, within time limit)
+  updateMessage: async (
+    conversationId: string,
+    messageId: string,
+    data: UpdateChatMessage
+  ): Promise<ChatMessageFromApi> => {
+    const response = await makeRequest(
+      `/api/chat/conversations/${conversationId}/messages/${messageId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<ChatMessageFromApi>(response);
+  },
+
+  // Delete a message (soft delete, only sender can delete)
+  deleteMessage: async (conversationId: string, messageId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/chat/conversations/${conversationId}/messages/${messageId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
+  // Mark messages in a conversation as read
+  markAsRead: async (conversationId: string): Promise<void> => {
+    const response = await makeRequest(`/api/chat/conversations/${conversationId}/read`, {
+      method: 'POST',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  // Leave a conversation (group chats only)
+  leaveConversation: async (conversationId: string): Promise<void> => {
+    const response = await makeRequest(`/api/chat/conversations/${conversationId}/leave`, {
+      method: 'POST',
+    });
+    return handleApiResponse<void>(response);
+  },
+};
