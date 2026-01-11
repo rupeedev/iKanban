@@ -5,18 +5,16 @@ import { cn } from '@/lib/utils';
 interface PeopleOnlineBadgeProps {
   className?: string;
   onlineCount?: number;
-  teamNames?: string[];
+  teamName?: string;
 }
 
-export function PeopleOnlineBadge({ className, onlineCount = 0, teamNames = [] }: PeopleOnlineBadgeProps) {
+export function PeopleOnlineBadge({ className, onlineCount = 0, teamName }: PeopleOnlineBadgeProps) {
   const { toggle } = useChatPanelStore();
 
   const hasOnline = onlineCount > 0;
-  const teamsLabel = teamNames.length > 0 ? teamNames.join(', ') : '';
-
   const statusText = hasOnline ? `${onlineCount.toLocaleString()} online` : 'Connect';
-  const ariaLabel = teamsLabel
-    ? (hasOnline ? `${teamsLabel}. ${onlineCount} people online. Open team chat.` : `${teamsLabel}. Open team chat to connect`)
+  const ariaLabel = teamName
+    ? (hasOnline ? `${teamName}. ${onlineCount} people online. Open team chat.` : `${teamName}. Open team chat to connect`)
     : (hasOnline ? `${onlineCount} people online. Open team chat.` : 'Open team chat to connect');
 
   return (
@@ -45,9 +43,9 @@ export function PeopleOnlineBadge({ className, onlineCount = 0, teamNames = [] }
           />
         )}
       </span>
-      {teamsLabel && (
-        <span className="h-full items-center flex px-2 border-r text-muted-foreground truncate max-w-[150px]">
-          {teamsLabel}
+      {teamName && (
+        <span className="h-full items-center flex px-2 border-r text-muted-foreground truncate max-w-[100px]">
+          {teamName}
         </span>
       )}
       <span className="h-full items-center flex px-2" aria-live="polite">
