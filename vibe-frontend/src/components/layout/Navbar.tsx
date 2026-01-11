@@ -99,7 +99,6 @@ export function Navbar() {
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
   const { loginStatus, reloadSystem } = useUserSystem();
   const { teams } = useTeams();
-  const teamNames = teams.map((t) => t.name);
 
   const { data: repos } = useProjectRepos(projectId);
   const isSingleRepoProject = repos?.length === 1;
@@ -210,8 +209,18 @@ export function Navbar() {
     <div className="border-b bg-background">
       <div className="w-full px-3">
         <div className="flex items-center h-12 py-2">
-          <div className="flex-1 flex items-center">
-            <PeopleOnlineBadge className="hidden sm:inline-flex" teamNames={teamNames} />
+          <div className="flex-1 flex items-center gap-2">
+            {teams.length > 0 ? (
+              teams.map((team) => (
+                <PeopleOnlineBadge
+                  key={team.id}
+                  className="hidden sm:inline-flex"
+                  teamName={team.name}
+                />
+              ))
+            ) : (
+              <PeopleOnlineBadge className="hidden sm:inline-flex" />
+            )}
           </div>
 
           <div className="hidden sm:flex items-center gap-2">
@@ -500,7 +509,7 @@ export function Navbar() {
       </Dialog>
 
       {/* Team Chat Panel */}
-      <TeamChatPanel teamNames={teamNames} />
+      <TeamChatPanel teamNames={teams.map((t) => t.name)} />
     </div>
   );
 }
