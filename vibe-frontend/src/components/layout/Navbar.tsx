@@ -509,7 +509,7 @@ export function Navbar() {
       </Dialog>
 
       {/* Team Chat Panel */}
-      <TeamChatPanel teamNames={teams.map((t) => t.name)} />
+      <TeamChatPanel teams={teams.map((t) => ({ id: t.id, name: t.name }))} />
     </div>
   );
 }

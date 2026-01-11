@@ -6,6 +6,8 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { useChatPanelStore } from '@/stores/chatPanelStore';
 import { OnlineMembersList } from './OnlineMembersList';
 import { ChatMessageList } from './ChatMessageList';
@@ -18,9 +20,14 @@ import {
 } from '@/hooks/useTeamChat';
 import type { OnlineMember, ChatMessage, ChatMessageFromApi } from '@/types/chat';
 
+interface TeamInfo {
+  id: string;
+  name: string;
+}
+
 interface TeamChatPanelProps {
   workspaceName?: string;
-  teamNames?: string[];
+  teams?: TeamInfo[];
   members?: OnlineMember[];
 }
 
@@ -39,10 +46,10 @@ function apiMessageToDisplay(msg: ChatMessageFromApi): ChatMessage {
 
 export function TeamChatPanel({
   workspaceName = 'Workspace',
-  teamNames = [],
+  teams = [],
   members = [],
 }: TeamChatPanelProps) {
-  const { isOpen, close, activeTeamId, activeConversationId } = useChatPanelStore();
+  const { isOpen, close, activeTeamId, activeConversationId, setActiveTeamId } = useChatPanelStore();
 
   // Fetch conversations for the active team
   const { data: conversations, isLoading: conversationsLoading } = useConversations(activeTeamId || undefined);
@@ -79,6 +86,21 @@ export function TeamChatPanel({
     }
   }, [isOpen, currentConversationId, markAsRead]);
 
+  // Auto-select first team when panel opens and no team is selected
+  useEffect(() => {
+    if (isOpen && !activeTeamId && teams.length > 0) {
+      setActiveTeamId(teams[0].id);
+    }
+  }, [isOpen, activeTeamId, teams, setActiveTeamId]);
+
+  // Handle team tab click
+  const handleTeamClick = useCallback(
+    (teamId: string) => {
+      setActiveTeamId(teamId);
+    },
+    [setActiveTeamId]
+  );
+
   const onlineCount = members.filter((m) => m.isOnline).length;
   const isLoading = conversationsLoading || messagesLoading;
   const hasConversation = !!currentConversationId;
@@ -91,26 +113,38 @@ export function TeamChatPanel({
       >
         <SheetHeader className="px-4 py-3 border-b shrink-0">
           <SheetTitle className="text-base">Team Chat</SheetTitle>
-          <SheetDescription className="text-xs">
-            {teamNames.length > 0 ? (
-              <span className="flex items-center gap-1 flex-wrap">
-                {teamNames.map((name, idx) => (
-                  <span key={name} className="inline-flex items-center">
-                    <span className="bg-muted px-1.5 py-0.5 rounded text-[10px] font-medium">
-                      {name}
+          <SheetDescription className="text-xs" asChild>
+            <div>
+              {teams.length > 0 ? (
+                <div className="flex items-center gap-1 flex-wrap">
+                  {teams.map((team, idx) => (
+                    <span key={team.id} className="inline-flex items-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleTeamClick(team.id)}
+                        className={cn(
+                          'h-auto px-1.5 py-0.5 text-[10px] font-medium rounded',
+                          activeTeamId === team.id
+                            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                            : 'bg-muted hover:bg-muted/80'
+                        )}
+                      >
+                        {team.name}
+                      </Button>
+                      {idx < teams.length - 1 && <span className="mx-0.5 text-muted-foreground">&bull;</span>}
                     </span>
-                    {idx < teamNames.length - 1 && <span className="mx-0.5">&bull;</span>}
-                  </span>
-                ))}
-              </span>
-            ) : (
-              workspaceName
-            )}
-            {onlineCount > 0 && (
-              <span className="ml-2 text-green-600 dark:text-green-400">
-                {onlineCount} online
-              </span>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <span>{workspaceName}</span>
+              )}
+              {onlineCount > 0 && (
+                <span className="ml-2 text-green-600 dark:text-green-400">
+                  {onlineCount} online
+                </span>
+              )}
+            </div>
           </SheetDescription>
         </SheetHeader>
 
