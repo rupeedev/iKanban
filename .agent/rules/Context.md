@@ -11,7 +11,7 @@
 
 * **Hosting**: Railway
 *   **Backend Deployment**:
-    *   Source: Docker Image (`rupeedev/vibe-kanban-backend:latest`)
+    *   Source: Docker Image (`rupeedev/ikanban-backend:latest`)
     *   CI/CD: GitHub Actions (`deploy-backend.yml`) -> Docker Hub -> Railway
 *   **Database**: SQLite (Local embedded in Backend on Railway)
 

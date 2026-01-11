@@ -203,7 +203,7 @@ export function PreviewPanel() {
                   <li>
                     {t('preview.troubleAlert.item3')}{' '}
                     <a
-                      href="https://github.com/rupeedev/vibe-kanban"
+                      href="https://github.com/rupeedev/iKanban"
                       target="_blank"
                       className="underline font-bold"
                     >

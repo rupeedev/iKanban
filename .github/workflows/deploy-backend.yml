@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKER_IMAGE: ${{ secrets.DOCKER_USER }}/vibe-kanban-backend
-  RAILWAY_SERVICE_NAME: vibe-kanban-api
+  DOCKER_IMAGE: ${{ secrets.DOCKER_USER }}/ikanban-backend
+  RAILWAY_SERVICE_NAME: ikanban-api
 
 jobs:
   build-binary:
@@ -92,8 +92,8 @@ jobs:
           file: ./vibe-backend/Dockerfile.deploy  # Use the specialized Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKER_USER }}/vibe-kanban-backend:${{ github.sha }}
-            ${{ secrets.DOCKER_USER }}/vibe-kanban-backend:latest
+            ${{ secrets.DOCKER_USER }}/ikanban-backend:${{ github.sha }}
+            ${{ secrets.DOCKER_USER }}/ikanban-backend:latest
 
   deploy-railway:
     name: Deploy to Railway
@@ -108,7 +108,7 @@ jobs:
         run: |
           mkdir deploy_payload
           # Use commit SHA tag for traceability
-          echo "FROM ${{ secrets.DOCKER_USER }}/vibe-kanban-backend:${{ github.sha }}" > deploy_payload/Dockerfile
+          echo "FROM ${{ secrets.DOCKER_USER }}/ikanban-backend:${{ github.sha }}" > deploy_payload/Dockerfile
           echo "ENV PORT=3000" >> deploy_payload/Dockerfile
           echo "EXPOSE 3000" >> deploy_payload/Dockerfile
 
@@ -131,4 +131,4 @@ jobs:
         if: steps.deploy.outcome == 'success'
         run: |
           echo "Successfully deployed commit ${{ github.sha }} to Railway"
-          echo "Image: ${{ secrets.DOCKER_USER }}/vibe-kanban-backend:${{ github.sha }}"
+          echo "Image: ${{ secrets.DOCKER_USER }}/ikanban-backend:${{ github.sha }}"
