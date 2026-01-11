@@ -112,6 +112,7 @@ export function NewWorkspace() {
             identifier: teamData.identifier,
             icon: teamData.icon,
             color: null,
+            tenant_workspace_id: workspace.id, // Associate team with workspace
           });
           teamIdMap.set(teamData.id, team.id);
         }
