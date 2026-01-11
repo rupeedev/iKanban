@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -38,6 +39,7 @@ interface WorkspaceSwitcherProps {
 
 export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const workspaceContext = useWorkspaceOptional();
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -91,8 +93,17 @@ export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
 
   // Handle workspace switch
   const handleWorkspaceSwitch = (workspaceId: string) => {
-    if (setCurrentWorkspaceId) {
+    // Only switch if selecting a different workspace
+    if (setCurrentWorkspaceId && workspaceId !== currentWorkspace?.id) {
       setCurrentWorkspaceId(workspaceId);
+
+      // Invalidate workspace-scoped queries to force fresh data fetch
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
+
+      // Navigate to workspace home to update URL
+      navigate('/projects');
     }
     setIsOpen(false);
   };
