@@ -30,6 +30,7 @@ pub struct ClerkUser {
 
 /// JWT claims from Clerk token
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)] // Fields required for JWT deserialization but not all read directly
 struct ClerkClaims {
     sub: String, // user_id
     sid: Option<String>, // session_id

@@ -61,7 +61,8 @@ pub struct MessagesResponse {
 // ============================================================================
 
 /// Check if two users share a team (can message each other)
-async fn users_share_team(
+#[allow(dead_code)] // Prepared for future privacy checks
+async fn _users_share_team(
     pool: &sqlx::PgPool,
     user1_id: &str,
     user2_id: &str,
@@ -428,7 +429,7 @@ pub async fn leave_conversation(
 // Router
 // ============================================================================
 
-pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
+pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
         // Conversations
         .route("/chat/conversations", get(list_conversations))
