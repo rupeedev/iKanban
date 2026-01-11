@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) as \"count!: i64\"\n               FROM chat_messages cm\n               INNER JOIN conversation_participants cp\n                   ON cm.conversation_id = cp.conversation_id\n                   AND cp.user_id = $2\n               WHERE cm.conversation_id = $1\n                 AND cm.deleted_at IS NULL\n                 AND cm.sender_id != $2\n                 AND (cp.last_read_at IS NULL OR cm.created_at > cp.last_read_at)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!: i64",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "fea9f13ce586ee1a6e1a148746a8f157cf0d0a1f9ab74880621f1b8eff8d20fb"
+}

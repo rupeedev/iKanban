@@ -94,7 +94,7 @@ impl ProjectRepository {
             "#,
             organization_id,
             name,
-            metadata
+            metadata as _
         )
         .fetch_one(&mut **tx)
         .await
@@ -177,7 +177,7 @@ impl ProjectRepository {
     ) -> Result<Option<Uuid>, ProjectError> {
         sqlx::query_scalar!(
             r#"
-            SELECT organization_id
+            SELECT organization_id as "organization_id!"
             FROM projects
             WHERE id = $1
             "#,

@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n            ti.id,\n            ti.email,\n            ti.role,\n            ti.status,\n            tm.email as invited_by_email,\n            t.name as team_name,\n            tw.name as workspace_name,\n            ti.created_at as sent_at,\n            ti.expires_at\n           FROM team_invitations ti\n           JOIN teams t ON ti.team_id = t.id\n           JOIN tenant_workspaces tw ON t.tenant_workspace_id = tw.id\n           LEFT JOIN team_members tm ON ti.invited_by = tm.id\n           WHERE ti.id = $1 AND t.tenant_workspace_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "role",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "invited_by_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "team_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "workspace_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "sent_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "expires_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0d86b4dbaef4d150a39ca8afc5415fa143ca45a40a44723a16b13c9652e41109"
+}
