@@ -13,18 +13,21 @@ import type { OnlineMember, ChatMessage } from '@/types/chat';
 
 interface TeamChatPanelProps {
   workspaceName?: string;
+  teamNames?: string[];
   members?: OnlineMember[];
   messages?: ChatMessage[];
 }
 
 export function TeamChatPanel({
   workspaceName = 'Workspace',
+  teamNames = [],
   members = [],
   messages = [],
 }: TeamChatPanelProps) {
   const { isOpen, close } = useChatPanelStore();
 
   const onlineCount = members.filter((m) => m.isOnline).length;
+  const displayName = teamNames.length > 0 ? teamNames.join(', ') : workspaceName;
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
@@ -35,7 +38,7 @@ export function TeamChatPanel({
         <SheetHeader className="px-4 py-3 border-b shrink-0">
           <SheetTitle className="text-base">Team Chat</SheetTitle>
           <SheetDescription className="text-xs">
-            {workspaceName}
+            {displayName}
             {onlineCount > 0 && (
               <span className="ml-2 text-green-600 dark:text-green-400">
                 {onlineCount} online

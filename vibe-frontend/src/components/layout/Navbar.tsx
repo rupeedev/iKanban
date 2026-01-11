@@ -37,8 +37,8 @@ import {
   SignedOut,
   UserButton,
 } from '@clerk/clerk-react';
-import { Logo } from '@/components/Logo';
 import { SearchBar } from '@/components/SearchBar';
+import { useTeams } from '@/hooks/useTeams';
 import { useSearch } from '@/contexts/SearchContext';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { useProject } from '@/contexts/ProjectContext';
@@ -98,6 +98,8 @@ export function Navbar() {
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
   const { loginStatus, reloadSystem } = useUserSystem();
+  const { teams } = useTeams();
+  const teamNames = teams.map((t) => t.name);
 
   const { data: repos } = useProjectRepos(projectId);
   const isSingleRepoProject = repos?.length === 1;
@@ -209,10 +211,7 @@ export function Navbar() {
       <div className="w-full px-3">
         <div className="flex items-center h-12 py-2">
           <div className="flex-1 flex items-center">
-            <Link to="/projects">
-              <Logo />
-            </Link>
-            <PeopleOnlineBadge className="hidden sm:inline-flex ml-3" />
+            <PeopleOnlineBadge className="hidden sm:inline-flex" teamNames={teamNames} />
           </div>
 
           <div className="hidden sm:flex items-center gap-2">
@@ -501,7 +500,7 @@ export function Navbar() {
       </Dialog>
 
       {/* Team Chat Panel */}
-      <TeamChatPanel workspaceName="iKanban" />
+      <TeamChatPanel teamNames={teamNames} />
     </div>
   );
 }
