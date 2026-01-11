@@ -153,6 +153,7 @@ export function InlinePromptInput({
       await createAttempt({
         profile,
         repos,
+        prompt: cleanPrompt,
       });
 
       // Clear input on success
@@ -168,7 +169,6 @@ export function InlinePromptInput({
     resolveMentionToProfile,
     getWorkspaceRepoInputs,
     createAttempt,
-    t,
   ]);
 
   // Handle keyboard shortcuts
