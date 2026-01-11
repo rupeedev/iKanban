@@ -253,7 +253,22 @@
         "installationFound": "Previous Usage Detected",
         "installationFoundTooltip": "Agent configuration found. You may need to log in to use it.",
         "notFound": "Not Found",
-        "notFoundTooltip": "No previous usage detected. Agent may require installation and/or login."
+        "notFoundTooltip": "No previous usage detected. Agent may require installation and/or login.",
+        "cli": "CLI",
+        "api": "API",
+        "notInstalled": "Not installed",
+        "keyConfigured": "Key configured",
+        "noKey": "No key"
+      },
+      "mode": {
+        "cliOnly": "CLI Only",
+        "cliOnlyDescription": "Agent runs via local CLI installation",
+        "apiOnly": "API",
+        "apiOnlyDescription": "Agent runs via configured API key",
+        "both": "CLI + API",
+        "bothDescription": "Both CLI and API modes available",
+        "none": "Unavailable",
+        "noneDescription": "Setup required - install CLI or configure API key"
       },
       "editor": {
         "formLabel": "Edit JSON",
