@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) as \"count!\" FROM team_invitations ti\n           JOIN teams t ON ti.team_id = t.id\n           WHERE t.tenant_workspace_id = $1 AND ti.status = 'pending'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "59fd7c4e4abe3a0b7d930bdc15bf76e8c68d59156b85e608457678317842b2f4"
+}

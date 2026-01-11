@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) as \"count!\" FROM team_members tm\n               JOIN teams t ON tm.team_id = t.id\n               WHERE t.tenant_workspace_id = $1 AND tm.clerk_user_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "49f248ce1c69c8c395b20eb0024bb50380ebdb56c0888dd629bb8da305d73460"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE conversation_participants SET last_read_at = NOW(), updated_at = NOW() WHERE conversation_id = $1 AND user_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2150a870a482a40b70b306dcfea7a46a20b28d484356032308cc588e6fef83f3"
+}

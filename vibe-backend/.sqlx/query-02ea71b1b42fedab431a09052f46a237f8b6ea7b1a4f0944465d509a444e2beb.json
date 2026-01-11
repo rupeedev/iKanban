@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE team_invitations SET expires_at = $1, status = 'pending' WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "02ea71b1b42fedab431a09052f46a237f8b6ea7b1a4f0944465d509a444e2beb"
+}
