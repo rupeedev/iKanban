@@ -1,0 +1,53 @@
+name: Quick Deploy Frontend
+
+# This workflow deploys the existing Docker image without rebuilding
+# Use when you need to redeploy quickly or when code hasn't changed
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker image tag to deploy (default: latest)'
+        required: false
+        default: 'latest'
+
+env:
+  DOCKER_IMAGE: ${{ secrets.DOCKER_USER }}/ikanban-frontend
+  RAILWAY_SERVICE_ID: fd827df3-1f51-483c-a798-7c5d39610c46
+
+jobs:
+  deploy-railway:
+    name: Deploy to Railway
+    environment: dve
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Create Proxy Dockerfile
+        run: |
+          mkdir deploy_payload
+          echo "FROM ${{ env.DOCKER_IMAGE }}:${{ github.event.inputs.image_tag || 'latest' }}" > deploy_payload/Dockerfile
+          echo "ENV PORT=80" >> deploy_payload/Dockerfile
+          echo "EXPOSE 80" >> deploy_payload/Dockerfile
+          cat deploy_payload/Dockerfile
+
+      - name: Deploy to Railway
+        id: deploy
+        working-directory: ./deploy_payload
+        continue-on-error: true
+        run: railway up --service ${{ env.RAILWAY_SERVICE_ID }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Check Deployment Result
+        if: steps.deploy.outcome == 'failure'
+        run: |
+          echo "::error::Railway deployment failed! Check Railway dashboard for details."
+          exit 1
+
+      - name: Deployment Success
+        if: steps.deploy.outcome == 'success'
+        run: |
+          echo "Successfully deployed ${{ env.DOCKER_IMAGE }}:${{ github.event.inputs.image_tag || 'latest' }} to Railway"
