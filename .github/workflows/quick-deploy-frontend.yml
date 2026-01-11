@@ -39,7 +39,7 @@ jobs:
         continue-on-error: true
         run: railway up --service ${{ env.RAILWAY_SERVICE_ID }}
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_FRONTEND_TOKEN }}
 
       - name: Check Deployment Result
         if: steps.deploy.outcome == 'failure'
