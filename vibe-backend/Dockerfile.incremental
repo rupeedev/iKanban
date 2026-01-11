@@ -4,7 +4,8 @@
 # ===========================================
 
 # Build stage - uses base image with pre-compiled deps
-ARG BASE_IMAGE=rupeedev/ikanban-backend:v1
+# Note: Use rupeedev/ikanban-backend-builder:v1 (has Rust + cached deps)
+ARG BASE_IMAGE=rupeedev/ikanban-backend-builder:v1
 FROM ${BASE_IMAGE} AS builder
 
 WORKDIR /app

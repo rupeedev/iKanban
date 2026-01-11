@@ -1,0 +1,35 @@
+# ===========================================
+# Builder Base Image
+# Contains Rust toolchain + pre-compiled dependencies
+# Push as: rupeedev/ikanban-backend-builder:v1
+# ===========================================
+FROM rust:1.83-slim-bookworm
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    libsqlite3-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy dependency files
+COPY Cargo.toml Cargo.lock ./
+COPY crates/ ./crates/
+
+# Copy .sqlx cache for offline compilation
+COPY .sqlx/ ./.sqlx/
+
+# Pre-compile all dependencies by building the project
+# The compiled deps will be cached in /app/target
+ENV SQLX_OFFLINE=true
+RUN cargo build --release --bin server && \
+    rm -rf target/release/.fingerprint/server-* \
+    target/release/deps/server-* \
+    target/release/server
+
+# Dependencies are now cached in /app/target
+# Future builds only need to compile app code
