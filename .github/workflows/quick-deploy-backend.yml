@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 'Docker image tag to deploy (default: latest)'
+        description: 'Docker image tag to deploy (default: v1)'
         required: false
-        default: 'latest'
+        default: 'v1'
 
 env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_USER }}/ikanban-backend
@@ -39,7 +39,7 @@ jobs:
         continue-on-error: true
         run: railway up --service ${{ env.RAILWAY_SERVICE_ID }}
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_BACKEND_TOKEN }}
 
       - name: Check Deployment Result
         if: steps.deploy.outcome == 'failure'
