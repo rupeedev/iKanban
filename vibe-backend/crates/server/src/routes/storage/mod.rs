@@ -11,7 +11,7 @@ pub mod dropbox;
 
 use axum::{
     Router,
-    routing::{get, post, delete},
+    routing::{get, post},
 };
 use crate::DeploymentImpl;
 

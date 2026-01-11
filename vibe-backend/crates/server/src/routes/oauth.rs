@@ -434,6 +434,7 @@ struct GitHubCallbackQuery {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)] // Fields required for GitHub API deserialization but not all read directly
 struct GitHubTokenResponse {
     access_token: String,
     token_type: String,
