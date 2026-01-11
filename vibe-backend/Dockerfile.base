@@ -22,6 +22,9 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY crates/ ./crates/
 
+# Copy assets folder (required by RustEmbed in utils crate)
+COPY assets/ ./assets/
+
 # Copy .sqlx cache for offline compilation
 COPY .sqlx/ ./.sqlx/
 
