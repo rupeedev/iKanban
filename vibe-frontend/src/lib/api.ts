@@ -149,7 +149,7 @@ export interface SignedUrlResponse {
   expires_in: number;
   file_path?: string;
 }
-export type { TeamMemberRole } from 'shared/types';
+export type { TeamMemberRole, CreateInvitationRequest } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import type {
   TenantWorkspace,
@@ -2643,13 +2643,8 @@ export interface AdminConfiguration {
   allowed_domains: string;
   max_login_attempts: number;
   lockout_duration_minutes: number;
-}
-
-export interface CreateInvitationRequest {
-  email: string;
-  role: string;
-  workspace_id: string;
-  team_id?: string;
+  cloud_storage_provider?: string;
+  slack_webhook?: string;
 }
 
 // =============================================================================
