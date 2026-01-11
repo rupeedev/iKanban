@@ -10,7 +10,7 @@ on:
 
 env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_USER }}/ikanban-backend
-  BASE_IMAGE: rupeedev/ikanban-backend:v1
+  BASE_IMAGE: rupeedev/ikanban-backend-builder:v1
   RAILWAY_SERVICE_ID: db8a22cf-beb2-4d00-bc0e-0e80c1e1e661
 
 jobs:
