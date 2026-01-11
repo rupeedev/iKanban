@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -24,6 +25,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Table,
   TableBody,
@@ -49,38 +60,16 @@ import {
   Mail,
   Building2,
   Calendar,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAdminUsers, useAdminUserMutations } from '@/hooks/useAdmin';
+import { AdminUser } from '@/lib/api';
+import { toast } from 'sonner';
 
-type UserStatus = 'active' | 'suspended' | 'pending';
-type UserRole = 'owner' | 'admin' | 'member' | 'viewer';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar?: string;
-  role: UserRole;
-  status: UserStatus;
-  joinedAt: string;
-  lastActiveAt: string;
-  workspaces: number;
-  teams: number;
-}
-
-// Mock data for UI development
-const mockUsers: User[] = [
-  { id: '1', name: 'John Doe', email: 'john.doe@example.com', avatar: '', role: 'owner', status: 'active', joinedAt: '2024-01-01T10:00:00Z', lastActiveAt: '2024-01-11T14:30:00Z', workspaces: 3, teams: 5 },
-  { id: '2', name: 'Jane Smith', email: 'jane.smith@example.com', avatar: '', role: 'admin', status: 'active', joinedAt: '2024-01-05T09:00:00Z', lastActiveAt: '2024-01-11T12:15:00Z', workspaces: 2, teams: 4 },
-  { id: '3', name: 'Mike Wilson', email: 'mike.wilson@example.com', avatar: '', role: 'member', status: 'active', joinedAt: '2024-01-08T11:30:00Z', lastActiveAt: '2024-01-10T18:45:00Z', workspaces: 1, teams: 2 },
-  { id: '4', name: 'Sarah Jones', email: 'sarah.jones@example.com', avatar: '', role: 'member', status: 'suspended', joinedAt: '2024-01-02T14:00:00Z', lastActiveAt: '2024-01-05T10:00:00Z', workspaces: 1, teams: 1 },
-  { id: '5', name: 'Alex Brown', email: 'alex.brown@example.com', avatar: '', role: 'viewer', status: 'active', joinedAt: '2024-01-09T16:20:00Z', lastActiveAt: '2024-01-11T09:30:00Z', workspaces: 1, teams: 3 },
-  { id: '6', name: 'Emily Davis', email: 'emily.davis@example.com', avatar: '', role: 'admin', status: 'active', joinedAt: '2024-01-03T08:45:00Z', lastActiveAt: '2024-01-11T16:00:00Z', workspaces: 2, teams: 6 },
-  { id: '7', name: 'Chris Taylor', email: 'chris.taylor@example.com', avatar: '', role: 'member', status: 'pending', joinedAt: '2024-01-10T13:00:00Z', lastActiveAt: '2024-01-10T13:00:00Z', workspaces: 0, teams: 0 },
-  { id: '8', name: 'Lisa Anderson', email: 'lisa.anderson@example.com', avatar: '', role: 'member', status: 'active', joinedAt: '2024-01-06T10:30:00Z', lastActiveAt: '2024-01-09T15:20:00Z', workspaces: 1, teams: 2 },
-];
-
-function getStatusBadge(status: UserStatus) {
+function getStatusBadge(status: string) {
   switch (status) {
     case 'active':
       return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"><CheckCircle className="h-3 w-3 mr-1" />Active</Badge>;
@@ -93,7 +82,7 @@ function getStatusBadge(status: UserStatus) {
   }
 }
 
-function getRoleIcon(role: UserRole) {
+function getRoleIcon(role: string) {
   switch (role) {
     case 'owner':
       return <Crown className="h-4 w-4 text-yellow-600" />;
@@ -108,15 +97,15 @@ function getRoleIcon(role: UserRole) {
   }
 }
 
-function getRoleBadge(role: UserRole) {
-  const colors: Record<UserRole, string> = {
+function getRoleBadge(role: string) {
+  const colors: Record<string, string> = {
     owner: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
     admin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
     member: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     viewer: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
   };
   return (
-    <Badge className={cn('capitalize flex items-center gap-1', colors[role])}>
+    <Badge className={cn('capitalize flex items-center gap-1', colors[role] || '')}>
       {getRoleIcon(role)}
       {role}
     </Badge>
@@ -126,21 +115,6 @@ function getRoleBadge(role: UserRole) {
 function formatDate(dateString: string) {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function formatRelativeDate(dateString: string) {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return formatDate(dateString);
 }
 
 function getAvatarColor(str: string): string {
@@ -159,13 +133,18 @@ function getAvatarColor(str: string): string {
 }
 
 interface UserDetailsDialogProps {
-  user: User | null;
+  user: AdminUser | null;
   open: boolean;
   onClose: () => void;
+  onUpdateStatus: (status: string) => void;
+  onUpdateRole: (role: string) => void;
+  isUpdating: boolean;
 }
 
-function UserDetailsDialog({ user, open, onClose }: UserDetailsDialogProps) {
+function UserDetailsDialog({ user, open, onClose, onUpdateStatus, onUpdateRole, isUpdating }: UserDetailsDialogProps) {
   if (!user) return null;
+
+  const displayName = user.display_name || user.email.split('@')[0];
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -178,13 +157,13 @@ function UserDetailsDialog({ user, open, onClose }: UserDetailsDialogProps) {
           {/* User header */}
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarImage src={user.avatar} />
+              <AvatarImage src={user.avatar_url} />
               <AvatarFallback className={getAvatarColor(user.email)}>
-                {user.name.slice(0, 2).toUpperCase()}
+                {displayName.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="text-lg font-semibold">{user.name}</h3>
+              <h3 className="text-lg font-semibold">{displayName}</h3>
               <p className="text-sm text-muted-foreground">{user.email}</p>
               <div className="flex gap-2 mt-1">
                 {getRoleBadge(user.role)}
@@ -212,33 +191,62 @@ function UserDetailsDialog({ user, open, onClose }: UserDetailsDialogProps) {
             <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-sm font-medium">{formatDate(user.joinedAt)}</p>
+                <p className="text-sm font-medium">{formatDate(user.joined_at)}</p>
                 <p className="text-xs text-muted-foreground">Joined</p>
               </div>
             </div>
             <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Shield className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-sm font-medium">{formatRelativeDate(user.lastActiveAt)}</p>
-                <p className="text-xs text-muted-foreground">Last active</p>
+                <p className="text-sm font-medium capitalize">{user.role}</p>
+                <p className="text-xs text-muted-foreground">Role</p>
               </div>
             </div>
           </div>
 
+          {/* Role change */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Change Role</label>
+            <Select value={user.role} onValueChange={onUpdateRole} disabled={isUpdating || user.role === 'owner'}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="owner">Owner</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="viewer">Viewer</SelectItem>
+              </SelectContent>
+            </Select>
+            {user.role === 'owner' && (
+              <p className="text-xs text-muted-foreground">Owner role cannot be changed</p>
+            )}
+          </div>
+
           {/* Actions */}
           <div className="flex gap-2">
-            <Button variant="outline" className="flex-1">
+            <Button variant="outline" className="flex-1" disabled>
               <Mail className="h-4 w-4 mr-2" />
               Send Email
             </Button>
             {user.status === 'active' ? (
-              <Button variant="outline" className="flex-1 text-orange-600">
-                <Ban className="h-4 w-4 mr-2" />
+              <Button
+                variant="outline"
+                className="flex-1 text-orange-600"
+                onClick={() => onUpdateStatus('suspended')}
+                disabled={isUpdating || user.role === 'owner'}
+              >
+                {isUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Ban className="h-4 w-4 mr-2" />}
                 Suspend
               </Button>
             ) : (
-              <Button variant="outline" className="flex-1 text-green-600">
-                <CheckCircle className="h-4 w-4 mr-2" />
+              <Button
+                variant="outline"
+                className="flex-1 text-green-600"
+                onClick={() => onUpdateStatus('active')}
+                disabled={isUpdating}
+              >
+                {isUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                 Activate
               </Button>
             )}
@@ -249,18 +257,42 @@ function UserDetailsDialog({ user, open, onClose }: UserDetailsDialogProps) {
   );
 }
 
+function TableSkeleton() {
+  return (
+    <div className="space-y-4 p-4">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex items-center gap-4">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-3 w-1/4" />
+          </div>
+          <Skeleton className="h-6 w-16" />
+          <Skeleton className="h-6 w-16" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function AdminUsers() {
+  const { currentWorkspaceId } = useWorkspace();
+  const { data: users, isLoading, error } = useAdminUsers(currentWorkspaceId ?? undefined);
+  const { updateStatus, updateRole, removeUser, isUpdatingStatus, isUpdatingRole, isRemoving } = useAdminUserMutations(currentWorkspaceId ?? undefined);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [userToRemove, setUserToRemove] = useState<AdminUser | null>(null);
 
-  const filteredUsers = mockUsers.filter((user) => {
+  const filteredUsers = (users || []).filter((user) => {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      if (!user.name.toLowerCase().includes(query) && !user.email.toLowerCase().includes(query)) {
+      const displayName = user.display_name || user.email;
+      if (!displayName.toLowerCase().includes(query) && !user.email.toLowerCase().includes(query)) {
         return false;
       }
     }
@@ -274,7 +306,7 @@ export function AdminUsers() {
     return true;
   });
 
-  const openUserDetails = (user: User) => {
+  const openUserDetails = (user: AdminUser) => {
     setSelectedUser(user);
     setIsDialogOpen(true);
   };
@@ -284,11 +316,44 @@ export function AdminUsers() {
     setSelectedUser(null);
   };
 
+  const handleUpdateStatus = async (status: string) => {
+    if (!selectedUser) return;
+    try {
+      await updateStatus(selectedUser.id, status);
+      toast.success(`User ${status === 'active' ? 'activated' : 'suspended'} successfully`);
+      closeUserDetails();
+    } catch (err) {
+      toast.error('Failed to update user status');
+    }
+  };
+
+  const handleUpdateRole = async (role: string) => {
+    if (!selectedUser) return;
+    try {
+      await updateRole(selectedUser.id, role);
+      toast.success('User role updated successfully');
+      closeUserDetails();
+    } catch (err) {
+      toast.error('Failed to update user role');
+    }
+  };
+
+  const handleRemoveUser = async () => {
+    if (!userToRemove) return;
+    try {
+      await removeUser(userToRemove.id);
+      toast.success('User removed from workspace');
+      setUserToRemove(null);
+    } catch (err) {
+      toast.error('Failed to remove user');
+    }
+  };
+
   const userCounts = {
-    total: mockUsers.length,
-    active: mockUsers.filter((u) => u.status === 'active').length,
-    suspended: mockUsers.filter((u) => u.status === 'suspended').length,
-    pending: mockUsers.filter((u) => u.status === 'pending').length,
+    total: users?.length ?? 0,
+    active: users?.filter((u) => u.status === 'active').length ?? 0,
+    suspended: users?.filter((u) => u.status === 'suspended').length ?? 0,
+    pending: users?.filter((u) => u.status === 'pending').length ?? 0,
   };
 
   return (
@@ -297,26 +362,39 @@ export function AdminUsers() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Users</h2>
-          <p className="text-sm text-muted-foreground">Manage all platform users</p>
+          <p className="text-sm text-muted-foreground">Manage workspace members</p>
         </div>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <Card className="border-destructive bg-destructive/10">
+          <CardContent className="flex items-center gap-3 py-4">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <div>
+              <p className="font-medium text-destructive">Failed to load users</p>
+              <p className="text-sm text-muted-foreground">{error.message}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Stats */}
       <div className="grid gap-4 grid-cols-4">
         <Card className="p-4">
-          <div className="text-2xl font-bold">{userCounts.total}</div>
+          <div className="text-2xl font-bold">{isLoading ? <Skeleton className="h-8 w-12" /> : userCounts.total}</div>
           <p className="text-sm text-muted-foreground">Total Users</p>
         </Card>
         <Card className="p-4">
-          <div className="text-2xl font-bold text-green-600">{userCounts.active}</div>
+          <div className="text-2xl font-bold text-green-600">{isLoading ? <Skeleton className="h-8 w-12" /> : userCounts.active}</div>
           <p className="text-sm text-muted-foreground">Active</p>
         </Card>
         <Card className="p-4">
-          <div className="text-2xl font-bold text-red-600">{userCounts.suspended}</div>
+          <div className="text-2xl font-bold text-red-600">{isLoading ? <Skeleton className="h-8 w-12" /> : userCounts.suspended}</div>
           <p className="text-sm text-muted-foreground">Suspended</p>
         </Card>
         <Card className="p-4">
-          <div className="text-2xl font-bold text-yellow-600">{userCounts.pending}</div>
+          <div className="text-2xl font-bold text-yellow-600">{isLoading ? <Skeleton className="h-8 w-12" /> : userCounts.pending}</div>
           <p className="text-sm text-muted-foreground">Pending</p>
         </Card>
       </div>
@@ -364,82 +442,120 @@ export function AdminUsers() {
 
       {/* Table */}
       <Card>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableHeaderCell>User</TableHeaderCell>
-              <TableHeaderCell>Role</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell>Workspaces</TableHeaderCell>
-              <TableHeaderCell>Joined</TableHeaderCell>
-              <TableHeaderCell>Last Active</TableHeaderCell>
-              <TableHeaderCell className="w-12"></TableHeaderCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredUsers.map((user) => (
-              <TableRow key={user.id} className="cursor-pointer" onClick={() => openUserDetails(user)}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={user.avatar} />
-                      <AvatarFallback className={getAvatarColor(user.email)}>
-                        {user.name.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-medium">{user.name}</div>
-                      <div className="text-sm text-muted-foreground">{user.email}</div>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>{getRoleBadge(user.role)}</TableCell>
-                <TableCell>{getStatusBadge(user.status)}</TableCell>
-                <TableCell>
-                  <span className="text-sm">{user.workspaces} workspace{user.workspaces !== 1 ? 's' : ''}</span>
-                </TableCell>
-                <TableCell className="text-sm">{formatDate(user.joinedAt)}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{formatRelativeDate(user.lastActiveAt)}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => openUserDetails(user)}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        View details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit role
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      {user.status === 'active' ? (
-                        <DropdownMenuItem className="text-orange-600">
-                          <Ban className="h-4 w-4 mr-2" />
-                          Suspend user
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem className="text-green-600">
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Activate user
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem className="text-destructive">
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Remove user
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+        {isLoading ? (
+          <TableSkeleton />
+        ) : (
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell>User</TableHeaderCell>
+                <TableHeaderCell>Role</TableHeaderCell>
+                <TableHeaderCell>Status</TableHeaderCell>
+                <TableHeaderCell>Teams</TableHeaderCell>
+                <TableHeaderCell>Joined</TableHeaderCell>
+                <TableHeaderCell className="w-12"></TableHeaderCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        {filteredUsers.length === 0 && (
+            </TableHead>
+            <TableBody>
+              {filteredUsers.map((user) => {
+                const displayName = user.display_name || user.email.split('@')[0];
+                return (
+                  <TableRow key={user.id} className="cursor-pointer" onClick={() => openUserDetails(user)}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarImage src={user.avatar_url} />
+                          <AvatarFallback className={getAvatarColor(user.email)}>
+                            {displayName.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium">{displayName}</div>
+                          <div className="text-sm text-muted-foreground">{user.email}</div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{getRoleBadge(user.role)}</TableCell>
+                    <TableCell>{getStatusBadge(user.status)}</TableCell>
+                    <TableCell>
+                      <span className="text-sm">{user.teams} team{user.teams !== 1 ? 's' : ''}</span>
+                    </TableCell>
+                    <TableCell className="text-sm">{formatDate(user.joined_at)}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openUserDetails(user)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedUser(user);
+                            setIsDialogOpen(true);
+                          }}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit role
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {user.status === 'active' ? (
+                            <DropdownMenuItem
+                              className="text-orange-600"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await updateStatus(user.id, 'suspended');
+                                  toast.success('User suspended');
+                                } catch {
+                                  toast.error('Failed to suspend user');
+                                }
+                              }}
+                              disabled={user.role === 'owner'}
+                            >
+                              <Ban className="h-4 w-4 mr-2" />
+                              Suspend user
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              className="text-green-600"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await updateStatus(user.id, 'active');
+                                  toast.success('User activated');
+                                } catch {
+                                  toast.error('Failed to activate user');
+                                }
+                              }}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Activate user
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUserToRemove(user);
+                            }}
+                            disabled={user.role === 'owner'}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remove user
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+        {!isLoading && filteredUsers.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Users className="h-12 w-12 mb-4 opacity-50" />
             <p className="text-lg font-medium">No users found</p>
@@ -449,7 +565,38 @@ export function AdminUsers() {
       </Card>
 
       {/* User Details Dialog */}
-      <UserDetailsDialog user={selectedUser} open={isDialogOpen} onClose={closeUserDetails} />
+      <UserDetailsDialog
+        user={selectedUser}
+        open={isDialogOpen}
+        onClose={closeUserDetails}
+        onUpdateStatus={handleUpdateStatus}
+        onUpdateRole={handleUpdateRole}
+        isUpdating={isUpdatingStatus || isUpdatingRole}
+      />
+
+      {/* Remove User Confirmation */}
+      <AlertDialog open={!!userToRemove} onOpenChange={() => setUserToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{userToRemove?.display_name || userToRemove?.email}</strong> from this workspace?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveUser}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isRemoving}
+            >
+              {isRemoving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -29,76 +30,14 @@ import {
   Lock,
   KeyRound,
   Timer,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface GeneralConfig {
-  appName: string;
-  appLogo: string;
-  defaultLanguage: string;
-  timezone: string;
-  supportEmail: string;
-}
-
-interface WorkspaceConfig {
-  defaultIcon: string;
-  defaultColor: string;
-  autoCreateProject: boolean;
-  defaultMemberRole: string;
-  maxMembersPerWorkspace: number;
-}
-
-interface IntegrationConfig {
-  githubEnabled: boolean;
-  githubOrg: string;
-  cloudStorageProvider: string;
-  notificationsEnabled: boolean;
-  emailNotifications: boolean;
-  slackWebhook: string;
-}
-
-interface SecurityConfig {
-  sessionTimeoutMinutes: number;
-  minPasswordLength: number;
-  requireMFA: boolean;
-  allowedDomains: string;
-  maxLoginAttempts: number;
-  lockoutDurationMinutes: number;
-}
-
-const initialGeneralConfig: GeneralConfig = {
-  appName: 'iKanban',
-  appLogo: '',
-  defaultLanguage: 'en',
-  timezone: 'UTC',
-  supportEmail: 'support@ikanban.com',
-};
-
-const initialWorkspaceConfig: WorkspaceConfig = {
-  defaultIcon: 'folder',
-  defaultColor: 'blue',
-  autoCreateProject: true,
-  defaultMemberRole: 'member',
-  maxMembersPerWorkspace: 50,
-};
-
-const initialIntegrationConfig: IntegrationConfig = {
-  githubEnabled: true,
-  githubOrg: '',
-  cloudStorageProvider: 'supabase',
-  notificationsEnabled: true,
-  emailNotifications: true,
-  slackWebhook: '',
-};
-
-const initialSecurityConfig: SecurityConfig = {
-  sessionTimeoutMinutes: 60,
-  minPasswordLength: 8,
-  requireMFA: false,
-  allowedDomains: '',
-  maxLoginAttempts: 5,
-  lockoutDurationMinutes: 15,
-};
+import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAdminConfiguration, useAdminConfigurationMutations } from '@/hooks/useAdmin';
+import { AdminConfiguration as AdminConfigurationType } from '@/lib/api';
+import { toast } from 'sonner';
 
 const timezones = [
   'UTC',
@@ -132,44 +71,56 @@ const workspaceColors = [
   { value: 'teal', label: 'Teal', class: 'bg-teal-500' },
 ];
 
+function ConfigSkeleton() {
+  return (
+    <div className="space-y-6">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="space-y-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function AdminConfiguration() {
-  const [generalConfig, setGeneralConfig] = useState(initialGeneralConfig);
-  const [workspaceConfig, setWorkspaceConfig] = useState(initialWorkspaceConfig);
-  const [integrationConfig, setIntegrationConfig] = useState(initialIntegrationConfig);
-  const [securityConfig, setSecurityConfig] = useState(initialSecurityConfig);
+  const { currentWorkspaceId } = useWorkspace();
+  const { data: configData, isLoading, error } = useAdminConfiguration(currentWorkspaceId ?? undefined);
+  const { updateConfiguration, isUpdating } = useAdminConfigurationMutations(currentWorkspaceId ?? undefined);
+
+  // Local state for form
+  const [config, setConfig] = useState<Partial<AdminConfigurationType>>({});
   const [hasChanges, setHasChanges] = useState(false);
 
-  const handleGeneralChange = (key: keyof GeneralConfig, value: string) => {
-    setGeneralConfig(prev => ({ ...prev, [key]: value }));
-    setHasChanges(true);
-  };
+  // Sync with server data
+  useEffect(() => {
+    if (configData) {
+      setConfig(configData);
+      setHasChanges(false);
+    }
+  }, [configData]);
 
-  const handleWorkspaceChange = <K extends keyof WorkspaceConfig>(key: K, value: WorkspaceConfig[K]) => {
-    setWorkspaceConfig(prev => ({ ...prev, [key]: value }));
-    setHasChanges(true);
-  };
-
-  const handleIntegrationChange = <K extends keyof IntegrationConfig>(key: K, value: IntegrationConfig[K]) => {
-    setIntegrationConfig(prev => ({ ...prev, [key]: value }));
-    setHasChanges(true);
-  };
-
-  const handleSecurityChange = <K extends keyof SecurityConfig>(key: K, value: SecurityConfig[K]) => {
-    setSecurityConfig(prev => ({ ...prev, [key]: value }));
+  const handleChange = <K extends keyof AdminConfigurationType>(key: K, value: AdminConfigurationType[K]) => {
+    setConfig(prev => ({ ...prev, [key]: value }));
     setHasChanges(true);
   };
 
   const resetChanges = () => {
-    setGeneralConfig(initialGeneralConfig);
-    setWorkspaceConfig(initialWorkspaceConfig);
-    setIntegrationConfig(initialIntegrationConfig);
-    setSecurityConfig(initialSecurityConfig);
-    setHasChanges(false);
+    if (configData) {
+      setConfig(configData);
+      setHasChanges(false);
+    }
   };
 
-  const saveChanges = () => {
-    // In real implementation, this would save to backend
-    setHasChanges(false);
+  const saveChanges = async () => {
+    try {
+      await updateConfiguration(config as AdminConfigurationType);
+      toast.success('Configuration saved');
+      setHasChanges(false);
+    } catch (err) {
+      toast.error('Failed to save configuration');
+    }
   };
 
   return (
@@ -182,17 +133,30 @@ export function AdminConfiguration() {
         </div>
         {hasChanges && (
           <div className="flex gap-2">
-            <Button variant="outline" onClick={resetChanges}>
+            <Button variant="outline" onClick={resetChanges} disabled={isUpdating}>
               <RotateCcw className="h-4 w-4 mr-2" />
               Reset
             </Button>
-            <Button onClick={saveChanges}>
-              <Save className="h-4 w-4 mr-2" />
+            <Button onClick={saveChanges} disabled={isUpdating}>
+              {isUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
               Save Changes
             </Button>
           </div>
         )}
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <Card className="border-destructive bg-destructive/10">
+          <CardContent className="flex items-center gap-3 py-4">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <div>
+              <p className="font-medium text-destructive">Failed to load configuration</p>
+              <p className="text-sm text-muted-foreground">{error.message}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="general" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
@@ -222,73 +186,75 @@ export function AdminConfiguration() {
               <CardDescription>Basic application configuration</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="appName">Application Name</Label>
-                  <Input
-                    id="appName"
-                    value={generalConfig.appName}
-                    onChange={(e) => handleGeneralChange('appName', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="supportEmail">Support Email</Label>
-                  <Input
-                    id="supportEmail"
-                    type="email"
-                    value={generalConfig.supportEmail}
-                    onChange={(e) => handleGeneralChange('supportEmail', e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="language">Default Language</Label>
-                  <Select value={generalConfig.defaultLanguage} onValueChange={(v) => handleGeneralChange('defaultLanguage', v)}>
-                    <SelectTrigger>
-                      <Globe className="h-4 w-4 mr-2" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {languages.map((lang) => (
-                        <SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="timezone">Default Timezone</Label>
-                  <Select value={generalConfig.timezone} onValueChange={(v) => handleGeneralChange('timezone', v)}>
-                    <SelectTrigger>
-                      <Clock className="h-4 w-4 mr-2" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timezones.map((tz) => (
-                        <SelectItem key={tz} value={tz}>{tz}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Application Logo</Label>
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center bg-muted">
-                    {generalConfig.appLogo ? (
-                      <img src={generalConfig.appLogo} alt="Logo" className="w-full h-full object-cover rounded-lg" />
-                    ) : (
-                      <Upload className="h-6 w-6 text-muted-foreground" />
-                    )}
+              {isLoading ? (
+                <ConfigSkeleton />
+              ) : (
+                <>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="appName">Application Name</Label>
+                      <Input
+                        id="appName"
+                        value={config.app_name || ''}
+                        onChange={(e) => handleChange('app_name', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="supportEmail">Support Email</Label>
+                      <Input
+                        id="supportEmail"
+                        type="email"
+                        value={config.support_email || ''}
+                        onChange={(e) => handleChange('support_email', e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <Button variant="outline" size="sm">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Logo
-                  </Button>
-                </div>
-              </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="language">Default Language</Label>
+                      <Select value={config.default_language || 'en'} onValueChange={(v) => handleChange('default_language', v)}>
+                        <SelectTrigger>
+                          <Globe className="h-4 w-4 mr-2" />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {languages.map((lang) => (
+                            <SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="timezone">Default Timezone</Label>
+                      <Select value={config.timezone || 'UTC'} onValueChange={(v) => handleChange('timezone', v)}>
+                        <SelectTrigger>
+                          <Clock className="h-4 w-4 mr-2" />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timezones.map((tz) => (
+                            <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Application Logo</Label>
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center bg-muted">
+                        <Upload className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <Button variant="outline" size="sm" disabled>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload Logo
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -301,59 +267,65 @@ export function AdminConfiguration() {
               <CardDescription>Default settings for new workspaces</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label>Default Color</Label>
-                <div className="flex gap-2">
-                  {workspaceColors.map((color) => (
-                    <button
-                      key={color.value}
-                      onClick={() => handleWorkspaceChange('defaultColor', color.value)}
-                      className={cn(
-                        'w-8 h-8 rounded-full transition-transform',
-                        color.class,
-                        workspaceConfig.defaultColor === color.value && 'ring-2 ring-offset-2 ring-primary scale-110'
-                      )}
-                      title={color.label}
+              {isLoading ? (
+                <ConfigSkeleton />
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label>Default Color</Label>
+                    <div className="flex gap-2">
+                      {workspaceColors.map((color) => (
+                        <button
+                          key={color.value}
+                          onClick={() => handleChange('default_workspace_color', color.value)}
+                          className={cn(
+                            'w-8 h-8 rounded-full transition-transform',
+                            color.class,
+                            config.default_workspace_color === color.value && 'ring-2 ring-offset-2 ring-primary scale-110'
+                          )}
+                          title={color.label}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="defaultRole">Default Member Role</Label>
+                      <Select value={config.default_member_role || 'member'} onValueChange={(v) => handleChange('default_member_role', v)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="viewer">Viewer</SelectItem>
+                          <SelectItem value="member">Member</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="maxMembers">Max Members per Workspace</Label>
+                      <Input
+                        id="maxMembers"
+                        type="number"
+                        value={config.max_members_per_workspace || 50}
+                        onChange={(e) => handleChange('max_members_per_workspace', parseInt(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Auto-create Project</Label>
+                      <p className="text-xs text-muted-foreground">Create a default project when workspace is created</p>
+                    </div>
+                    <Switch
+                      checked={config.auto_create_project ?? true}
+                      onCheckedChange={(v) => handleChange('auto_create_project', v)}
                     />
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="defaultRole">Default Member Role</Label>
-                  <Select value={workspaceConfig.defaultMemberRole} onValueChange={(v) => handleWorkspaceChange('defaultMemberRole', v)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="viewer">Viewer</SelectItem>
-                      <SelectItem value="member">Member</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maxMembers">Max Members per Workspace</Label>
-                  <Input
-                    id="maxMembers"
-                    type="number"
-                    value={workspaceConfig.maxMembersPerWorkspace}
-                    onChange={(e) => handleWorkspaceChange('maxMembersPerWorkspace', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Auto-create Project</Label>
-                  <p className="text-xs text-muted-foreground">Create a default project when workspace is created</p>
-                </div>
-                <Switch
-                  checked={workspaceConfig.autoCreateProject}
-                  onCheckedChange={(v) => handleWorkspaceChange('autoCreateProject', v)}
-                />
-              </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -370,26 +342,32 @@ export function AdminConfiguration() {
                 <CardDescription>Connect to GitHub for document sync and repositories</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Enable GitHub Integration</Label>
-                    <p className="text-xs text-muted-foreground">Allow users to connect their GitHub accounts</p>
-                  </div>
-                  <Switch
-                    checked={integrationConfig.githubEnabled}
-                    onCheckedChange={(v) => handleIntegrationChange('githubEnabled', v)}
-                  />
-                </div>
-                {integrationConfig.githubEnabled && (
-                  <div className="space-y-2">
-                    <Label htmlFor="githubOrg">Default Organization</Label>
-                    <Input
-                      id="githubOrg"
-                      placeholder="organization-name"
-                      value={integrationConfig.githubOrg}
-                      onChange={(e) => handleIntegrationChange('githubOrg', e.target.value)}
-                    />
-                  </div>
+                {isLoading ? (
+                  <ConfigSkeleton />
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Enable GitHub Integration</Label>
+                        <p className="text-xs text-muted-foreground">Allow users to connect their GitHub accounts</p>
+                      </div>
+                      <Switch
+                        checked={config.github_enabled ?? true}
+                        onCheckedChange={(v) => handleChange('github_enabled', v)}
+                      />
+                    </div>
+                    {config.github_enabled && (
+                      <div className="space-y-2">
+                        <Label htmlFor="githubOrg">Default Organization</Label>
+                        <Input
+                          id="githubOrg"
+                          placeholder="organization-name"
+                          value={config.github_org || ''}
+                          onChange={(e) => handleChange('github_org', e.target.value)}
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -403,20 +381,24 @@ export function AdminConfiguration() {
                 <CardDescription>Configure file storage provider</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <Label htmlFor="storage">Storage Provider</Label>
-                  <Select value={integrationConfig.cloudStorageProvider} onValueChange={(v) => handleIntegrationChange('cloudStorageProvider', v)}>
-                    <SelectTrigger>
-                      <Database className="h-4 w-4 mr-2" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="supabase">Supabase Storage</SelectItem>
-                      <SelectItem value="s3">Amazon S3</SelectItem>
-                      <SelectItem value="gcs">Google Cloud Storage</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {isLoading ? (
+                  <ConfigSkeleton />
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="storage">Storage Provider</Label>
+                    <Select value={config.cloud_storage_provider || 'supabase'} onValueChange={(v) => handleChange('cloud_storage_provider', v)}>
+                      <SelectTrigger>
+                        <Database className="h-4 w-4 mr-2" />
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="supabase">Supabase Storage</SelectItem>
+                        <SelectItem value="s3">Amazon S3</SelectItem>
+                        <SelectItem value="gcs">Google Cloud Storage</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -429,35 +411,41 @@ export function AdminConfiguration() {
                 <CardDescription>Configure notification settings</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Enable Notifications</Label>
-                    <p className="text-xs text-muted-foreground">Allow in-app notifications</p>
-                  </div>
-                  <Switch
-                    checked={integrationConfig.notificationsEnabled}
-                    onCheckedChange={(v) => handleIntegrationChange('notificationsEnabled', v)}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Email Notifications</Label>
-                    <p className="text-xs text-muted-foreground">Send email notifications for important events</p>
-                  </div>
-                  <Switch
-                    checked={integrationConfig.emailNotifications}
-                    onCheckedChange={(v) => handleIntegrationChange('emailNotifications', v)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="slack">Slack Webhook URL</Label>
-                  <Input
-                    id="slack"
-                    placeholder="https://hooks.slack.com/services/..."
-                    value={integrationConfig.slackWebhook}
-                    onChange={(e) => handleIntegrationChange('slackWebhook', e.target.value)}
-                  />
-                </div>
+                {isLoading ? (
+                  <ConfigSkeleton />
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Enable Notifications</Label>
+                        <p className="text-xs text-muted-foreground">Allow in-app notifications</p>
+                      </div>
+                      <Switch
+                        checked={config.notifications_enabled ?? true}
+                        onCheckedChange={(v) => handleChange('notifications_enabled', v)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Email Notifications</Label>
+                        <p className="text-xs text-muted-foreground">Send email notifications for important events</p>
+                      </div>
+                      <Switch
+                        checked={config.email_notifications ?? true}
+                        onCheckedChange={(v) => handleChange('email_notifications', v)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="slack">Slack Webhook URL</Label>
+                      <Input
+                        id="slack"
+                        placeholder="https://hooks.slack.com/services/..."
+                        value={config.slack_webhook || ''}
+                        onChange={(e) => handleChange('slack_webhook', e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -471,81 +459,87 @@ export function AdminConfiguration() {
               <CardDescription>Configure security and authentication options</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="sessionTimeout" className="flex items-center gap-2">
-                    <Timer className="h-4 w-4" />
-                    Session Timeout (minutes)
-                  </Label>
-                  <Input
-                    id="sessionTimeout"
-                    type="number"
-                    value={securityConfig.sessionTimeoutMinutes}
-                    onChange={(e) => handleSecurityChange('sessionTimeoutMinutes', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="passwordLength" className="flex items-center gap-2">
-                    <KeyRound className="h-4 w-4" />
-                    Minimum Password Length
-                  </Label>
-                  <Input
-                    id="passwordLength"
-                    type="number"
-                    value={securityConfig.minPasswordLength}
-                    onChange={(e) => handleSecurityChange('minPasswordLength', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-              </div>
+              {isLoading ? (
+                <ConfigSkeleton />
+              ) : (
+                <>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="sessionTimeout" className="flex items-center gap-2">
+                        <Timer className="h-4 w-4" />
+                        Session Timeout (minutes)
+                      </Label>
+                      <Input
+                        id="sessionTimeout"
+                        type="number"
+                        value={config.session_timeout_minutes || 60}
+                        onChange={(e) => handleChange('session_timeout_minutes', parseInt(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="passwordLength" className="flex items-center gap-2">
+                        <KeyRound className="h-4 w-4" />
+                        Minimum Password Length
+                      </Label>
+                      <Input
+                        id="passwordLength"
+                        type="number"
+                        value={config.min_password_length || 8}
+                        onChange={(e) => handleChange('min_password_length', parseInt(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="maxAttempts" className="flex items-center gap-2">
-                    <Lock className="h-4 w-4" />
-                    Max Login Attempts
-                  </Label>
-                  <Input
-                    id="maxAttempts"
-                    type="number"
-                    value={securityConfig.maxLoginAttempts}
-                    onChange={(e) => handleSecurityChange('maxLoginAttempts', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lockout">Lockout Duration (minutes)</Label>
-                  <Input
-                    id="lockout"
-                    type="number"
-                    value={securityConfig.lockoutDurationMinutes}
-                    onChange={(e) => handleSecurityChange('lockoutDurationMinutes', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-              </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="maxAttempts" className="flex items-center gap-2">
+                        <Lock className="h-4 w-4" />
+                        Max Login Attempts
+                      </Label>
+                      <Input
+                        id="maxAttempts"
+                        type="number"
+                        value={config.max_login_attempts || 5}
+                        onChange={(e) => handleChange('max_login_attempts', parseInt(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lockout">Lockout Duration (minutes)</Label>
+                      <Input
+                        id="lockout"
+                        type="number"
+                        value={config.lockout_duration_minutes || 15}
+                        onChange={(e) => handleChange('lockout_duration_minutes', parseInt(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
 
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="flex items-center gap-2">
-                    <Shield className="h-4 w-4" />
-                    Require Multi-Factor Authentication
-                  </Label>
-                  <p className="text-xs text-muted-foreground">Force all users to enable MFA</p>
-                </div>
-                <Switch
-                  checked={securityConfig.requireMFA}
-                  onCheckedChange={(v) => handleSecurityChange('requireMFA', v)}
-                />
-              </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        Require Multi-Factor Authentication
+                      </Label>
+                      <p className="text-xs text-muted-foreground">Force all users to enable MFA</p>
+                    </div>
+                    <Switch
+                      checked={config.require_mfa ?? false}
+                      onCheckedChange={(v) => handleChange('require_mfa', v)}
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="domains">Allowed Email Domains</Label>
-                <Input
-                  id="domains"
-                  placeholder="example.com, company.org (leave empty for all)"
-                  value={securityConfig.allowedDomains}
-                  onChange={(e) => handleSecurityChange('allowedDomains', e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">Comma-separated list of allowed email domains for sign-up</p>
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="domains">Allowed Email Domains</Label>
+                    <Input
+                      id="domains"
+                      placeholder="example.com, company.org (leave empty for all)"
+                      value={config.allowed_domains || ''}
+                      onChange={(e) => handleChange('allowed_domains', e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Comma-separated list of allowed email domains for sign-up</p>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
