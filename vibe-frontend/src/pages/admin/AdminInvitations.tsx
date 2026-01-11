@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -19,6 +21,14 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Table,
   TableBody,
   TableCell,
@@ -31,7 +41,6 @@ import {
   Search,
   MoreVertical,
   RefreshCw,
-  Copy,
   Trash2,
   UserPlus,
   Filter,
@@ -39,36 +48,16 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAdminInvitations, useAdminInvitationMutations } from '@/hooks/useAdmin';
+import { toast } from 'sonner';
 
-type InvitationStatus = 'pending' | 'accepted' | 'expired' | 'revoked';
 type TabValue = 'all' | 'pending' | 'accepted' | 'expired';
 
-interface Invitation {
-  id: string;
-  email: string;
-  role: string;
-  status: InvitationStatus;
-  invitedBy: string;
-  sentAt: string;
-  expiresAt: string;
-  workspace: string;
-}
-
-// Mock data for UI development
-const mockInvitations: Invitation[] = [
-  { id: '1', email: 'john.doe@example.com', role: 'member', status: 'pending', invitedBy: 'admin@company.com', sentAt: '2024-01-10T10:00:00Z', expiresAt: '2024-01-17T10:00:00Z', workspace: 'Engineering' },
-  { id: '2', email: 'jane.smith@example.com', role: 'admin', status: 'accepted', invitedBy: 'admin@company.com', sentAt: '2024-01-08T14:30:00Z', expiresAt: '2024-01-15T14:30:00Z', workspace: 'Design' },
-  { id: '3', email: 'mike.wilson@example.com', role: 'member', status: 'pending', invitedBy: 'manager@company.com', sentAt: '2024-01-09T09:15:00Z', expiresAt: '2024-01-16T09:15:00Z', workspace: 'Engineering' },
-  { id: '4', email: 'sarah.jones@example.com', role: 'viewer', status: 'expired', invitedBy: 'admin@company.com', sentAt: '2024-01-01T11:00:00Z', expiresAt: '2024-01-08T11:00:00Z', workspace: 'Marketing' },
-  { id: '5', email: 'alex.brown@example.com', role: 'member', status: 'accepted', invitedBy: 'admin@company.com', sentAt: '2024-01-05T16:45:00Z', expiresAt: '2024-01-12T16:45:00Z', workspace: 'Engineering' },
-  { id: '6', email: 'emily.davis@example.com', role: 'admin', status: 'pending', invitedBy: 'admin@company.com', sentAt: '2024-01-11T08:00:00Z', expiresAt: '2024-01-18T08:00:00Z', workspace: 'Design' },
-  { id: '7', email: 'chris.taylor@example.com', role: 'member', status: 'revoked', invitedBy: 'manager@company.com', sentAt: '2024-01-07T13:20:00Z', expiresAt: '2024-01-14T13:20:00Z', workspace: 'Support' },
-  { id: '8', email: 'lisa.anderson@example.com', role: 'viewer', status: 'pending', invitedBy: 'admin@company.com', sentAt: '2024-01-10T15:30:00Z', expiresAt: '2024-01-17T15:30:00Z', workspace: 'Marketing' },
-];
-
-function getStatusBadge(status: InvitationStatus) {
+function getStatusBadge(status: string) {
   switch (status) {
     case 'pending':
       return <Badge variant="outline" className="text-yellow-600 border-yellow-600"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
@@ -85,8 +74,9 @@ function getStatusBadge(status: InvitationStatus) {
 
 function getRoleBadge(role: string) {
   const colors: Record<string, string> = {
-    admin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-    member: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    owner: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+    maintainer: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+    contributor: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     viewer: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
   };
   return <Badge className={cn('capitalize', colors[role] || '')}>{role}</Badge>;
@@ -109,13 +99,100 @@ function formatRelativeDate(dateString: string) {
   return formatDate(dateString);
 }
 
+function TableSkeleton() {
+  return (
+    <div className="space-y-4 p-4">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex items-center gap-4">
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-4 w-1/4" />
+          <Skeleton className="h-6 w-16" />
+          <Skeleton className="h-6 w-16" />
+          <Skeleton className="h-4 w-1/6" />
+          <Skeleton className="h-4 w-1/6" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+interface SendInvitationDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onSend: (email: string, role: string) => Promise<void>;
+  isSending: boolean;
+}
+
+function SendInvitationDialog({ open, onClose, onSend, isSending }: SendInvitationDialogProps) {
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('contributor');
+
+  const handleSend = async () => {
+    if (!email) return;
+    await onSend(email, role);
+    setEmail('');
+    setRole('contributor');
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Send Invitation</DialogTitle>
+          <DialogDescription>
+            Invite a new member to join the workspace
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email Address</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="user@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="role">Role</Label>
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="owner">Owner</SelectItem>
+                <SelectItem value="maintainer">Maintainer</SelectItem>
+                <SelectItem value="contributor">Contributor</SelectItem>
+                <SelectItem value="viewer">Viewer</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSend} disabled={!email || isSending}>
+            {isSending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
+            Send Invitation
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function AdminInvitations() {
+  const { currentWorkspaceId } = useWorkspace();
+  const { data: invitations, isLoading, error } = useAdminInvitations(currentWorkspaceId ?? undefined);
+  const { createInvitation, resendInvitation, revokeInvitation, isCreating, isResending, isRevoking } = useAdminInvitationMutations(currentWorkspaceId ?? undefined);
+
   const [activeTab, setActiveTab] = useState<TabValue>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedInvitations, setSelectedInvitations] = useState<string[]>([]);
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [showSendDialog, setShowSendDialog] = useState(false);
 
-  const filteredInvitations = mockInvitations.filter((invitation) => {
+  const filteredInvitations = (invitations || []).filter((invitation) => {
     // Tab filter
     if (activeTab !== 'all' && invitation.status !== activeTab) return false;
 
@@ -142,11 +219,57 @@ export function AdminInvitations() {
     );
   };
 
+  const handleSendInvitation = async (email: string, role: string) => {
+    try {
+      await createInvitation({
+        email,
+        role,
+        workspace_id: currentWorkspaceId!,
+      });
+      toast.success('Invitation sent successfully');
+      setShowSendDialog(false);
+    } catch (err) {
+      toast.error('Failed to send invitation');
+    }
+  };
+
+  const handleResend = async (invitationId: string) => {
+    try {
+      await resendInvitation(invitationId);
+      toast.success('Invitation resent');
+    } catch (err) {
+      toast.error('Failed to resend invitation');
+    }
+  };
+
+  const handleRevoke = async (invitationId: string) => {
+    try {
+      await revokeInvitation(invitationId);
+      toast.success('Invitation revoked');
+    } catch (err) {
+      toast.error('Failed to revoke invitation');
+    }
+  };
+
+  const handleBulkResend = async () => {
+    for (const id of selectedInvitations) {
+      await handleResend(id);
+    }
+    setSelectedInvitations([]);
+  };
+
+  const handleBulkRevoke = async () => {
+    for (const id of selectedInvitations) {
+      await handleRevoke(id);
+    }
+    setSelectedInvitations([]);
+  };
+
   const tabCounts = {
-    all: mockInvitations.length,
-    pending: mockInvitations.filter((i) => i.status === 'pending').length,
-    accepted: mockInvitations.filter((i) => i.status === 'accepted').length,
-    expired: mockInvitations.filter((i) => i.status === 'expired').length,
+    all: invitations?.length ?? 0,
+    pending: invitations?.filter((i) => i.status === 'pending').length ?? 0,
+    accepted: invitations?.filter((i) => i.status === 'accepted').length ?? 0,
+    expired: invitations?.filter((i) => i.status === 'expired').length ?? 0,
   };
 
   return (
@@ -155,13 +278,26 @@ export function AdminInvitations() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Invitations</h2>
-          <p className="text-sm text-muted-foreground">Manage all sign-up invitations</p>
+          <p className="text-sm text-muted-foreground">Manage workspace invitations</p>
         </div>
-        <Button>
+        <Button onClick={() => setShowSendDialog(true)}>
           <UserPlus className="h-4 w-4 mr-2" />
           Send Invitation
         </Button>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <Card className="border-destructive bg-destructive/10">
+          <CardContent className="flex items-center gap-3 py-4">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <div>
+              <p className="font-medium text-destructive">Failed to load invitations</p>
+              <p className="text-sm text-muted-foreground">{error.message}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 border-b">
@@ -177,7 +313,9 @@ export function AdminInvitations() {
             )}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            <span className="ml-2 text-xs bg-muted px-1.5 py-0.5 rounded">{tabCounts[tab]}</span>
+            <span className="ml-2 text-xs bg-muted px-1.5 py-0.5 rounded">
+              {isLoading ? '...' : tabCounts[tab]}
+            </span>
           </button>
         ))}
       </div>
@@ -202,8 +340,9 @@ export function AdminInvitations() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="owner">Owner</SelectItem>
+                <SelectItem value="maintainer">Maintainer</SelectItem>
+                <SelectItem value="contributor">Contributor</SelectItem>
                 <SelectItem value="viewer">Viewer</SelectItem>
               </SelectContent>
             </Select>
@@ -216,12 +355,12 @@ export function AdminInvitations() {
         <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
           <span className="text-sm font-medium">{selectedInvitations.length} selected</span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <RefreshCw className="h-3 w-3 mr-1" />
+            <Button variant="outline" size="sm" onClick={handleBulkResend} disabled={isResending}>
+              {isResending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
               Resend
             </Button>
-            <Button variant="outline" size="sm" className="text-destructive">
-              <Trash2 className="h-3 w-3 mr-1" />
+            <Button variant="outline" size="sm" className="text-destructive" onClick={handleBulkRevoke} disabled={isRevoking}>
+              {isRevoking ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Trash2 className="h-3 w-3 mr-1" />}
               Revoke
             </Button>
           </div>
@@ -233,74 +372,81 @@ export function AdminInvitations() {
 
       {/* Table */}
       <Card>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableHeaderCell className="w-12">
-                <Checkbox
-                  checked={selectedInvitations.length === filteredInvitations.length && filteredInvitations.length > 0}
-                  onCheckedChange={toggleSelectAll}
-                />
-              </TableHeaderCell>
-              <TableHeaderCell>Email</TableHeaderCell>
-              <TableHeaderCell>Role</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell>Invited By</TableHeaderCell>
-              <TableHeaderCell>Sent</TableHeaderCell>
-              <TableHeaderCell>Expires</TableHeaderCell>
-              <TableHeaderCell className="w-12"></TableHeaderCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredInvitations.map((invitation) => (
-              <TableRow key={invitation.id}>
-                <TableCell>
+        {isLoading ? (
+          <TableSkeleton />
+        ) : (
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell className="w-12">
                   <Checkbox
-                    checked={selectedInvitations.includes(invitation.id)}
-                    onCheckedChange={() => toggleSelect(invitation.id)}
+                    checked={selectedInvitations.length === filteredInvitations.length && filteredInvitations.length > 0}
+                    onCheckedChange={toggleSelectAll}
                   />
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{invitation.email}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{invitation.workspace}</span>
-                </TableCell>
-                <TableCell>{getRoleBadge(invitation.role)}</TableCell>
-                <TableCell>{getStatusBadge(invitation.status)}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{invitation.invitedBy}</TableCell>
-                <TableCell className="text-sm">{formatRelativeDate(invitation.sentAt)}</TableCell>
-                <TableCell className="text-sm">{formatDate(invitation.expiresAt)}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Resend invitation
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy invite link
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive">
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Revoke invitation
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+                </TableHeaderCell>
+                <TableHeaderCell>Email</TableHeaderCell>
+                <TableHeaderCell>Role</TableHeaderCell>
+                <TableHeaderCell>Status</TableHeaderCell>
+                <TableHeaderCell>Team</TableHeaderCell>
+                <TableHeaderCell>Sent</TableHeaderCell>
+                <TableHeaderCell>Expires</TableHeaderCell>
+                <TableHeaderCell className="w-12"></TableHeaderCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        {filteredInvitations.length === 0 && (
+            </TableHead>
+            <TableBody>
+              {filteredInvitations.map((invitation) => (
+                <TableRow key={invitation.id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedInvitations.includes(invitation.id)}
+                      onCheckedChange={() => toggleSelect(invitation.id)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{invitation.email}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{invitation.workspace_name}</span>
+                  </TableCell>
+                  <TableCell>{getRoleBadge(invitation.role)}</TableCell>
+                  <TableCell>{getStatusBadge(invitation.status)}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{invitation.team_name}</TableCell>
+                  <TableCell className="text-sm">{formatRelativeDate(invitation.sent_at)}</TableCell>
+                  <TableCell className="text-sm">{formatDate(invitation.expires_at)}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => handleResend(invitation.id)}
+                          disabled={invitation.status === 'accepted' || isResending}
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Resend invitation
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => handleRevoke(invitation.id)}
+                          disabled={invitation.status === 'accepted' || isRevoking}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Revoke invitation
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+        {!isLoading && filteredInvitations.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Mail className="h-12 w-12 mb-4 opacity-50" />
             <p className="text-lg font-medium">No invitations found</p>
@@ -308,6 +454,14 @@ export function AdminInvitations() {
           </div>
         )}
       </Card>
+
+      {/* Send Invitation Dialog */}
+      <SendInvitationDialog
+        open={showSendDialog}
+        onClose={() => setShowSendDialog(false)}
+        onSend={handleSendInvitation}
+        isSending={isCreating}
+      />
     </div>
   );
 }

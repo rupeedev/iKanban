@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Users,
   Mail,
@@ -10,42 +11,23 @@ import {
   UserPlus,
   Shield,
   Settings,
-  TrendingUp,
-  TrendingDown,
+  AlertCircle,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
-// Mock data for UI development
-const mockStats = {
-  totalUsers: 156,
-  totalUsersTrend: 12,
-  activeInvitations: 8,
-  activeInvitationsTrend: -2,
-  pendingApprovals: 3,
-  pendingApprovalsTrend: 1,
-  workspaces: 24,
-  workspacesTrend: 4,
-};
-
-const mockRecentActivity = [
-  { id: '1', type: 'user_joined', user: 'john.doe@example.com', timestamp: '2 minutes ago' },
-  { id: '2', type: 'invitation_sent', user: 'admin@company.com', target: 'newuser@example.com', timestamp: '15 minutes ago' },
-  { id: '3', type: 'role_changed', user: 'jane.smith@example.com', from: 'member', to: 'admin', timestamp: '1 hour ago' },
-  { id: '4', type: 'user_joined', user: 'mike.wilson@example.com', timestamp: '2 hours ago' },
-  { id: '5', type: 'invitation_expired', target: 'old.invite@example.com', timestamp: '5 hours ago' },
-];
+import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAdminStats, useAdminActivity } from '@/hooks/useAdmin';
+import { AdminActivity } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 interface StatCardProps {
   title: string;
   value: number;
-  trend: number;
   icon: React.ElementType;
   description: string;
+  isLoading?: boolean;
 }
 
-function StatCard({ title, value, trend, icon: Icon, description }: StatCardProps) {
-  const isPositive = trend >= 0;
-
+function StatCard({ title, value, icon: Icon, description, isLoading }: StatCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -53,25 +35,15 @@ function StatCard({ title, value, trend, icon: Icon, description }: StatCardProp
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value.toLocaleString()}</div>
-        <div className="flex items-center gap-1 mt-1">
-          {isPositive ? (
-            <TrendingUp className="h-3 w-3 text-green-500" />
-          ) : (
-            <TrendingDown className="h-3 w-3 text-red-500" />
-          )}
-          <span className={cn('text-xs', isPositive ? 'text-green-500' : 'text-red-500')}>
-            {isPositive ? '+' : ''}{trend}
-          </span>
-          <span className="text-xs text-muted-foreground">{description}</span>
-        </div>
+        {isLoading ? (
+          <Skeleton className="h-8 w-16" />
+        ) : (
+          <div className="text-2xl font-bold">{value.toLocaleString()}</div>
+        )}
+        <p className="text-xs text-muted-foreground mt-1">{description}</p>
       </CardContent>
     </Card>
   );
-}
-
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
 }
 
 function getActivityIcon(type: string) {
@@ -89,53 +61,111 @@ function getActivityIcon(type: string) {
   }
 }
 
-function getActivityMessage(activity: typeof mockRecentActivity[0]) {
-  switch (activity.type) {
+function formatRelativeTime(timestamp: string): string {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function getActivityMessage(activity: AdminActivity) {
+  switch (activity.activity_type) {
     case 'user_joined':
-      return <><span className="font-medium">{activity.user}</span> joined the platform</>;
+      return <><span className="font-medium">{activity.user_email}</span> joined the workspace</>;
     case 'invitation_sent':
-      return <><span className="font-medium">{activity.user}</span> invited {activity.target}</>;
+      return <><span className="font-medium">{activity.user_email || 'Admin'}</span> invited <span className="font-medium">{activity.target_email}</span></>;
     case 'role_changed':
-      return <><span className="font-medium">{activity.user}</span> role changed from <Badge variant="outline" className="mx-1">{activity.from}</Badge> to <Badge variant="outline" className="mx-1">{activity.to}</Badge></>;
+      return (
+        <>
+          <span className="font-medium">{activity.user_email}</span> role changed
+          {activity.from_role && activity.to_role && (
+            <> from <Badge variant="outline" className="mx-1">{activity.from_role}</Badge> to <Badge variant="outline" className="mx-1">{activity.to_role}</Badge></>
+          )}
+        </>
+      );
     case 'invitation_expired':
-      return <>Invitation to <span className="font-medium">{activity.target}</span> expired</>;
+      return <>Invitation to <span className="font-medium">{activity.target_email}</span> expired</>;
     default:
-      return 'Unknown activity';
+      return <span className="text-muted-foreground">Activity recorded</span>;
   }
 }
 
+function ActivitySkeleton() {
+  return (
+    <div className="space-y-4">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex items-start gap-3">
+          <Skeleton className="h-4 w-4 rounded-full mt-0.5" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/4" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function AdminDashboard() {
+  const { currentWorkspaceId } = useWorkspace();
+  const { data: stats, isLoading: statsLoading, error: statsError } = useAdminStats(currentWorkspaceId ?? undefined);
+  const { data: activities, isLoading: activitiesLoading, error: activitiesError } = useAdminActivity(currentWorkspaceId ?? undefined);
+
   return (
     <div className="space-y-6">
+      {/* Error Alert */}
+      {(statsError || activitiesError) && (
+        <Card className="border-destructive bg-destructive/10">
+          <CardContent className="flex items-center gap-3 py-4">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <div>
+              <p className="font-medium text-destructive">Failed to load admin data</p>
+              <p className="text-sm text-muted-foreground">
+                {statsError?.message || activitiesError?.message || 'Please try again later'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Users"
-          value={mockStats.totalUsers}
-          trend={mockStats.totalUsersTrend}
+          value={stats?.total_users ?? 0}
           icon={Users}
-          description="this month"
+          description="in this workspace"
+          isLoading={statsLoading}
         />
         <StatCard
-          title="Active Invitations"
-          value={mockStats.activeInvitations}
-          trend={mockStats.activeInvitationsTrend}
+          title="Active Users"
+          value={stats?.active_users ?? 0}
+          icon={Users}
+          description="currently active"
+          isLoading={statsLoading}
+        />
+        <StatCard
+          title="Pending Invitations"
+          value={stats?.pending_invitations ?? 0}
           icon={Mail}
-          description="pending"
+          description="awaiting response"
+          isLoading={statsLoading}
         />
         <StatCard
-          title="Pending Approvals"
-          value={mockStats.pendingApprovals}
-          trend={mockStats.pendingApprovalsTrend}
-          icon={Clock}
-          description="awaiting review"
-        />
-        <StatCard
-          title="Workspaces"
-          value={mockStats.workspaces}
-          trend={mockStats.workspacesTrend}
+          title="Teams"
+          value={stats?.total_teams ?? 0}
           icon={Building2}
-          description="this month"
+          description="in this workspace"
+          isLoading={statsLoading}
         />
       </div>
 
@@ -144,20 +174,31 @@ export function AdminDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest actions across the platform</CardDescription>
+            <CardDescription>Latest actions in the workspace</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {mockRecentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3">
-                  <div className="mt-0.5">{getActivityIcon(activity.type)}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm">{getActivityMessage(activity)}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{activity.timestamp}</p>
+            {activitiesLoading ? (
+              <ActivitySkeleton />
+            ) : activities && activities.length > 0 ? (
+              <div className="space-y-4">
+                {activities.map((activity) => (
+                  <div key={activity.id} className="flex items-start gap-3">
+                    <div className="mt-0.5">{getActivityIcon(activity.activity_type)}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm">{getActivityMessage(activity)}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatRelativeTime(activity.timestamp)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <Clock className="h-8 w-8 mb-2 opacity-50" />
+                <p className="text-sm">No recent activity</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -209,24 +250,28 @@ export function AdminDashboard() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <div className="w-2 h-2 rounded-full bg-green-500" />
+              <div className={cn('w-2 h-2 rounded-full', statsError ? 'bg-red-500' : 'bg-green-500')} />
               <div>
                 <p className="text-sm font-medium">API Status</p>
-                <p className="text-xs text-muted-foreground">All systems operational</p>
+                <p className="text-xs text-muted-foreground">
+                  {statsError ? 'Connection issues' : 'All systems operational'}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
               <div className="w-2 h-2 rounded-full bg-green-500" />
               <div>
                 <p className="text-sm font-medium">Database</p>
-                <p className="text-xs text-muted-foreground">Connected, 24ms latency</p>
+                <p className="text-xs text-muted-foreground">Connected</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
               <div className="w-2 h-2 rounded-full bg-green-500" />
               <div>
-                <p className="text-sm font-medium">Storage</p>
-                <p className="text-xs text-muted-foreground">72% capacity available</p>
+                <p className="text-sm font-medium">Workspace</p>
+                <p className="text-xs text-muted-foreground">
+                  {stats ? `${stats.total_users} members` : 'Loading...'}
+                </p>
               </div>
             </div>
           </div>

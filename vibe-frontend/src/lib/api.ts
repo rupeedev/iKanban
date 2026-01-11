@@ -2558,3 +2558,217 @@ export const registrationsApi = {
     return handleApiResponse<UserRegistration>(response);
   },
 };
+
+// =============================================================================
+// Admin API Types
+// =============================================================================
+
+export interface AdminStats {
+  total_users: number;
+  active_users: number;
+  pending_registrations: number;
+  total_workspaces: number;
+  total_teams: number;
+  pending_invitations: number;
+}
+
+export interface AdminActivity {
+  id: string;
+  activity_type: string;
+  user_email?: string;
+  target_email?: string;
+  from_role?: string;
+  to_role?: string;
+  timestamp: string;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  display_name?: string;
+  avatar_url?: string;
+  role: string;
+  status: string;
+  joined_at: string;
+  workspaces: number;
+  teams: number;
+}
+
+export interface AdminInvitation {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  invited_by?: string;
+  team_name: string;
+  workspace_name: string;
+  sent_at: string;
+  expires_at: string;
+}
+
+export interface AdminPermission {
+  id: string;
+  label: string;
+  description: string;
+  owner: boolean;
+  admin: boolean;
+  member: boolean;
+  viewer: boolean;
+}
+
+export interface AdminFeatureToggle {
+  id: string;
+  label: string;
+  description: string;
+  enabled: boolean;
+  category: string;
+}
+
+export interface AdminConfiguration {
+  app_name: string;
+  default_language: string;
+  timezone: string;
+  support_email: string;
+  default_workspace_color: string;
+  default_member_role: string;
+  max_members_per_workspace: number;
+  auto_create_project: boolean;
+  github_enabled: boolean;
+  github_org: string;
+  notifications_enabled: boolean;
+  email_notifications: boolean;
+  session_timeout_minutes: number;
+  min_password_length: number;
+  require_mfa: boolean;
+  allowed_domains: string;
+  max_login_attempts: number;
+  lockout_duration_minutes: number;
+}
+
+export interface CreateInvitationRequest {
+  email: string;
+  role: string;
+  workspace_id: string;
+  team_id?: string;
+}
+
+// =============================================================================
+// Admin API
+// =============================================================================
+
+export const adminApi = {
+  // Dashboard
+  getStats: async (workspaceId: string): Promise<AdminStats> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/stats`);
+    return handleApiResponse<AdminStats>(response);
+  },
+
+  getActivity: async (workspaceId: string): Promise<AdminActivity[]> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/activity`);
+    return handleApiResponse<AdminActivity[]>(response);
+  },
+
+  // Users
+  listUsers: async (workspaceId: string): Promise<AdminUser[]> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/users`);
+    return handleApiResponse<AdminUser[]>(response);
+  },
+
+  updateUserStatus: async (workspaceId: string, userId: string, status: string): Promise<AdminUser> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/users/${userId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    });
+    return handleApiResponse<AdminUser>(response);
+  },
+
+  updateUserRole: async (workspaceId: string, userId: string, role: string): Promise<AdminUser> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/users/${userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    });
+    return handleApiResponse<AdminUser>(response);
+  },
+
+  removeUser: async (workspaceId: string, userId: string): Promise<void> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/users/${userId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new ApiError(error.message || 'Failed to remove user', response.status);
+    }
+  },
+
+  // Invitations
+  listInvitations: async (workspaceId: string): Promise<AdminInvitation[]> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/invitations`);
+    return handleApiResponse<AdminInvitation[]>(response);
+  },
+
+  createInvitation: async (workspaceId: string, data: CreateInvitationRequest): Promise<AdminInvitation> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/invitations`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<AdminInvitation>(response);
+  },
+
+  resendInvitation: async (workspaceId: string, invitationId: string): Promise<AdminInvitation> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/invitations/${invitationId}/resend`, {
+      method: 'POST',
+    });
+    return handleApiResponse<AdminInvitation>(response);
+  },
+
+  revokeInvitation: async (workspaceId: string, invitationId: string): Promise<void> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/invitations/${invitationId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new ApiError(error.message || 'Failed to revoke invitation', response.status);
+    }
+  },
+
+  // Permissions
+  getPermissions: async (workspaceId: string): Promise<AdminPermission[]> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/permissions`);
+    return handleApiResponse<AdminPermission[]>(response);
+  },
+
+  updatePermission: async (workspaceId: string, permissionId: string, role: string, enabled: boolean): Promise<AdminPermission> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/permissions/${permissionId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ role, enabled }),
+    });
+    return handleApiResponse<AdminPermission>(response);
+  },
+
+  getFeatures: async (workspaceId: string): Promise<AdminFeatureToggle[]> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/features`);
+    return handleApiResponse<AdminFeatureToggle[]>(response);
+  },
+
+  updateFeature: async (workspaceId: string, featureId: string, enabled: boolean): Promise<AdminFeatureToggle> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/features/${featureId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ enabled }),
+    });
+    return handleApiResponse<AdminFeatureToggle>(response);
+  },
+
+  // Configuration
+  getConfiguration: async (workspaceId: string): Promise<AdminConfiguration> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/configuration`);
+    return handleApiResponse<AdminConfiguration>(response);
+  },
+
+  updateConfiguration: async (workspaceId: string, config: AdminConfiguration): Promise<AdminConfiguration> => {
+    const response = await makeRequest(`/api/admin/${workspaceId}/configuration`, {
+      method: 'PUT',
+      body: JSON.stringify({ config }),
+    });
+    return handleApiResponse<AdminConfiguration>(response);
+  },
+};
