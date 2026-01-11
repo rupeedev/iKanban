@@ -21,10 +21,8 @@ import {
   Settings,
   BookOpen,
   MessageCircleQuestion,
-  MessageCircle,
   Menu,
   Plus,
-  LogOut,
   LogIn,
   Github,
   RefreshCw,
@@ -53,32 +51,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { oauthApi, teamsApi } from '@/lib/api';
+import { teamsApi } from '@/lib/api';
 import { useWorkspaceGitHubConnection, useWorkspaceGitHubMutations } from '@/hooks/useWorkspaceGitHub';
 import { PeopleOnlineBadge, TeamChatPanel } from '@/components/chat';
+import { SupportDialog } from '@/components/dialogs/global/SupportDialog';
 
 const CLERK_ENABLED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
-
-const EXTERNAL_LINKS = [
-  {
-    label: 'Docs',
-    icon: BookOpen,
-    href: 'https://vibekanban.com/docs',
-  },
-  {
-    label: 'Support',
-    icon: MessageCircleQuestion,
-    href: 'https://github.com/rupeedev/iKanban/issues',
-  },
-  {
-    label: 'Discord',
-    icon: MessageCircle,
-    href: 'https://discord.gg/AC4nwVtJM3',
-  },
+const INTERNAL_NAV = [
+  { label: 'Projects', icon: FolderOpen, to: '/projects' },
+  { label: 'Docs', icon: BookOpen, to: '/docs' },
 ];
 
 function NavDivider() {
@@ -97,7 +80,7 @@ export function Navbar() {
   const { projectId, project } = useProject();
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
-  const { loginStatus, reloadSystem } = useUserSystem();
+  const { loginStatus } = useUserSystem();
   const { teams } = useTeams();
 
   const { data: repos } = useProjectRepos(projectId);
@@ -113,7 +96,7 @@ export function Navbar() {
     },
     [registerInputRef]
   );
-  const { t } = useTranslation(['tasks', 'common']);
+  const { t } = useTranslation(['tasks']);
   // Navbar is global, but the share tasks toggle only makes sense on the tasks route
   const isTasksRoute = /^\/projects\/[^/]+\/tasks/.test(location.pathname);
   const showSharedTasks = searchParams.get('shared') !== 'off';
@@ -141,22 +124,6 @@ export function Navbar() {
 
   const handleOpenInIDE = () => {
     handleOpenInEditor();
-  };
-
-  const handleOpenOAuth = async () => {
-    const profile = await OAuthDialog.show();
-    if (profile) {
-      await reloadSystem();
-    }
-  };
-
-  const handleOAuthLogout = async () => {
-    try {
-      await oauthApi.logout();
-      await reloadSystem();
-    } catch (err) {
-      console.error('Error logging out:', err);
-    }
   };
 
   const isOAuthLoggedIn = loginStatus?.status === 'loggedin';
@@ -441,35 +408,10 @@ export function Navbar() {
 
                   <DropdownMenuSeparator />
 
-                  {EXTERNAL_LINKS.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <DropdownMenuItem key={item.href} asChild>
-                        <a
-                          href={item.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Icon className="mr-2 h-4 w-4" />
-                          {item.label}
-                        </a>
-                      </DropdownMenuItem>
-                    );
-                  })}
-
-                  <DropdownMenuSeparator />
-
-                  {isOAuthLoggedIn ? (
-                    <DropdownMenuItem onSelect={handleOAuthLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      {t('common:signOut')}
-                    </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem onSelect={handleOpenOAuth}>
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Sign in
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuItem onSelect={() => SupportDialog.show()}>
+                    <MessageCircleQuestion className="mr-2 h-4 w-4" />
+                    Support
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

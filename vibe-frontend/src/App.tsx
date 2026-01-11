@@ -13,6 +13,7 @@ import { JoinTeam } from '@/pages/JoinTeam';
 import { NewWorkspace } from '@/pages/workspace';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
 import { About } from '@/pages/About';
+import { DocsPage } from '@/pages/DocsPage';
 import { Views } from '@/pages/Views';
 import { LandingPage } from '@/pages/LandingPage';
 import { SignInPage, SignUpPage } from '@/pages/auth';
@@ -168,6 +169,7 @@ function AppContent() {
               {/* Public routes - no authentication required */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/about" element={<About />} />
+              <Route path="/docs" element={<DocsPage />} />
 
               {/* Auth pages - centered sign-in/sign-up */}
               <Route path="/sign-in/*" element={<SignInPage />} />
