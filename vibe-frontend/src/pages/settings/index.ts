@@ -6,3 +6,4 @@ export { WorkspaceSettings } from './WorkspaceSettings';
 export { AgentSettings } from './AgentSettings';
 export { McpSettings } from './McpSettings';
 export { ApiKeysSettings } from './ApiKeysSettings';
+export { AiProviderKeysSettings } from './AiProviderKeysSettings';
