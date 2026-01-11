@@ -1,5 +1,4 @@
 import { useCallback, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +20,12 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useClerkUser } from '@/hooks/auth/useClerkAuth';
 import { useTaskComments } from '@/hooks/useTaskComments';
 import { useTaskDocumentLinks } from '@/hooks/useTaskDocumentLinks';
+import { useAgentMentions } from '@/hooks/useAgentMentions';
+import { useAttemptCreation } from '@/hooks/useAttemptCreation';
+import { useProjectRepos, useNavigateWithSearch } from '@/hooks';
+import { useRepoBranchSelection } from '@/hooks/useRepoBranchSelection';
 import { tasksApi } from '@/lib/api';
+import { paths } from '@/lib/paths';
 import { CommentEditor, CommentList } from '@/components/comments';
 import { LinkDocumentsDialog } from '@/components/dialogs/issues/LinkDocumentsDialog';
 import { cn } from '@/lib/utils';
@@ -61,13 +65,27 @@ export function IssueDetailPanel({
   onClose,
   onUpdate,
 }: IssueDetailPanelProps) {
-  const navigate = useNavigate();
+  const navigate = useNavigateWithSearch();
   const { teamsById } = useTeams();
   const team = teamId ? teamsById[teamId] : null;
 
   // Get user info directly from Clerk (more reliable than loginStatus.profile)
   const { user } = useClerkUser();
   const { members } = useTeamMembers(teamId);
+
+  // AI Agent integration hooks
+  const { parseMentions, resolveMentionToProfile } = useAgentMentions();
+  const { data: projectRepos = [] } = useProjectRepos(issue.project_id);
+  const { getWorkspaceRepoInputs } = useRepoBranchSelection({
+    repos: projectRepos,
+    enabled: projectRepos.length > 0,
+  });
+  const { createAttempt, isCreating: isCreatingAttempt } = useAttemptCreation({
+    taskId: issue.id,
+    onSuccess: (attempt) => {
+      navigate(paths.attempt(issue.project_id, issue.id, attempt.id));
+    },
+  });
 
   // Extract user info from Clerk user
   const currentUser = useMemo(() => {
@@ -178,6 +196,10 @@ export function IssueDetailPanel({
 
   const handleSubmitComment = useCallback(
     async (content: string, isInternal: boolean) => {
+      // 1. Parse @mention from content
+      const { agent, cleanPrompt } = parseMentions(content);
+
+      // 2. Always save the comment (with original content including @mention)
       await createComment({
         content,
         is_internal: isInternal,
@@ -185,13 +207,43 @@ export function IssueDetailPanel({
         author_email: currentUser.email,
         author_id: currentUser.id,
       });
+
+      // 3. If valid @agent mention and clean prompt exists, start AI execution
+      if (agent && cleanPrompt && projectRepos.length > 0) {
+        const profile = resolveMentionToProfile(agent);
+        if (profile) {
+          try {
+            const repos = getWorkspaceRepoInputs();
+            await createAttempt({
+              profile,
+              repos,
+              prompt: cleanPrompt,
+            });
+            // Navigation happens in onSuccess callback
+          } catch (err) {
+            console.error('Failed to create AI attempt:', err);
+            // Comment is already saved, so user sees their comment
+          }
+        }
+      }
     },
-    [createComment, currentUser]
+    [
+      createComment,
+      currentUser,
+      parseMentions,
+      resolveMentionToProfile,
+      projectRepos.length,
+      getWorkspaceRepoInputs,
+      createAttempt,
+    ]
   );
 
   const handleSubmitAndClose = useCallback(
     async (content: string, isInternal: boolean) => {
-      // First add the comment
+      // 1. Parse @mention from content
+      const { agent, cleanPrompt } = parseMentions(content);
+
+      // 2. Add the comment
       await createComment({
         content,
         is_internal: isInternal,
@@ -200,7 +252,7 @@ export function IssueDetailPanel({
         author_id: currentUser.id,
       });
 
-      // Then close the issue (set status to done)
+      // 3. Close the issue (set status to done)
       await tasksApi.update(issue.id, {
         title: issue.title,
         description: issue.description,
@@ -213,8 +265,36 @@ export function IssueDetailPanel({
       });
 
       if (onUpdate) await onUpdate();
+
+      // 4. If valid @agent mention and clean prompt exists, start AI execution
+      if (agent && cleanPrompt && projectRepos.length > 0) {
+        const profile = resolveMentionToProfile(agent);
+        if (profile) {
+          try {
+            const repos = getWorkspaceRepoInputs();
+            await createAttempt({
+              profile,
+              repos,
+              prompt: cleanPrompt,
+            });
+            // Navigation happens in onSuccess callback
+          } catch (err) {
+            console.error('Failed to create AI attempt:', err);
+          }
+        }
+      }
     },
-    [createComment, currentUser, issue, onUpdate]
+    [
+      createComment,
+      currentUser,
+      issue,
+      onUpdate,
+      parseMentions,
+      resolveMentionToProfile,
+      projectRepos.length,
+      getWorkspaceRepoInputs,
+      createAttempt,
+    ]
   );
 
   const handleUpdateComment = useCallback(
@@ -499,7 +579,7 @@ export function IssueDetailPanel({
               <CommentEditor
                 onSubmit={handleSubmitComment}
                 onSubmitAndClose={handleSubmitAndClose}
-                isSubmitting={isCreating}
+                isSubmitting={isCreating || isCreatingAttempt}
                 showCloseButton={issue.status !== 'done'}
               />
             </TabsContent>
