@@ -228,9 +228,9 @@ export function ProjectTasks() {
 
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(
-    taskId,
+    selectedTask?.id,
     {
-      enabled: !!taskId && isLatest,
+      enabled: !!selectedTask && isLatest,
     }
   );
 
