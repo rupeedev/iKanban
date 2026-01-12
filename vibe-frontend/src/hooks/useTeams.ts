@@ -66,7 +66,7 @@ export function useTeams(): UseTeamsResult {
   );
 
   const refresh = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey });
+    await queryClient.invalidateQueries({ queryKey, refetchType: 'none' });
   }, [queryClient, queryKey]);
 
   const createMutation = useMutation({

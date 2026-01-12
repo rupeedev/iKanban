@@ -27,7 +27,7 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
     mutationFn: (data: CreateProject) => projectsApi.create(data),
     onSuccess: (project: Project) => {
       queryClient.setQueryData(['project', project.id], project);
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'], refetchType: 'none' });
       options?.onCreateSuccess?.(project);
     },
     onError: (err) => {
@@ -79,13 +79,14 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
         return old.map((p) => (p.id === project.id ? project : p));
       });
 
-      // Invalidate to ensure fresh data from server
-      queryClient.invalidateQueries({ queryKey: ['project', project.id] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      // Invalidate to ensure fresh data from server - mark stale but don't refetch immediately
+      queryClient.invalidateQueries({ queryKey: ['project', project.id], refetchType: 'none' });
+      queryClient.invalidateQueries({ queryKey: ['projects'], refetchType: 'none' });
 
       // Invalidate organization projects queries since linking affects remote projects
       queryClient.invalidateQueries({
         queryKey: ['organizations'],
+        refetchType: 'none',
         predicate: (query) => {
           const key = query.queryKey;
           return (
@@ -120,13 +121,14 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
         return old.map((p) => (p.id === project.id ? project : p));
       });
 
-      // Invalidate to ensure fresh data from server
-      queryClient.invalidateQueries({ queryKey: ['project', project.id] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      // Invalidate to ensure fresh data from server - mark stale but don't refetch immediately
+      queryClient.invalidateQueries({ queryKey: ['project', project.id], refetchType: 'none' });
+      queryClient.invalidateQueries({ queryKey: ['projects'], refetchType: 'none' });
 
       // Invalidate organization projects queries since linking affects remote projects
       queryClient.invalidateQueries({
         queryKey: ['organizations'],
+        refetchType: 'none',
         predicate: (query) => {
           const key = query.queryKey;
           return (
@@ -155,12 +157,13 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
         return old.map((p) => (p.id === project.id ? project : p));
       });
 
-      // Invalidate to ensure fresh data from server
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      // Invalidate to ensure fresh data from server - mark stale but don't refetch immediately
+      queryClient.invalidateQueries({ queryKey: ['projects'], refetchType: 'none' });
 
       // Invalidate organization projects queries since unlinking affects remote projects
       queryClient.invalidateQueries({
         queryKey: ['organizations'],
+        refetchType: 'none',
         predicate: (query) => {
           const key = query.queryKey;
           return (

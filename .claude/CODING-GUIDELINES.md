@@ -330,12 +330,18 @@ components/
 
 ---
 
-## Lessons Learned (IKA-76)
+## Lessons Learned (IKA-76, IKA-77)
 
 **Issue:** 429 rate limiting blocked entire team from using app.
 
-**Root Cause:** Direct `teamsApi.getProjects()` call in `useEffect` bypassed TanStack Query, causing duplicate requests on every render.
+**Root Cause #1 (IKA-76):** Direct `teamsApi.getProjects()` call in `useEffect` bypassed TanStack Query, causing duplicate requests on every render.
 
-**Fix:** Replace with `useTeamProjects()` hook + use `refetchType: 'none'` in query invalidation.
+**Root Cause #2 (IKA-77):** 30+ files had `invalidateQueries()` calls without `refetchType: 'none'`, causing cascade refetches that triggered 429 errors.
 
-**Prevention:** Always use TanStack Query hooks for API calls. Never use direct API calls in useEffect.
+**Fix (IKA-76):** Replace with `useTeamProjects()` hook.
+
+**Fix (IKA-77):** Add `refetchType: 'none'` to ALL `invalidateQueries()` calls (100+ instances across 30+ files).
+
+**Prevention:**
+1. Always use TanStack Query hooks for API calls. Never use direct API calls in useEffect.
+2. Always add `refetchType: 'none'` to `invalidateQueries()` calls - this marks queries as stale without triggering immediate refetch cascades.

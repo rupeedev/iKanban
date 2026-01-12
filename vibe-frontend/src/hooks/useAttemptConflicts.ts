@@ -10,6 +10,7 @@ export function useAttemptConflicts(attemptId?: string, repoId?: string) {
     await attemptsApi.abortConflicts(attemptId, { repo_id: repoId });
     await queryClient.invalidateQueries({
       queryKey: ['branchStatus', attemptId],
+      refetchType: 'none',
     });
   }, [attemptId, repoId, queryClient]);
 

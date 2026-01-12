@@ -39,16 +39,19 @@ export function useChangeTargetBranch(
       if (attemptId) {
         queryClient.invalidateQueries({
           queryKey: ['branchStatus', attemptId],
+          refetchType: 'none',
         });
         // Invalidate taskAttempt query to refresh attempt.target_branch
         queryClient.invalidateQueries({
           queryKey: ['taskAttempt', attemptId],
+          refetchType: 'none',
         });
       }
 
       if (repoId) {
         queryClient.invalidateQueries({
           queryKey: repoBranchKeys.byRepo(repoId),
+          refetchType: 'none',
         });
       }
 
@@ -59,6 +62,7 @@ export function useChangeTargetBranch(
       if (attemptId) {
         queryClient.invalidateQueries({
           queryKey: ['branchStatus', attemptId],
+          refetchType: 'none',
         });
       }
       onError?.(err);

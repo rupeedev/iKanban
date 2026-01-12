@@ -72,11 +72,11 @@ export function useInbox(): UseInboxResult {
   });
 
   const refresh = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: inboxKeys.items() });
+    await queryClient.invalidateQueries({ queryKey: inboxKeys.items(), refetchType: 'none' });
   }, [queryClient]);
 
   const refreshSummary = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: inboxKeys.summary() });
+    await queryClient.invalidateQueries({ queryKey: inboxKeys.summary(), refetchType: 'none' });
   }, [queryClient]);
 
   // Mutations
@@ -86,7 +86,7 @@ export function useInbox(): UseInboxResult {
       queryClient.setQueryData<InboxItem[]>(inboxKeys.items(), (old) =>
         old ? [newItem, ...old] : [newItem]
       );
-      queryClient.invalidateQueries({ queryKey: inboxKeys.summary() });
+      queryClient.invalidateQueries({ queryKey: inboxKeys.summary(), refetchType: 'none' });
     },
   });
 
@@ -96,7 +96,7 @@ export function useInbox(): UseInboxResult {
       queryClient.setQueryData<InboxItem[]>(inboxKeys.items(), (old) =>
         old?.map((item) => (item.id === updatedItem.id ? updatedItem : item)) ?? []
       );
-      queryClient.invalidateQueries({ queryKey: inboxKeys.summary() });
+      queryClient.invalidateQueries({ queryKey: inboxKeys.summary(), refetchType: 'none' });
     },
   });
 
@@ -106,7 +106,7 @@ export function useInbox(): UseInboxResult {
       queryClient.setQueryData<InboxItem[]>(inboxKeys.items(), (old) =>
         old?.map((item) => ({ ...item, is_read: true })) ?? []
       );
-      queryClient.invalidateQueries({ queryKey: inboxKeys.summary() });
+      queryClient.invalidateQueries({ queryKey: inboxKeys.summary(), refetchType: 'none' });
     },
   });
 
@@ -116,7 +116,7 @@ export function useInbox(): UseInboxResult {
       queryClient.setQueryData<InboxItem[]>(inboxKeys.items(), (old) =>
         old?.filter((item) => item.id !== itemId) ?? []
       );
-      queryClient.invalidateQueries({ queryKey: inboxKeys.summary() });
+      queryClient.invalidateQueries({ queryKey: inboxKeys.summary(), refetchType: 'none' });
     },
   });
 
