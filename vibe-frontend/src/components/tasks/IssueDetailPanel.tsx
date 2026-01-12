@@ -1,34 +1,16 @@
-import { useCallback, useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  X,
-  ExternalLink,
-  ChevronRight,
-  MessageSquare,
-  FileText,
-  Activity,
-  Link as LinkIcon,
-  Paperclip,
-  Trash2,
-} from 'lucide-react';
+import { X, ExternalLink, ChevronRight, MessageSquare, FileText, Activity } from 'lucide-react';
 import { useTeams } from '@/hooks/useTeams';
-import { useTeamMembers } from '@/hooks/useTeamMembers';
-import { useClerkUser } from '@/hooks/auth/useClerkAuth';
-import { useTaskComments } from '@/hooks/useTaskComments';
-import { useTaskDocumentLinks } from '@/hooks/useTaskDocumentLinks';
-import { useAgentMentions } from '@/hooks/useAgentMentions';
-import { useAttemptCreation } from '@/hooks/useAttemptCreation';
-import { useProjectRepos, useNavigateWithSearch } from '@/hooks';
-import { useRepoBranchSelection } from '@/hooks/useRepoBranchSelection';
+import { useIssueCommentHandlers } from '@/hooks/useIssueCommentHandlers';
 import { tasksApi } from '@/lib/api';
-import { paths } from '@/lib/paths';
-import { toast } from 'sonner';
 import { CommentEditor, CommentList } from '@/components/comments';
-import { LinkDocumentsDialog } from '@/components/dialogs/issues/LinkDocumentsDialog';
+import { IssueAttemptsSection } from '@/components/tasks/IssueAttemptsSection';
+import { IssueLinkedDocuments } from '@/components/tasks/IssueLinkedDocuments';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 import { PrioritySelector, type PriorityValue } from '@/components/selectors/PrioritySelector';
@@ -41,7 +23,6 @@ interface IssueDetailPanelProps {
   onUpdate?: () => Promise<void>;
 }
 
-// Status colors
 const STATUS_COLORS: Record<TaskStatus, { bg: string; text: string }> = {
   todo: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-700 dark:text-gray-300' },
   inprogress: { bg: 'bg-yellow-100 dark:bg-yellow-900', text: 'text-yellow-700 dark:text-yellow-300' },
@@ -58,7 +39,6 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
   cancelled: 'Cancelled',
 };
 
-
 export function IssueDetailPanel({
   issue,
   teamId,
@@ -66,77 +46,30 @@ export function IssueDetailPanel({
   onClose,
   onUpdate,
 }: IssueDetailPanelProps) {
-  const navigate = useNavigateWithSearch();
   const { teamsById } = useTeams();
   const team = teamId ? teamsById[teamId] : null;
 
-  // Get user info directly from Clerk (more reliable than loginStatus.profile)
-  const { user } = useClerkUser();
-  const { members } = useTeamMembers(teamId);
-
-  // AI Agent integration hooks
-  const { parseMentions, resolveMentionToProfile } = useAgentMentions();
-  const { data: projectRepos = [] } = useProjectRepos(issue.project_id);
-  const { getWorkspaceRepoInputs } = useRepoBranchSelection({
-    repos: projectRepos,
-    enabled: projectRepos.length > 0,
-  });
-  const { createAttempt, isCreating: isCreatingAttempt } = useAttemptCreation({
-    taskId: issue.id,
-    onSuccess: (attempt) => {
-      navigate(paths.attempt(issue.project_id, issue.id, attempt.id));
-    },
-  });
-
-  // Extract user info from Clerk user
-  const currentUser = useMemo(() => {
-    if (!user) {
-      return { id: null, name: 'Unknown', email: '' };
-    }
-
-    const userEmail = user.primaryEmailAddress?.emailAddress || '';
-    const userName = user.fullName || user.firstName || userEmail.split('@')[0] || 'Unknown';
-
-    // Try to find matching team member to get their member ID
-    const matchingMember = members?.find(m => m.email === userEmail);
-
-    return {
-      id: matchingMember?.id ?? null,
-      // Use team member's display_name if available, otherwise Clerk's name
-      name: matchingMember?.display_name || userName,
-      email: userEmail,
-    };
-  }, [user, members]);
-
+  // Local state for editing
   const [title, setTitle] = useState(issue.title);
   const [description, setDescription] = useState(issue.description || '');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showLinkDocsDialog, setShowLinkDocsDialog] = useState(false);
 
-  // Document links
-  const {
-    links: linkedDocuments,
-    isLoading: linksLoading,
-    linkDocuments,
-    unlinkDocument,
-    isLinking,
-    isUnlinking,
-  } = useTaskDocumentLinks(issue.id);
-
-  // Comments with caching (staleTime configured in hook)
+  // Comment handlers from custom hook
   const {
     comments,
-    isLoading: commentsLoading,
-    isFetching: commentsFetching,
-    createComment,
-    updateComment,
-    deleteComment,
+    commentsLoading,
+    commentsFetching,
     isCreating,
     isUpdating,
     isDeleting,
-  } = useTaskComments(issue.id);
+    isCreatingAttempt,
+    handleSubmitComment,
+    handleSubmitAndClose,
+    handleUpdateComment,
+    handleDeleteComment,
+  } = useIssueCommentHandlers({ issue, teamId, onUpdate });
 
   const handleSaveTitle = async () => {
     if (!title.trim() || title === issue.title) {
@@ -144,7 +77,6 @@ export function IssueDetailPanel({
       setIsEditingTitle(false);
       return;
     }
-
     setIsSaving(true);
     try {
       await tasksApi.update(issue.id, {
@@ -172,7 +104,6 @@ export function IssueDetailPanel({
       setIsEditingDescription(false);
       return;
     }
-
     setIsSaving(true);
     try {
       await tasksApi.update(issue.id, {
@@ -194,156 +125,6 @@ export function IssueDetailPanel({
       setIsEditingDescription(false);
     }
   };
-
-  const handleSubmitComment = useCallback(
-    async (content: string, isInternal: boolean) => {
-      // 1. Parse @mention from content
-      const { agent, cleanPrompt } = parseMentions(content);
-
-      // 2. Always save the comment (with original content including @mention)
-      await createComment({
-        content,
-        is_internal: isInternal,
-        author_name: currentUser.name,
-        author_email: currentUser.email,
-        author_id: currentUser.id,
-      });
-
-      // 3. If valid @agent mention and clean prompt exists, start AI execution
-      if (agent && cleanPrompt) {
-        // Check if project has repos configured
-        if (projectRepos.length === 0) {
-          toast.info('Comment saved', {
-            description: 'AI agent requires a project with repositories configured.',
-          });
-          return;
-        }
-
-        const profile = resolveMentionToProfile(agent);
-        if (!profile) {
-          toast.info('Comment saved', {
-            description: `Agent "${agent.displayName}" is not available. Check your AI provider keys.`,
-          });
-          return;
-        }
-
-        try {
-          const repos = getWorkspaceRepoInputs();
-          await createAttempt({
-            profile,
-            repos,
-            prompt: cleanPrompt,
-          });
-          // Navigation happens in onSuccess callback
-        } catch (err) {
-          console.error('Failed to create AI attempt:', err);
-          toast.error('Failed to start AI agent', {
-            description: 'Comment was saved. Please try again.',
-          });
-        }
-      }
-    },
-    [
-      createComment,
-      currentUser,
-      parseMentions,
-      resolveMentionToProfile,
-      projectRepos.length,
-      getWorkspaceRepoInputs,
-      createAttempt,
-    ]
-  );
-
-  const handleSubmitAndClose = useCallback(
-    async (content: string, isInternal: boolean) => {
-      // 1. Parse @mention from content
-      const { agent, cleanPrompt } = parseMentions(content);
-
-      // 2. Add the comment
-      await createComment({
-        content,
-        is_internal: isInternal,
-        author_name: currentUser.name,
-        author_email: currentUser.email,
-        author_id: currentUser.id,
-      });
-
-      // 3. Close the issue (set status to done)
-      await tasksApi.update(issue.id, {
-        title: issue.title,
-        description: issue.description,
-        status: 'done',
-        parent_workspace_id: issue.parent_workspace_id,
-        image_ids: null,
-        priority: issue.priority,
-        due_date: issue.due_date,
-        assignee_id: issue.assignee_id,
-      });
-
-      if (onUpdate) await onUpdate();
-
-      // 4. If valid @agent mention and clean prompt exists, start AI execution
-      if (agent && cleanPrompt) {
-        if (projectRepos.length === 0) {
-          toast.info('Issue closed', {
-            description: 'AI agent requires a project with repositories configured.',
-          });
-          return;
-        }
-
-        const profile = resolveMentionToProfile(agent);
-        if (!profile) {
-          toast.info('Issue closed', {
-            description: `Agent "${agent.displayName}" is not available. Check your AI provider keys.`,
-          });
-          return;
-        }
-
-        try {
-          const repos = getWorkspaceRepoInputs();
-          await createAttempt({
-            profile,
-            repos,
-            prompt: cleanPrompt,
-          });
-          // Navigation happens in onSuccess callback
-        } catch (err) {
-          console.error('Failed to create AI attempt:', err);
-          toast.error('Failed to start AI agent', {
-            description: 'Issue was closed. Please try again.',
-          });
-        }
-      }
-    },
-    [
-      createComment,
-      currentUser,
-      issue,
-      onUpdate,
-      parseMentions,
-      resolveMentionToProfile,
-      projectRepos.length,
-      getWorkspaceRepoInputs,
-      createAttempt,
-    ]
-  );
-
-  const handleUpdateComment = useCallback(
-    async (commentId: string, content: string, isInternal: boolean) => {
-      await updateComment({
-        commentId,
-        payload: { content, is_internal: isInternal },
-      });
-    },
-    [updateComment]
-  );
-
-  const handleDeleteComment = useCallback(
-    async (commentId: string) => {
-      await deleteComment(commentId);
-    },
-    [deleteComment]
-  );
 
   const handlePriorityChange = async (priority: PriorityValue) => {
     setIsSaving(true);
@@ -368,8 +149,6 @@ export function IssueDetailPanel({
 
   const statusColors = STATUS_COLORS[issue.status as TaskStatus] || STATUS_COLORS.todo;
   const statusLabel = STATUS_LABELS[issue.status as TaskStatus] || issue.status;
-
-  // Check if we have cached comments (show them immediately, no loading state)
   const hasComments = comments.length > 0;
   const showCommentsLoading = commentsLoading && !hasComments;
 
@@ -489,77 +268,10 @@ export function IssueDetailPanel({
           </div>
 
           {/* Linked Documents */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-                <Paperclip className="h-3.5 w-3.5" />
-                Attachments
-                {linkedDocuments.length > 0 && (
-                  <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                    {linkedDocuments.length}
-                  </Badge>
-                )}
-              </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs gap-1"
-                onClick={() => setShowLinkDocsDialog(true)}
-                disabled={!teamId}
-              >
-                <LinkIcon className="h-3 w-3" />
-                Link
-              </Button>
-            </div>
-            {linksLoading ? (
-              <div className="text-sm text-muted-foreground p-2 border rounded-md bg-muted/20">
-                Loading...
-              </div>
-            ) : linkedDocuments.length === 0 ? (
-              <div
-                className="text-sm text-muted-foreground italic p-2 border rounded-md bg-muted/20 cursor-pointer hover:bg-muted/40"
-                onClick={() => teamId && setShowLinkDocsDialog(true)}
-              >
-                No documents linked yet. Click to add.
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {linkedDocuments.map((link) => (
-                  <div
-                    key={link.id}
-                    className="flex items-center justify-between p-2 rounded-md border bg-muted/10 hover:bg-muted/30 group cursor-pointer"
-                    onClick={() => teamId && navigate(`/teams/${teamId}/documents?doc=${link.document_id}`)}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileText className="h-4 w-4 text-indigo-500 dark:text-indigo-400 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm truncate text-indigo-600 dark:text-indigo-400 hover:underline">
-                          {link.document_title}
-                        </p>
-                        {link.folder_name && (
-                          <p className="text-xs text-muted-foreground truncate">
-                            {link.folder_name}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        unlinkDocument(link.document_id);
-                      }}
-                      disabled={isUnlinking}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <IssueLinkedDocuments issueId={issue.id} teamId={teamId} />
+
+          {/* ATTEMPTS section with Inline Prompt */}
+          <IssueAttemptsSection issueId={issue.id} projectId={issue.project_id} />
 
           {/* Tabs for Comments, Details, Activity */}
           <Tabs defaultValue="comments" className="w-full">
@@ -596,7 +308,6 @@ export function IssueDetailPanel({
             </TabsList>
 
             <TabsContent value="comments" className="mt-4 space-y-4">
-              {/* Comment list - show cached immediately */}
               <CommentList
                 comments={comments}
                 isLoading={showCommentsLoading}
@@ -605,8 +316,6 @@ export function IssueDetailPanel({
                 isUpdating={isUpdating}
                 isDeleting={isDeleting}
               />
-
-              {/* Comment editor */}
               <CommentEditor
                 onSubmit={handleSubmitComment}
                 onSubmitAndClose={handleSubmitAndClose}
@@ -643,25 +352,11 @@ export function IssueDetailPanel({
             </TabsContent>
 
             <TabsContent value="activity" className="mt-4">
-              <div className="text-sm text-muted-foreground">
-                Activity log coming soon...
-              </div>
+              <div className="text-sm text-muted-foreground">Activity log coming soon...</div>
             </TabsContent>
           </Tabs>
         </div>
       </div>
-
-      {/* Link Documents Dialog */}
-      {teamId && (
-        <LinkDocumentsDialog
-          open={showLinkDocsDialog}
-          onOpenChange={setShowLinkDocsDialog}
-          teamId={teamId}
-          existingLinks={linkedDocuments}
-          onLink={linkDocuments}
-          isLinking={isLinking}
-        />
-      )}
     </div>
   );
 }
