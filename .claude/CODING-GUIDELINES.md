@@ -575,62 +575,30 @@ components/
 
 ---
 
-## Lessons Learned (IKA-76, IKA-77, IKA-83, IKA-84)
+## Lessons Learned
 
-### Rate Limiting Issues (IKA-76, IKA-77, IKA-83)
+**Full incident details:** See `.claude/lessons-learned.md`
 
-**Issue:** 429 rate limiting blocked entire team from using app.
+### Quick Reference
 
-**Root Cause #1 (IKA-76):** Direct `teamsApi.getProjects()` call in `useEffect` bypassed TanStack Query, causing duplicate requests on every render.
+| Incident | Issue | Key Prevention |
+|----------|-------|----------------|
+| **IKA-76** | Direct API call in useEffect | Use TanStack Query hooks |
+| **IKA-77** | invalidateQueries cascade | Add `refetchType: 'none'` |
+| **IKA-83** | Retry amplified 429 errors | Use global QueryClient defaults |
+| **IKA-84** | URL slug passed to API | Resolve param to entity first |
+| **VIB-70** | Migration file modified | Never modify existing migrations |
 
-**Root Cause #2 (IKA-77):** 30+ files had `invalidateQueries()` calls without `refetchType: 'none'`, causing cascade refetches that triggered 429 errors.
+### Rate Limiting Prevention (IKA-76, IKA-77, IKA-83)
 
-**Root Cause #3 (IKA-83):** Global QueryClient defaults had `retry: 2` which retried 429 errors, amplifying rate limiting. Individual hooks were inconsistently adding rate limit protections.
+1. Always use TanStack Query hooks for API calls
+2. Always add `refetchType: 'none'` to `invalidateQueries()` calls
+3. Use global defaults - don't override in individual hooks
+4. Don't override `retry`, `refetchOnWindowFocus`, or `refetchOnReconnect`
 
-**Fix (IKA-76):** Replace with `useTeamProjects()` hook.
+### URL Parameter Prevention (IKA-84)
 
-**Fix (IKA-77):** Add `refetchType: 'none'` to ALL `invalidateQueries()` calls (100+ instances across 30+ files).
-
-**Fix (IKA-83):** Centralized rate limit handling in `main.tsx` QueryClient global defaults:
-- Added `isRateLimitError()` helper function
-- Modified `retry` to skip 429 errors globally
-- Added `refetchOnReconnect: false` to prevent burst on network restore
-- Removed redundant rate limit code from individual hooks
-
-**Prevention:**
-1. Always use TanStack Query hooks for API calls. Never use direct API calls in useEffect.
-2. Always add `refetchType: 'none'` to `invalidateQueries()` calls - this marks queries as stale without triggering immediate refetch cascades.
-3. **Use global defaults** - don't add rate limit handling to individual hooks. The `main.tsx` QueryClient already handles it for all queries.
-4. **Don't override** `retry`, `refetchOnWindowFocus`, or `refetchOnReconnect` in individual hooks unless you have a specific reason.
-
----
-
-### URL Slug vs UUID Issues (IKA-84)
-
-**Issue:** 400 Bad Request errors when viewing tasks via slug URLs.
-
-**Root Cause (IKA-84):** `useTaskAttempts(taskId)` was called with the raw URL parameter which could be a slug (e.g., `create-secure-and-ordered-data-storage-for-admin-data`) instead of a UUID. The API endpoint `/api/task-attempts?task_id=` expects a valid UUID.
-
-**Code Location:** `ProjectTasks.tsx` line 230-235
-
-```typescript
-// BEFORE (broken):
-const { taskId } = useParams();
-const { data } = useTaskAttempts(taskId, { enabled: !!taskId && isLatest });
-
-// AFTER (fixed):
-const { taskId } = useParams();
-const selectedTask = resolveTaskFromParam(taskId, tasks, tasksById);
-const { data } = useTaskAttempts(selectedTask?.id, { enabled: !!selectedTask && isLatest });
-```
-
-**Fix (IKA-84):** Use `selectedTask?.id` (resolved UUID) instead of raw `taskId` (could be slug).
-
-**Prevention:**
-1. **Never pass raw URL params to API calls** - always resolve to entity first using `resolveXFromParam()`.
-2. **Update `enabled` conditions** - check the resolved entity exists, not just the URL param.
-3. **Use resolver functions** from `lib/url-utils.ts`:
-   - `resolveTaskFromParam(param, tasks, tasksById)`
-   - `resolveProjectFromParam(param, projects, projectsById)`
-   - `resolveTeamFromParam(param, teams, teamsById)`
-4. **Remember:** URL params can be either UUIDs or slugs. APIs always expect UUIDs.
+1. Never pass raw `useParams()` values to API hooks
+2. Always resolve to entity first using `resolveXFromParam()`
+3. Update `enabled` conditions to check resolved entity
+4. Remember: URL params can be slugs OR UUIDs, APIs expect UUIDs

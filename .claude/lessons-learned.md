@@ -149,6 +149,91 @@ rm dev_assets/db.sqlite && make restart
 
 ---
 
+## Incident: IKA-84 URL Slug vs UUID API Errors (2026-01-12)
+
+### What Happened
+
+The console was flooded with 400 Bad Request errors when viewing tasks via slug URLs:
+```
+GET https://api.scholar.com/api/task-attempts?task_id=create-secure-and-ordered-data-storage-for-admin-data
+400 (Bad Request)
+```
+
+The API endpoint expects a UUID but was receiving a URL slug.
+
+### Root Cause
+
+In `ProjectTasks.tsx`, `useTaskAttempts()` was called with the raw URL parameter `taskId` from `useParams()`:
+
+```typescript
+// BROKEN CODE:
+const { taskId } = useParams();  // taskId = "create-secure-and-ordered-data-storage-for-admin-data"
+const { data } = useTaskAttempts(taskId, { enabled: !!taskId && isLatest });
+// API called with slug → 400 error
+```
+
+URL parameters can be either:
+- **UUID**: `a1b2c3d4-e5f6-7890-abcd-ef1234567890`
+- **Slug**: `create-secure-and-ordered-data-storage-for-admin-data`
+
+The API only accepts UUIDs, but the code was passing whatever came from the URL.
+
+### How It Was Fixed
+
+Use the resolved task entity instead of the raw URL param:
+
+```typescript
+// FIXED CODE:
+const { taskId } = useParams();
+const selectedTask = resolveTaskFromParam(taskId, tasks, tasksById);  // Resolves slug → entity
+const { data } = useTaskAttempts(selectedTask?.id, { enabled: !!selectedTask && isLatest });
+// API called with UUID → 200 OK
+```
+
+The `resolveTaskFromParam()` function (from `lib/url-utils.ts`) handles both UUIDs and slugs:
+1. If param is a UUID → looks up directly in `tasksById`
+2. If param is a slug → finds task by matching `generateSlug(task.title)`
+
+### Prevention Checklist
+
+Before passing any URL param to an API call:
+
+- [ ] **NEVER pass raw `useParams()` values to API hooks**
+- [ ] **Always resolve to entity first** using `resolveXFromParam()`:
+  - `resolveTaskFromParam(taskId, tasks, tasksById)`
+  - `resolveProjectFromParam(projectId, projects, projectsById)`
+  - `resolveTeamFromParam(teamId, teams, teamsById)`
+- [ ] **Update `enabled` conditions** to check resolved entity, not raw param
+- [ ] **Use `isUUID()` function** if you need to check param format
+
+### URL Parameter Flow
+
+```
+URL: /projects/my-project/tasks/my-task-slug
+                                     │
+                                     ▼
+                          useParams() → taskId = "my-task-slug"
+                                     │
+                                     ▼
+                    resolveTaskFromParam(taskId, tasks, tasksById)
+                                     │
+                                     ▼
+                          task = { id: "uuid-here", title: "My Task Slug" }
+                                     │
+                                     ▼
+                          useTaskAttempts(task?.id)  ← Always UUID!
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `lib/url-utils.ts` | Resolver functions (`resolveTaskFromParam`, etc.) |
+| `pages/ProjectTasks.tsx` | Where the bug was fixed |
+| `hooks/useTaskAttempts.ts` | Hook that makes the API call |
+
+---
+
 ## Template for Future Incidents
 
 ### Incident: [Title] (Date)
