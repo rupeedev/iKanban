@@ -93,7 +93,7 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.RAILWAY_GITHUB_BACKEND_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{
-              "query": "mutation { serviceInstanceUpdate(serviceId: \"${{ env.RAILWAY_SERVICE_ID }}\", input: { source: { image: \"${{ env.DOCKER_IMAGE }}:${{ github.sha }}\" } }) { id } }"
+              "query": "mutation { serviceInstanceUpdate(serviceId: \"${{ env.RAILWAY_SERVICE_ID }}\", input: { source: { image: \"${{ env.DOCKER_IMAGE }}:${{ github.sha }}\" } }) }"
             }')
 
           echo "API Response: $RESPONSE"
@@ -105,7 +105,12 @@ jobs:
             exit 1
           fi
 
-          echo "Successfully updated service image"
+          # Verify success (mutation returns true on success)
+          if echo "$RESPONSE" | grep -q '"serviceInstanceUpdate":true'; then
+            echo "Successfully updated service image - deployment triggered"
+          else
+            echo "::warning::Unexpected response format, but no errors detected"
+          fi
 
       - name: Wait for deployment to start
         run: sleep 5
