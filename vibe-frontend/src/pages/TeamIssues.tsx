@@ -9,11 +9,7 @@ import { tasksApi } from '@/lib/api';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { openIssueForm } from '@/lib/openIssueForm';
 
-import { useTeamIssues } from '@/hooks/useTeamIssues';
-import { useTeams } from '@/hooks/useTeams';
-import { useProjects } from '@/hooks/useProjects';
-import { useTeamMembers } from '@/hooks/useTeamMembers';
-import { useTeamProjects } from '@/hooks/useTeamProjects';
+import { useTeamDashboard } from '@/hooks/useTeamDashboard';
 
 import { TeamKanbanBoard } from '@/components/tasks/TeamKanbanBoard';
 import { InsightsPanel } from '@/components/tasks/InsightsPanel';
@@ -41,9 +37,18 @@ export function TeamIssues() {
   const { t } = useTranslation(['tasks', 'common']);
   const { teamId } = useParams<{ teamId: string }>();
 
-  const { resolveTeam, isLoading: teamsLoading } = useTeams();
-  const team = teamId ? resolveTeam(teamId) : null;
-  const { projects } = useProjects();
+  // Single aggregated API call - replaces 5+ separate hooks to prevent 429 rate limiting
+  const {
+    team,
+    members,
+    projects,
+    issues,
+    issuesById,
+    isLoading,
+    error,
+    refresh,
+  } = useTeamDashboard(teamId);
+
   const [showInsights, setShowInsights] = useState(false);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
 
@@ -58,12 +63,6 @@ export function TeamIssues() {
   // Use actual team ID for API calls
   const actualTeamId = team?.id;
 
-  // Fetch real team members from database
-  const { members } = useTeamMembers(actualTeamId);
-
-  // Fetch team projects using TanStack Query hook (prevents 429 rate limiting)
-  const { projectIds: teamProjectIds } = useTeamProjects(actualTeamId);
-
   // Transform team members to AssigneeSelector format
   const teamMembers: TeamMember[] = useMemo(() => {
     return members.map((m) => ({
@@ -74,18 +73,8 @@ export function TeamIssues() {
     }));
   }, [members]);
 
-  // Get the first project that belongs to this team (for issue creation)
-  const teamProjects = useMemo(() => {
-    return projects.filter((p) => teamProjectIds.includes(p.id));
-  }, [projects, teamProjectIds]);
-
-  const {
-    issues,
-    issuesById,
-    isLoading,
-    error,
-    refresh,
-  } = useTeamIssues(actualTeamId);
+  // Team projects are already filtered by the backend - use directly
+  const teamProjects = projects;
 
   const handleCreateIssue = useCallback(() => {
     // Open Linear-style issue form dialog
@@ -328,7 +317,7 @@ export function TeamIssues() {
     );
   }
 
-  if (isLoading || teamsLoading) {
+  if (isLoading) {
     return <Loader message={t('loading')} size={32} className="py-8" />;
   }
 

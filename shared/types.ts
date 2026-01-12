@@ -62,6 +62,18 @@ export type UpdateTeam = { name: string | null, identifier: string | null, icon:
 
 export type TeamProjectAssignment = { project_id: string, };
 
+/**
+ * Aggregated team dashboard response
+ * Returns all data needed for the TeamIssues page in a single request
+ */
+export type TeamDashboard = {
+  team: Team,
+  members: TeamMember[],
+  project_ids: string[],
+  projects: Project[],
+  issues: TaskWithAttemptStatus[],
+};
+
 export type TeamMemberRole = "viewer" | "contributor" | "maintainer" | "owner";
 
 export type TeamInvitationStatus = "pending" | "accepted" | "declined" | "expired";
