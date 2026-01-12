@@ -165,25 +165,26 @@ Before making any API call, check if a hook already exists:
 // - src/hooks/useTeamProjects.ts
 // - src/hooks/useTeamIssues.ts
 
-// If no hook exists, CREATE ONE with proper configuration:
+// If no hook exists, CREATE ONE - global defaults handle most protections:
 export function useMyData(id: string | undefined) {
   return useQuery({
     queryKey: ['mydata', id],
     queryFn: () => api.getData(id!),
     enabled: !!id,
-    staleTime: 5 * 60 * 1000,      // 5 minutes - prevents re-fetching
-    gcTime: 15 * 60 * 1000,        // 15 minutes cache retention
-    refetchOnWindowFocus: false,   // Don't refetch on tab focus
-    refetchOnReconnect: false,     // Don't refetch on reconnect
-    retry: (failureCount, error) => {
-      // NEVER retry 429 errors - it amplifies the problem
-      if (isRateLimitError(error)) return false;
-      return failureCount < 1;
-    },
-    retryDelay: 60000,             // 60 seconds if retry needed
+    // Only override staleTime if you need different behavior than global 30min default
+    staleTime: 5 * 60 * 1000,  // Optional: shorter staleTime for frequently changing data
   });
 }
 ```
+
+**IMPORTANT:** Global defaults in `main.tsx` already provide:
+- `staleTime: 30 minutes` - prevents excessive refetching
+- `gcTime: 1 hour` - cache retention
+- `refetchOnWindowFocus: false` - no refetch on tab focus
+- `refetchOnReconnect: false` - no burst of requests on reconnect
+- `retry` that skips 429 errors - never amplifies rate limiting
+
+**Do NOT duplicate these in individual hooks** unless you need different behavior.
 
 ### Rule 3: Use Targeted Query Invalidation
 
@@ -205,24 +206,37 @@ queryClient.invalidateQueries({
 });
 ```
 
-### Rule 4: Rate Limit Error Handling
+### Rule 4: Rate Limit Error Handling (Centralized)
+
+**Rate limit handling is now GLOBAL** - defined once in `main.tsx`:
 
 ```typescript
-// Helper function - use in all hooks
+// main.tsx - QueryClient global defaults (already configured)
 function isRateLimitError(error: unknown): boolean {
   if (error instanceof Error) {
-    const msg = error.message.toLowerCase();
-    return msg.includes('429') || msg.includes('too many requests');
+    return error.message.includes('429') || error.message.includes('Too Many Requests');
   }
   return false;
 }
 
-// In useQuery options:
-retry: (failureCount, error) => {
-  if (isRateLimitError(error)) return false;  // NEVER retry 429
-  return failureCount < 1;
-},
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 30,      // 30 minutes
+      gcTime: 1000 * 60 * 60,          // 1 hour
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      retry: (failureCount, error) => {
+        if (isRateLimitError(error)) return false;  // NEVER retry 429
+        return failureCount < 2;
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    },
+  },
+});
 ```
+
+**DO NOT add rate limit handling to individual hooks** - it's already inherited globally.
 
 ### Common Patterns That Cause 429 Errors
 
@@ -231,46 +245,43 @@ retry: (failureCount, error) => {
 | `useEffect` + direct API call | Bypasses cache | Use `useQuery` hook |
 | Multiple components fetching same data | Duplicate requests | Share query via hook |
 | `invalidateQueries()` without `refetchType` | Cascade refetch | Add `refetchType: 'none'` |
-| Retrying 429 errors | Amplifies problem | Check `isRateLimitError()` |
-| Missing `staleTime` | Refetches too often | Set to 5+ minutes |
-| `refetchOnWindowFocus: true` | Unexpected refetches | Set to `false` |
+| Overriding `retry` without 429 check | Amplifies problem | Use global default (don't override) |
+| Overriding `staleTime` to low value | Refetches too often | Use global 30min default or justify |
+| Overriding `refetchOnWindowFocus: true` | Unexpected refetches | Use global default (don't override) |
 
 ### Quick Reference: Safe API Call Pattern
 
 ```typescript
 // 1. Check if hook exists in src/hooks/
-// 2. If not, create hook with this template:
+// 2. If not, create a MINIMAL hook - global defaults handle protections:
 
 import { useQuery } from '@tanstack/react-query';
 import { myApi } from '@/lib/api';
-
-function isRateLimitError(error: unknown): boolean {
-  if (error instanceof Error) {
-    return error.message.includes('429') || error.message.includes('Too Many Requests');
-  }
-  return false;
-}
 
 export function useMyHook(id: string | undefined) {
   return useQuery({
     queryKey: ['resource', id],
     queryFn: () => myApi.get(id!),
     enabled: !!id,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    retry: (failureCount, error) => {
-      if (isRateLimitError(error)) return false;
-      return failureCount < 1;
-    },
-    retryDelay: 60000,
+    // Optional: override staleTime only if data changes more frequently
+    // staleTime: 5 * 60 * 1000,  // 5 min instead of global 30 min
   });
 }
 
 // 3. Use in component:
 const { data, isLoading, error } = useMyHook(id);
 ```
+
+**What you get automatically from global defaults (main.tsx):**
+| Setting | Value | Effect |
+|---------|-------|--------|
+| `staleTime` | 30 min | Data considered fresh, no refetch |
+| `gcTime` | 1 hour | Cache retained in memory |
+| `refetchOnWindowFocus` | false | No refetch on tab switch |
+| `refetchOnReconnect` | false | No burst on network restore |
+| `retry` | Skips 429 | Never amplifies rate limiting |
+
+**Only add options if you need DIFFERENT behavior than defaults.**
 
 ---
 
@@ -446,8 +457,8 @@ components/
 | Linter passes | `cargo clippy` | `pnpm lint` |
 | Types pass | `cargo check` | `pnpm check` |
 | **No direct API calls in useEffect** | N/A | Code review |
-| **useQuery hooks have staleTime** | N/A | Code review |
-| **invalidateQueries uses refetchType** | N/A | Code review |
+| **useQuery uses global defaults (don't override)** | N/A | Code review |
+| **invalidateQueries uses refetchType: 'none'** | N/A | Code review |
 | **Components handle isLoading state** | N/A | Code review |
 | **Components handle isError state** | N/A | Code review |
 | **Components handle empty/null data** | N/A | Code review |
@@ -455,7 +466,7 @@ components/
 
 ---
 
-## Lessons Learned (IKA-76, IKA-77)
+## Lessons Learned (IKA-76, IKA-77, IKA-83)
 
 **Issue:** 429 rate limiting blocked entire team from using app.
 
@@ -463,10 +474,20 @@ components/
 
 **Root Cause #2 (IKA-77):** 30+ files had `invalidateQueries()` calls without `refetchType: 'none'`, causing cascade refetches that triggered 429 errors.
 
+**Root Cause #3 (IKA-83):** Global QueryClient defaults had `retry: 2` which retried 429 errors, amplifying rate limiting. Individual hooks were inconsistently adding rate limit protections.
+
 **Fix (IKA-76):** Replace with `useTeamProjects()` hook.
 
 **Fix (IKA-77):** Add `refetchType: 'none'` to ALL `invalidateQueries()` calls (100+ instances across 30+ files).
 
+**Fix (IKA-83):** Centralized rate limit handling in `main.tsx` QueryClient global defaults:
+- Added `isRateLimitError()` helper function
+- Modified `retry` to skip 429 errors globally
+- Added `refetchOnReconnect: false` to prevent burst on network restore
+- Removed redundant rate limit code from individual hooks
+
 **Prevention:**
 1. Always use TanStack Query hooks for API calls. Never use direct API calls in useEffect.
 2. Always add `refetchType: 'none'` to `invalidateQueries()` calls - this marks queries as stale without triggering immediate refetch cascades.
+3. **Use global defaults** - don't add rate limit handling to individual hooks. The `main.tsx` QueryClient already handles it for all queries.
+4. **Don't override** `retry`, `refetchOnWindowFocus`, or `refetchOnReconnect` in individual hooks unless you have a specific reason.
