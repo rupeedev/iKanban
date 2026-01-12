@@ -19,26 +19,10 @@ export interface BidirectionalSyncResult {
 
 const QUERY_KEY = ['workspace', 'github'];
 
-// Helper to check if error is a rate limit (429)
-function isRateLimitError(error: unknown): boolean {
-  if (error instanceof Error) {
-    return error.message.includes('429') || error.message.includes('Too Many Requests');
-  }
-  return false;
-}
-
 export function useWorkspaceGitHubConnection() {
   return useQuery<GitHubConnectionWithRepos | null>({
     queryKey: QUERY_KEY,
     queryFn: () => teamsApi.getWorkspaceGitHubConnection(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes cache retention
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    retry: (failureCount, error) => {
-      if (isRateLimitError(error)) return false;
-      return failureCount < 1;
-    },
   });
 }
 
@@ -46,14 +30,6 @@ export function useWorkspaceGitHubRepositories() {
   return useQuery<GitHubRepository[]>({
     queryKey: [...QUERY_KEY, 'repos'],
     queryFn: () => teamsApi.getWorkspaceGitHubRepositories(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes cache retention
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    retry: (failureCount, error) => {
-      if (isRateLimitError(error)) return false;
-      return failureCount < 1;
-    },
   });
 }
 
@@ -62,14 +38,6 @@ export function useWorkspaceAvailableGitHubRepos(enabled = true) {
     queryKey: [...QUERY_KEY, 'available'],
     queryFn: () => teamsApi.getWorkspaceAvailableGitHubRepos(),
     enabled,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes cache retention
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    retry: (failureCount, error) => {
-      if (isRateLimitError(error)) return false;
-      return failureCount < 1;
-    },
   });
 }
 
