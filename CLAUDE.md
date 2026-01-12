@@ -146,3 +146,20 @@ Teams: `IKA` (frontend), `SCH` (backend)
 **Frontend:** React 18, Vite, TailwindCSS v4, Zustand, TanStack Query v5
 
 **Deploy:** GitHub Actions → Docker Hub → Railway
+
+## Troubleshooting
+
+**When encountering issues, ALWAYS check `.claude/lessons-learned.md` first.**
+
+| Issue Type | Reference |
+|------------|-----------|
+| Backend deployment not working | `.claude/lessons-learned.md` → IKA-87 (Railway image pull) |
+| New API endpoint returns 404 | `.claude/lessons-learned.md` → IKA-87 (Railway image pull) |
+| SQLx migration errors | `.claude/lessons-learned.md` → VIB-70 (SQLx migrations) |
+| API returns 400 Bad Request | `.claude/lessons-learned.md` → IKA-84 (URL slug vs UUID) |
+
+**Quick deployment fix:**
+```bash
+# If new backend code isn't deployed, force fresh image pull:
+gh workflow run quick-deploy-backend.yml --ref main -f image_tag=latest
+```
