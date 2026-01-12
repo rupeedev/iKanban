@@ -104,7 +104,6 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
 
   const { assignees } = useAssigneeUserNames({
     projectId: remoteProjectId || undefined,
-    sharedTasks: sharedTasksList,
   });
 
   const sharedTasksById = useMemo(() => {
