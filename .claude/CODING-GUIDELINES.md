@@ -130,6 +130,150 @@ pnpm check         # TypeScript type check passes
 
 ---
 
+## API Calls & TanStack Query (CRITICAL)
+
+**These rules prevent 429 rate limiting errors that block the entire team.**
+
+### Rule 1: NEVER Make Direct API Calls in useEffect
+
+```typescript
+// BAD - Direct API call bypasses TanStack Query caching
+useEffect(() => {
+  if (!teamId) return;
+  teamsApi.getProjects(teamId).then(setData).catch(console.error);
+}, [teamId]);
+
+// GOOD - Use TanStack Query hook for automatic caching & deduplication
+const { data } = useTeamProjects(teamId);
+```
+
+**Why this matters:**
+- Direct API calls fire on EVERY render/dependency change
+- No request deduplication (same request = multiple HTTP calls)
+- No cache hits (staleTime protection doesn't apply)
+- Causes 429 "Too Many Requests" errors under normal usage
+
+### Rule 2: Always Use Existing Hooks or Create New Ones
+
+Before making any API call, check if a hook already exists:
+
+```typescript
+// Check these locations for existing hooks:
+// - src/hooks/useTeams.ts
+// - src/hooks/useProjects.ts
+// - src/hooks/useTeamMembers.ts
+// - src/hooks/useTeamProjects.ts
+// - src/hooks/useTeamIssues.ts
+
+// If no hook exists, CREATE ONE with proper configuration:
+export function useMyData(id: string | undefined) {
+  return useQuery({
+    queryKey: ['mydata', id],
+    queryFn: () => api.getData(id!),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,      // 5 minutes - prevents re-fetching
+    gcTime: 15 * 60 * 1000,        // 15 minutes cache retention
+    refetchOnWindowFocus: false,   // Don't refetch on tab focus
+    refetchOnReconnect: false,     // Don't refetch on reconnect
+    retry: (failureCount, error) => {
+      // NEVER retry 429 errors - it amplifies the problem
+      if (isRateLimitError(error)) return false;
+      return failureCount < 1;
+    },
+    retryDelay: 60000,             // 60 seconds if retry needed
+  });
+}
+```
+
+### Rule 3: Use Targeted Query Invalidation
+
+```typescript
+// BAD - Invalidates ALL queries, causes cascade of refetches
+queryClient.invalidateQueries({ queryKey: ['teams'] });
+queryClient.invalidateQueries({ queryKey: ['projects'] });
+queryClient.invalidateQueries({ queryKey: ['issues'] });
+
+// GOOD - Mark stale but don't trigger immediate refetch
+queryClient.invalidateQueries({
+  queryKey: ['teams'],
+  refetchType: 'none'  // Refetch only when component needs data
+});
+
+// BETTER - Invalidate specific query
+queryClient.invalidateQueries({
+  queryKey: ['teams', specificTeamId, 'projects']
+});
+```
+
+### Rule 4: Rate Limit Error Handling
+
+```typescript
+// Helper function - use in all hooks
+function isRateLimitError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    return msg.includes('429') || msg.includes('too many requests');
+  }
+  return false;
+}
+
+// In useQuery options:
+retry: (failureCount, error) => {
+  if (isRateLimitError(error)) return false;  // NEVER retry 429
+  return failureCount < 1;
+},
+```
+
+### Common Patterns That Cause 429 Errors
+
+| Anti-Pattern | Problem | Fix |
+|--------------|---------|-----|
+| `useEffect` + direct API call | Bypasses cache | Use `useQuery` hook |
+| Multiple components fetching same data | Duplicate requests | Share query via hook |
+| `invalidateQueries()` without `refetchType` | Cascade refetch | Add `refetchType: 'none'` |
+| Retrying 429 errors | Amplifies problem | Check `isRateLimitError()` |
+| Missing `staleTime` | Refetches too often | Set to 5+ minutes |
+| `refetchOnWindowFocus: true` | Unexpected refetches | Set to `false` |
+
+### Quick Reference: Safe API Call Pattern
+
+```typescript
+// 1. Check if hook exists in src/hooks/
+// 2. If not, create hook with this template:
+
+import { useQuery } from '@tanstack/react-query';
+import { myApi } from '@/lib/api';
+
+function isRateLimitError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.message.includes('429') || error.message.includes('Too Many Requests');
+  }
+  return false;
+}
+
+export function useMyHook(id: string | undefined) {
+  return useQuery({
+    queryKey: ['resource', id],
+    queryFn: () => myApi.get(id!),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: (failureCount, error) => {
+      if (isRateLimitError(error)) return false;
+      return failureCount < 1;
+    },
+    retryDelay: 60000,
+  });
+}
+
+// 3. Use in component:
+const { data, isLoading, error } = useMyHook(id);
+```
+
+---
+
 ## File Organization
 
 ### When to Split Files
@@ -180,3 +324,18 @@ components/
 | File under 400 lines | Manual | Manual |
 | Linter passes | `cargo clippy` | `pnpm lint` |
 | Types pass | `cargo check` | `pnpm check` |
+| **No direct API calls in useEffect** | N/A | Code review |
+| **useQuery hooks have staleTime** | N/A | Code review |
+| **invalidateQueries uses refetchType** | N/A | Code review |
+
+---
+
+## Lessons Learned (IKA-76)
+
+**Issue:** 429 rate limiting blocked entire team from using app.
+
+**Root Cause:** Direct `teamsApi.getProjects()` call in `useEffect` bypassed TanStack Query, causing duplicate requests on every render.
+
+**Fix:** Replace with `useTeamProjects()` hook + use `refetchType: 'none'` in query invalidation.
+
+**Prevention:** Always use TanStack Query hooks for API calls. Never use direct API calls in useEffect.
