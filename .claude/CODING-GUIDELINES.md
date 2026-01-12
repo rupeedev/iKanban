@@ -406,6 +406,114 @@ function MyComponent() {
 
 ---
 
+## URL Parameters & API Calls (CRITICAL)
+
+**These rules prevent 400 Bad Request errors when using slug-based URLs.**
+
+### Rule 1: NEVER Pass Raw URL Params to API Calls
+
+URL parameters from `useParams()` can be either UUIDs or slugs (e.g., `my-task-title`). APIs expect UUIDs.
+
+```typescript
+// BAD - URL param might be a slug, API expects UUID
+const { taskId } = useParams();
+const { data } = useTaskAttempts(taskId);  // 400 error if taskId is a slug!
+
+// GOOD - Resolve slug to entity first, then use the UUID
+const { taskId } = useParams();
+const selectedTask = resolveTaskFromParam(taskId, tasks, tasksById);
+const { data } = useTaskAttempts(selectedTask?.id);  // Always UUID
+```
+
+### Rule 2: Use Resolver Functions for URL Params
+
+Always use the appropriate resolver function from `lib/url-utils.ts`:
+
+```typescript
+import {
+  resolveTaskFromParam,
+  resolveProjectFromParam,
+  resolveTeamFromParam,
+  isUUID
+} from '@/lib/url-utils';
+
+// For tasks
+const { taskId } = useParams();
+const task = resolveTaskFromParam(taskId, tasks, tasksById);
+// task?.id is always a UUID
+
+// For projects
+const { projectId } = useParams();
+const project = resolveProjectFromParam(projectId, projects, projectsById);
+// project?.id is always a UUID
+
+// For teams
+const { teamId } = useParams();
+const team = resolveTeamFromParam(teamId, teams, teamsById);
+// team?.id is always a UUID
+```
+
+### Rule 3: Update Hook `enabled` Conditions
+
+When using resolved entities, update the `enabled` condition to check the resolved entity:
+
+```typescript
+// BAD - Checks raw param which might be a slug
+const { data } = useTaskAttempts(taskId, {
+  enabled: !!taskId && isLatest,
+});
+
+// GOOD - Checks resolved entity exists
+const { data } = useTaskAttempts(selectedTask?.id, {
+  enabled: !!selectedTask && isLatest,
+});
+```
+
+### URL Parameter Flow
+
+```
+URL Param (slug or UUID)
+        │
+        ▼
+  resolveXFromParam()  ──────► Entity Object { id: UUID, ... }
+        │                              │
+        ▼                              ▼
+   Returns undefined             Use entity.id for API calls
+   if not found
+```
+
+### Common Patterns That Cause 400 Errors
+
+| Anti-Pattern | Problem | Fix |
+|--------------|---------|-----|
+| `useQuery(urlParam)` directly | Slug passed to API | Resolve first, use `entity?.id` |
+| `enabled: !!urlParam` | Enables with slug | Use `enabled: !!resolvedEntity` |
+| Assuming URL param is UUID | 400 on slug URLs | Always use `resolveXFromParam()` |
+| Not checking `isUUID()` | Mixed handling | Use resolver functions consistently |
+
+### Quick Reference: Safe URL Param Pattern
+
+```typescript
+// 1. Get raw param from URL
+const { taskId, projectId } = useParams();
+
+// 2. Resolve to entity (handles both UUID and slug)
+const selectedTask = useMemo(
+  () => taskId ? resolveTaskFromParam(taskId, tasks, tasksById) : null,
+  [taskId, tasks, tasksById]
+);
+
+// 3. Use entity.id for API calls
+const { data } = useTaskAttempts(selectedTask?.id, {
+  enabled: !!selectedTask,
+});
+
+// 4. Use entity for display
+return <TaskPanel task={selectedTask} />;
+```
+
+---
+
 ## File Organization
 
 ### When to Split Files
@@ -463,10 +571,13 @@ components/
 | **Components handle isError state** | N/A | Code review |
 | **Components handle empty/null data** | N/A | Code review |
 | **No unsafe data access (use `?.`)** | N/A | Code review |
+| **URL params resolved before API calls** | N/A | Code review |
 
 ---
 
-## Lessons Learned (IKA-76, IKA-77, IKA-83)
+## Lessons Learned (IKA-76, IKA-77, IKA-83, IKA-84)
+
+### Rate Limiting Issues (IKA-76, IKA-77, IKA-83)
 
 **Issue:** 429 rate limiting blocked entire team from using app.
 
@@ -491,3 +602,35 @@ components/
 2. Always add `refetchType: 'none'` to `invalidateQueries()` calls - this marks queries as stale without triggering immediate refetch cascades.
 3. **Use global defaults** - don't add rate limit handling to individual hooks. The `main.tsx` QueryClient already handles it for all queries.
 4. **Don't override** `retry`, `refetchOnWindowFocus`, or `refetchOnReconnect` in individual hooks unless you have a specific reason.
+
+---
+
+### URL Slug vs UUID Issues (IKA-84)
+
+**Issue:** 400 Bad Request errors when viewing tasks via slug URLs.
+
+**Root Cause (IKA-84):** `useTaskAttempts(taskId)` was called with the raw URL parameter which could be a slug (e.g., `create-secure-and-ordered-data-storage-for-admin-data`) instead of a UUID. The API endpoint `/api/task-attempts?task_id=` expects a valid UUID.
+
+**Code Location:** `ProjectTasks.tsx` line 230-235
+
+```typescript
+// BEFORE (broken):
+const { taskId } = useParams();
+const { data } = useTaskAttempts(taskId, { enabled: !!taskId && isLatest });
+
+// AFTER (fixed):
+const { taskId } = useParams();
+const selectedTask = resolveTaskFromParam(taskId, tasks, tasksById);
+const { data } = useTaskAttempts(selectedTask?.id, { enabled: !!selectedTask && isLatest });
+```
+
+**Fix (IKA-84):** Use `selectedTask?.id` (resolved UUID) instead of raw `taskId` (could be slug).
+
+**Prevention:**
+1. **Never pass raw URL params to API calls** - always resolve to entity first using `resolveXFromParam()`.
+2. **Update `enabled` conditions** - check the resolved entity exists, not just the URL param.
+3. **Use resolver functions** from `lib/url-utils.ts`:
+   - `resolveTaskFromParam(param, tasks, tasksById)`
+   - `resolveProjectFromParam(param, projects, projectsById)`
+   - `resolveTeamFromParam(param, teams, teamsById)`
+4. **Remember:** URL params can be either UUIDs or slugs. APIs always expect UUIDs.
