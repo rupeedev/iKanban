@@ -6,5 +6,10 @@
       "args": ["mcp/ikanban.py", "serve"],
       "env": {}
     }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "/Users/rupeshpanwar/.claude/statusline.sh",
+    "padding": 0
   }
 }
