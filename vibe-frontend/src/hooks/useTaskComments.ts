@@ -45,7 +45,8 @@ export function useTaskComments(taskId: string | null) {
       return tasksApi.createComment(taskId, payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId], refetchType: 'none' });
+      // Use 'active' to refetch immediately since user expects to see their comment
+      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId], refetchType: 'active' });
     },
   });
 
@@ -61,7 +62,8 @@ export function useTaskComments(taskId: string | null) {
       return tasksApi.updateComment(taskId, commentId, payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId], refetchType: 'none' });
+      // Use 'active' to refetch immediately since user expects to see their edit
+      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId], refetchType: 'active' });
     },
   });
 
@@ -71,7 +73,8 @@ export function useTaskComments(taskId: string | null) {
       await tasksApi.deleteComment(taskId, commentId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId], refetchType: 'none' });
+      // Use 'active' to refetch immediately since user expects to see comment removed
+      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId], refetchType: 'active' });
     },
   });
 
