@@ -39,7 +39,7 @@ const statusConfig: Record<ConnectionState, {
 };
 
 export function ConnectionStatusBar({ className }: ConnectionStatusBarProps) {
-  const { state, lastOnline } = useConnectionSafe();
+  const { state, lastOnline, circuitState, resetCircuit } = useConnectionSafe();
   const [dismissed, setDismissed] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -50,8 +50,11 @@ export function ConnectionStatusBar({ className }: ConnectionStatusBarProps) {
 
   const config = statusConfig[state];
 
-  // Don't render anything if online or dismissed
-  if (!config.show || dismissed) {
+  // Don't render if:
+  // - Connection is online
+  // - User dismissed the notification
+  // - Circuit is open (ServiceUnavailable component handles this)
+  if (!config.show || dismissed || circuitState === 'open') {
     return null;
   }
 
@@ -74,11 +77,11 @@ export function ConnectionStatusBar({ className }: ConnectionStatusBarProps) {
     return lastOnline.toLocaleDateString();
   };
 
-  const handleRetry = async () => {
+  const handleRetry = () => {
     setIsRefreshing(true);
-    // Trigger a page reload to re-attempt connections
-    // In a more sophisticated implementation, this could trigger
-    // query invalidation instead
+    // Reset circuit breaker to allow retry
+    resetCircuit();
+    // Also reload page to re-attempt all connections
     window.location.reload();
   };
 
@@ -97,6 +100,7 @@ export function ConnectionStatusBar({ className }: ConnectionStatusBarProps) {
         config.textClass,
         className
       )}
+      data-testid="connection-status-bar"
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <Icon className="h-4 w-4 flex-shrink-0" />

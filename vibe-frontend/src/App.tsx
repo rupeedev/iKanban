@@ -57,6 +57,7 @@ import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
 import { BackendErrorState } from '@/components/ui/BackendErrorState';
 import { ConnectionStatusBar } from '@/components/ui/connection-status-bar';
+import { ServiceUnavailable } from '@/components/ui/service-unavailable';
 
 import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
@@ -164,6 +165,8 @@ function AppContent() {
           <GlobalKeyboardShortcuts />
           {/* Connection status bar - shows when degraded or offline */}
           <ConnectionStatusBar />
+          {/* Service unavailable banner - shows when circuit breaker is open */}
+          <ServiceUnavailable />
           <div className="h-screen flex flex-col bg-background">
             <SentryRoutes>
               {/* Public routes - no authentication required */}
