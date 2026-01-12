@@ -46,6 +46,7 @@ export function useDevServer(
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ['executionProcesses', attemptId],
+        refetchType: 'none',
       });
       options?.onStartSuccess?.();
     },
@@ -66,10 +67,12 @@ export function useDevServer(
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ['executionProcesses', attemptId],
+          refetchType: 'none',
         }),
         runningDevServer
           ? queryClient.invalidateQueries({
               queryKey: ['processDetails', runningDevServer.id],
+              refetchType: 'none',
             })
           : Promise.resolve(),
       ]);

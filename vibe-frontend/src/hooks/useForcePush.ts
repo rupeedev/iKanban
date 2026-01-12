@@ -32,7 +32,7 @@ export function useForcePush(
     },
     onSuccess: () => {
       // A force push affects remote status; invalidate the same branchStatus
-      queryClient.invalidateQueries({ queryKey: ['branchStatus', attemptId] });
+      queryClient.invalidateQueries({ queryKey: ['branchStatus', attemptId], refetchType: 'none' });
       onSuccess?.();
     },
     onError: (err) => {

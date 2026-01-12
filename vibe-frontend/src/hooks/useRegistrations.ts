@@ -44,7 +44,7 @@ export function useRegistrations(enabled: boolean = true): UseRegistrationsResul
     mutationFn: (registrationId: string) => registrationsApi.approve(registrationId),
     onSuccess: () => {
       // Invalidate the pending list to refetch
-      queryClient.invalidateQueries({ queryKey: registrationsKeys.pending() });
+      queryClient.invalidateQueries({ queryKey: registrationsKeys.pending(), refetchType: 'none' });
     },
   });
 
@@ -54,7 +54,7 @@ export function useRegistrations(enabled: boolean = true): UseRegistrationsResul
       registrationsApi.reject(registrationId, reason),
     onSuccess: () => {
       // Invalidate the pending list to refetch
-      queryClient.invalidateQueries({ queryKey: registrationsKeys.pending() });
+      queryClient.invalidateQueries({ queryKey: registrationsKeys.pending(), refetchType: 'none' });
     },
   });
 
@@ -67,7 +67,7 @@ export function useRegistrations(enabled: boolean = true): UseRegistrationsResul
   };
 
   const refetch = async () => {
-    await queryClient.invalidateQueries({ queryKey: registrationsKeys.pending() });
+    await queryClient.invalidateQueries({ queryKey: registrationsKeys.pending(), refetchType: 'none' });
   };
 
   return {

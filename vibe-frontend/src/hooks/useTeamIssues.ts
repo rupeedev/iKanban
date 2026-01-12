@@ -52,7 +52,7 @@ export function useTeamIssues(teamId: string | undefined): UseTeamIssuesResult {
 
   const refresh = useCallback(async () => {
     if (!teamId) return;
-    await queryClient.invalidateQueries({ queryKey: teamIssuesKeys.team(teamId) });
+    await queryClient.invalidateQueries({ queryKey: teamIssuesKeys.team(teamId), refetchType: 'none' });
   }, [teamId, queryClient]);
 
   const issuesById = useMemo(() => {
