@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus, RefreshCw, SlidersHorizontal, CircleDot, PlayCircle, Circle, BarChart3 } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
-import { tasksApi, teamsApi } from '@/lib/api';
+import { tasksApi } from '@/lib/api';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { openIssueForm } from '@/lib/openIssueForm';
 
@@ -13,6 +13,7 @@ import { useTeamIssues } from '@/hooks/useTeamIssues';
 import { useTeams } from '@/hooks/useTeams';
 import { useProjects } from '@/hooks/useProjects';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useTeamProjects } from '@/hooks/useTeamProjects';
 
 import { TeamKanbanBoard } from '@/components/tasks/TeamKanbanBoard';
 import { InsightsPanel } from '@/components/tasks/InsightsPanel';
@@ -43,7 +44,6 @@ export function TeamIssues() {
   const { resolveTeam, isLoading: teamsLoading } = useTeams();
   const team = teamId ? resolveTeam(teamId) : null;
   const { projects } = useProjects();
-  const [teamProjectIds, setTeamProjectIds] = useState<string[]>([]);
   const [showInsights, setShowInsights] = useState(false);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
 
@@ -61,6 +61,9 @@ export function TeamIssues() {
   // Fetch real team members from database
   const { members } = useTeamMembers(actualTeamId);
 
+  // Fetch team projects using TanStack Query hook (prevents 429 rate limiting)
+  const { projectIds: teamProjectIds } = useTeamProjects(actualTeamId);
+
   // Transform team members to AssigneeSelector format
   const teamMembers: TeamMember[] = useMemo(() => {
     return members.map((m) => ({
@@ -70,12 +73,6 @@ export function TeamIssues() {
       avatar: m.avatar_url || undefined,
     }));
   }, [members]);
-
-  // Fetch team projects when team changes
-  useEffect(() => {
-    if (!actualTeamId) return;
-    teamsApi.getProjects(actualTeamId).then(setTeamProjectIds).catch(console.error);
-  }, [actualTeamId]);
 
   // Get the first project that belongs to this team (for issue creation)
   const teamProjects = useMemo(() => {

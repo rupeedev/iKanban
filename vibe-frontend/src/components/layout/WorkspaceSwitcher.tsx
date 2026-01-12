@@ -97,10 +97,12 @@ export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
     if (setCurrentWorkspaceId && workspaceId !== currentWorkspace?.id) {
       setCurrentWorkspaceId(workspaceId);
 
-      // Invalidate workspace-scoped queries to force fresh data fetch
-      queryClient.invalidateQueries({ queryKey: ['teams'] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['issues'] });
+      // Mark queries as stale but don't trigger immediate refetch
+      // This prevents cascading API calls that cause 429 rate limiting
+      // Data will be refetched when components actually need it (lazy/on-demand)
+      queryClient.invalidateQueries({ queryKey: ['teams'], refetchType: 'none' });
+      queryClient.invalidateQueries({ queryKey: ['projects'], refetchType: 'none' });
+      queryClient.invalidateQueries({ queryKey: ['issues'], refetchType: 'none' });
 
       // Navigate to workspace home to update URL
       navigate('/projects');
