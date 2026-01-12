@@ -26,6 +26,7 @@ import { useProjectRepos, useNavigateWithSearch } from '@/hooks';
 import { useRepoBranchSelection } from '@/hooks/useRepoBranchSelection';
 import { tasksApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
+import { toast } from 'sonner';
 import { CommentEditor, CommentList } from '@/components/comments';
 import { LinkDocumentsDialog } from '@/components/dialogs/issues/LinkDocumentsDialog';
 import { cn } from '@/lib/utils';
@@ -209,21 +210,36 @@ export function IssueDetailPanel({
       });
 
       // 3. If valid @agent mention and clean prompt exists, start AI execution
-      if (agent && cleanPrompt && projectRepos.length > 0) {
+      if (agent && cleanPrompt) {
+        // Check if project has repos configured
+        if (projectRepos.length === 0) {
+          toast.info('Comment saved', {
+            description: 'AI agent requires a project with repositories configured.',
+          });
+          return;
+        }
+
         const profile = resolveMentionToProfile(agent);
-        if (profile) {
-          try {
-            const repos = getWorkspaceRepoInputs();
-            await createAttempt({
-              profile,
-              repos,
-              prompt: cleanPrompt,
-            });
-            // Navigation happens in onSuccess callback
-          } catch (err) {
-            console.error('Failed to create AI attempt:', err);
-            // Comment is already saved, so user sees their comment
-          }
+        if (!profile) {
+          toast.info('Comment saved', {
+            description: `Agent "${agent.displayName}" is not available. Check your AI provider keys.`,
+          });
+          return;
+        }
+
+        try {
+          const repos = getWorkspaceRepoInputs();
+          await createAttempt({
+            profile,
+            repos,
+            prompt: cleanPrompt,
+          });
+          // Navigation happens in onSuccess callback
+        } catch (err) {
+          console.error('Failed to create AI attempt:', err);
+          toast.error('Failed to start AI agent', {
+            description: 'Comment was saved. Please try again.',
+          });
         }
       }
     },
@@ -267,20 +283,35 @@ export function IssueDetailPanel({
       if (onUpdate) await onUpdate();
 
       // 4. If valid @agent mention and clean prompt exists, start AI execution
-      if (agent && cleanPrompt && projectRepos.length > 0) {
+      if (agent && cleanPrompt) {
+        if (projectRepos.length === 0) {
+          toast.info('Issue closed', {
+            description: 'AI agent requires a project with repositories configured.',
+          });
+          return;
+        }
+
         const profile = resolveMentionToProfile(agent);
-        if (profile) {
-          try {
-            const repos = getWorkspaceRepoInputs();
-            await createAttempt({
-              profile,
-              repos,
-              prompt: cleanPrompt,
-            });
-            // Navigation happens in onSuccess callback
-          } catch (err) {
-            console.error('Failed to create AI attempt:', err);
-          }
+        if (!profile) {
+          toast.info('Issue closed', {
+            description: `Agent "${agent.displayName}" is not available. Check your AI provider keys.`,
+          });
+          return;
+        }
+
+        try {
+          const repos = getWorkspaceRepoInputs();
+          await createAttempt({
+            profile,
+            repos,
+            prompt: cleanPrompt,
+          });
+          // Navigation happens in onSuccess callback
+        } catch (err) {
+          console.error('Failed to create AI attempt:', err);
+          toast.error('Failed to start AI agent', {
+            description: 'Issue was closed. Please try again.',
+          });
         }
       }
     },
