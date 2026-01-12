@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,11 +19,12 @@ import {
   Loader2,
   Search,
 } from 'lucide-react';
-import { fileSystemApi, repoApi } from '@/lib/api';
+import { repoApi } from '@/lib/api';
 import { DirectoryEntry, Repo } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { FolderPickerDialog } from './FolderPickerDialog';
+import { useGitRepos } from '@/hooks/useGitRepos';
 
 export interface RepoPickerDialogProps {
   value?: string;
@@ -43,10 +44,13 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
     const [error, setError] = useState('');
     const [isWorking, setIsWorking] = useState(false);
 
-    // Stage: existing
-    const [allRepos, setAllRepos] = useState<DirectoryEntry[]>([]);
-    const [reposLoading, setReposLoading] = useState(false);
+    // Stage: existing - use TanStack Query hook (prevents 429 rate limiting)
     const [showMoreRepos, setShowMoreRepos] = useState(false);
+    const {
+      repos: allRepos,
+      isLoading: reposLoading,
+      error: reposError,
+    } = useGitRepos(stage === 'existing');
 
     // Stage: new
     const [repoName, setRepoName] = useState('');
@@ -56,32 +60,18 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
       if (modal.visible) {
         setStage('options');
         setError('');
-        setAllRepos([]);
         setShowMoreRepos(false);
         setRepoName('');
         setParentPath('');
       }
     }, [modal.visible]);
 
-    const loadRecentRepos = useCallback(async () => {
-      setReposLoading(true);
-      setError('');
-      try {
-        const repos = await fileSystemApi.listGitRepos();
-        setAllRepos(repos);
-      } catch (err) {
-        setError('Failed to load repositories');
-        console.error('Failed to load repos:', err);
-      } finally {
-        setReposLoading(false);
-      }
-    }, []);
-
+    // Show repo loading errors
     useEffect(() => {
-      if (stage === 'existing' && allRepos.length === 0 && !reposLoading) {
-        loadRecentRepos();
+      if (reposError) {
+        setError('Failed to load repositories');
       }
-    }, [stage, allRepos.length, reposLoading, loadRecentRepos]);
+    }, [reposError]);
 
     const registerAndReturn = async (path: string) => {
       setIsWorking(true);
