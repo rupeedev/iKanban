@@ -87,32 +87,12 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Create minimal deploy context
-        run: |
-          # Create isolated directory with just a Dockerfile
-          mkdir -p /tmp/railway-deploy
-          cd /tmp/railway-deploy
-
-          # Create Dockerfile that references the pre-built image
-          echo "FROM ${{ env.DOCKER_IMAGE }}:${{ github.sha }}" > Dockerfile
-          echo "ENV PORT=3000" >> Dockerfile
-          echo "EXPOSE 3000" >> Dockerfile
-
-          echo "Created Dockerfile:"
-          cat Dockerfile
-
-          # Initialize git repo to avoid snapshot issues
-          git init
-          git config user.email "github-actions@github.com"
-          git config user.name "GitHub Actions"
-          git add Dockerfile
-          git commit -m "Deploy ${{ github.sha }}"
-
-      - name: Deploy to Railway
+      - name: Redeploy Railway Service
         id: deploy
-        working-directory: /tmp/railway-deploy
         continue-on-error: true
-        run: railway up --service ${{ env.RAILWAY_SERVICE_ID }}
+        run: |
+          echo "Triggering redeploy for image: ${{ env.DOCKER_IMAGE }}:latest"
+          railway redeploy --service ${{ env.RAILWAY_SERVICE_ID }} --yes
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_GITHUB_BACKEND_TOKEN }}
 
@@ -126,4 +106,5 @@ jobs:
       - name: Deployment Success
         if: steps.deploy.outcome == 'success'
         run: |
-          echo "Successfully deployed ${{ env.DOCKER_IMAGE }}:${{ github.sha }} to Railway"
+          echo "Successfully triggered redeploy for commit ${{ github.sha }}"
+          echo "Image: ${{ env.DOCKER_IMAGE }}:latest"
