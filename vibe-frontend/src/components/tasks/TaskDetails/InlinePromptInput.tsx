@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SendHorizonal, Loader2, Bot } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAttemptCreation } from '@/hooks/useAttemptCreation';
@@ -8,19 +9,26 @@ import { useAgentMentions, type AgentMention } from '@/hooks/useAgentMentions';
 import { useRepoBranchSelection } from '@/hooks/useRepoBranchSelection';
 import { useProjectRepos, useNavigateWithSearch } from '@/hooks';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTaskComments } from '@/hooks/useTaskComments';
+import { useClerkUser } from '@/hooks/auth/useClerkAuth';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { paths } from '@/lib/paths';
 import { AgentMentionSuggestions } from './AgentMentionSuggestions';
 import { cn } from '@/lib/utils';
 
 interface InlinePromptInputProps {
   taskId: string;
+  teamId?: string;
   onAttemptCreated?: (workspaceId: string) => void;
+  onCommentCreated?: () => void;
   className?: string;
 }
 
 export function InlinePromptInput({
   taskId,
+  teamId,
   onAttemptCreated,
+  onCommentCreated,
   className,
 }: InlinePromptInputProps) {
   const { t } = useTranslation('tasks');
@@ -34,9 +42,30 @@ export function InlinePromptInput({
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+  // User and team member hooks for comment authorship
+  const { user } = useClerkUser();
+  const { members } = useTeamMembers(teamId);
+
+  // Extract user info from Clerk user
+  const currentUser = useMemo(() => {
+    if (!user) {
+      return { id: null, name: 'Unknown', email: '' };
+    }
+    const userEmail = user.primaryEmailAddress?.emailAddress || '';
+    const userName = user.fullName || user.firstName || userEmail.split('@')[0] || 'Unknown';
+    const matchingMember = members?.find((m) => m.email === userEmail);
+    return {
+      id: matchingMember?.id ?? null,
+      name: matchingMember?.display_name || userName,
+      email: userEmail,
+    };
+  }, [user, members]);
+
+  // Comment creation hook
+  const { createComment, isCreating: isCreatingComment } = useTaskComments(taskId);
+
   // Hooks
   const {
-    defaultProfile,
     filterMentions,
     parseMentions,
     resolveMentionToProfile,
@@ -127,9 +156,9 @@ export function InlinePromptInput({
     [filteredSuggestions.length]
   );
 
-  // Handle form submission
+  // Handle form submission - supports both simple comments and AI agent prompts
   const handleSubmit = useCallback(async () => {
-    if (!promptText.trim() || isCreating || projectRepos.length === 0) return;
+    if (!promptText.trim() || isCreating || isCreatingComment) return;
 
     // Parse the prompt to extract agent mention
     const { agent, cleanPrompt } = parseMentions(promptText);
@@ -139,33 +168,86 @@ export function InlinePromptInput({
       return;
     }
 
-    // Get the executor profile (from mention or default)
-    const profile = resolveMentionToProfile(agent);
+    // CASE 1: No @mention → Simple comment only
+    if (!agent) {
+      try {
+        await createComment({
+          content: promptText.trim(),
+          is_internal: false,
+          author_name: currentUser.name,
+          author_email: currentUser.email,
+          author_id: currentUser.id,
+        });
+        toast.success('Comment added');
+        setPromptText('');
+        onCommentCreated?.();
+      } catch (err) {
+        console.error('Failed to create comment:', err);
+        toast.error('Failed to add comment');
+      }
+      return;
+    }
 
+    // CASE 2: Has @mention → Comment + AI attempt
+    // First create the comment
+    try {
+      await createComment({
+        content: promptText.trim(),
+        is_internal: false,
+        author_name: currentUser.name,
+        author_email: currentUser.email,
+        author_id: currentUser.id,
+      });
+    } catch (err) {
+      console.error('Failed to create comment:', err);
+      toast.error('Failed to add comment');
+      return;
+    }
+
+    // Then try to create AI attempt
+    if (projectRepos.length === 0) {
+      toast.info('Comment saved', {
+        description: 'AI agent requires a project with repositories configured.',
+      });
+      setPromptText('');
+      onCommentCreated?.();
+      return;
+    }
+
+    const profile = resolveMentionToProfile(agent);
     if (!profile) {
-      console.error('No agent configured');
+      toast.info('Comment saved', {
+        description: `Agent "${agent.displayName}" is not available. Check your AI provider keys.`,
+      });
+      setPromptText('');
+      onCommentCreated?.();
       return;
     }
 
     try {
       const repos = getWorkspaceRepoInputs();
-
       await createAttempt({
         profile,
         repos,
         prompt: cleanPrompt,
       });
-
-      // Clear input on success
       setPromptText('');
     } catch (err) {
-      console.error('Failed to create attempt:', err);
+      console.error('Failed to create AI attempt:', err);
+      toast.error('Failed to start AI agent', {
+        description: 'Comment was saved. Please try again.',
+      });
+      setPromptText('');
     }
   }, [
     promptText,
     isCreating,
-    projectRepos.length,
+    isCreatingComment,
     parseMentions,
+    createComment,
+    currentUser,
+    onCommentCreated,
+    projectRepos.length,
     resolveMentionToProfile,
     getWorkspaceRepoInputs,
     createAttempt,
@@ -192,26 +274,22 @@ export function InlinePromptInput({
 
   // Parse current prompt to show which agent will be used
   const { agent: selectedAgent } = parseMentions(promptText);
-  const effectiveAgent = selectedAgent || (defaultProfile ? {
-    displayName: defaultProfile.executor.replace(/_/g, ' '),
-    executor: defaultProfile.executor,
-    variant: defaultProfile.variant,
-  } : null);
 
+  // Only show agent indicator if there's an @mention (not for simple comments)
+  const showAgentIndicator = selectedAgent !== null;
+
+  // Can submit if there's text and not currently loading
+  // No longer requires projectRepos for simple comments (only needed for AI)
   const canSubmit =
-    promptText.trim().length > 0 && !isCreating && projectRepos.length > 0;
+    promptText.trim().length > 0 && !isCreating && !isCreatingComment;
 
   return (
     <div className={cn('relative', className)}>
-      {/* Agent indicator */}
-      {effectiveAgent && (
+      {/* Agent indicator - only shown when @mention is detected */}
+      {showAgentIndicator && selectedAgent && (
         <div className="flex items-center gap-1 mb-1 text-xs text-muted-foreground">
           <Bot className="h-3 w-3" />
-          <span>
-            {selectedAgent
-              ? selectedAgent.displayName
-              : `${effectiveAgent.displayName} (${t('inlinePrompt.default', 'default')})`}
-          </span>
+          <span>{selectedAgent.displayName}</span>
         </div>
       )}
 
@@ -236,10 +314,10 @@ export function InlinePromptInput({
             onKeyDown={handleKeyDown}
             placeholder={t(
               'inlinePrompt.placeholder',
-              'Type a prompt... Use @agent to specify agent'
+              'Type a message or @agent to use AI...'
             )}
             className="min-h-[60px] max-h-[200px] resize-none pr-2"
-            disabled={isCreating}
+            disabled={isCreating || isCreatingComment}
             data-testid="inline-prompt-input"
           />
         </div>
@@ -252,7 +330,7 @@ export function InlinePromptInput({
           className="h-10 w-10 flex-shrink-0"
           data-testid="inline-prompt-submit"
         >
-          {isCreating ? (
+          {(isCreating || isCreatingComment) ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <SendHorizonal className="h-4 w-4" />

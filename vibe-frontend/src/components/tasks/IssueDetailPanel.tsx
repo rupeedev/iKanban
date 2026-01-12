@@ -8,7 +8,7 @@ import { X, ExternalLink, ChevronRight, MessageSquare, FileText, Activity } from
 import { useTeams } from '@/hooks/useTeams';
 import { useIssueCommentHandlers } from '@/hooks/useIssueCommentHandlers';
 import { tasksApi } from '@/lib/api';
-import { CommentEditor, CommentList } from '@/components/comments';
+import { CommentList } from '@/components/comments';
 import { IssueAttemptsSection } from '@/components/tasks/IssueAttemptsSection';
 import { IssueLinkedDocuments } from '@/components/tasks/IssueLinkedDocuments';
 import { cn } from '@/lib/utils';
@@ -61,12 +61,8 @@ export function IssueDetailPanel({
     comments,
     commentsLoading,
     commentsFetching,
-    isCreating,
     isUpdating,
     isDeleting,
-    isCreatingAttempt,
-    handleSubmitComment,
-    handleSubmitAndClose,
     handleUpdateComment,
     handleDeleteComment,
   } = useIssueCommentHandlers({ issue, teamId, onUpdate });
@@ -270,8 +266,8 @@ export function IssueDetailPanel({
           {/* Linked Documents */}
           <IssueLinkedDocuments issueId={issue.id} teamId={teamId} />
 
-          {/* ATTEMPTS section with Inline Prompt */}
-          <IssueAttemptsSection issueId={issue.id} projectId={issue.project_id} />
+          {/* ATTEMPTS section with Inline Prompt (handles comments + AI prompts) */}
+          <IssueAttemptsSection issueId={issue.id} projectId={issue.project_id} teamId={teamId} />
 
           {/* Tabs for Comments, Details, Activity */}
           <Tabs defaultValue="comments" className="w-full">
@@ -316,12 +312,7 @@ export function IssueDetailPanel({
                 isUpdating={isUpdating}
                 isDeleting={isDeleting}
               />
-              <CommentEditor
-                onSubmit={handleSubmitComment}
-                onSubmitAndClose={handleSubmitAndClose}
-                isSubmitting={isCreating || isCreatingAttempt}
-                showCloseButton={issue.status !== 'done'}
-              />
+              {/* CommentEditor removed - comments are created via InlinePromptInput in ATTEMPTS section */}
             </TabsContent>
 
             <TabsContent value="details" className="mt-4">

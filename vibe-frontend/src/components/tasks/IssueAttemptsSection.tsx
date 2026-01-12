@@ -12,6 +12,7 @@ import type { WorkspaceWithSession } from '@/types/attempt';
 interface IssueAttemptsSectionProps {
   issueId: string;
   projectId: string;
+  teamId?: string;
 }
 
 function formatTimeAgo(iso: string): string {
@@ -61,7 +62,7 @@ const attemptColumns: ColumnDef<WorkspaceWithSession>[] = [
   },
 ];
 
-export function IssueAttemptsSection({ issueId, projectId }: IssueAttemptsSectionProps) {
+export function IssueAttemptsSection({ issueId, projectId, teamId }: IssueAttemptsSectionProps) {
   const navigate = useNavigateWithSearch();
 
   const {
@@ -127,8 +128,8 @@ export function IssueAttemptsSection({ issueId, projectId }: IssueAttemptsSectio
         )}
       </div>
 
-      {/* Inline Prompt Input */}
-      <InlinePromptInput taskId={issueId} data-testid="issue-inline-prompt" />
+      {/* Inline Prompt Input - handles both comments and AI prompts */}
+      <InlinePromptInput taskId={issueId} teamId={teamId} data-testid="issue-inline-prompt" />
     </div>
   );
 }
