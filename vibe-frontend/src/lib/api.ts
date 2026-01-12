@@ -1,4 +1,5 @@
 // Import all necessary types from shared types
+import { circuitBreaker, CircuitOpenError } from './circuitBreaker';
 
 import {
   ApprovalStatus,
@@ -150,6 +151,8 @@ export interface SignedUrlResponse {
   file_path?: string;
 }
 export type { TeamMemberRole, CreateInvitationRequest } from 'shared/types';
+export { circuitBreaker, CircuitOpenError } from './circuitBreaker';
+export type { CircuitState } from './circuitBreaker';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import type {
   TenantWorkspace,
@@ -320,6 +323,11 @@ class RequestQueue {
 const globalQueue = new RequestQueue();
 
 const makeRequest = async (url: string, options: RequestInit = {}) => {
+  // Check circuit breaker first - fail fast if service is unavailable
+  if (!circuitBreaker.canExecute()) {
+    throw new CircuitOpenError();
+  }
+
   return globalQueue.add(async () => {
     const headers = new Headers(options.headers ?? {});
     if (!headers.has('Content-Type')) {
@@ -343,6 +351,14 @@ const makeRequest = async (url: string, options: RequestInit = {}) => {
           headers,
         });
 
+        // Record success for circuit breaker on successful response (even 4xx)
+        // Only 5xx server errors should count as failures
+        if (response.status < 500) {
+          circuitBreaker.recordSuccess();
+        } else {
+          circuitBreaker.recordFailure();
+        }
+
         // If not a retryable status, return immediately
         if (!RETRY_CONFIG.retryableStatuses.includes(response.status)) {
           return response;
@@ -364,6 +380,9 @@ const makeRequest = async (url: string, options: RequestInit = {}) => {
         await sleep(delay);
       } catch (error) {
         lastError = error as Error;
+        // Record failure for circuit breaker on network errors
+        circuitBreaker.recordFailure();
+
         // Network errors - also retry with backoff
         if (attempt >= RETRY_CONFIG.maxRetries) {
           throw error;
