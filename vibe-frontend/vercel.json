@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://vibe-kanban.fly.dev/api/:path*"
+      "destination": "https://api.scho1ar.com/api/:path*"
     }
   ]
 }
