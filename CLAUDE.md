@@ -38,9 +38,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 |------|----------|----------|
 | **`WORKFLOW.md`** | **8-phase TDD process, task management** | **READ FIRST** |
 | **`CODING-GUIDELINES.md`** | **File limits, lint rules, pre-commit** | **READ FIRST** |
+| `PROJECT.md` | Project structure, paths, commands | When starting |
 | `TECHSTACK.md` | Package versions, imports, env vars | When coding |
 | `PATTERNS.md` | Component, hook, handler patterns | When coding |
 | `API.md` | All API endpoints with examples | Backend tasks |
+
+### Quick Reference Files (READ when coding)
+
+```
+.claude/PROJECT.md      → Project structure, directory layout, build commands
+.claude/TECHSTACK.md    → Package versions, correct imports, env variables
+.claude/PATTERNS.md     → Component patterns, hooks, API handlers
+.claude/API.md          → All API endpoints with request/response examples
+```
 
 ## Project Documentation
 
