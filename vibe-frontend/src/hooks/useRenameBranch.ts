@@ -15,15 +15,17 @@ export function useRenameBranch(
     },
     onSuccess: (data) => {
       if (attemptId) {
-        queryClient.invalidateQueries({ queryKey: ['taskAttempt', attemptId] });
-        queryClient.invalidateQueries({ queryKey: ['attempt', attemptId] });
+        queryClient.invalidateQueries({ queryKey: ['taskAttempt', attemptId], refetchType: 'none' });
+        queryClient.invalidateQueries({ queryKey: ['attempt', attemptId], refetchType: 'none' });
         queryClient.invalidateQueries({
           queryKey: ['attemptBranch', attemptId],
+          refetchType: 'none',
         });
         queryClient.invalidateQueries({
           queryKey: ['branchStatus', attemptId],
+          refetchType: 'none',
         });
-        queryClient.invalidateQueries({ queryKey: ['taskAttempts'] });
+        queryClient.invalidateQueries({ queryKey: ['taskAttempts'], refetchType: 'none' });
       }
       onSuccess?.(data.branch);
     },
@@ -32,6 +34,7 @@ export function useRenameBranch(
       if (attemptId) {
         queryClient.invalidateQueries({
           queryKey: ['branchStatus', attemptId],
+          refetchType: 'none',
         });
       }
       onError?.(err);

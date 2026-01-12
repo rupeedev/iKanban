@@ -59,8 +59,8 @@ export function useTaskDocumentLinks(taskId: string | undefined) {
           return merged;
         }
       );
-      // Also invalidate to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["task-document-links", taskId] });
+      // Also invalidate to ensure fresh data - mark stale but don't refetch immediately
+      queryClient.invalidateQueries({ queryKey: ["task-document-links", taskId], refetchType: 'none' });
     },
     onError: (error) => {
       console.error('[linkDocuments] Mutation error:', error);

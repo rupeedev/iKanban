@@ -45,7 +45,7 @@ export function useTaskComments(taskId: string | null) {
       return tasksApi.createComment(taskId, payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId], refetchType: 'none' });
     },
   });
 
@@ -61,7 +61,7 @@ export function useTaskComments(taskId: string | null) {
       return tasksApi.updateComment(taskId, commentId, payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId], refetchType: 'none' });
     },
   });
 
@@ -71,7 +71,7 @@ export function useTaskComments(taskId: string | null) {
       await tasksApi.deleteComment(taskId, commentId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId], refetchType: 'none' });
     },
   });
 

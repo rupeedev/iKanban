@@ -105,8 +105,8 @@ export function useDocuments(teamId: string): UseDocumentsResult {
   const refresh = useCallback(async () => {
     if (!teamId) return;
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: documentsKeys.list(teamId, currentFolderId) }),
-      queryClient.invalidateQueries({ queryKey: documentsKeys.folders(teamId) }),
+      queryClient.invalidateQueries({ queryKey: documentsKeys.list(teamId, currentFolderId), refetchType: 'none' }),
+      queryClient.invalidateQueries({ queryKey: documentsKeys.folders(teamId), refetchType: 'none' }),
     ]);
   }, [teamId, currentFolderId, queryClient]);
 

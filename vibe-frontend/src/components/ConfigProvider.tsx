@@ -150,7 +150,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
         return true;
       } catch (err) {
         console.error('Error saving config:', err);
-        queryClient.invalidateQueries({ queryKey: ['user-system'] });
+        queryClient.invalidateQueries({ queryKey: ['user-system'], refetchType: 'none' });
         return false;
       }
     },
@@ -158,7 +158,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   );
 
   const reloadSystem = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['user-system'] });
+    await queryClient.invalidateQueries({ queryKey: ['user-system'], refetchType: 'none' });
   }, [queryClient]);
 
   const setEnvironment = useCallback(

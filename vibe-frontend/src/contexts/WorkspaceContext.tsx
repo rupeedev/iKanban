@@ -100,8 +100,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       return tenantWorkspacesApi.ensureDefault(userId, userEmail);
     },
     onSuccess: () => {
-      // Refetch workspaces after ensuring default
-      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY });
+      // Mark as stale but don't trigger immediate refetch to prevent 429 errors
+      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY, refetchType: 'none' });
     },
   });
 
@@ -147,7 +147,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       return tenantWorkspacesApi.create(data, userId, userEmail);
     },
     onSuccess: (newWorkspace) => {
-      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY, refetchType: 'none' });
       // Auto-switch to new workspace
       setCurrentWorkspaceId(newWorkspace.id);
     },
@@ -160,7 +160,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       return tenantWorkspacesApi.update(id, data, userId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY, refetchType: 'none' });
     },
   });
 
@@ -171,7 +171,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       return tenantWorkspacesApi.delete(id, userId);
     },
     onSuccess: (_, deletedId) => {
-      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY, refetchType: 'none' });
       // If deleted workspace was current, switch to another
       if (currentWorkspaceId === deletedId) {
         const remaining = workspaces.filter(w => w.id !== deletedId);

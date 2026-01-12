@@ -36,7 +36,7 @@ export function useUserRegistration(): UseUserRegistrationResult {
   });
 
   const refresh = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: REGISTRATION_QUERY_KEY });
+    await queryClient.invalidateQueries({ queryKey: REGISTRATION_QUERY_KEY, refetchType: 'none' });
   }, [queryClient]);
 
   const createMutation = useMutation({
@@ -109,6 +109,7 @@ export function usePendingRegistrations(): UsePendingRegistrationsResult {
   const refresh = useCallback(async () => {
     await queryClient.invalidateQueries({
       queryKey: PENDING_REGISTRATIONS_QUERY_KEY,
+      refetchType: 'none',
     });
   }, [queryClient]);
 

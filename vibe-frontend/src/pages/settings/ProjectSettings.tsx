@@ -407,9 +407,11 @@ export function ProjectSettings() {
       setRepositories((prev) => [...prev, newRepo]);
       queryClient.invalidateQueries({
         queryKey: ['projectRepositories', selectedProjectId],
+        refetchType: 'none',
       });
       queryClient.invalidateQueries({
         queryKey: repoBranchKeys.byRepo(newRepo.id),
+        refetchType: 'none',
       });
     } catch (err) {
       setRepoError(
@@ -430,9 +432,11 @@ export function ProjectSettings() {
       setRepositories((prev) => prev.filter((r) => r.id !== repoId));
       queryClient.invalidateQueries({
         queryKey: ['projectRepositories', selectedProjectId],
+        refetchType: 'none',
       });
       queryClient.invalidateQueries({
         queryKey: repoBranchKeys.byRepo(repoId),
+        refetchType: 'none',
       });
     } catch (err) {
       setRepoError(
