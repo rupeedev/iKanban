@@ -95,13 +95,28 @@ export function ProjectSettings() {
   // Fetch all teams
   const { teams, isLoading: teamsLoading } = useTeams();
 
+  // Helper to check if error is a rate limit (429)
+  const isRateLimitError = useCallback((error: unknown): boolean => {
+    if (error instanceof Error) {
+      return error.message.includes('429') || error.message.includes('Too Many Requests');
+    }
+    return false;
+  }, []);
+
   // Fetch project IDs for each team (to build project → team mapping)
   const teamProjectQueries = useQueries({
     queries: teams.map((team) => ({
       queryKey: ['teams', team.id, 'projectIds'],
       queryFn: () => teamsApi.getProjects(team.id),
       enabled: !teamsLoading && teams.length > 0,
-      staleTime: 5 * 60 * 1000,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 15 * 60 * 1000, // 15 minutes cache retention
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      retry: (failureCount: number, error: Error) => {
+        if (isRateLimitError(error)) return false;
+        return failureCount < 1;
+      },
     })),
   });
 
