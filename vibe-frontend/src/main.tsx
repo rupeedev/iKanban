@@ -68,13 +68,26 @@ if (
   );
 }
 
+// Helper to check if error is a rate limit (429)
+function isRateLimitError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.message.includes('429') || error.message.includes('Too Many Requests');
+  }
+  return false;
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 30, // 30 minutes (increased for better offline support)
       gcTime: 1000 * 60 * 60, // 1 hour (was cacheTime, for persistence)
       refetchOnWindowFocus: false,
-      retry: 2, // Retry failed requests twice
+      refetchOnReconnect: false, // Prevent burst of requests on reconnect
+      retry: (failureCount, error) => {
+        // Never retry rate limit errors - retrying makes it worse
+        if (isRateLimitError(error)) return false;
+        return failureCount < 2;
+      },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff, max 30s
     },
   },
