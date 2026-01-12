@@ -41,6 +41,7 @@ export function useWorkspaceMembers(workspaceId: string | null | undefined) {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [...WORKSPACE_MEMBERS_QUERY_KEY, workspaceId, userId],
+        refetchType: 'none',
       });
     },
   });
@@ -55,6 +56,7 @@ export function useWorkspaceMembers(workspaceId: string | null | undefined) {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [...WORKSPACE_MEMBERS_QUERY_KEY, workspaceId, userId],
+        refetchType: 'none',
       });
     },
   });
@@ -69,6 +71,7 @@ export function useWorkspaceMembers(workspaceId: string | null | undefined) {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [...WORKSPACE_MEMBERS_QUERY_KEY, workspaceId, userId],
+        refetchType: 'none',
       });
     },
   });

@@ -61,8 +61,8 @@ export function useCreateDirectConversation() {
     mutationFn: ({ teamId, data }: { teamId: string; data: CreateDirectConversation }) =>
       chatApi.createDirectConversation(teamId, data),
     onSuccess: (_, { teamId }) => {
-      // Invalidate conversations list
-      queryClient.invalidateQueries({ queryKey: chatKeys.conversations(teamId) });
+      // Invalidate conversations list - mark stale but don't refetch immediately
+      queryClient.invalidateQueries({ queryKey: chatKeys.conversations(teamId), refetchType: 'none' });
     },
   });
 }
@@ -77,7 +77,7 @@ export function useCreateGroupConversation() {
     mutationFn: ({ teamId, data }: { teamId: string; data: CreateGroupConversation }) =>
       chatApi.createGroupConversation(teamId, data),
     onSuccess: (_, { teamId }) => {
-      queryClient.invalidateQueries({ queryKey: chatKeys.conversations(teamId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.conversations(teamId), refetchType: 'none' });
     },
   });
 }
@@ -103,8 +103,8 @@ export function useSendMessage() {
           };
         }
       );
-      // Also invalidate to ensure consistency
-      queryClient.invalidateQueries({ queryKey: chatKeys.messages(conversationId) });
+      // Also invalidate to ensure consistency - mark stale but don't refetch immediately
+      queryClient.invalidateQueries({ queryKey: chatKeys.messages(conversationId), refetchType: 'none' });
     },
   });
 }
@@ -182,7 +182,7 @@ export function useMarkAsRead() {
   return useMutation({
     mutationFn: (conversationId: string) => chatApi.markAsRead(conversationId),
     onSuccess: (_, conversationId) => {
-      queryClient.invalidateQueries({ queryKey: chatKeys.conversation(conversationId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.conversation(conversationId), refetchType: 'none' });
     },
   });
 }
@@ -196,8 +196,8 @@ export function useLeaveConversation() {
   return useMutation({
     mutationFn: (conversationId: string) => chatApi.leaveConversation(conversationId),
     onSuccess: () => {
-      // Invalidate all conversations as we don't know the team ID
-      queryClient.invalidateQueries({ queryKey: chatKeys.all });
+      // Invalidate all conversations as we don't know the team ID - mark stale but don't refetch immediately
+      queryClient.invalidateQueries({ queryKey: chatKeys.all, refetchType: 'none' });
     },
   });
 }

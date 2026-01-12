@@ -83,7 +83,7 @@ export function useGoogleDriveAuth(teamId: string) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['google-drive-status', teamId] });
+      queryClient.invalidateQueries({ queryKey: ['google-drive-status', teamId], refetchType: 'none' });
     },
   });
 
@@ -148,7 +148,7 @@ export function useS3Storage(teamId: string) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['s3-status', teamId] });
+      queryClient.invalidateQueries({ queryKey: ['s3-status', teamId], refetchType: 'none' });
     },
   });
 
@@ -167,7 +167,7 @@ export function useS3Storage(teamId: string) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['s3-status', teamId] });
+      queryClient.invalidateQueries({ queryKey: ['s3-status', teamId], refetchType: 'none' });
     },
   });
 
@@ -237,7 +237,7 @@ export function useDropboxAuth(teamId: string) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dropbox-status', teamId] });
+      queryClient.invalidateQueries({ queryKey: ['dropbox-status', teamId], refetchType: 'none' });
     },
   });
 

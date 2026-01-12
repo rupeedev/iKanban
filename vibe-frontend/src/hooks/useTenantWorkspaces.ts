@@ -39,7 +39,7 @@ export function useTenantWorkspaces() {
       return tenantWorkspacesApi.create(data, userId, userEmail);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY, refetchType: 'none' });
     },
   });
 
@@ -50,7 +50,7 @@ export function useTenantWorkspaces() {
       return tenantWorkspacesApi.update(id, data, userId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY, refetchType: 'none' });
     },
   });
 
@@ -61,7 +61,7 @@ export function useTenantWorkspaces() {
       return tenantWorkspacesApi.delete(id, userId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY, refetchType: 'none' });
     },
   });
 

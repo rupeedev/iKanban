@@ -151,10 +151,10 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
 
   const refresh = useCallback(async () => {
     if (!teamId) return;
-    // Invalidate both queries to trigger refetch
+    // Invalidate both queries - mark stale but don't trigger immediate refetch
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: teamMembersKeys.members(teamId) }),
-      queryClient.invalidateQueries({ queryKey: teamMembersKeys.invitations(teamId) }),
+      queryClient.invalidateQueries({ queryKey: teamMembersKeys.members(teamId), refetchType: 'none' }),
+      queryClient.invalidateQueries({ queryKey: teamMembersKeys.invitations(teamId), refetchType: 'none' }),
     ]);
   }, [teamId, queryClient]);
 
@@ -282,7 +282,7 @@ export function useMyInvitations(): UseMyInvitationsResult {
   const invitations = query.data ?? [];
 
   const refresh = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['user', 'invitations'] });
+    await queryClient.invalidateQueries({ queryKey: ['user', 'invitations'], refetchType: 'none' });
   }, [queryClient]);
 
   const acceptInvitation = useCallback(

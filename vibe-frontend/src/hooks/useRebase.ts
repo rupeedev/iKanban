@@ -41,17 +41,20 @@ export function useRebase(
         // Refresh branch status immediately
         queryClient.invalidateQueries({
           queryKey: ['branchStatus', attemptId],
+          refetchType: 'none',
         });
 
         // Invalidate taskAttempt query to refresh attempt.target_branch
         queryClient.invalidateQueries({
           queryKey: ['taskAttempt', attemptId],
+          refetchType: 'none',
         });
 
         // Refresh branch list
         if (repoId) {
           queryClient.invalidateQueries({
             queryKey: repoBranchKeys.byRepo(repoId),
+            refetchType: 'none',
           });
         }
 
@@ -62,6 +65,7 @@ export function useRebase(
         // Even on failure (likely conflicts), re-fetch branch status immediately to show rebase-in-progress
         queryClient.invalidateQueries({
           queryKey: ['branchStatus', attemptId],
+          refetchType: 'none',
         });
         onError?.(err);
       },
