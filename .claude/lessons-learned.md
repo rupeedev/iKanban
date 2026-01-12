@@ -258,17 +258,20 @@ Railway was using an old cached Docker image that didn't have the `/dashboard` r
 
 ### How It Was Fixed
 
-Used the `quick-deploy-backend.yml` workflow which uses `railway up` with a proxy Dockerfile:
+**Immediate fix:** Used `quick-deploy-backend.yml` workflow which uses `railway up` with a proxy Dockerfile to force fresh image pull.
 
-```dockerfile
-FROM rupeedev/ikanban-backend:latest
-ENV PORT=3000
-EXPOSE 3000
+**Permanent fix:** Updated `deploy-backend.yml` to use `railway up` instead of `railway redeploy`:
+
+```yaml
+# OLD (broken) - didn't pull new images:
+railway redeploy --service $SERVICE_ID --yes
+
+# NEW (fixed) - creates proxy Dockerfile and forces fresh pull:
+echo "FROM rupeedev/ikanban-backend:${{ github.sha }}" > Dockerfile
+railway up --service $SERVICE_ID
 ```
 
-The `railway up` command actually deploys this Dockerfile, forcing Railway to pull the referenced image from Docker Hub.
-
-Also fixed a token mismatch in the workflow:
+Also fixed a token mismatch in quick-deploy workflow:
 ```yaml
 # BROKEN:
 RAILWAY_TOKEN: ${{ secrets.RAILWAY_BACKEND_TOKEN }}
@@ -288,10 +291,10 @@ RAILWAY_TOKEN: ${{ secrets.RAILWAY_GITHUB_BACKEND_TOKEN }}
 
 When deploying backend changes to Railway:
 
-- [ ] **After adding new routes**: Use `quick-deploy-backend.yml` to force image pull
-- [ ] **Verify deployment**: Test the new endpoint directly with curl
+- [x] **Fixed**: `deploy-backend.yml` now uses `railway up` instead of `railway redeploy`
+- [ ] **Verify deployment**: Test new endpoints directly with curl after deploy
 - [ ] **Check response time**: 1ms 404 = route doesn't exist; longer 404 = route exists but returns 404
-- [ ] **Don't trust `railway redeploy`** for image updates - it may use cached version
+- [ ] **If issues persist**: Run `quick-deploy-backend.yml` manually as backup
 
 ### Debugging Tips
 
