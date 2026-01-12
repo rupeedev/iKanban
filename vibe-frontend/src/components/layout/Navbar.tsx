@@ -1,5 +1,5 @@
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -9,14 +9,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
   FolderOpen,
   Settings,
   BookOpen,
@@ -24,11 +16,6 @@ import {
   Menu,
   Plus,
   LogIn,
-  Github,
-  RefreshCw,
-  Unlink,
-  Loader2,
-  ChevronDown,
 } from 'lucide-react';
 import {
   SignedIn,
@@ -52,8 +39,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { teamsApi } from '@/lib/api';
-import { useWorkspaceGitHubConnection, useWorkspaceGitHubMutations } from '@/hooks/useWorkspaceGitHub';
 import { PeopleOnlineBadge, TeamChatPanel } from '@/components/chat';
 import { SupportDialog } from '@/components/dialogs/global/SupportDialog';
 
@@ -85,10 +70,6 @@ export function Navbar() {
 
   const { data: repos } = useProjectRepos(projectId);
   const isSingleRepoProject = repos?.length === 1;
-  const { data: githubConnection, refetch: refetchGitHubConnection } = useWorkspaceGitHubConnection();
-  const { deleteConnection: deleteGitHubConnection } = useWorkspaceGitHubMutations();
-  const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
 
   const setSearchBarRef = useCallback(
     (node: HTMLInputElement | null) => {
@@ -127,50 +108,6 @@ export function Navbar() {
   };
 
   const isOAuthLoggedIn = loginStatus?.status === 'loggedin';
-
-  // GitHub connection handlers
-  const handleConnectGitHub = () => {
-    const backendUrl = window.location.origin;
-    const oauthUrl = `${backendUrl}/api/oauth/github/authorize?callback_url=${encodeURIComponent(window.location.origin + '/settings/github-callback')}`;
-    const popup = window.open(oauthUrl, 'github-oauth', 'width=600,height=700,scrollbars=yes');
-
-    const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      if (event.data?.type === 'github-oauth-success') {
-        popup?.close();
-        refetchGitHubConnection();
-        window.removeEventListener('message', handleMessage);
-      } else if (event.data?.type === 'github-oauth-error') {
-        popup?.close();
-        window.removeEventListener('message', handleMessage);
-      }
-    };
-    window.addEventListener('message', handleMessage);
-  };
-
-  const handleDisconnectGitHub = async () => {
-    try {
-      await deleteGitHubConnection.mutateAsync();
-      setShowDisconnectDialog(false);
-    } catch (err) {
-      console.error('Error disconnecting GitHub:', err);
-    }
-  };
-
-  const handleSyncGitHub = async () => {
-    if (!githubConnection?.repositories.length) return;
-    setIsSyncing(true);
-    try {
-      // Sync all linked repositories
-      for (const repo of githubConnection.repositories) {
-        await teamsApi.pullDocumentsFromGitHub('', repo.id); // Empty team_id uses workspace
-      }
-    } catch (err) {
-      console.error('Error syncing:', err);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   return (
     <div className="border-b bg-background">
@@ -249,75 +186,6 @@ export function Navbar() {
                 <NavDivider />
               </>
             ) : null}
-
-            {/* GitHub Connection */}
-            <div className="hidden sm:flex items-center">
-              {githubConnection ? (
-                <>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        className="inline-flex items-center text-xs font-medium overflow-hidden border h-6 hover:bg-muted/50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
-                      >
-                        <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 flex items-center px-2 border-r h-full">
-                          <Github className="h-3.5 w-3.5" />
-                        </span>
-                        <span className="px-2 truncate max-w-[100px]">
-                          @{githubConnection.github_username || 'Connected'}
-                        </span>
-                        <ChevronDown className="h-3 w-3 mr-1 text-muted-foreground" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onSelect={handleSyncGitHub}
-                        disabled={isSyncing || !githubConnection.repositories.length}
-                      >
-                        <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                        {isSyncing ? 'Syncing...' : 'Sync Repositories'}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/settings/organizations">
-                          <Settings className="mr-2 h-4 w-4" />
-                          Manage Repositories
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onSelect={() => setShowDisconnectDialog(true)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Unlink className="mr-2 h-4 w-4" />
-                        Disconnect GitHub
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <NavDivider />
-                </>
-              ) : (
-                <>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={handleConnectGitHub}
-                          className="inline-flex items-center text-xs font-medium overflow-hidden border h-6 hover:bg-muted/50 transition-colors"
-                        >
-                          <span className="bg-muted text-muted-foreground flex items-center px-2 border-r h-full">
-                            <Github className="h-3.5 w-3.5" />
-                          </span>
-                          <span className="px-2">Connect</span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom">
-                        Connect GitHub to sync documents
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <NavDivider />
-                </>
-              )}
-            </div>
 
             {/* Clerk Authentication - only render when Clerk is enabled */}
             {CLERK_ENABLED && (
@@ -418,37 +286,6 @@ export function Navbar() {
           </div>
         </div>
       </div>
-
-      {/* Disconnect GitHub Confirmation Dialog */}
-      <Dialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Disconnect GitHub</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to disconnect your GitHub account? This will unlink all repositories and stop syncing.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDisconnectDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDisconnectGitHub}
-              disabled={deleteGitHubConnection.isPending}
-            >
-              {deleteGitHubConnection.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Disconnecting...
-                </>
-              ) : (
-                'Disconnect'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Team Chat Panel */}
       <TeamChatPanel teams={teams.map((t) => ({ id: t.id, name: t.name }))} />
