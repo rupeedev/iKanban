@@ -1,0 +1,95 @@
+{
+  "$schema": "./claude-setup-config.schema.json",
+  "_comment": "iKanban project Claude Code setup. Run: python3 mcp/claude_setup.py -c mcp/claude-setup-ikanban.json",
+
+  "project": {
+    "name": "iKanban",
+    "description": "AI-powered project management platform with Kanban boards, team collaboration, and cloud storage integration.",
+    "tech_stack": [
+      "TypeScript with strict mode",
+      "React 18 with hooks, TailwindCSS v4, Zustand, TanStack Query v5",
+      "Rust backend with Axum, SQLx, PostgreSQL",
+      "Clerk for authentication (modal sign-in, not full-page)",
+      "shadcn/ui components only",
+      "Playwright for E2E testing"
+    ]
+  },
+
+  "commands": {
+    "frontend_dev": "cd vibe-frontend && pnpm dev",
+    "backend_dev": "cd vibe-backend && cargo run --bin server",
+    "lint": "cd vibe-frontend && pnpm lint",
+    "test": "cd vibe-testing && pnpm test",
+    "sqlx_prepare": "cd vibe-backend/crates/db && cargo sqlx prepare"
+  },
+
+  "conventions": [
+    "Max 400 lines per file - split into multiple files if larger",
+    "Zero warnings - cargo check + pnpm lint must pass before commit",
+    "No unused code - remove unused imports, variables, functions",
+    "Use shadcn/ui only (npx shadcn-ui@latest add <component>)",
+    "SQLx types: DateTime<Utc> -> TIMESTAMPTZ, i64 -> bigint",
+    "Commit .sqlx/ cache files (CI uses SQLX_OFFLINE=true)",
+    "Use TanStack Query for data fetching, Zustand for client state"
+  ],
+
+  "known_quirks": [
+    "Clerk auth expects modal sign-in, not redirect-based",
+    "Database migrations: cd vibe-backend && cargo sqlx migrate run",
+    "SQLx offline mode requires .sqlx/ cache files committed",
+    "TailwindCSS v4 uses CSS-based config, not tailwind.config.js"
+  ],
+
+  "files": {
+    "create_scratchpad": true,
+    "create_plan": true,
+    "create_commands_dir": true
+  },
+
+  "custom_commands": {
+    "review": {
+      "description": "Review current file for issues",
+      "content": "Review the current file for:\n- Security vulnerabilities (XSS, SQL injection, auth bypass)\n- Performance issues (unnecessary re-renders, N+1 queries)\n- Code style violations (>400 lines, unused imports)\n- Missing error handling\n- TypeScript strict mode violations\n\nBe concise. List issues as bullet points with line numbers."
+    },
+    "test-gen": {
+      "description": "Generate Playwright tests",
+      "content": "Generate Playwright E2E tests for this component/feature:\n\n1. Identify key user flows to test\n2. Write tests covering:\n   - Happy path scenarios\n   - Error states and edge cases\n   - Accessibility (keyboard navigation, ARIA)\n3. Use existing test patterns from vibe-testing/\n4. Include proper setup/teardown\n\nOutput test file ready to save in vibe-testing/tests/"
+    },
+    "api-check": {
+      "description": "Check API endpoint implementation",
+      "content": "Review this API endpoint for:\n\n1. Authentication/Authorization - Is Clerk auth properly checked?\n2. Input validation - Are all inputs validated?\n3. Error handling - Proper error responses returned?\n4. SQLx query correctness - Types match schema?\n5. Response format - Consistent with other endpoints?\n\nList any issues with severity (critical/warning/info)."
+    },
+    "component-check": {
+      "description": "Check React component patterns",
+      "content": "Review this React component for:\n\n1. Uses shadcn/ui components correctly?\n2. TanStack Query for data fetching (not useEffect)?\n3. Zustand for client state (not Context abuse)?\n4. Proper loading/error states?\n5. TypeScript types are strict?\n6. Accessible (ARIA labels, keyboard support)?\n\nSuggest improvements following iKanban patterns."
+    }
+  },
+
+  "mcp_servers": {
+    "github": {
+      "enabled": true,
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  },
+
+  "hooks": {
+    "postToolUse": [
+      {
+        "enabled": false,
+        "matcher": "Edit|Write",
+        "command": "cd vibe-frontend && npx prettier --write $FILE",
+        "description": "Format frontend files with Prettier"
+      }
+    ]
+  },
+
+  "settings": {
+    "backup_existing": true,
+    "overwrite_claude_md": false,
+    "dry_run": false
+  }
+}

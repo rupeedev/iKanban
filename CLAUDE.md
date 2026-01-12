@@ -67,6 +67,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **SQLx types**: `DateTime<Utc>` → `TIMESTAMPTZ`, `i64` → `bigint`
 - **CI**: Commit `.sqlx/` cache files (CI uses `SQLX_OFFLINE=true`)
 
+## Progress Tracking (Automated)
+
+**Files:** `SCRATCHPAD.md` (notes) and `plan.md` (implementation plans)
+
+### When Starting a Task:
+1. Update `SCRATCHPAD.md` → "Current Focus" with task ID and description
+2. If complex feature, create plan in `plan.md` with phases and acceptance criteria
+3. Use `/project:focus IKA-XX description` to automate this
+
+### While Working:
+- Add discoveries, bugs, questions to `SCRATCHPAD.md` under Notes
+- Use `/project:note <observation>` to add timestamped notes
+- Keep TODO list updated with `- [ ]` checkboxes
+
+### When Finishing:
+1. Check off completed items in both files
+2. Add completion summary to `SCRATCHPAD.md`
+3. Use `/project:done` to automate cleanup
+
+### Available Commands:
+| Command | Purpose |
+|---------|---------|
+| `/project:plan-feature <desc>` | Create structured plan in plan.md |
+| `/project:focus <task>` | Update current focus in SCRATCHPAD.md |
+| `/project:note <text>` | Add timestamped note |
+| `/project:done` | Mark complete, update both files |
+| `/project:review` | Review current file for issues |
+| `/project:test-gen` | Generate Playwright tests |
+| `/project:api-check` | Check API endpoint |
+| `/project:component-check` | Check React component |
+
+---
+
 ## /full-stack-dev Workflow (8 Phases)
 
 When `/full-stack-dev` is invoked, follow all 8 phases in order:

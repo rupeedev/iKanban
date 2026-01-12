@@ -1,0 +1,88 @@
+{
+  "$schema": "./claude-setup-config.schema.json",
+  "_comment": "Configuration for Claude Code project setup. Run: python3 mcp/claude_setup.py",
+  "_note": "Built-in commands (plan-feature, focus, note, done, review) are always included",
+
+  "project": {
+    "name": "MyProject",
+    "description": "Project description here",
+    "tech_stack": [
+      "TypeScript with strict mode",
+      "React 18 with hooks",
+      "PostgreSQL with Prisma ORM"
+    ]
+  },
+
+  "commands": {
+    "dev": "npm run dev",
+    "test": "npm run test",
+    "lint": "npm run lint",
+    "build": "npm run build"
+  },
+
+  "conventions": [
+    "Use kebab-case for file names",
+    "All API routes under /api/v1/",
+    "Never use console.log in production code - use logger utility"
+  ],
+
+  "known_quirks": [
+    "Auth middleware expects JWT in Authorization header, not cookies",
+    "Database migrations must be run manually: npx prisma migrate dev"
+  ],
+
+  "files": {
+    "create_scratchpad": true,
+    "create_plan": true,
+    "create_commands_dir": true
+  },
+
+  "custom_commands": {
+    "explain": {
+      "description": "Explain the current file",
+      "content": "Explain what this file does:\n\n1. Purpose - What is this file's main responsibility?\n2. Key Functions - List and briefly describe main functions/classes\n3. Dependencies - What does it import and why?\n4. Usage - How is this file used in the project?\n\nKeep explanations concise and practical."
+    },
+    "refactor": {
+      "description": "Suggest refactoring improvements",
+      "content": "Analyze the current file and suggest refactoring improvements:\n\n- Code duplication that can be extracted\n- Functions that are too long (>50 lines)\n- Complex conditionals that can be simplified\n- Missing abstractions\n- Performance optimizations\n\nFor each suggestion, explain WHY and provide a brief code example."
+    },
+    "test": {
+      "description": "Generate tests for current file",
+      "content": "Generate comprehensive tests for this file:\n\n1. Identify all testable functions/methods\n2. Write unit tests covering:\n   - Happy path cases\n   - Edge cases\n   - Error handling\n3. Use the project's existing test framework\n4. Include setup/teardown if needed\n\nOutput the test file ready to save."
+    }
+  },
+
+  "mcp_servers": {
+    "github": {
+      "enabled": true,
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "filesystem": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${PROJECT_ROOT}"],
+      "env": {}
+    }
+  },
+
+  "hooks": {
+    "postToolUse": [
+      {
+        "enabled": false,
+        "matcher": "Edit|Write",
+        "command": "npx prettier --write $FILE",
+        "description": "Format files with Prettier after edit"
+      }
+    ]
+  },
+
+  "settings": {
+    "backup_existing": true,
+    "overwrite_claude_md": false,
+    "dry_run": false
+  }
+}

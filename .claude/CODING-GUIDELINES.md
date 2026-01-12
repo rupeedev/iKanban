@@ -274,6 +274,127 @@ const { data, isLoading, error } = useMyHook(id);
 
 ---
 
+## Component Resilience (CRITICAL)
+
+**These rules prevent the frontend from crashing when APIs fail.**
+
+### Rule 1: ALWAYS Handle Loading, Error, and Empty States
+
+```typescript
+// BAD - Crashes if data is undefined
+function ProjectList() {
+  const { data } = useProjects();
+  return data.map(p => <Card>{p.name}</Card>);  // TypeError!
+}
+
+// GOOD - Handle all states explicitly
+function ProjectList() {
+  const { data, isLoading, isError, error, refetch } = useProjects();
+
+  if (isLoading) {
+    return <Skeleton className="h-32" />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorCard
+        message={error?.message || 'Failed to load projects'}
+        onRetry={() => refetch()}
+      />
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return <EmptyState message="No projects yet" />;
+  }
+
+  return data.map(p => <Card>{p.name}</Card>);
+}
+```
+
+### Rule 2: Defensive Data Access
+
+```typescript
+// BAD - Crashes on undefined
+return data.items.map(item => <Item {...item} />);
+
+// GOOD - Optional chaining + nullish coalescing
+return data?.items?.map(item => <Item {...item} />) ?? null;
+
+// BETTER - Explicit guard
+if (!data?.items?.length) {
+  return <EmptyState />;
+}
+return data.items.map(item => <Item {...item} />);
+```
+
+### Rule 3: Never Trust External Data
+
+```typescript
+// BAD - Assumes shape is correct
+const userName = response.data.user.profile.name;
+
+// GOOD - Defensive access
+const userName = response?.data?.user?.profile?.name ?? 'Unknown';
+
+// BETTER - Validate with Zod
+const result = UserSchema.safeParse(response.data);
+if (!result.success) {
+  return <ErrorCard message="Invalid data received" />;
+}
+const userName = result.data.user.profile.name;
+```
+
+### Required State Handling Pattern
+
+Every component using `useQuery` MUST follow this pattern:
+
+```typescript
+function MyComponent() {
+  const query = useMyData(id);
+
+  // 1. Loading state
+  if (query.isLoading) {
+    return <LoadingSkeleton />;
+  }
+
+  // 2. Error state
+  if (query.isError) {
+    return <ErrorCard error={query.error} onRetry={query.refetch} />;
+  }
+
+  // 3. Empty/null state
+  if (!query.data) {
+    return <EmptyState />;
+  }
+
+  // 4. Success state - safe to access data
+  return <DataDisplay data={query.data} />;
+}
+```
+
+### Common Patterns That Cause Crashes
+
+| Anti-Pattern | Problem | Fix |
+|--------------|---------|-----|
+| `data.items.map()` without guard | Crashes on undefined | Add `if (!data?.items)` check |
+| Missing `isLoading` check | Renders with undefined data | Always check `isLoading` first |
+| Missing `isError` check | Silent failures | Show error UI with retry |
+| Assuming array has items | Crashes on empty array | Check `data.length > 0` |
+| Deep property access | Crashes on missing nested data | Use optional chaining `?.` |
+
+### Fallback UI Reference
+
+| State | What to Show |
+|-------|--------------|
+| Loading | `<Skeleton />` or `<Spinner />` |
+| Error (retryable) | Error card with Retry button |
+| Error (permanent) | Error card with Support link |
+| Empty data | Empty state with Create action |
+| Partial data | Show what's available + loading indicator |
+
+---
+
 ## File Organization
 
 ### When to Split Files
@@ -327,6 +448,10 @@ components/
 | **No direct API calls in useEffect** | N/A | Code review |
 | **useQuery hooks have staleTime** | N/A | Code review |
 | **invalidateQueries uses refetchType** | N/A | Code review |
+| **Components handle isLoading state** | N/A | Code review |
+| **Components handle isError state** | N/A | Code review |
+| **Components handle empty/null data** | N/A | Code review |
+| **No unsafe data access (use `?.`)** | N/A | Code review |
 
 ---
 
