@@ -4,6 +4,8 @@ pub mod chat_message;
 pub mod coding_agent_turn;
 pub mod conversation;
 pub mod conversation_participant;
+pub mod copilot_assignment;
+pub mod copilot_deployment_config;
 pub mod document;
 pub mod execution_process;
 pub mod github_connection;

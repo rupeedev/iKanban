@@ -723,3 +723,86 @@ export const chatMessages = pgTable("chat_messages", {
     idxChatMessagesCreated: index("idx_chat_messages_created").on(table.conversationId, table.createdAt),
     idxChatMessagesNotDeleted: index("idx_chat_messages_not_deleted").on(table.conversationId).where(sql`deleted_at IS NULL`),
 }));
+
+// ============================================================================
+// Copilot Assignments (IKA-93: GitHub Copilot Integration)
+// ============================================================================
+
+// Copilot Assignments - Tracks @copilot mentions and their GitHub processing status
+export const copilotAssignments = pgTable("copilot_assignments", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+
+    // GitHub Issue tracking
+    githubIssueId: bigint("github_issue_id", { mode: "number" }),
+    githubIssueUrl: text("github_issue_url"),
+
+    // GitHub PR tracking
+    githubPrId: bigint("github_pr_id", { mode: "number" }),
+    githubPrUrl: text("github_pr_url"),
+
+    // Repository tracking (for webhook matching)
+    githubRepoOwner: text("github_repo_owner"),
+    githubRepoName: text("github_repo_name"),
+
+    // CI status tracking (IKA-94: Phase 2 Auto-merge)
+    ciStatus: text("ci_status"), // "pending" | "success" | "failure" | "cancelled"
+    ciChecksUrl: text("ci_checks_url"), // Link to CI checks page
+    ciCompletedAt: timestamp("ci_completed_at", { withTimezone: true }),
+
+    // Deployment tracking (IKA-94: Phase 2 Deployment)
+    deploymentWorkflowRunId: bigint("deployment_workflow_run_id", { mode: "number" }),
+    deploymentUrl: text("deployment_url"), // Link to deployed environment
+    deployedAt: timestamp("deployed_at", { withTimezone: true }),
+
+    // Status tracking - expanded for Phase 2
+    // Values: pending | issue_created | pr_created | ci_pending | ci_passed | ci_failed |
+    //         merging | merged | merge_failed | deploying | deployed | deploy_failed | completed | failed
+    status: text("status").default("pending").notNull(),
+
+    // Request details
+    prompt: text("prompt").notNull(),
+    errorMessage: text("error_message"),
+
+    // Timestamps
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+}, (table) => ({
+    idxCopilotAssignmentsTaskId: index("idx_copilot_assignments_task_id").on(table.taskId),
+    idxCopilotAssignmentsStatus: index("idx_copilot_assignments_status").on(table.status),
+    idxCopilotAssignmentsCreatedAt: index("idx_copilot_assignments_created_at").on(table.createdAt),
+    idxCopilotAssignmentsPr: index("idx_copilot_assignments_pr").on(table.githubRepoOwner, table.githubRepoName, table.githubPrId),
+    idxCopilotAssignmentsWorkflowRun: index("idx_copilot_assignments_workflow_run").on(table.deploymentWorkflowRunId),
+}));
+
+// ============================================================================
+// Copilot Deployment Config (IKA-94: Auto-merge & Deployment Settings)
+// ============================================================================
+
+// Deployment configuration per repository for Copilot PRs
+export const copilotDeploymentConfig = pgTable("copilot_deployment_config", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    repositoryId: uuid("repository_id").notNull().references(() => githubRepositories.id, { onDelete: "cascade" }).unique(),
+
+    // Auto-merge settings
+    autoMergeEnabled: boolean("auto_merge_enabled").default(true).notNull(),
+    mergeMethod: text("merge_method").default("squash").notNull(), // "squash" | "merge" | "rebase"
+
+    // Deployment settings
+    deployWorkflowEnabled: boolean("deploy_workflow_enabled").default(false).notNull(),
+    deployWorkflowName: text("deploy_workflow_name"), // e.g., "deploy.yml"
+    deployWorkflowRef: text("deploy_workflow_ref").default("main"), // branch to dispatch on
+
+    // CI requirements
+    requiredCiChecks: text("required_ci_checks").array(), // ["test", "lint", "build"]
+    waitForAllChecks: boolean("wait_for_all_checks").default(true).notNull(),
+
+    // Auto-update task status
+    autoMarkTaskDone: boolean("auto_mark_task_done").default(true).notNull(),
+
+    // Timestamps
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+    idxCopilotDeploymentConfigRepoId: uniqueIndex("idx_copilot_deployment_config_repo_id").on(table.repositoryId),
+}));

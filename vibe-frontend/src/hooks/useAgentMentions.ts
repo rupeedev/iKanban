@@ -15,15 +15,38 @@ interface ParsedMention {
   cleanPrompt: string;
 }
 
+// Special agent that uses GitHub Copilot Workspace API (IKA-93)
+const COPILOT_MENTION: AgentMention = {
+  trigger: '@copilot',
+  executor: 'COPILOT' as BaseCodingAgent,
+  variant: null,
+  displayName: 'GitHub Copilot',
+  available: true, // Always available if GitHub is connected
+};
+
+/**
+ * Check if an agent mention is the special Copilot integration
+ * Copilot uses a different flow - creates GitHub Issue instead of local workspace
+ */
+export function isCopilotMention(agent: AgentMention | null): boolean {
+  return agent?.executor === 'COPILOT';
+}
+
 // Map of common @mention triggers to executor profiles
 function buildAgentMentions(
   profiles: Record<string, ExecutorConfig> | null
 ): AgentMention[] {
-  if (!profiles) return [];
-
   const mentions: AgentMention[] = [];
 
+  // Always add the special Copilot mention (uses GitHub Copilot Workspace API)
+  mentions.push(COPILOT_MENTION);
+
+  if (!profiles) return mentions;
+
   for (const [executor, config] of Object.entries(profiles)) {
+    // Skip COPILOT since we handle it specially
+    if (executor === 'COPILOT') continue;
+
     // Add base agent mention (e.g., @claude, @gemini)
     const baseTrigger = `@${executor.toLowerCase().replace(/_/g, '-')}`;
     mentions.push({

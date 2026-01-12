@@ -444,6 +444,49 @@ export type CreateScratch = { payload: ScratchPayload, };
 
 export type UpdateScratch = { payload: ScratchPayload, };
 
+// Copilot Assignment types (IKA-93: GitHub Copilot Integration)
+export type CopilotAssignmentStatus =
+  | 'pending'
+  | 'issue_created'
+  | 'pr_created'
+  | 'completed'
+  | 'failed'
+  | 'ci_pending'
+  | 'ci_passed'
+  | 'ci_failed'
+  | 'merging'
+  | 'merged'
+  | 'merge_failed'
+  | 'deploying'
+  | 'deployed'
+  | 'deploy_failed';
+
+export type CopilotAssignment = {
+  id: string;
+  task_id: string;
+  github_issue_id: number | null;
+  github_issue_url: string | null;
+  github_pr_id: number | null;
+  github_pr_url: string | null;
+  github_repo_owner: string | null;
+  github_repo_name: string | null;
+  ci_status: string | null;
+  ci_checks_url: string | null;
+  ci_completed_at: Date | null;
+  deployment_workflow_run_id: number | null;
+  deployment_url: string | null;
+  deployed_at: Date | null;
+  status: CopilotAssignmentStatus;
+  prompt: string;
+  error_message: string | null;
+  created_at: Date;
+  completed_at: Date | null;
+};
+
+export type CreateCopilotAssignment = {
+  prompt: string;
+};
+
 export type Image = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
 export type CreateImage = { file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, };
