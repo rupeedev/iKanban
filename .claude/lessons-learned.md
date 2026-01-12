@@ -234,6 +234,94 @@ URL: /projects/my-project/tasks/my-task-slug
 
 ---
 
+## Incident: IKA-87 Railway Not Pulling New Docker Image (2026-01-12)
+
+### What Happened
+
+After adding the `/api/teams/{id}/dashboard` endpoint (IKA-83), the production API returned 404 for this route even though:
+- The code was correct and compiled
+- The Docker image was successfully pushed to Docker Hub
+- The GitHub Actions deployment workflow reported success
+
+Other endpoints like `/api/teams/{id}/issues` worked fine, but `/dashboard` returned 404 with 1ms response time (indicating route not found, not a database issue).
+
+### Root Cause
+
+**Railway's `redeploy` command doesn't force a new Docker image pull.**
+
+The deployment workflow was:
+1. ✅ Build Rust binary with new code
+2. ✅ Push Docker image to Docker Hub with `:latest` tag
+3. ❌ `railway redeploy` - Just restarts container with CACHED image
+
+Railway was using an old cached Docker image that didn't have the `/dashboard` route. The `railway redeploy` command only restarts the existing deployment - it doesn't pull a fresh image from Docker Hub.
+
+### How It Was Fixed
+
+Used the `quick-deploy-backend.yml` workflow which uses `railway up` with a proxy Dockerfile:
+
+```dockerfile
+FROM rupeedev/ikanban-backend:latest
+ENV PORT=3000
+EXPOSE 3000
+```
+
+The `railway up` command actually deploys this Dockerfile, forcing Railway to pull the referenced image from Docker Hub.
+
+Also fixed a token mismatch in the workflow:
+```yaml
+# BROKEN:
+RAILWAY_TOKEN: ${{ secrets.RAILWAY_BACKEND_TOKEN }}
+
+# FIXED:
+RAILWAY_TOKEN: ${{ secrets.RAILWAY_GITHUB_BACKEND_TOKEN }}
+```
+
+### Railway Deployment Commands Comparison
+
+| Command | Behavior | Use Case |
+|---------|----------|----------|
+| `railway redeploy` | Restarts container with current/cached image | Quick restart, no code changes |
+| `railway up` (with Dockerfile) | Builds and deploys fresh | Force new image pull |
+
+### Prevention Checklist
+
+When deploying backend changes to Railway:
+
+- [ ] **After adding new routes**: Use `quick-deploy-backend.yml` to force image pull
+- [ ] **Verify deployment**: Test the new endpoint directly with curl
+- [ ] **Check response time**: 1ms 404 = route doesn't exist; longer 404 = route exists but returns 404
+- [ ] **Don't trust `railway redeploy`** for image updates - it may use cached version
+
+### Debugging Tips
+
+**Symptom**: New endpoint returns 404, other endpoints work
+
+**Diagnosis**:
+```bash
+# Test with UUID (bypasses any identifier lookup issues)
+curl -s "https://api.scho1ar.com/api/teams/{uuid}/dashboard" -H "Authorization: Bearer $TOKEN"
+
+# If 404 with 1ms response → route doesn't exist in deployed code
+# If 404 with longer response → route exists but something else is wrong
+```
+
+**Fix**:
+```bash
+# Trigger quick-deploy to force new image
+gh workflow run quick-deploy-backend.yml --ref main -f image_tag=latest
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `.github/workflows/deploy-backend.yml` | Main deploy (uses `railway redeploy`) |
+| `.github/workflows/quick-deploy-backend.yml` | Force deploy (uses `railway up`) |
+| `vibe-backend/railway.toml` | Railway configuration |
+
+---
+
 ## Template for Future Incidents
 
 ### Incident: [Title] (Date)
