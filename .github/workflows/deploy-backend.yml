@@ -84,38 +84,46 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Update Railway service image via API
-        id: update-image
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Create minimal deploy context
         run: |
-          echo "Updating Railway service to use image: ${{ env.DOCKER_IMAGE }}:${{ github.sha }}"
+          # Create isolated directory with just a Dockerfile
+          mkdir -p /tmp/railway-deploy
+          cd /tmp/railway-deploy
 
-          RESPONSE=$(curl -s -X POST "https://backboard.railway.app/graphql/v2" \
-            -H "Authorization: Bearer ${{ secrets.RAILWAY_GITHUB_BACKEND_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "query": "mutation { serviceInstanceUpdate(serviceId: \"${{ env.RAILWAY_SERVICE_ID }}\", input: { source: { image: \"${{ env.DOCKER_IMAGE }}:${{ github.sha }}\" } }) }"
-            }')
+          # Create Dockerfile that references the pre-built image
+          echo "FROM ${{ env.DOCKER_IMAGE }}:${{ github.sha }}" > Dockerfile
+          echo "ENV PORT=3000" >> Dockerfile
+          echo "EXPOSE 3000" >> Dockerfile
 
-          echo "API Response: $RESPONSE"
+          echo "Created Dockerfile:"
+          cat Dockerfile
 
-          # Check for errors in response
-          if echo "$RESPONSE" | grep -q '"errors"'; then
-            echo "::error::Failed to update Railway service image"
-            echo "$RESPONSE"
-            exit 1
-          fi
+          # Initialize git repo to avoid snapshot issues
+          git init
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add Dockerfile
+          git commit -m "Deploy ${{ github.sha }}"
 
-          # Verify success (mutation returns true on success)
-          if echo "$RESPONSE" | grep -q '"serviceInstanceUpdate":true'; then
-            echo "Successfully updated service image - deployment triggered"
-          else
-            echo "::warning::Unexpected response format, but no errors detected"
-          fi
+      - name: Deploy to Railway
+        id: deploy
+        working-directory: /tmp/railway-deploy
+        continue-on-error: true
+        run: railway up --service ${{ env.RAILWAY_SERVICE_ID }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_GITHUB_BACKEND_TOKEN }}
 
-      - name: Wait for deployment to start
-        run: sleep 5
-
-      - name: Verify deployment status
+      - name: Check Deployment Result
+        if: steps.deploy.outcome == 'failure'
         run: |
-          echo "Deployment triggered for ${{ env.DOCKER_IMAGE }}:${{ github.sha }}"
-          echo "Check Railway dashboard for deployment progress: https://railway.app/project/9661a956-d8c2-4bd2-a16b-05e320b85965/service/${{ env.RAILWAY_SERVICE_ID }}"
+          echo "::error::Railway deployment failed! Check Railway dashboard for details."
+          echo "Deployment of commit ${{ github.sha }} failed."
+          exit 1
+
+      - name: Deployment Success
+        if: steps.deploy.outcome == 'success'
+        run: |
+          echo "Successfully deployed ${{ env.DOCKER_IMAGE }}:${{ github.sha }} to Railway"
