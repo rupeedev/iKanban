@@ -11,6 +11,7 @@ use db::models::github_connection::{
     GitHubConnectionWithRepos, GitHubRepoSyncConfig, GitHubRepository, LinkGitHubRepository,
     UpdateGitHubConnection,
 };
+use db::models::project::Project;
 use db::models::task::{Task, TaskWithAttemptStatus};
 use db::models::team::{CreateTeam, Team, TeamProject, TeamProjectAssignment, UpdateTeam};
 use db::CreateTeamRegistry;
@@ -65,6 +66,22 @@ pub struct ValidateStoragePathResponse {
     pub valid: bool,
     /// Error message if invalid
     pub error: Option<String>,
+}
+
+/// Aggregated team dashboard response
+/// Returns all data needed for the TeamIssues page in a single request
+#[derive(Debug, Serialize, TS)]
+pub struct TeamDashboard {
+    /// The team details
+    pub team: Team,
+    /// Team members with their profiles
+    pub members: Vec<TeamMember>,
+    /// Project IDs assigned to the team
+    pub project_ids: Vec<Uuid>,
+    /// Projects assigned to the team (full project data)
+    pub projects: Vec<Project>,
+    /// Team issues with attempt status
+    pub issues: Vec<TaskWithAttemptStatus>,
 }
 
 // ============================================================================
@@ -304,6 +321,43 @@ pub async fn get_team_issues(
 ) -> Result<ResponseJson<ApiResponse<Vec<TaskWithAttemptStatus>>>, ApiError> {
     let tasks = Task::find_by_team_id_with_attempt_status(&deployment.db().pool, team.id).await?;
     Ok(ResponseJson(ApiResponse::success(tasks)))
+}
+
+/// Get aggregated team dashboard data in a single request
+/// Returns team, members, projects, and issues - replaces 5+ separate API calls
+pub async fn get_team_dashboard(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<TeamDashboard>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    // Fetch all data in parallel using tokio::join!
+    let (members_result, project_ids_result, issues_result) = tokio::join!(
+        TeamMember::find_by_team(pool, team.id),
+        Team::get_projects(pool, team.id),
+        Task::find_by_team_id_with_attempt_status(pool, team.id)
+    );
+
+    let members = members_result?;
+    let project_ids = project_ids_result?;
+    let issues = issues_result?;
+
+    // Fetch projects by IDs (filter from all projects)
+    let all_projects = Project::find_all(pool).await?;
+    let projects: Vec<Project> = all_projects
+        .into_iter()
+        .filter(|p| project_ids.contains(&p.id))
+        .collect();
+
+    let dashboard = TeamDashboard {
+        team,
+        members,
+        project_ids,
+        projects,
+        issues,
+    };
+
+    Ok(ResponseJson(ApiResponse::success(dashboard)))
 }
 
 /// Migrate tasks from a project to a team
@@ -1757,6 +1811,7 @@ pub async fn decline_invitation_by_token(
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let team_router = Router::new()
         .route("/", get(get_team).put(update_team).delete(delete_team))
+        .route("/dashboard", get(get_team_dashboard))
         .route("/issues", get(get_team_issues))
         .route("/migrate-tasks", post(migrate_tasks_to_team))
         .route("/projects", get(get_team_projects).post(assign_project_to_team))

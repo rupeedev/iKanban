@@ -95,6 +95,7 @@ import {
   CreateTeam,
   UpdateTeam,
   TeamProjectAssignment,
+  TeamDashboard,
   MigrateTasksRequest,
   MigrateTasksResponse,
   ValidateStoragePathRequest,
@@ -1748,6 +1749,11 @@ export const teamsApi = {
   getIssues: async (teamId: string): Promise<TaskWithAttemptStatus[]> => {
     const response = await makeRequest(`/api/teams/${teamId}/issues`);
     return handleApiResponse<TaskWithAttemptStatus[]>(response);
+  },
+
+  getDashboard: async (teamId: string): Promise<TeamDashboard> => {
+    const response = await makeRequest(`/api/teams/${teamId}/dashboard`);
+    return handleApiResponse<TeamDashboard>(response);
   },
 
   migrateTasks: async (
