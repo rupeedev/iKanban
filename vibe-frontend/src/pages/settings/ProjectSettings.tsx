@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { isEqual } from 'lodash';
 import {
   Card,
@@ -14,7 +14,9 @@ import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -24,14 +26,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
+import { useTeams } from '@/hooks/useTeams';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { CopyFilesField } from '@/components/projects/CopyFilesField';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
-import { projectsApi } from '@/lib/api';
+import { projectsApi, teamsApi } from '@/lib/api';
 import { repoBranchKeys } from '@/hooks/useRepoBranches';
-import type { Project, ProjectRepo, Repo, UpdateProject } from 'shared/types';
+import type { Project, ProjectRepo, Repo, Team, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
   name: string;
@@ -79,6 +82,66 @@ export function ProjectSettings() {
     isLoading: projectsLoading,
     error: projectsError,
   } = useProjects();
+
+  // Fetch all teams
+  const { teams, isLoading: teamsLoading } = useTeams();
+
+  // Fetch project IDs for each team (to build project → team mapping)
+  const teamProjectQueries = useQueries({
+    queries: teams.map((team) => ({
+      queryKey: ['teams', team.id, 'projectIds'],
+      queryFn: () => teamsApi.getProjects(team.id),
+      enabled: !teamsLoading && teams.length > 0,
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+
+  // Build a map: projectId → team (for display purposes)
+  const projectToTeam = useMemo(() => {
+    const map: Record<string, Team> = {};
+    teams.forEach((team, index) => {
+      const projectIds = teamProjectQueries[index]?.data ?? [];
+      projectIds.forEach((projectId: string) => {
+        // First team wins (a project could theoretically belong to multiple teams)
+        if (!map[projectId]) {
+          map[projectId] = team;
+        }
+      });
+    });
+    return map;
+  }, [teams, teamProjectQueries]);
+
+  // Group projects by team for better dropdown organization
+  const projectsByTeam = useMemo(() => {
+    const grouped: { team: Team | null; projects: Project[] }[] = [];
+    const teamMap = new Map<string | null, Project[]>();
+
+    projects.forEach((project) => {
+      const team = projectToTeam[project.id];
+      const teamId = team?.id ?? null;
+      if (!teamMap.has(teamId)) {
+        teamMap.set(teamId, []);
+      }
+      teamMap.get(teamId)!.push(project);
+    });
+
+    // Sort teams alphabetically and add to grouped array
+    const sortedTeamIds = Array.from(teamMap.keys()).sort((a, b) => {
+      if (a === null) return 1; // Unassigned projects at end
+      if (b === null) return -1;
+      const teamA = teams.find((t) => t.id === a);
+      const teamB = teams.find((t) => t.id === b);
+      return (teamA?.name ?? '').localeCompare(teamB?.name ?? '');
+    });
+
+    sortedTeamIds.forEach((teamId) => {
+      const teamProjects = teamMap.get(teamId) ?? [];
+      const team = teamId ? teams.find((t) => t.id === teamId) ?? null : null;
+      grouped.push({ team, projects: teamProjects });
+    });
+
+    return grouped;
+  }, [projects, projectToTeam, teams]);
 
   // Selected project state
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
@@ -530,16 +593,35 @@ export function ProjectSettings() {
               onValueChange={handleProjectSelect}
             >
               <SelectTrigger id="project-selector">
-                <SelectValue
-                  placeholder={t('settings.projects.selector.placeholder')}
-                />
+                <SelectValue placeholder={t('settings.projects.selector.placeholder')}>
+                  {selectedProject && (
+                    <span className="flex items-center gap-2">
+                      <span className="text-muted-foreground text-xs">
+                        {projectToTeam[selectedProject.id]?.identifier ?? '—'}
+                      </span>
+                      <span>{selectedProject.name}</span>
+                    </span>
+                  )}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {projects && projects.length > 0 ? (
-                  projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
+                  projectsByTeam.map(({ team, projects: teamProjects }) => (
+                    <SelectGroup key={team?.id ?? 'unassigned'}>
+                      <SelectLabel className="text-xs text-muted-foreground font-normal px-2 py-1">
+                        {team ? `${team.icon ?? '👥'} ${team.name}` : 'Other Projects'}
+                      </SelectLabel>
+                      {teamProjects.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          <span className="flex items-center gap-2">
+                            <span className="text-muted-foreground text-xs">
+                              {team?.identifier ?? '—'}
+                            </span>
+                            <span>{project.name}</span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   ))
                 ) : (
                   <SelectItem value="no-projects" disabled>
