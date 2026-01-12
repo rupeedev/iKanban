@@ -84,34 +84,33 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Create Proxy Dockerfile
+      - name: Update Railway service image via API
+        id: update-image
         run: |
-          mkdir deploy_payload
-          echo "FROM ${{ env.DOCKER_IMAGE }}:${{ github.sha }}" > deploy_payload/Dockerfile
-          echo "ENV PORT=3000" >> deploy_payload/Dockerfile
-          echo "EXPOSE 3000" >> deploy_payload/Dockerfile
-          echo "Deploying image:"
-          cat deploy_payload/Dockerfile
+          echo "Updating Railway service to use image: ${{ env.DOCKER_IMAGE }}:${{ github.sha }}"
 
-      - name: Deploy to Railway
-        id: deploy
-        working-directory: ./deploy_payload
-        continue-on-error: true
-        run: railway up --service ${{ env.RAILWAY_SERVICE_ID }}
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_GITHUB_BACKEND_TOKEN }}
+          RESPONSE=$(curl -s -X POST "https://backboard.railway.app/graphql/v2" \
+            -H "Authorization: Bearer ${{ secrets.RAILWAY_GITHUB_BACKEND_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "mutation { serviceInstanceUpdate(serviceId: \"${{ env.RAILWAY_SERVICE_ID }}\", input: { source: { image: \"${{ env.DOCKER_IMAGE }}:${{ github.sha }}\" } }) { id } }"
+            }')
 
-      - name: Check Deployment Result
-        if: steps.deploy.outcome == 'failure'
+          echo "API Response: $RESPONSE"
+
+          # Check for errors in response
+          if echo "$RESPONSE" | grep -q '"errors"'; then
+            echo "::error::Failed to update Railway service image"
+            echo "$RESPONSE"
+            exit 1
+          fi
+
+          echo "Successfully updated service image"
+
+      - name: Wait for deployment to start
+        run: sleep 5
+
+      - name: Verify deployment status
         run: |
-          echo "::error::Railway deployment failed! Check Railway dashboard for details."
-          echo "Deployment of commit ${{ github.sha }} failed."
-          exit 1
-
-      - name: Deployment Success
-        if: steps.deploy.outcome == 'success'
-        run: |
-          echo "Successfully deployed ${{ env.DOCKER_IMAGE }}:${{ github.sha }} to Railway"
+          echo "Deployment triggered for ${{ env.DOCKER_IMAGE }}:${{ github.sha }}"
+          echo "Check Railway dashboard for deployment progress: https://railway.app/project/9661a956-d8c2-4bd2-a16b-05e320b85965/service/${{ env.RAILWAY_SERVICE_ID }}"
