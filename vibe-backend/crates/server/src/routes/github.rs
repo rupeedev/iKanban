@@ -8,6 +8,7 @@ use db::models::github_connection::{
     CreateGitHubConnection, GitHubConnection, GitHubConnectionWithRepos, GitHubRepository,
     LinkGitHubRepository, UpdateGitHubConnection,
 };
+use db::models::copilot_deployment_config::{CopilotDeploymentConfig, UpsertCopilotDeploymentConfig};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use deployment::Deployment;
@@ -40,6 +41,9 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/settings/github/repos/available", get(get_available_github_repos))
         .route("/settings/github/repos", post(link_workspace_repository))
         .route("/settings/github/repos/{repo_id}", delete(unlink_workspace_repository))
+        // Deployment config endpoints
+        .route("/settings/github/repos/{repo_id}/deployment-config", get(get_deployment_config))
+        .route("/settings/github/repos/{repo_id}/deployment-config", put(update_deployment_config))
         .with_state(deployment.clone())
 }
 
@@ -226,4 +230,72 @@ pub async fn unlink_workspace_repository(
         .await;
 
     Ok(ResponseJson(ApiResponse::success(())))
+}
+
+// === Deployment Config Endpoints ===
+
+/// Request payload for updating deployment config
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct UpdateDeploymentConfigPayload {
+    pub auto_merge_enabled: Option<bool>,
+    pub merge_method: Option<String>,
+    pub deploy_workflow_enabled: Option<bool>,
+    pub deploy_workflow_name: Option<String>,
+    pub deploy_workflow_ref: Option<String>,
+    pub required_ci_checks: Option<Vec<String>>,
+    pub wait_for_all_checks: Option<bool>,
+    pub auto_mark_task_done: Option<bool>,
+}
+
+/// Get deployment config for a repository
+pub async fn get_deployment_config(
+    State(deployment): State<DeploymentImpl>,
+    Path(repo_id): Path<Uuid>,
+) -> Result<ResponseJson<ApiResponse<Option<CopilotDeploymentConfig>>>, ApiError> {
+    let config = CopilotDeploymentConfig::find_by_repository_id(&deployment.db().pool, repo_id).await?;
+    Ok(ResponseJson(ApiResponse::success(config)))
+}
+
+/// Update (or create) deployment config for a repository
+pub async fn update_deployment_config(
+    State(deployment): State<DeploymentImpl>,
+    Path(repo_id): Path<Uuid>,
+    Json(payload): Json<UpdateDeploymentConfigPayload>,
+) -> Result<ResponseJson<ApiResponse<CopilotDeploymentConfig>>, ApiError> {
+    // Verify repository exists
+    let repo = GitHubRepository::find_by_id(&deployment.db().pool, repo_id).await?;
+    if repo.is_none() {
+        return Err(ApiError::NotFound("GitHub repository not found".to_string()));
+    }
+
+    let upsert_payload = UpsertCopilotDeploymentConfig {
+        auto_merge_enabled: payload.auto_merge_enabled,
+        merge_method: payload.merge_method,
+        deploy_workflow_enabled: payload.deploy_workflow_enabled,
+        deploy_workflow_name: payload.deploy_workflow_name,
+        deploy_workflow_ref: payload.deploy_workflow_ref,
+        required_ci_checks: payload.required_ci_checks,
+        wait_for_all_checks: payload.wait_for_all_checks,
+        auto_mark_task_done: payload.auto_mark_task_done,
+    };
+
+    let config = CopilotDeploymentConfig::upsert(
+        &deployment.db().pool,
+        repo_id,
+        &upsert_payload,
+    ).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "deployment_config_updated",
+            serde_json::json!({
+                "repo_id": repo_id.to_string(),
+                "auto_merge_enabled": config.auto_merge_enabled,
+                "deploy_workflow_enabled": config.deploy_workflow_enabled,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(config)))
 }

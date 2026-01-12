@@ -60,7 +60,7 @@ impl CopilotAssignmentStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse(s: &str) -> Self {
         match s {
             "pending" => Self::Pending,
             "issue_created" => Self::IssueCreated,
@@ -216,7 +216,7 @@ impl From<CopilotAssignmentRow> for CopilotAssignment {
             deployment_workflow_run_id: row.deployment_workflow_run_id,
             deployment_url: row.deployment_url,
             deployed_at: row.deployed_at,
-            status: CopilotAssignmentStatus::from_str(&row.status),
+            status: CopilotAssignmentStatus::parse(&row.status),
             prompt: row.prompt,
             error_message: row.error_message,
             created_at: row.created_at,

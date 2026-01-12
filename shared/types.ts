@@ -487,6 +487,35 @@ export type CreateCopilotAssignment = {
   prompt: string;
 };
 
+// Copilot Deployment Config types (IKA-94: Auto-merge and Deploy)
+export type MergeMethod = 'squash' | 'merge' | 'rebase';
+
+export type CopilotDeploymentConfig = {
+  id: string;
+  repository_id: string;
+  auto_merge_enabled: boolean;
+  merge_method: MergeMethod;
+  deploy_workflow_enabled: boolean;
+  deploy_workflow_name: string | null;
+  deploy_workflow_ref: string | null;
+  required_ci_checks: string[] | null;
+  wait_for_all_checks: boolean;
+  auto_mark_task_done: boolean;
+  created_at: Date;
+  updated_at: Date;
+};
+
+export type UpdateDeploymentConfigPayload = {
+  auto_merge_enabled?: boolean;
+  merge_method?: string;
+  deploy_workflow_enabled?: boolean;
+  deploy_workflow_name?: string;
+  deploy_workflow_ref?: string;
+  required_ci_checks?: string[];
+  wait_for_all_checks?: boolean;
+  auto_mark_task_done?: boolean;
+};
+
 export type Image = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
 export type CreateImage = { file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, };

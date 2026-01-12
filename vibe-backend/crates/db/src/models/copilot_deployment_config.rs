@@ -25,7 +25,7 @@ impl MergeMethod {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse(s: &str) -> Self {
         match s {
             "squash" => Self::Squash,
             "merge" => Self::Merge,
@@ -97,7 +97,7 @@ impl From<CopilotDeploymentConfigRow> for CopilotDeploymentConfig {
             id: row.id,
             repository_id: row.repository_id,
             auto_merge_enabled: row.auto_merge_enabled,
-            merge_method: MergeMethod::from_str(&row.merge_method),
+            merge_method: MergeMethod::parse(&row.merge_method),
             deploy_workflow_enabled: row.deploy_workflow_enabled,
             deploy_workflow_name: row.deploy_workflow_name,
             deploy_workflow_ref: row.deploy_workflow_ref,
