@@ -278,7 +278,22 @@ function App() {
           <WorkspaceProvider>
             <ProjectProvider>
               <SidebarProvider>
-                <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
+                <HotkeysProvider
+                  initiallyActiveScopes={[
+                    '*',
+                    'global',
+                    'kanban',
+                    'dialog',
+                    'confirmation',
+                    'settings',
+                    'projects',
+                    'approvals',
+                    'edit-comment',
+                    'follow-up',
+                    'follow-up-ready',
+                    'sidebar',
+                  ]}
+                >
                   <NiceModal.Provider>
                     <AppContent />
                   </NiceModal.Provider>
