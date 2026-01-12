@@ -18,7 +18,7 @@ type Options = {
 
 export function useTaskAttempts(taskId?: string, opts?: Options) {
   const enabled = (opts?.enabled ?? true) && !!taskId;
-  const refetchInterval = opts?.refetchInterval ?? 5000;
+  const refetchInterval = opts?.refetchInterval ?? false;
 
   return useQuery<Workspace[]>({
     queryKey: taskAttemptKeys.byTask(taskId),
@@ -34,7 +34,7 @@ export function useTaskAttempts(taskId?: string, opts?: Options) {
  */
 export function useTaskAttemptsWithSessions(taskId?: string, opts?: Options) {
   const enabled = (opts?.enabled ?? true) && !!taskId;
-  const refetchInterval = opts?.refetchInterval ?? 5000;
+  const refetchInterval = opts?.refetchInterval ?? false;
 
   return useQuery<WorkspaceWithSession[]>({
     queryKey: taskAttemptKeys.byTaskWithSessions(taskId),
