@@ -140,6 +140,8 @@ import {
   UpdateTaskComment,
   LinkedDocument,
   LinkDocumentsRequest,
+  CopilotAssignment,
+  CreateCopilotAssignment,
   UploadResult,
   UserRegistration,
   CreateUserRegistration,
@@ -849,6 +851,23 @@ export const tasksApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+
+  // Copilot assignments (IKA-93: GitHub Copilot Integration)
+  getCopilotAssignments: async (taskId: string): Promise<CopilotAssignment[]> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/copilot`);
+    return handleApiResponse<CopilotAssignment[]>(response);
+  },
+
+  assignToCopilot: async (
+    taskId: string,
+    data: CreateCopilotAssignment
+  ): Promise<CopilotAssignment> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/copilot`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<CopilotAssignment>(response);
   },
 };
 

@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAttemptCreation } from '@/hooks/useAttemptCreation';
-import { useAgentMentions, type AgentMention } from '@/hooks/useAgentMentions';
+import { useAgentMentions, isCopilotMention, type AgentMention } from '@/hooks/useAgentMentions';
+import { useAssignToCopilot } from '@/hooks/useCopilotAssignment';
 import { useRepoBranchSelection } from '@/hooks/useRepoBranchSelection';
 import { useProjectRepos, useNavigateWithSearch } from '@/hooks';
 import { useProject } from '@/contexts/ProjectContext';
@@ -89,6 +90,22 @@ export function InlinePromptInput({
     },
   });
 
+  // Copilot assignment hook (IKA-93: GitHub Copilot Integration)
+  const { mutateAsync: assignToCopilot, isPending: isAssigningCopilot } = useAssignToCopilot({
+    onSuccess: () => {
+      toast.success('Task assigned to Copilot', {
+        description: 'GitHub issue will be created and processed.',
+      });
+      onCommentCreated?.();
+    },
+    onError: (error) => {
+      console.error('Failed to assign to Copilot:', error);
+      toast.error('Failed to assign to Copilot', {
+        description: error.message || 'Please check GitHub connection.',
+      });
+    },
+  });
+
   // Get current mention state
   const mentionState = getMentionPosition(promptText, cursorPosition);
   const filteredSuggestions = mentionState
@@ -156,9 +173,9 @@ export function InlinePromptInput({
     [filteredSuggestions.length]
   );
 
-  // Handle form submission - supports both simple comments and AI agent prompts
+  // Handle form submission - supports simple comments, AI agent prompts, and @copilot
   const handleSubmit = useCallback(async () => {
-    if (!promptText.trim() || isCreating || isCreatingComment) return;
+    if (!promptText.trim() || isCreating || isCreatingComment || isAssigningCopilot) return;
 
     // Parse the prompt to extract agent mention
     const { agent, cleanPrompt } = parseMentions(promptText);
@@ -188,7 +205,38 @@ export function InlinePromptInput({
       return;
     }
 
-    // CASE 2: Has @mention → Comment + AI attempt
+    // CASE 2: @copilot mention → Comment + Copilot Assignment (GitHub Issue)
+    if (isCopilotMention(agent)) {
+      // First create the comment
+      try {
+        await createComment({
+          content: promptText.trim(),
+          is_internal: false,
+          author_name: currentUser.name,
+          author_email: currentUser.email,
+          author_id: currentUser.id,
+        });
+      } catch (err) {
+        console.error('Failed to create comment:', err);
+        toast.error('Failed to add comment');
+        return;
+      }
+
+      // Then assign to Copilot (creates GitHub Issue)
+      try {
+        await assignToCopilot({
+          taskId,
+          data: { prompt: cleanPrompt },
+        });
+        setPromptText('');
+      } catch (err) {
+        // Error is handled by onError callback
+        setPromptText('');
+      }
+      return;
+    }
+
+    // CASE 3: Other @mention → Comment + Local AI attempt
     // First create the comment
     try {
       await createComment({
@@ -243,10 +291,13 @@ export function InlinePromptInput({
     promptText,
     isCreating,
     isCreatingComment,
+    isAssigningCopilot,
     parseMentions,
     createComment,
     currentUser,
     onCommentCreated,
+    taskId,
+    assignToCopilot,
     projectRepos.length,
     resolveMentionToProfile,
     getWorkspaceRepoInputs,
@@ -281,7 +332,7 @@ export function InlinePromptInput({
   // Can submit if there's text and not currently loading
   // No longer requires projectRepos for simple comments (only needed for AI)
   const canSubmit =
-    promptText.trim().length > 0 && !isCreating && !isCreatingComment;
+    promptText.trim().length > 0 && !isCreating && !isCreatingComment && !isAssigningCopilot;
 
   return (
     <div className={cn('relative', className)}>
@@ -317,7 +368,7 @@ export function InlinePromptInput({
               'Type a message or @agent to use AI...'
             )}
             className="min-h-[60px] max-h-[200px] resize-none pr-2"
-            disabled={isCreating || isCreatingComment}
+            disabled={isCreating || isCreatingComment || isAssigningCopilot}
             data-testid="inline-prompt-input"
           />
         </div>
@@ -330,7 +381,7 @@ export function InlinePromptInput({
           className="h-10 w-10 flex-shrink-0"
           data-testid="inline-prompt-submit"
         >
-          {(isCreating || isCreatingComment) ? (
+          {(isCreating || isCreatingComment || isAssigningCopilot) ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <SendHorizonal className="h-4 w-4" />

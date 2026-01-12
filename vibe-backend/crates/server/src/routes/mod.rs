@@ -45,6 +45,7 @@ pub mod task_attempts;
 pub mod tasks;
 pub mod teams;
 pub mod tenant_workspaces;
+pub mod webhooks;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     // Check if auth is enabled (disabled by default for backwards compatibility)
@@ -72,7 +73,8 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     let public_routes = Router::new()
         .route("/health", get(health::health_check))
         .merge(config::router())
-        .merge(oauth::router());
+        .merge(oauth::router())
+        .nest("/webhooks", webhooks::router(&deployment));
 
     // Protected routes (auth required when enabled)
     let protected_routes = Router::new()

@@ -29,6 +29,20 @@
       "when": 1768099076612,
       "tag": "0003_sturdy_maverick",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1768224124572,
+      "tag": "0004_late_katie_power",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1768224208243,
+      "tag": "0005_swift_magus",
+      "breakpoints": true
     }
   ]
 }
