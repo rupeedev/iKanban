@@ -57,7 +57,7 @@ except ImportError:
 # CONFIGURATION
 # ============================================================================
 
-VERSION = "2.2.0"
+VERSION = "2.3.0"
 
 KNOWN_TEAMS = {
     "ikanban": "a263e43f-43d3-4af7-a947-5f70e6670921",
@@ -579,6 +579,358 @@ def run_mcp_server():
                 "required": ["task_id", "content"]
             }
         },
+        # ============== Documents & Folders ==============
+        {
+            "name": "ikanban_list_folders",
+            "description": "List all folders for a team.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "team": {"type": "string", "description": "Team: IKA, SCH, or UUID", "default": "IKA"}
+                }
+            }
+        },
+        {
+            "name": "ikanban_get_folder",
+            "description": "Get folder details by ID.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "team": {"type": "string", "description": "Team: IKA, SCH, or UUID", "default": "IKA"},
+                    "folder_id": {"type": "string", "description": "Folder UUID"}
+                },
+                "required": ["folder_id"]
+            }
+        },
+        {
+            "name": "ikanban_create_folder",
+            "description": "Create a new folder in a team.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "team": {"type": "string", "description": "Team: IKA, SCH, or UUID", "default": "IKA"},
+                    "name": {"type": "string", "description": "Folder name"},
+                    "parent_id": {"type": "string", "description": "Parent folder ID (optional)"}
+                },
+                "required": ["name"]
+            }
+        },
+        {
+            "name": "ikanban_update_folder",
+            "description": "Update a folder's name or parent.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "team": {"type": "string", "description": "Team: IKA, SCH, or UUID", "default": "IKA"},
+                    "folder_id": {"type": "string", "description": "Folder UUID"},
+                    "name": {"type": "string", "description": "New folder name"},
+                    "parent_id": {"type": "string", "description": "New parent folder ID"}
+                },
+                "required": ["folder_id"]
+            }
+        },
+        {
+            "name": "ikanban_delete_folder",
+            "description": "Delete a folder.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "team": {"type": "string", "description": "Team: IKA, SCH, or UUID", "default": "IKA"},
+                    "folder_id": {"type": "string", "description": "Folder UUID"}
+                },
+                "required": ["folder_id"]
+            }
+        },
+        {
+            "name": "ikanban_list_documents",
+            "description": "List all documents for a team.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "team": {"type": "string", "description": "Team: IKA, SCH, or UUID", "default": "IKA"},
+                    "folder_id": {"type": "string", "description": "Filter by folder ID (optional)"}
+                }
+            }
+        },
+        {
+            "name": "ikanban_get_document",
+            "description": "Get document details by ID.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "team": {"type": "string", "description": "Team: IKA, SCH, or UUID", "default": "IKA"},
+                    "document_id": {"type": "string", "description": "Document UUID"}
+                },
+                "required": ["document_id"]
+            }
+        },
+        {
+            "name": "ikanban_create_document",
+            "description": "Create a new document in a team.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "team": {"type": "string", "description": "Team: IKA, SCH, or UUID", "default": "IKA"},
+                    "name": {"type": "string", "description": "Document name"},
+                    "content": {"type": "string", "description": "Document content"},
+                    "folder_id": {"type": "string", "description": "Folder ID (optional)"}
+                },
+                "required": ["name"]
+            }
+        },
+        {
+            "name": "ikanban_update_document",
+            "description": "Update a document's name, content, or folder.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "team": {"type": "string", "description": "Team: IKA, SCH, or UUID", "default": "IKA"},
+                    "document_id": {"type": "string", "description": "Document UUID"},
+                    "name": {"type": "string", "description": "New document name"},
+                    "content": {"type": "string", "description": "New document content"},
+                    "folder_id": {"type": "string", "description": "New folder ID"}
+                },
+                "required": ["document_id"]
+            }
+        },
+        {
+            "name": "ikanban_delete_document",
+            "description": "Delete a document.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "team": {"type": "string", "description": "Team: IKA, SCH, or UUID", "default": "IKA"},
+                    "document_id": {"type": "string", "description": "Document UUID"}
+                },
+                "required": ["document_id"]
+            }
+        },
+        # ============== Tenant Workspaces ==============
+        {
+            "name": "ikanban_list_workspaces",
+            "description": "List all tenant workspaces for the current user.",
+            "inputSchema": {"type": "object", "properties": {}}
+        },
+        {
+            "name": "ikanban_get_workspace",
+            "description": "Get tenant workspace details by ID.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "workspace_id": {"type": "string", "description": "Workspace UUID"}
+                },
+                "required": ["workspace_id"]
+            }
+        },
+        {
+            "name": "ikanban_create_workspace",
+            "description": "Create a new tenant workspace.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Workspace name"},
+                    "description": {"type": "string", "description": "Workspace description"}
+                },
+                "required": ["name"]
+            }
+        },
+        {
+            "name": "ikanban_update_workspace",
+            "description": "Update a tenant workspace.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "workspace_id": {"type": "string", "description": "Workspace UUID"},
+                    "name": {"type": "string", "description": "New workspace name"},
+                    "description": {"type": "string", "description": "New description"}
+                },
+                "required": ["workspace_id"]
+            }
+        },
+        {
+            "name": "ikanban_delete_workspace",
+            "description": "Delete a tenant workspace.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "workspace_id": {"type": "string", "description": "Workspace UUID"}
+                },
+                "required": ["workspace_id"]
+            }
+        },
+        {
+            "name": "ikanban_list_workspace_members",
+            "description": "List members of a tenant workspace.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "workspace_id": {"type": "string", "description": "Workspace UUID"}
+                },
+                "required": ["workspace_id"]
+            }
+        },
+        {
+            "name": "ikanban_add_workspace_member",
+            "description": "Add a member to a tenant workspace.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "workspace_id": {"type": "string", "description": "Workspace UUID"},
+                    "user_id": {"type": "string", "description": "User ID to add"},
+                    "role": {"type": "string", "description": "Member role", "enum": ["admin", "member", "viewer"]}
+                },
+                "required": ["workspace_id", "user_id"]
+            }
+        },
+        {
+            "name": "ikanban_update_workspace_member",
+            "description": "Update a workspace member's role.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "workspace_id": {"type": "string", "description": "Workspace UUID"},
+                    "member_id": {"type": "string", "description": "Member ID"},
+                    "role": {"type": "string", "description": "New role", "enum": ["admin", "member", "viewer"]}
+                },
+                "required": ["workspace_id", "member_id", "role"]
+            }
+        },
+        {
+            "name": "ikanban_remove_workspace_member",
+            "description": "Remove a member from a tenant workspace.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "workspace_id": {"type": "string", "description": "Workspace UUID"},
+                    "member_id": {"type": "string", "description": "Member ID to remove"}
+                },
+                "required": ["workspace_id", "member_id"]
+            }
+        },
+        # ============== Organizations ==============
+        {
+            "name": "ikanban_list_organizations",
+            "description": "List all organizations.",
+            "inputSchema": {"type": "object", "properties": {}}
+        },
+        {
+            "name": "ikanban_get_organization",
+            "description": "Get organization details by ID.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "org_id": {"type": "string", "description": "Organization UUID"}
+                },
+                "required": ["org_id"]
+            }
+        },
+        {
+            "name": "ikanban_create_organization",
+            "description": "Create a new organization.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Organization name"},
+                    "description": {"type": "string", "description": "Organization description"}
+                },
+                "required": ["name"]
+            }
+        },
+        {
+            "name": "ikanban_update_organization",
+            "description": "Update an organization.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "org_id": {"type": "string", "description": "Organization UUID"},
+                    "name": {"type": "string", "description": "New name"},
+                    "description": {"type": "string", "description": "New description"}
+                },
+                "required": ["org_id"]
+            }
+        },
+        {
+            "name": "ikanban_delete_organization",
+            "description": "Delete an organization.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "org_id": {"type": "string", "description": "Organization UUID"}
+                },
+                "required": ["org_id"]
+            }
+        },
+        {
+            "name": "ikanban_list_org_members",
+            "description": "List members of an organization.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "org_id": {"type": "string", "description": "Organization UUID"}
+                },
+                "required": ["org_id"]
+            }
+        },
+        {
+            "name": "ikanban_remove_org_member",
+            "description": "Remove a member from an organization.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "org_id": {"type": "string", "description": "Organization UUID"},
+                    "user_id": {"type": "string", "description": "User ID to remove"}
+                },
+                "required": ["org_id", "user_id"]
+            }
+        },
+        {
+            "name": "ikanban_update_org_member_role",
+            "description": "Update an organization member's role.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "org_id": {"type": "string", "description": "Organization UUID"},
+                    "user_id": {"type": "string", "description": "User ID"},
+                    "role": {"type": "string", "description": "New role", "enum": ["owner", "admin", "member"]}
+                },
+                "required": ["org_id", "user_id", "role"]
+            }
+        },
+        {
+            "name": "ikanban_list_org_invitations",
+            "description": "List invitations for an organization.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "org_id": {"type": "string", "description": "Organization UUID"}
+                },
+                "required": ["org_id"]
+            }
+        },
+        {
+            "name": "ikanban_create_org_invitation",
+            "description": "Create an invitation to join an organization.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "org_id": {"type": "string", "description": "Organization UUID"},
+                    "email": {"type": "string", "description": "Email to invite"},
+                    "role": {"type": "string", "description": "Role for invitee", "enum": ["admin", "member"]}
+                },
+                "required": ["org_id", "email"]
+            }
+        },
+        {
+            "name": "ikanban_accept_org_invitation",
+            "description": "Accept an organization invitation by token.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "token": {"type": "string", "description": "Invitation token"}
+                },
+                "required": ["token"]
+            }
+        },
     ]
 
     def handle_tool(name, args):
@@ -689,6 +1041,248 @@ def run_mcp_server():
             result = api_request(f"/tasks/{args['task_id']}/comments", method="POST", data=data, exit_on_error=False)
             if result.get("success"):
                 return {"comment_id": result.get("data", {}).get("id"), "task_id": args["task_id"]}
+            return {"error": result.get("error")}
+
+        # ============== Documents & Folders Handlers ==============
+        elif name == "ikanban_list_folders":
+            team_id = resolve_team_id(args.get("team", "IKA"))
+            result = api_request(f"/teams/{team_id}/folders", exit_on_error=False)
+            if "error" not in result:
+                return {"folders": result.get("data", []), "count": len(result.get("data", []))}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_get_folder":
+            team_id = resolve_team_id(args.get("team", "IKA"))
+            result = api_request(f"/teams/{team_id}/folders/{args['folder_id']}", exit_on_error=False)
+            if "error" not in result:
+                return {"folder": result.get("data", {})}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_create_folder":
+            team_id = resolve_team_id(args.get("team", "IKA"))
+            data = {"name": args["name"]}
+            if args.get("parent_id"):
+                data["parent_id"] = args["parent_id"]
+            result = api_request(f"/teams/{team_id}/folders", method="POST", data=data, exit_on_error=False)
+            if "error" not in result:
+                folder = result.get("data", {})
+                return {"folder_id": folder.get("id"), "name": folder.get("name")}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_update_folder":
+            team_id = resolve_team_id(args.get("team", "IKA"))
+            data = {}
+            if args.get("name"):
+                data["name"] = args["name"]
+            if args.get("parent_id"):
+                data["parent_id"] = args["parent_id"]
+            result = api_request(f"/teams/{team_id}/folders/{args['folder_id']}", method="PUT", data=data, exit_on_error=False)
+            if "error" not in result:
+                return {"updated": True, "folder_id": args["folder_id"]}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_delete_folder":
+            team_id = resolve_team_id(args.get("team", "IKA"))
+            result = api_request(f"/teams/{team_id}/folders/{args['folder_id']}", method="DELETE", exit_on_error=False)
+            if "error" not in result:
+                return {"deleted": True, "folder_id": args["folder_id"]}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_list_documents":
+            team_id = resolve_team_id(args.get("team", "IKA"))
+            endpoint = f"/teams/{team_id}/documents"
+            if args.get("folder_id"):
+                endpoint += f"?folder_id={args['folder_id']}"
+            result = api_request(endpoint, exit_on_error=False)
+            if "error" not in result:
+                return {"documents": result.get("data", []), "count": len(result.get("data", []))}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_get_document":
+            team_id = resolve_team_id(args.get("team", "IKA"))
+            result = api_request(f"/teams/{team_id}/documents/{args['document_id']}", exit_on_error=False)
+            if "error" not in result:
+                return {"document": result.get("data", {})}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_create_document":
+            team_id = resolve_team_id(args.get("team", "IKA"))
+            data = {"name": args["name"]}
+            if args.get("content"):
+                data["content"] = args["content"]
+            if args.get("folder_id"):
+                data["folder_id"] = args["folder_id"]
+            result = api_request(f"/teams/{team_id}/documents", method="POST", data=data, exit_on_error=False)
+            if "error" not in result:
+                doc = result.get("data", {})
+                return {"document_id": doc.get("id"), "name": doc.get("name")}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_update_document":
+            team_id = resolve_team_id(args.get("team", "IKA"))
+            data = {}
+            for field in ["name", "content", "folder_id"]:
+                if args.get(field):
+                    data[field] = args[field]
+            result = api_request(f"/teams/{team_id}/documents/{args['document_id']}", method="PUT", data=data, exit_on_error=False)
+            if "error" not in result:
+                return {"updated": True, "document_id": args["document_id"]}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_delete_document":
+            team_id = resolve_team_id(args.get("team", "IKA"))
+            result = api_request(f"/teams/{team_id}/documents/{args['document_id']}", method="DELETE", exit_on_error=False)
+            if "error" not in result:
+                return {"deleted": True, "document_id": args["document_id"]}
+            return {"error": result.get("error")}
+
+        # ============== Tenant Workspaces Handlers ==============
+        elif name == "ikanban_list_workspaces":
+            result = api_request("/tenant-workspaces", exit_on_error=False)
+            if "error" not in result:
+                return {"workspaces": result.get("data", []), "count": len(result.get("data", []))}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_get_workspace":
+            result = api_request(f"/tenant-workspaces/{args['workspace_id']}", exit_on_error=False)
+            if "error" not in result:
+                return {"workspace": result.get("data", {})}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_create_workspace":
+            data = {"name": args["name"]}
+            if args.get("description"):
+                data["description"] = args["description"]
+            result = api_request("/tenant-workspaces", method="POST", data=data, exit_on_error=False)
+            if "error" not in result:
+                ws = result.get("data", {})
+                return {"workspace_id": ws.get("id"), "name": ws.get("name")}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_update_workspace":
+            data = {}
+            if args.get("name"):
+                data["name"] = args["name"]
+            if args.get("description"):
+                data["description"] = args["description"]
+            result = api_request(f"/tenant-workspaces/{args['workspace_id']}", method="PUT", data=data, exit_on_error=False)
+            if "error" not in result:
+                return {"updated": True, "workspace_id": args["workspace_id"]}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_delete_workspace":
+            result = api_request(f"/tenant-workspaces/{args['workspace_id']}", method="DELETE", exit_on_error=False)
+            if "error" not in result:
+                return {"deleted": True, "workspace_id": args["workspace_id"]}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_list_workspace_members":
+            result = api_request(f"/tenant-workspaces/{args['workspace_id']}/members", exit_on_error=False)
+            if "error" not in result:
+                return {"members": result.get("data", []), "count": len(result.get("data", []))}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_add_workspace_member":
+            data = {"user_id": args["user_id"]}
+            if args.get("role"):
+                data["role"] = args["role"]
+            result = api_request(f"/tenant-workspaces/{args['workspace_id']}/members", method="POST", data=data, exit_on_error=False)
+            if "error" not in result:
+                return {"added": True, "workspace_id": args["workspace_id"], "user_id": args["user_id"]}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_update_workspace_member":
+            data = {"role": args["role"]}
+            result = api_request(f"/tenant-workspaces/{args['workspace_id']}/members/{args['member_id']}", method="PUT", data=data, exit_on_error=False)
+            if "error" not in result:
+                return {"updated": True, "member_id": args["member_id"], "role": args["role"]}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_remove_workspace_member":
+            result = api_request(f"/tenant-workspaces/{args['workspace_id']}/members/{args['member_id']}", method="DELETE", exit_on_error=False)
+            if "error" not in result:
+                return {"removed": True, "member_id": args["member_id"]}
+            return {"error": result.get("error")}
+
+        # ============== Organizations Handlers ==============
+        elif name == "ikanban_list_organizations":
+            result = api_request("/organizations", exit_on_error=False)
+            if "error" not in result:
+                return {"organizations": result.get("data", []), "count": len(result.get("data", []))}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_get_organization":
+            result = api_request(f"/organizations/{args['org_id']}", exit_on_error=False)
+            if "error" not in result:
+                return {"organization": result.get("data", {})}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_create_organization":
+            data = {"name": args["name"]}
+            if args.get("description"):
+                data["description"] = args["description"]
+            result = api_request("/organizations", method="POST", data=data, exit_on_error=False)
+            if "error" not in result:
+                org = result.get("data", {})
+                return {"org_id": org.get("id"), "name": org.get("name")}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_update_organization":
+            data = {}
+            if args.get("name"):
+                data["name"] = args["name"]
+            if args.get("description"):
+                data["description"] = args["description"]
+            result = api_request(f"/organizations/{args['org_id']}", method="PATCH", data=data, exit_on_error=False)
+            if "error" not in result:
+                return {"updated": True, "org_id": args["org_id"]}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_delete_organization":
+            result = api_request(f"/organizations/{args['org_id']}", method="DELETE", exit_on_error=False)
+            if "error" not in result:
+                return {"deleted": True, "org_id": args["org_id"]}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_list_org_members":
+            result = api_request(f"/organizations/{args['org_id']}/members", exit_on_error=False)
+            if "error" not in result:
+                return {"members": result.get("data", []), "count": len(result.get("data", []))}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_remove_org_member":
+            result = api_request(f"/organizations/{args['org_id']}/members/{args['user_id']}", method="DELETE", exit_on_error=False)
+            if "error" not in result:
+                return {"removed": True, "user_id": args["user_id"]}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_update_org_member_role":
+            data = {"role": args["role"]}
+            result = api_request(f"/organizations/{args['org_id']}/members/{args['user_id']}/role", method="PATCH", data=data, exit_on_error=False)
+            if "error" not in result:
+                return {"updated": True, "user_id": args["user_id"], "role": args["role"]}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_list_org_invitations":
+            result = api_request(f"/organizations/{args['org_id']}/invitations", exit_on_error=False)
+            if "error" not in result:
+                return {"invitations": result.get("data", []), "count": len(result.get("data", []))}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_create_org_invitation":
+            data = {"email": args["email"]}
+            if args.get("role"):
+                data["role"] = args["role"]
+            result = api_request(f"/organizations/{args['org_id']}/invitations", method="POST", data=data, exit_on_error=False)
+            if "error" not in result:
+                inv = result.get("data", {})
+                return {"invitation_id": inv.get("id"), "email": args["email"]}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_accept_org_invitation":
+            result = api_request(f"/invitations/{args['token']}/accept", method="POST", exit_on_error=False)
+            if "error" not in result:
+                return {"accepted": True, "token": args["token"]}
             return {"error": result.get("error")}
 
         return {"error": f"Unknown tool: {name}"}
