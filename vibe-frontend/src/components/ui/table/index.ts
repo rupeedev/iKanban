@@ -4,6 +4,7 @@ export {
   TableBody,
   TableRow,
   TableHeaderCell,
+  ResizableTableHeaderCell,
   TableCell,
   TableEmpty,
   TableLoading,

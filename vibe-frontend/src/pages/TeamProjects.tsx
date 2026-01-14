@@ -1,14 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useMemo } from 'react';
-import { Plus, Loader2, AlertCircle, Circle, ChevronDown, RefreshCw, UserX } from 'lucide-react';
+import { useMemo, useState, useRef, useEffect } from 'react';
+import { Plus, Loader2, AlertCircle, Circle, ChevronDown, RefreshCw, UserX, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
-  TableHeaderCell,
+  ResizableTableHeaderCell,
   TableRow,
 } from '@/components/ui/table';
 import {
@@ -143,6 +144,98 @@ function ProgressCircle({ percentage }: { percentage: number }) {
   );
 }
 
+// Editable name cell component
+interface EditableNameCellProps {
+  project: Project;
+  isEditing: boolean;
+  onStartEdit: () => void;
+  onSave: (name: string) => void;
+  onCancel: () => void;
+}
+
+function EditableNameCell({ project, isEditing, onStartEdit, onSave, onCancel }: EditableNameCellProps) {
+  const [value, setValue] = useState(project.name);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing) {
+      setValue(project.name);
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 0);
+    }
+  }, [isEditing, project.name]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (value.trim()) {
+        onSave(value.trim());
+      } else {
+        onCancel();
+      }
+    } else if (e.key === 'Escape') {
+      setValue(project.name);
+      onCancel();
+    }
+  };
+
+  const handleBlur = () => {
+    if (value.trim() && value.trim() !== project.name) {
+      onSave(value.trim());
+    } else {
+      onCancel();
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        <span className="text-lg">{project.icon || '📁'}</span>
+        <Input
+          ref={inputRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
+          className="h-7 text-sm w-full max-w-[200px]"
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 group/name">
+      <span className="text-lg">{project.icon || '📁'}</span>
+      <span>{project.name}</span>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 w-6 p-0 opacity-0 group-hover/name:opacity-100 transition-opacity"
+        onClick={(e) => {
+          e.stopPropagation();
+          onStartEdit();
+        }}
+        aria-label="Edit project name"
+      >
+        <Pencil className="h-3 w-3" />
+      </Button>
+    </div>
+  );
+}
+
+// Default column widths
+const DEFAULT_COLUMN_WIDTHS = {
+  name: 250,
+  health: 130,
+  priority: 130,
+  lead: 150,
+  targetDate: 130,
+  status: 100,
+};
+
 export function TeamProjects() {
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
@@ -154,6 +247,11 @@ export function TeamProjects() {
   const { issues } = useTeamIssues(actualTeamId);
   const { members } = useTeamMembers(actualTeamId);
   const { updateProject } = useProjectMutations();
+
+  // Column widths state for resizable columns
+  const [columnWidths, setColumnWidths] = useState(DEFAULT_COLUMN_WIDTHS);
+  // Currently editing project ID
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
 
   // Calculate issue stats per project
   const projectStats = useMemo(() => {
@@ -195,6 +293,36 @@ export function TeamProjects() {
   const handleProjectClick = (project: Project) => {
     const teamSlug = team ? getTeamSlug(team) : teamId;
     navigate(`/teams/${teamSlug}/projects/${getProjectSlug(project)}`);
+  };
+
+  // Handler for column resize
+  const handleColumnResize = (column: keyof typeof DEFAULT_COLUMN_WIDTHS, width: number) => {
+    setColumnWidths((prev) => ({ ...prev, [column]: width }));
+  };
+
+  // Handler for saving project name
+  const handleSaveProjectName = (project: Project, newName: string) => {
+    if (newName !== project.name) {
+      updateProject.mutate({
+        projectId: project.id,
+        data: {
+          name: newName,
+          dev_script: null,
+          dev_script_working_dir: null,
+          default_agent_working_dir: null,
+          priority: project.priority,
+          lead_id: project.lead_id,
+          start_date: project.start_date,
+          target_date: project.target_date,
+          status: project.status,
+          health: project.health,
+          description: project.description,
+          summary: project.summary,
+          icon: project.icon,
+        },
+      });
+    }
+    setEditingProjectId(null);
   };
 
   // Inline update handler for dropdowns
@@ -281,15 +409,57 @@ export function TeamProjects() {
             </Button>
           </div>
         ) : (
-          <Table>
+          <Table className="table-fixed">
             <TableHead>
               <TableRow>
-                <TableHeaderCell className="min-w-[200px] py-2 px-4">Name</TableHeaderCell>
-                <TableHeaderCell className="w-[130px] py-2 px-4">Health</TableHeaderCell>
-                <TableHeaderCell className="w-[130px] py-2 px-4">Priority</TableHeaderCell>
-                <TableHeaderCell className="w-[150px] py-2 px-4">Lead</TableHeaderCell>
-                <TableHeaderCell className="w-[130px] py-2 px-4">Target date</TableHeaderCell>
-                <TableHeaderCell className="w-[100px] py-2 px-4">Status</TableHeaderCell>
+                <ResizableTableHeaderCell
+                  width={columnWidths.name}
+                  minWidth={150}
+                  onResize={(w: number) => handleColumnResize('name', w)}
+                  className="py-2 px-4"
+                >
+                  Name
+                </ResizableTableHeaderCell>
+                <ResizableTableHeaderCell
+                  width={columnWidths.health}
+                  minWidth={100}
+                  onResize={(w: number) => handleColumnResize('health', w)}
+                  className="py-2 px-4"
+                >
+                  Health
+                </ResizableTableHeaderCell>
+                <ResizableTableHeaderCell
+                  width={columnWidths.priority}
+                  minWidth={100}
+                  onResize={(w: number) => handleColumnResize('priority', w)}
+                  className="py-2 px-4"
+                >
+                  Priority
+                </ResizableTableHeaderCell>
+                <ResizableTableHeaderCell
+                  width={columnWidths.lead}
+                  minWidth={100}
+                  onResize={(w: number) => handleColumnResize('lead', w)}
+                  className="py-2 px-4"
+                >
+                  Lead
+                </ResizableTableHeaderCell>
+                <ResizableTableHeaderCell
+                  width={columnWidths.targetDate}
+                  minWidth={100}
+                  onResize={(w: number) => handleColumnResize('targetDate', w)}
+                  className="py-2 px-4"
+                >
+                  Target date
+                </ResizableTableHeaderCell>
+                <ResizableTableHeaderCell
+                  width={columnWidths.status}
+                  minWidth={80}
+                  onResize={(w: number) => handleColumnResize('status', w)}
+                  className="py-2 px-4"
+                >
+                  Status
+                </ResizableTableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -297,22 +467,27 @@ export function TeamProjects() {
                 const priority = getPriorityDisplay(project.priority);
                 const health = getHealthDisplay(project.health);
 
+                const isEditing = editingProjectId === project.id;
+
                 return (
                   <TableRow
                     key={project.id}
-                    clickable
-                    onClick={() => handleProjectClick(project)}
+                    clickable={!isEditing}
+                    onClick={() => !isEditing && handleProjectClick(project)}
                   >
                     {/* Name */}
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{project.icon || '📁'}</span>
-                        <span>{project.name}</span>
-                      </div>
+                    <TableCell className="font-medium" style={{ width: columnWidths.name }}>
+                      <EditableNameCell
+                        project={project}
+                        isEditing={isEditing}
+                        onStartEdit={() => setEditingProjectId(project.id)}
+                        onSave={(name) => handleSaveProjectName(project, name)}
+                        onCancel={() => setEditingProjectId(null)}
+                      />
                     </TableCell>
 
                     {/* Health */}
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell onClick={(e) => e.stopPropagation()} style={{ width: columnWidths.health }}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -341,7 +516,7 @@ export function TeamProjects() {
                     </TableCell>
 
                     {/* Priority */}
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell onClick={(e) => e.stopPropagation()} style={{ width: columnWidths.priority }}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -370,7 +545,7 @@ export function TeamProjects() {
                     </TableCell>
 
                     {/* Lead */}
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell onClick={(e) => e.stopPropagation()} style={{ width: columnWidths.lead }}>
                       <LeadCell
                         leadId={project.lead_id}
                         members={members}
@@ -379,7 +554,7 @@ export function TeamProjects() {
                     </TableCell>
 
                     {/* Target date */}
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell onClick={(e) => e.stopPropagation()} style={{ width: columnWidths.targetDate }}>
                       <TargetDateCell
                         targetDate={project.target_date}
                         onSelect={(date) => handleFieldChange(project, 'target_date', date)}
@@ -387,7 +562,7 @@ export function TeamProjects() {
                     </TableCell>
 
                     {/* Status - Completion Percentage */}
-                    <TableCell>
+                    <TableCell style={{ width: columnWidths.status }}>
                       <div className="flex items-center gap-2">
                         <ProgressCircle percentage={projectStats[project.id]?.percentage || 0} />
                         <span className={cn(
