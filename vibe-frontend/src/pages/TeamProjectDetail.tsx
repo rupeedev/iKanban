@@ -36,6 +36,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
 import { useProjectRepos } from '@/hooks/useProjectRepos';
 import { tasksApi, projectsApi } from '@/lib/api';
+import { ProjectInsightsPanel } from '@/components/projects/ProjectInsightsPanel';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { toast } from 'sonner';
 import { IssueFormDialog } from '@/components/dialogs/issues/IssueFormDialog';
@@ -488,58 +489,71 @@ export function TeamProjectDetail() {
             <TabsTrigger value="issues" className="text-xs px-3 h-7">
               Issues
             </TabsTrigger>
+            <TabsTrigger value="insights" className="text-xs px-3 h-7">
+              Insights
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left side - Issues list */}
+        {/* Left side - Content based on tab */}
         <div className="flex-1 flex flex-col overflow-hidden border-r">
-          {/* Filter bar */}
-          <div className="flex items-center justify-between px-4 py-2 border-b">
-            <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs">
-              <Filter className="h-3.5 w-3.5" />
-              Filter
-            </Button>
-            <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs">
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              Display
-            </Button>
-          </div>
-
-          {/* Issues grouped by status */}
-          <div className="flex-1 overflow-y-auto">
-            {STATUS_ORDER.map((status) => (
-              <StatusGroup
-                key={status}
-                status={status}
-                issues={issuesByStatus[status]}
-                teamIdentifier={team?.identifier || undefined}
-                teamMembers={MOCK_TEAM_MEMBERS}
-                issueCountPerAssignee={issueCountPerAssignee}
-                onIssueClick={handleIssueClick}
-                onAddIssue={() => handleCreateIssue()}
-                onAssigneeChange={handleAssigneeChange}
-              />
-            ))}
-
-            {projectIssues.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center mb-4">
-                  <Plus className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">No issues yet</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Create your first issue for this project
-                </p>
-                <Button onClick={() => handleCreateIssue()}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  New issue
+          {activeTab === 'insights' ? (
+            <ProjectInsightsPanel
+              project={project}
+              issues={projectIssues}
+              teamIdentifier={team?.identifier || undefined}
+            />
+          ) : (
+            <>
+              {/* Filter bar */}
+              <div className="flex items-center justify-between px-4 py-2 border-b">
+                <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs">
+                  <Filter className="h-3.5 w-3.5" />
+                  Filter
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs">
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  Display
                 </Button>
               </div>
-            )}
-          </div>
+
+              {/* Issues grouped by status */}
+              <div className="flex-1 overflow-y-auto">
+                {STATUS_ORDER.map((status) => (
+                  <StatusGroup
+                    key={status}
+                    status={status}
+                    issues={issuesByStatus[status]}
+                    teamIdentifier={team?.identifier || undefined}
+                    teamMembers={MOCK_TEAM_MEMBERS}
+                    issueCountPerAssignee={issueCountPerAssignee}
+                    onIssueClick={handleIssueClick}
+                    onAddIssue={() => handleCreateIssue()}
+                    onAssigneeChange={handleAssigneeChange}
+                  />
+                ))}
+
+                {projectIssues.length === 0 && (
+                  <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center mb-4">
+                      <Plus className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-medium mb-2">No issues yet</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Create your first issue for this project
+                    </p>
+                    <Button onClick={() => handleCreateIssue()}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      New issue
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Right sidebar - Project details */}
