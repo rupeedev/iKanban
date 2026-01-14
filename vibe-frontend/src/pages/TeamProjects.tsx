@@ -284,12 +284,12 @@ export function TeamProjects() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableHeaderCell className="w-[300px] py-2 px-4">Name</TableHeaderCell>
-                <TableHeaderCell className="w-[100px] py-2 px-4">Health</TableHeaderCell>
-                <TableHeaderCell className="w-[100px] py-2 px-4">Priority</TableHeaderCell>
-                <TableHeaderCell className="w-[120px] py-2 px-4">Lead</TableHeaderCell>
-                <TableHeaderCell className="w-[120px] py-2 px-4">Target date</TableHeaderCell>
-                <TableHeaderCell className="w-[120px] py-2 px-4">Status</TableHeaderCell>
+                <TableHeaderCell className="min-w-[200px] py-2 px-4">Name</TableHeaderCell>
+                <TableHeaderCell className="w-[130px] py-2 px-4">Health</TableHeaderCell>
+                <TableHeaderCell className="w-[130px] py-2 px-4">Priority</TableHeaderCell>
+                <TableHeaderCell className="w-[150px] py-2 px-4">Lead</TableHeaderCell>
+                <TableHeaderCell className="w-[130px] py-2 px-4">Target date</TableHeaderCell>
+                <TableHeaderCell className="w-[100px] py-2 px-4">Status</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
