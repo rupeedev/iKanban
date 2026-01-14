@@ -20,6 +20,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
+import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useTeamProjects } from '@/hooks/useTeamProjects';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -75,7 +76,7 @@ function LeadCell({ leadId, members, onSelect }: { leadId: string | null; member
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 gap-2 text-xs">
+        <Button variant="ghost" size="sm" className="h-7 gap-2 text-xs" onClick={(e) => e.stopPropagation()}>
           {lead ? (
             <>
               <Avatar className="h-5 w-5">
@@ -90,12 +91,12 @@ function LeadCell({ leadId, members, onSelect }: { leadId: string | null; member
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
-        <DropdownMenuItem onClick={() => onSelect(null)}>
+      <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSelect(null); }}>
           <UserX className="h-4 w-4 mr-2 text-muted-foreground" />No lead
         </DropdownMenuItem>
         {members.map((m) => (
-          <DropdownMenuItem key={m.id} onClick={() => onSelect(m.id)}>
+          <DropdownMenuItem key={m.id} onClick={(e) => { e.stopPropagation(); onSelect(m.id); }}>
             <Avatar className="h-5 w-5 mr-2">
               <AvatarImage src={m.avatar_url || ''} />
               <AvatarFallback className="text-[10px]">{getInitials(m.display_name)}</AvatarFallback>
@@ -312,6 +313,7 @@ export function TeamProjects() {
                             variant="ghost"
                             size="sm"
                             className="h-7 gap-1 text-xs"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <Circle className={`h-2 w-2 fill-current ${health.color}`} />
                             <span className="hidden sm:inline">{health.label}</span>
@@ -340,6 +342,7 @@ export function TeamProjects() {
                             variant="ghost"
                             size="sm"
                             className="h-7 gap-1 text-xs"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <span>{priority.icon}</span>
                             <span className="hidden sm:inline">{priority.label}</span>
