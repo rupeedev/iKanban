@@ -476,7 +476,7 @@ export function TeamProjects() {
                     onClick={() => !isEditing && handleProjectClick(project)}
                   >
                     {/* Name */}
-                    <TableCell className="font-medium" style={{ width: columnWidths.name }}>
+                    <TableCell className="font-medium" bordered style={{ width: columnWidths.name }}>
                       <EditableNameCell
                         project={project}
                         isEditing={isEditing}
@@ -487,7 +487,7 @@ export function TeamProjects() {
                     </TableCell>
 
                     {/* Health */}
-                    <TableCell onClick={(e) => e.stopPropagation()} style={{ width: columnWidths.health }}>
+                    <TableCell onClick={(e) => e.stopPropagation()} bordered style={{ width: columnWidths.health }}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -516,7 +516,7 @@ export function TeamProjects() {
                     </TableCell>
 
                     {/* Priority */}
-                    <TableCell onClick={(e) => e.stopPropagation()} style={{ width: columnWidths.priority }}>
+                    <TableCell onClick={(e) => e.stopPropagation()} bordered style={{ width: columnWidths.priority }}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -545,7 +545,7 @@ export function TeamProjects() {
                     </TableCell>
 
                     {/* Lead */}
-                    <TableCell onClick={(e) => e.stopPropagation()} style={{ width: columnWidths.lead }}>
+                    <TableCell onClick={(e) => e.stopPropagation()} bordered style={{ width: columnWidths.lead }}>
                       <LeadCell
                         leadId={project.lead_id}
                         members={members}
@@ -554,7 +554,7 @@ export function TeamProjects() {
                     </TableCell>
 
                     {/* Target date */}
-                    <TableCell onClick={(e) => e.stopPropagation()} style={{ width: columnWidths.targetDate }}>
+                    <TableCell onClick={(e) => e.stopPropagation()} bordered style={{ width: columnWidths.targetDate }}>
                       <TargetDateCell
                         targetDate={project.target_date}
                         onSelect={(date) => handleFieldChange(project, 'target_date', date)}

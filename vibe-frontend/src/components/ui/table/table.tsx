@@ -99,7 +99,7 @@ const ResizableTableHeaderCell = React.forwardRef<
     >
       {children}
       <div
-        className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50"
+        className="absolute right-0 top-0 h-full w-px bg-border cursor-col-resize hover:bg-primary/30 active:bg-primary/50"
         onMouseDown={handleMouseDown}
         aria-hidden="true"
       />
@@ -110,9 +110,13 @@ ResizableTableHeaderCell.displayName = 'ResizableTableHeaderCell';
 
 const TableCell = React.forwardRef<
   HTMLTableCellElement,
-  React.TdHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
-  <td ref={ref} className={cn('py-2', className)} {...props} />
+  React.TdHTMLAttributes<HTMLTableCellElement> & { bordered?: boolean }
+>(({ className, bordered, ...props }, ref) => (
+  <td
+    ref={ref}
+    className={cn('py-2', bordered && 'border-r border-border', className)}
+    {...props}
+  />
 ));
 TableCell.displayName = 'TableCell';
 
