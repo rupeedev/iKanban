@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMemo } from 'react';
-import { Plus, Loader2, AlertCircle, Circle, ChevronDown, RefreshCw } from 'lucide-react';
+import { Plus, Loader2, AlertCircle, Circle, ChevronDown, RefreshCw, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -18,9 +18,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
 import { useTeamProjects } from '@/hooks/useTeamProjects';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useTeams } from '@/hooks/useTeams';
 import { useKeyCreate, Scope } from '@/keyboard';
 import { getTeamSlug, getProjectSlug } from '@/lib/url-utils';
@@ -60,6 +62,50 @@ function formatDate(dateStr: string | null | undefined) {
   } catch {
     return '—';
   }
+}
+
+const getInitials = (name: string | null | undefined) =>
+  name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
+
+// Lead cell component
+type MemberInfo = { id: string; display_name: string | null; email: string; avatar_url: string | null };
+
+function LeadCell({ leadId, members, onSelect }: { leadId: string | null; members: MemberInfo[]; onSelect: (id: string | null) => void }) {
+  const lead = leadId ? members.find(m => m.id === leadId) : null;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-7 gap-2 text-xs">
+          {lead ? (
+            <>
+              <Avatar className="h-5 w-5">
+                <AvatarImage src={lead.avatar_url || ''} />
+                <AvatarFallback className="text-[10px]">{getInitials(lead.display_name)}</AvatarFallback>
+              </Avatar>
+              <span className="hidden sm:inline truncate max-w-[80px]">{lead.display_name || lead.email}</span>
+            </>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )}
+          <ChevronDown className="h-3 w-3 opacity-50" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
+        <DropdownMenuItem onClick={() => onSelect(null)}>
+          <UserX className="h-4 w-4 mr-2 text-muted-foreground" />No lead
+        </DropdownMenuItem>
+        {members.map((m) => (
+          <DropdownMenuItem key={m.id} onClick={() => onSelect(m.id)}>
+            <Avatar className="h-5 w-5 mr-2">
+              <AvatarImage src={m.avatar_url || ''} />
+              <AvatarFallback className="text-[10px]">{getInitials(m.display_name)}</AvatarFallback>
+            </Avatar>
+            {m.display_name || m.email}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 // Progress circle component for status percentage
@@ -114,6 +160,7 @@ export function TeamProjects() {
 
   const { projects, isLoading, error, refetch, isFetching } = useTeamProjects(actualTeamId);
   const { issues } = useTeamIssues(actualTeamId);
+  const { members } = useTeamMembers(actualTeamId);
 
   // Calculate issue stats per project
   const projectStats = useMemo(() => {
@@ -314,8 +361,12 @@ export function TeamProjects() {
                     </TableCell>
 
                     {/* Lead */}
-                    <TableCell className="text-muted-foreground text-sm">
-                      {project.lead_id ? 'Assigned' : '—'}
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <LeadCell
+                        leadId={project.lead_id}
+                        members={members}
+                        onSelect={(id) => handleEditProject({ ...project, lead_id: id })}
+                      />
                     </TableCell>
 
                     {/* Target date */}
