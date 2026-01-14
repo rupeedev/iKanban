@@ -42,6 +42,8 @@ pub enum ProjectServiceError {
     DuplicateGitRepoPath,
     #[error("Duplicate repository name in project")]
     DuplicateRepositoryName,
+    #[error("A project with this name already exists")]
+    DuplicateProjectName,
     #[error("Repository not found")]
     RepositoryNotFound,
     #[error("Git operation failed: {0}")]
@@ -79,6 +81,25 @@ impl ProjectService {
         repo_service: &RepoService,
         payload: CreateProject,
     ) -> Result<Project> {
+        // Check for duplicate project name in the same workspace
+        let normalized_name = payload.name.trim();
+        if normalized_name.is_empty() {
+            return Err(ProjectServiceError::Project(ProjectError::CreateFailed(
+                "Project name cannot be empty".to_string(),
+            )));
+        }
+
+        if Project::exists_by_name_in_workspace(
+            pool,
+            normalized_name,
+            payload.tenant_workspace_id,
+            None,
+        )
+        .await?
+        {
+            return Err(ProjectServiceError::DuplicateProjectName);
+        }
+
         // Validate all repository paths and check for duplicates within the payload
         let mut seen_names = HashSet::new();
         let mut seen_paths = HashSet::new();
@@ -155,6 +176,30 @@ impl ProjectService {
         existing: &Project,
         payload: UpdateProject,
     ) -> Result<Project> {
+        // If name is being updated, check for duplicates
+        if let Some(ref new_name) = payload.name {
+            let normalized_name = new_name.trim();
+            if normalized_name.is_empty() {
+                return Err(ProjectServiceError::Project(ProjectError::CreateFailed(
+                    "Project name cannot be empty".to_string(),
+                )));
+            }
+
+            // Only check if the name is actually changing (case-insensitive)
+            if normalized_name.to_lowercase() != existing.name.trim().to_lowercase() {
+                if Project::exists_by_name_in_workspace(
+                    pool,
+                    normalized_name,
+                    existing.tenant_workspace_id,
+                    Some(existing.id),
+                )
+                .await?
+                {
+                    return Err(ProjectServiceError::DuplicateProjectName);
+                }
+            }
+        }
+
         let project = Project::update(pool, existing.id, &payload).await?;
 
         Ok(project)

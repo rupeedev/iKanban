@@ -508,4 +508,75 @@ impl Project {
             .await?;
         Ok(result.rows_affected())
     }
+
+    /// Check if a project with the same name exists in the same workspace
+    /// Case-insensitive comparison with trimmed names
+    /// Optionally exclude a specific project (for update operations)
+    pub async fn exists_by_name_in_workspace(
+        pool: &PgPool,
+        name: &str,
+        workspace_id: Option<Uuid>,
+        exclude_id: Option<Uuid>,
+    ) -> Result<bool, sqlx::Error> {
+        let normalized_name = name.trim().to_lowercase();
+
+        let exists = match (workspace_id, exclude_id) {
+            (Some(ws_id), Some(excl_id)) => {
+                sqlx::query_scalar!(
+                    r#"SELECT EXISTS(
+                        SELECT 1 FROM projects
+                        WHERE LOWER(TRIM(name)) = $1
+                        AND tenant_workspace_id = $2
+                        AND id != $3
+                    ) as "exists!: bool""#,
+                    normalized_name,
+                    ws_id,
+                    excl_id
+                )
+                .fetch_one(pool)
+                .await?
+            }
+            (Some(ws_id), None) => {
+                sqlx::query_scalar!(
+                    r#"SELECT EXISTS(
+                        SELECT 1 FROM projects
+                        WHERE LOWER(TRIM(name)) = $1
+                        AND tenant_workspace_id = $2
+                    ) as "exists!: bool""#,
+                    normalized_name,
+                    ws_id
+                )
+                .fetch_one(pool)
+                .await?
+            }
+            (None, Some(excl_id)) => {
+                sqlx::query_scalar!(
+                    r#"SELECT EXISTS(
+                        SELECT 1 FROM projects
+                        WHERE LOWER(TRIM(name)) = $1
+                        AND tenant_workspace_id IS NULL
+                        AND id != $2
+                    ) as "exists!: bool""#,
+                    normalized_name,
+                    excl_id
+                )
+                .fetch_one(pool)
+                .await?
+            }
+            (None, None) => {
+                sqlx::query_scalar!(
+                    r#"SELECT EXISTS(
+                        SELECT 1 FROM projects
+                        WHERE LOWER(TRIM(name)) = $1
+                        AND tenant_workspace_id IS NULL
+                    ) as "exists!: bool""#,
+                    normalized_name
+                )
+                .fetch_one(pool)
+                .await?
+            }
+        };
+
+        Ok(exists)
+    }
 }

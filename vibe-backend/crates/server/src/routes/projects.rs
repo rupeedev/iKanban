@@ -256,6 +256,9 @@ pub async fn create_project(
         Err(ProjectServiceError::DuplicateRepositoryName) => Ok(ResponseJson(ApiResponse::error(
             "Duplicate repository name provided",
         ))),
+        Err(ProjectServiceError::DuplicateProjectName) => {
+            Err(ApiError::Conflict("A project with this name already exists".to_string()))
+        }
         Err(ProjectServiceError::PathNotFound(_)) => Ok(ResponseJson(ApiResponse::error(
             "The specified path does not exist",
         ))),
@@ -273,18 +276,12 @@ pub async fn update_project(
     Extension(existing_project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<UpdateProject>,
-) -> Result<ResponseJson<ApiResponse<Project>>, StatusCode> {
-    match deployment
+) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
+    let project = deployment
         .project()
         .update_project(&deployment.db().pool, &existing_project, payload)
-        .await
-    {
-        Ok(project) => Ok(ResponseJson(ApiResponse::success(project))),
-        Err(e) => {
-            tracing::error!("Failed to update project: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
+        .await?;
+    Ok(ResponseJson(ApiResponse::success(project)))
 }
 
 pub async fn delete_project(

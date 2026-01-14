@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -42,6 +42,7 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useTeams } from '@/hooks/useTeams';
 import { useProjects } from '@/hooks/useProjects';
+import { useTeamProjects } from '@/hooks/useTeamProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { cn } from '@/lib/utils';
 import { teamsApi } from '@/lib/api';
@@ -123,7 +124,8 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(({ teamId
   const modal = useModal();
   const queryClient = useQueryClient();
   const { teams, teamsById } = useTeams();
-  const { addProject } = useProjects();
+  const { projects: allProjects, addProject } = useProjects();
+  const { projects: teamProjects } = useTeamProjects(teamId);
   const isEditing = !!editProject;
 
   // Form state
@@ -260,8 +262,25 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(({ teamId
   };
 
   const PriorityIcon = selectedPriority.icon;
+
+  // Check for duplicate project name (case-insensitive)
+  const existingProjectNames = useMemo(() => {
+    // For team projects, check team projects; otherwise check all projects
+    const projectsToCheck = teamId ? teamProjects : allProjects;
+    return (projectsToCheck || [])
+      .filter(p => !isEditing || p.id !== editProject?.id) // Exclude current project when editing
+      .map(p => p.name.trim().toLowerCase());
+  }, [teamId, teamProjects, allProjects, isEditing, editProject?.id]);
+
+  const isDuplicateName = useMemo(() => {
+    const trimmedName = name.trim().toLowerCase();
+    if (!trimmedName) return false;
+    return existingProjectNames.includes(trimmedName);
+  }, [name, existingProjectNames]);
+
   // Only name is required - repository is optional for new projects
-  const canSubmit = !!name.trim();
+  // Also block submission if name is duplicate
+  const canSubmit = !!name.trim() && !isDuplicateName;
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -362,14 +381,24 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(({ teamId
         {/* Main form */}
         <div className="p-4 space-y-3">
           {/* Project name */}
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Project name"
-            className="text-lg font-medium border-0 shadow-none px-0 focus-visible:ring-0 placeholder:text-muted-foreground/50"
-            autoFocus
-            disabled={isSubmitting}
-          />
+          <div className="space-y-1">
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Project name"
+              className={cn(
+                "text-lg font-medium border-0 shadow-none px-0 focus-visible:ring-0 placeholder:text-muted-foreground/50",
+                isDuplicateName && "text-destructive"
+              )}
+              autoFocus
+              disabled={isSubmitting}
+            />
+            {isDuplicateName && (
+              <p className="text-sm text-destructive">
+                A project with this name already exists
+              </p>
+            )}
+          </div>
 
           {/* Short summary */}
           <Input

@@ -55,6 +55,22 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
         return old.map((p) => (p.id === project.id ? project : p));
       });
 
+      // Update team projects cache (used by TeamProjects page)
+      // Key format: ['teams', teamId, 'projects', 'full']
+      queryClient.setQueriesData<Project[]>(
+        {
+          predicate: (query) =>
+            query.queryKey.length === 4 &&
+            query.queryKey[0] === 'teams' &&
+            query.queryKey[2] === 'projects' &&
+            query.queryKey[3] === 'full',
+        },
+        (old) => {
+          if (!old) return old;
+          return old.map((p) => (p.id === project.id ? project : p));
+        }
+      );
+
       options?.onUpdateSuccess?.(project);
     },
     onError: (err) => {
