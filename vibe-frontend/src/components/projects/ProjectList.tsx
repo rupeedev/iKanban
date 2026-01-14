@@ -1,23 +1,51 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQueries } from '@tanstack/react-query';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Project } from 'shared/types';
+import type { Project, Team } from 'shared/types';
 import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
 import { AlertCircle, Loader2, Plus } from 'lucide-react';
 import ProjectCard from '@/components/projects/ProjectCard.tsx';
 import { useKeyCreate, Scope } from '@/keyboard';
 import { useProjects } from '@/hooks/useProjects';
+import { useTeams } from '@/hooks/useTeams';
+import { teamsApi } from '@/lib/api';
 
 export function ProjectList() {
   const navigate = useNavigate();
   const { t } = useTranslation('projects');
   const { projects, isLoading, error: projectsError } = useProjects();
+  const { teams, isLoading: teamsLoading } = useTeams();
   const [error, setError] = useState('');
   const [focusedProjectId, setFocusedProjectId] = useState<string | null>(null);
+
+  // Fetch project IDs for each team (to build project → team mapping)
+  const teamProjectQueries = useQueries({
+    queries: teams.map((team) => ({
+      queryKey: ['teams', team.id, 'projectIds'],
+      queryFn: () => teamsApi.getProjects(team.id),
+      enabled: !teamsLoading && teams.length > 0,
+      staleTime: 5 * 60 * 1000, // 5 minutes - teams/projects rarely change
+    })),
+  });
+
+  // Build a map: projectId → team (for display purposes)
+  const projectToTeam = useMemo(() => {
+    const map: Record<string, Team> = {};
+    teams.forEach((team, index) => {
+      const projectIds = teamProjectQueries[index]?.data ?? [];
+      projectIds.forEach((projectId: string) => {
+        if (!map[projectId]) {
+          map[projectId] = team;
+        }
+      });
+    });
+    return map;
+  }, [teams, teamProjectQueries]);
 
   const handleCreateProject = async () => {
     try {
@@ -96,6 +124,7 @@ export function ProjectList() {
             <ProjectCard
               key={project.id}
               project={project}
+              team={projectToTeam[project.id]}
               isFocused={focusedProjectId === project.id}
               setError={setError}
               onEdit={handleEditProject}

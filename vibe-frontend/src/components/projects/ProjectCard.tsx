@@ -22,7 +22,7 @@ import {
   Trash2,
   Unlink,
 } from 'lucide-react';
-import { Project } from 'shared/types';
+import type { Project, Team } from 'shared/types';
 import { useEffect, useRef, useState } from 'react';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { useNavigateWithSearch, useProjectRepos } from '@/hooks';
@@ -35,12 +35,13 @@ import { getProjectSlug } from '@/lib/url-utils';
 
 type Props = {
   project: Project;
+  team?: Team;
   isFocused: boolean;
   setError: (error: string) => void;
   onEdit: (project: Project) => void;
 };
 
-function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
+function ProjectCard({ project, team, isFocused, setError, onEdit }: Props) {
   const navigate = useNavigateWithSearch();
   const ref = useRef<HTMLDivElement>(null);
   const handleOpenInEditor = useOpenProjectInEditor(project);
@@ -126,7 +127,14 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
     >
       <CardHeader>
         <div className="flex items-start justify-between">
-          <CardTitle className="text-lg">{project.name}</CardTitle>
+          <CardTitle className="text-lg flex items-center gap-2">
+            {team?.identifier && (
+              <span className="text-muted-foreground text-xs font-normal">
+                {team.identifier}
+              </span>
+            )}
+            {project.name}
+          </CardTitle>
           <div className="flex items-center gap-2">
             <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
