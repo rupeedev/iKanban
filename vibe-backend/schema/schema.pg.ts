@@ -1,4 +1,4 @@
-import { pgTable, text, integer, bigint, boolean, timestamp, uuid, index, uniqueIndex, foreignKey, numeric, primaryKey, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, bigint, boolean, timestamp, uuid, index, uniqueIndex, foreignKey, numeric, primaryKey, jsonb, unique } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // Projects Table
@@ -386,9 +386,25 @@ export const tags = pgTable("tags", {
     id: uuid("id").primaryKey().defaultRandom(),
     tagName: text("tag_name").notNull(),
     content: text("content").notNull(),
+    color: text("color").default("#6B7280"), // Hex color for tag display
+    teamId: uuid("team_id").references(() => teams.id, { onDelete: "set null" }), // Team scope
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => ({
+    idxTagsTeamId: index("idx_tags_team_id").on(table.teamId),
+}));
+
+// Task Tags (junction table for many-to-many task-tag relationship)
+export const taskTags = pgTable("task_tags", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+    tagId: uuid("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+    uniqueTaskTag: unique().on(table.taskId, table.tagId),
+    idxTaskTagsTaskId: index("idx_task_tags_task_id").on(table.taskId),
+    idxTaskTagsTagId: index("idx_task_tags_tag_id").on(table.tagId),
+}));
 
 // Execution Process Logs
 export const executionProcessLogs = pgTable("execution_process_logs", {

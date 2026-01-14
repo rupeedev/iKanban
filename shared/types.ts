@@ -46,11 +46,15 @@ export type CreateWorkspaceRepo = { repo_id: string, target_branch: string, };
 
 export type RepoWithTargetBranch = { target_branch: string, id: string, path: string, name: string, display_name: string, created_at: Date, updated_at: Date, };
 
-export type Tag = { id: string, tag_name: string, content: string, created_at: string, updated_at: string, };
+export type Tag = { id: string, tag_name: string, content: string, color: string | null, team_id: string | null, created_at: string, updated_at: string, };
 
-export type CreateTag = { tag_name: string, content: string, };
+export type CreateTag = { tag_name: string, content: string, color?: string | null, team_id?: string | null, };
 
-export type UpdateTag = { tag_name: string | null, content: string | null, };
+export type UpdateTag = { tag_name: string | null, content: string | null, color?: string | null, team_id?: string | null, };
+
+export type TaskTag = { id: string, task_id: string, tag_id: string, created_at: string, };
+
+export type TaskTagWithDetails = { id: string, tag_id: string, tag_name: string, content: string, color: string | null, created_at: string, };
 
 export type Team = { id: string, name: string, slug: string | null, identifier: string | null, icon: string | null, color: string | null, document_storage_path: string | null, created_at: Date, updated_at: Date, };
 
@@ -632,7 +636,7 @@ export type RegisterRepoRequest = { path: string, display_name: string | null, }
 
 export type InitRepoRequest = { parent_path: string, folder_name: string, };
 
-export type TagSearchParams = { search: string | null, };
+export type TagSearchParams = { search?: string | null, team_id?: string | null, };
 
 export type TokenResponse = { access_token: string, expires_at: string | null, };
 

@@ -43,6 +43,13 @@
       "when": 1768224208243,
       "tag": "0005_swift_magus",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1768398282022,
+      "tag": "0006_known_junta",
+      "breakpoints": true
     }
   ]
 }

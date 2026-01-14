@@ -145,6 +145,8 @@ import {
   UploadResult,
   UserRegistration,
   CreateUserRegistration,
+  TaskTag,
+  TaskTagWithDetails,
 } from 'shared/types';
 
 export interface SignedUrlResponse {
@@ -869,6 +871,27 @@ export const tasksApi = {
     });
     return handleApiResponse<CopilotAssignment>(response);
   },
+
+  // Task tags (IKA-106: Tags/Labels System)
+  getTags: async (taskId: string): Promise<TaskTagWithDetails[]> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/tags`);
+    return handleApiResponse<TaskTagWithDetails[]>(response);
+  },
+
+  addTag: async (taskId: string, tagId: string): Promise<TaskTag> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/tags`, {
+      method: 'POST',
+      body: JSON.stringify({ tag_id: tagId }),
+    });
+    return handleApiResponse<TaskTag>(response);
+  },
+
+  removeTag: async (taskId: string, tagId: string): Promise<void> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/tags/${tagId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
 };
 
 // Sessions API
@@ -1266,13 +1289,18 @@ export const configApi = {
   },
 };
 
-// Task Tags APIs (all tags are global)
+// Task Tags APIs (tags can be scoped by team)
 export const tagsApi = {
   list: async (params?: TagSearchParams): Promise<Tag[]> => {
-    const queryParam = params?.search
-      ? `?search=${encodeURIComponent(params.search)}`
-      : '';
-    const response = await makeRequest(`/api/tags${queryParam}`);
+    const queryParams = new URLSearchParams();
+    if (params?.search) {
+      queryParams.set('search', params.search);
+    }
+    if (params?.team_id) {
+      queryParams.set('team_id', params.team_id);
+    }
+    const queryString = queryParams.toString();
+    const response = await makeRequest(`/api/tags${queryString ? `?${queryString}` : ''}`);
     return handleApiResponse<Tag[]>(response);
   },
 

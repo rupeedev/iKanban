@@ -11,6 +11,8 @@ import { tasksApi } from '@/lib/api';
 import { CommentList } from '@/components/comments';
 import { IssueAttemptsSection } from '@/components/tasks/IssueAttemptsSection';
 import { IssueLinkedDocuments } from '@/components/tasks/IssueLinkedDocuments';
+import { ProjectSelector } from '@/components/tasks/ProjectSelector';
+import { TaskTagsSection } from '@/components/tags/TaskTagsSection';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 import { PrioritySelector, type PriorityValue } from '@/components/selectors/PrioritySelector';
@@ -219,6 +221,24 @@ export function IssueDetailPanel({
               disabled={isSaving}
             />
           </div>
+
+          {/* Project selector (move to project) */}
+          {teamId && (
+            <ProjectSelector
+              taskId={issue.id}
+              currentProjectId={issue.project_id}
+              teamId={teamId}
+              onMoved={onUpdate}
+              disabled={isSaving}
+            />
+          )}
+
+          {/* Tags */}
+          <TaskTagsSection
+            taskId={issue.id}
+            teamId={teamId}
+            editable={!isSaving}
+          />
 
           {/* Description */}
           <div>
