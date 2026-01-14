@@ -20,6 +20,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
+import { TargetDateCell } from '@/components/projects/TargetDateCell';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useTeamProjects } from '@/hooks/useTeamProjects';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
@@ -28,7 +29,6 @@ import { useTeams } from '@/hooks/useTeams';
 import { useKeyCreate, Scope } from '@/keyboard';
 import { getTeamSlug, getProjectSlug } from '@/lib/url-utils';
 import type { Project } from 'shared/types';
-import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const PRIORITY_OPTIONS = [
@@ -54,15 +54,6 @@ function getPriorityDisplay(priority: number | null | undefined) {
 function getHealthDisplay(health: number | null | undefined) {
   const option = HEALTH_OPTIONS.find(o => o.value === (health ?? 0)) || HEALTH_OPTIONS[0];
   return option;
-}
-
-function formatDate(dateStr: string | null | undefined) {
-  if (!dateStr) return '—';
-  try {
-    return format(new Date(dateStr), 'MMM d');
-  } catch {
-    return '—';
-  }
 }
 
 const getInitials = (name: string | null | undefined) =>
@@ -207,7 +198,7 @@ export function TeamProjects() {
   };
 
   // Inline update handler for dropdowns
-  const handleFieldChange = (project: Project, field: 'health' | 'priority' | 'lead_id', value: number | string | null) => {
+  const handleFieldChange = (project: Project, field: 'health' | 'priority' | 'lead_id' | 'target_date', value: number | string | null) => {
     updateProject.mutate({
       projectId: project.id,
       data: {
@@ -218,7 +209,7 @@ export function TeamProjects() {
         priority: field === 'priority' ? (value as number) : project.priority,
         lead_id: field === 'lead_id' ? (value as string | null) : project.lead_id,
         start_date: project.start_date,
-        target_date: project.target_date,
+        target_date: field === 'target_date' ? (value as string | null) : project.target_date,
         status: project.status,
         health: field === 'health' ? (value as number) : project.health,
         description: project.description,
@@ -388,8 +379,11 @@ export function TeamProjects() {
                     </TableCell>
 
                     {/* Target date */}
-                    <TableCell className="text-muted-foreground text-sm">
-                      {formatDate(project.target_date)}
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TargetDateCell
+                        targetDate={project.target_date}
+                        onSelect={(date) => handleFieldChange(project, 'target_date', date)}
+                      />
                     </TableCell>
 
                     {/* Status - Completion Percentage */}
