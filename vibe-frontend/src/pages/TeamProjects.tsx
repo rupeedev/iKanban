@@ -20,6 +20,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
+import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useTeamProjects } from '@/hooks/useTeamProjects';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -161,6 +162,7 @@ export function TeamProjects() {
   const { projects, isLoading, error, refetch, isFetching } = useTeamProjects(actualTeamId);
   const { issues } = useTeamIssues(actualTeamId);
   const { members } = useTeamMembers(actualTeamId);
+  const { updateProject } = useProjectMutations();
 
   // Calculate issue stats per project
   const projectStats = useMemo(() => {
@@ -199,17 +201,31 @@ export function TeamProjects() {
     }
   };
 
-  const handleEditProject = async (project: Project) => {
-    try {
-      await ProjectFormDialog.show({ editProject: project, teamId: actualTeamId });
-    } catch {
-      // User cancelled
-    }
-  };
-
   const handleProjectClick = (project: Project) => {
     const teamSlug = team ? getTeamSlug(team) : teamId;
     navigate(`/teams/${teamSlug}/projects/${getProjectSlug(project)}`);
+  };
+
+  // Inline update handler for dropdowns
+  const handleFieldChange = (project: Project, field: 'health' | 'priority' | 'lead_id', value: number | string | null) => {
+    updateProject.mutate({
+      projectId: project.id,
+      data: {
+        name: project.name,
+        dev_script: null,
+        dev_script_working_dir: null,
+        default_agent_working_dir: null,
+        priority: field === 'priority' ? (value as number) : project.priority,
+        lead_id: field === 'lead_id' ? (value as string | null) : project.lead_id,
+        start_date: project.start_date,
+        target_date: project.target_date,
+        status: project.status,
+        health: field === 'health' ? (value as number) : project.health,
+        description: project.description,
+        summary: project.summary,
+        icon: project.icon,
+      },
+    });
   };
 
   useKeyCreate(handleCreateProject, { scope: Scope.PROJECTS });
@@ -322,7 +338,7 @@ export function TeamProjects() {
                           {HEALTH_OPTIONS.map((option) => (
                             <DropdownMenuItem
                               key={option.value}
-                              onClick={() => handleEditProject({ ...project, health: option.value })}
+                              onClick={() => handleFieldChange(project, 'health', option.value)}
                             >
                               <Circle className={`h-2 w-2 mr-2 fill-current ${option.color}`} />
                               {option.label}
@@ -350,7 +366,7 @@ export function TeamProjects() {
                           {PRIORITY_OPTIONS.map((option) => (
                             <DropdownMenuItem
                               key={option.value}
-                              onClick={() => handleEditProject({ ...project, priority: option.value })}
+                              onClick={() => handleFieldChange(project, 'priority', option.value)}
                             >
                               <span className="mr-2">{option.icon}</span>
                               {option.label}
@@ -365,7 +381,7 @@ export function TeamProjects() {
                       <LeadCell
                         leadId={project.lead_id}
                         members={members}
-                        onSelect={(id) => handleEditProject({ ...project, lead_id: id })}
+                        onSelect={(id) => handleFieldChange(project, 'lead_id', id)}
                       />
                     </TableCell>
 
