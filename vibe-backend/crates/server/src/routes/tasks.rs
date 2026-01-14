@@ -21,6 +21,7 @@ use db::models::{
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     task_comment::{CreateTaskComment, TaskComment, UpdateTaskComment},
     task_document_link::{LinkDocumentsRequest, LinkedDocument, TaskDocumentLink},
+    task_tag::{AddTagRequest, TaskTag, TaskTagWithDetails},
     workspace::{CreateWorkspace, Workspace},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
@@ -622,6 +623,47 @@ pub async fn unlink_document_from_task(
     Ok((StatusCode::OK, ResponseJson(ApiResponse::success(()))))
 }
 
+// ============ TASK TAG HANDLERS ============
+
+/// Get all tags for a task
+pub async fn get_task_tags(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<TaskTagWithDetails>>>, ApiError> {
+    let tags = TaskTag::find_by_task_id(&deployment.db().pool, task.id).await?;
+    Ok(ResponseJson(ApiResponse::success(tags)))
+}
+
+/// Add a tag to a task
+pub async fn add_task_tag(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<AddTagRequest>,
+) -> Result<ResponseJson<ApiResponse<TaskTag>>, ApiError> {
+    let task_tag = TaskTag::add_tag(&deployment.db().pool, task.id, payload.tag_id).await?;
+    Ok(ResponseJson(ApiResponse::success(task_tag)))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TaskTagPath {
+    pub tag_id: Uuid,
+}
+
+/// Remove a tag from a task
+pub async fn remove_task_tag(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+    axum::extract::Path(path): axum::extract::Path<TaskTagPath>,
+) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
+    let rows = TaskTag::remove_tag(&deployment.db().pool, task.id, path.tag_id).await?;
+
+    if rows == 0 {
+        return Err(ApiError::NotFound("Task tag not found".to_string()));
+    }
+
+    Ok((StatusCode::OK, ResponseJson(ApiResponse::success(()))))
+}
+
 // ============ COPILOT ASSIGNMENT HANDLERS ============
 
 /// Request to assign a task to Copilot
@@ -759,6 +801,9 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         // Document link routes
         .route("/links", get(get_task_links).post(link_documents_to_task))
         .route("/links/{document_id}", delete(unlink_document_from_task))
+        // Task tag routes
+        .route("/tags", get(get_task_tags).post(add_task_tag))
+        .route("/tags/{tag_id}", delete(remove_task_tag))
         // Copilot assignment routes
         .route("/copilot", get(get_copilot_assignments).post(assign_task_to_copilot));
 
