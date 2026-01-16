@@ -157,7 +157,9 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(({ teamId
         try {
           await teamsApi.assignProject(teamId, { project_id: project.id });
           // Invalidate team projects cache so the list updates
-          queryClient.invalidateQueries({ queryKey: ['teams', teamId, 'projects'] });
+          queryClient.invalidateQueries({ queryKey: ['teams', teamId, 'projects'], refetchType: 'none' });
+          // Also invalidate projectIds cache used by /projects page to show team badges
+          queryClient.invalidateQueries({ queryKey: ['teams', teamId, 'projectIds'], refetchType: 'none' });
         } catch (err) {
           console.error('Failed to assign project to team:', err);
         }
@@ -252,7 +254,7 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(({ teamId
     } finally {
       setIsSubmitting(false);
     }
-  }, [name, summary, description, icon, status, priority, leadId, startDate, targetDate, repoPath, repoDisplayName, isEditing, editProject, createProject, updateProject, isTeamProject, teamId]);
+  }, [name, summary, description, icon, status, priority, leadId, startDate, targetDate, repoPath, repoDisplayName, isEditing, editProject, createProject, updateProject, isTeamProject]);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
