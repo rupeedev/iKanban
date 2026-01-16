@@ -9,6 +9,7 @@ pub struct GitHubConnection {
     pub id: Uuid,
     /// Team ID - NULL for workspace-level connection
     pub team_id: Option<Uuid>,
+    #[serde(skip_serializing)] // Never expose the access token
     pub access_token: String,
     pub github_username: Option<String>,
     #[ts(type = "Date")]
@@ -249,10 +250,7 @@ pub struct ConfigureMultiFolderSync {
 }
 
 impl GitHubRepoSyncConfig {
-    pub async fn find_by_repo_id(
-        pool: &PgPool,
-        repo_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn find_by_repo_id(pool: &PgPool, repo_id: Uuid) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             GitHubRepoSyncConfig,
             r#"SELECT id as "id!: Uuid",
@@ -296,9 +294,12 @@ impl GitHubRepoSyncConfig {
     }
 
     pub async fn delete_by_repo_id(pool: &PgPool, repo_id: Uuid) -> Result<u64, sqlx::Error> {
-        let result = sqlx::query!("DELETE FROM github_repo_sync_configs WHERE repo_id = $1", repo_id)
-            .execute(pool)
-            .await?;
+        let result = sqlx::query!(
+            "DELETE FROM github_repo_sync_configs WHERE repo_id = $1",
+            repo_id
+        )
+        .execute(pool)
+        .await?;
         Ok(result.rows_affected())
     }
 

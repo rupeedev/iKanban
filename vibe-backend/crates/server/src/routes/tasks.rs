@@ -14,7 +14,7 @@ use axum::{
 };
 use db::models::{
     copilot_assignment::{CopilotAssignment, CreateCopilotAssignment},
-    github_connection::GitHubConnection,
+    github_connection::{GitHubConnection, GitHubRepository},
     image::TaskImage,
     project::{Project, ProjectError},
     repo::Repo,
@@ -673,6 +673,14 @@ pub struct AssignToCopilotRequest {
     pub prompt: String,
 }
 
+/// GitHub API response for issue creation
+#[derive(Debug, Deserialize)]
+struct GitHubIssueResponse {
+    id: i64,
+    number: i64,
+    html_url: String,
+}
+
 /// Get all copilot assignments for a task
 pub async fn get_copilot_assignments(
     Extension(task): Extension<Task>,
@@ -694,17 +702,28 @@ pub async fn assign_task_to_copilot(
     let connection = GitHubConnection::find_workspace_connection(pool)
         .await?
         .ok_or_else(|| {
-            ApiError::BadRequest("No GitHub connection configured. Please connect GitHub first.".to_string())
+            ApiError::BadRequest(
+                "No GitHub connection configured. Please connect GitHub first.".to_string(),
+            )
         })?;
 
-    // For now, create the assignment in pending status
-    // The actual GitHub issue creation will be handled by a background service
+    // Verify at least one repository is linked
+    let repos = GitHubRepository::find_by_connection_id(pool, connection.id).await?;
+    if repos.is_empty() {
+        return Err(ApiError::BadRequest(
+            "No repository linked. Please link a repository in Settings first.".to_string(),
+        ));
+    }
+
+    let repo = &repos[0]; // Use first linked repo
+
+    // Create the assignment with repo info
     let create_payload = CreateCopilotAssignment {
         prompt: payload.prompt.clone(),
         github_issue_id: None,
         github_issue_url: None,
-        github_repo_owner: None,
-        github_repo_name: None,
+        github_repo_owner: Some(repo.repo_owner.clone()),
+        github_repo_name: Some(repo.repo_name.clone()),
         status: "pending".to_string(),
     };
 
@@ -717,6 +736,8 @@ pub async fn assign_task_to_copilot(
     let task_description = task.description.clone();
     let prompt = payload.prompt.clone();
     let access_token = connection.access_token.clone();
+    let repo_owner = repo.repo_owner.clone();
+    let repo_name = repo.repo_name.clone();
 
     tokio::spawn(async move {
         if let Err(e) = create_github_issue_for_copilot(
@@ -726,6 +747,8 @@ pub async fn assign_task_to_copilot(
             task_description.as_deref(),
             &prompt,
             &access_token,
+            &repo_owner,
+            &repo_name,
         )
         .await
         {
@@ -739,6 +762,7 @@ pub async fn assign_task_to_copilot(
             serde_json::json!({
                 "task_id": task.id.to_string(),
                 "assignment_id": assignment.id.to_string(),
+                "repo": format!("{}/{}", repo.repo_owner, repo.repo_name),
             }),
         )
         .await;
@@ -747,17 +771,23 @@ pub async fn assign_task_to_copilot(
 }
 
 /// Background task to create GitHub issue for Copilot
+///
+/// This function is spawned as a background task and uses Result<(), String>
+/// to allow clean error handling without blocking the main handler.
 async fn create_github_issue_for_copilot(
     pool: &sqlx::PgPool,
     assignment_id: Uuid,
     task_title: &str,
     task_description: Option<&str>,
     prompt: &str,
-    _access_token: &str,
-) -> Result<(), ApiError> {
+    access_token: &str,
+    repo_owner: &str,
+    repo_name: &str,
+) -> Result<(), String> {
     use db::models::copilot_assignment::UpdateCopilotAssignment;
 
-    // Build issue body with task context and copilot prompt
+    // Build issue title and body
+    let issue_title = format!("[Copilot] Task: {}", task_title);
     let issue_body = format!(
         "## Task\n{}\n\n## Description\n{}\n\n## Copilot Instructions\n{}\n\n---\n*Created by iKanban @copilot integration*",
         task_title,
@@ -765,28 +795,110 @@ async fn create_github_issue_for_copilot(
         prompt
     );
 
-    // TODO: Implement actual GitHub API call to create issue
-    // For now, just update status to indicate the system is processing
-    // This will be completed when we add the GitHub service
-    tracing::info!(
-        "Would create GitHub issue for assignment {}: {}",
-        assignment_id,
-        issue_body
+    // Build GitHub API URL
+    let url = format!(
+        "https://api.github.com/repos/{}/{}/issues",
+        repo_owner, repo_name
     );
 
-    // Update assignment status to issue_created (placeholder)
-    CopilotAssignment::update(
-        pool,
-        assignment_id,
-        &UpdateCopilotAssignment {
-            status: Some("issue_created".to_string()),
-            ..Default::default()
-        },
-    )
-    .await
-    .map_err(|e| ApiError::Database(e))?;
+    // Build request body
+    let body = serde_json::json!({
+        "title": issue_title,
+        "body": issue_body,
+        "labels": ["copilot", "automated"]
+    });
 
-    Ok(())
+    tracing::info!(
+        "Creating GitHub issue for assignment {} in {}/{}",
+        assignment_id,
+        repo_owner,
+        repo_name
+    );
+
+    // Make GitHub API request
+    let client = reqwest::Client::new();
+    let response = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("User-Agent", "iKanban-Copilot")
+        .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to call GitHub API: {}", e);
+            format!("GitHub API request failed: {}", e)
+        })?;
+
+    // Handle response
+    if response.status().is_success() {
+        let issue_response: GitHubIssueResponse =
+            response.json::<GitHubIssueResponse>().await.map_err(|e| {
+                tracing::error!("Failed to parse GitHub response: {}", e);
+                "Failed to parse GitHub response".to_string()
+            })?;
+
+        tracing::info!(
+            "Created GitHub issue #{} for assignment {}",
+            issue_response.number,
+            assignment_id
+        );
+
+        // Update assignment with issue details
+        CopilotAssignment::update(
+            pool,
+            assignment_id,
+            &UpdateCopilotAssignment {
+                github_issue_id: Some(issue_response.id),
+                github_issue_url: Some(issue_response.html_url),
+                github_repo_owner: Some(repo_owner.to_string()),
+                github_repo_name: Some(repo_name.to_string()),
+                status: Some("issue_created".to_string()),
+                ..Default::default()
+            },
+        )
+        .await
+        .map_err(|e| format!("Failed to update assignment: {}", e))?;
+
+        Ok(())
+    } else {
+        let status = response.status();
+        let error_body: String = response.text().await.unwrap_or_default();
+
+        tracing::error!(
+            "GitHub API error ({}): {} for assignment {}",
+            status,
+            error_body,
+            assignment_id
+        );
+
+        // Parse GitHub error message if possible
+        let error_message =
+            if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&error_body) {
+                error_json["message"]
+                    .as_str()
+                    .unwrap_or("Unknown error")
+                    .to_string()
+            } else {
+                format!("GitHub API error: {}", status)
+            };
+
+        // Update assignment with error
+        CopilotAssignment::update(
+            pool,
+            assignment_id,
+            &UpdateCopilotAssignment {
+                status: Some("failed".to_string()),
+                error_message: Some(error_message.clone()),
+                ..Default::default()
+            },
+        )
+        .await
+        .ok(); // Don't fail on error update
+
+        Err(error_message)
+    }
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
@@ -796,8 +908,14 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/share", post(share_task))
         .route("/move", post(move_task))
         // Comment routes
-        .route("/comments", get(get_task_comments).post(create_task_comment))
-        .route("/comments/{comment_id}", put(update_task_comment).delete(delete_task_comment))
+        .route(
+            "/comments",
+            get(get_task_comments).post(create_task_comment),
+        )
+        .route(
+            "/comments/{comment_id}",
+            put(update_task_comment).delete(delete_task_comment),
+        )
         // Document link routes
         .route("/links", get(get_task_links).post(link_documents_to_task))
         .route("/links/{document_id}", delete(unlink_document_from_task))
@@ -805,7 +923,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/tags", get(get_task_tags).post(add_task_tag))
         .route("/tags/{tag_id}", delete(remove_task_tag))
         // Copilot assignment routes
-        .route("/copilot", get(get_copilot_assignments).post(assign_task_to_copilot));
+        .route(
+            "/copilot",
+            get(get_copilot_assignments).post(assign_task_to_copilot),
+        );
 
     let task_id_router = Router::new()
         .route("/", get(get_task))
