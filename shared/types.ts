@@ -24,7 +24,7 @@ health: number | null, description: string | null, summary: string | null, icon:
 
 export type ProjectStatus = "backlog" | "planned" | "inprogress" | "paused" | "completed" | "cancelled";
 
-export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, priority: number | null, lead_id: string | null, start_date: string | null, target_date: string | null, status: string | null, description: string | null, summary: string | null, icon: string | null, };
+export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, priority: number | null, lead_id: string | null, start_date: string | null, target_date: string | null, status: string | null, description: string | null, summary: string | null, icon: string | null, tenant_workspace_id?: string | null, };
 
 export type UpdateProject = { name: string | null, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, priority: number | null, lead_id: string | null, start_date: string | null, target_date: string | null, status: string | null, health: number | null, description: string | null, summary: string | null, icon: string | null, };
 

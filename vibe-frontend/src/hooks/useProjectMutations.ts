@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { projectsApi } from '@/lib/api';
+import { useWorkspaceOptional } from '@/contexts/WorkspaceContext';
 import type {
   CreateProject,
   UpdateProject,
@@ -21,10 +22,16 @@ interface UseProjectMutationsOptions {
 
 export function useProjectMutations(options?: UseProjectMutationsOptions) {
   const queryClient = useQueryClient();
+  const workspaceContext = useWorkspaceOptional();
+  const currentWorkspaceId = workspaceContext?.currentWorkspaceId ?? null;
 
   const createProject = useMutation({
     mutationKey: ['createProject'],
-    mutationFn: (data: CreateProject) => projectsApi.create(data),
+    mutationFn: (data: CreateProject) => projectsApi.create({
+      ...data,
+      // Automatically inject tenant_workspace_id so projects appear in workspace-scoped queries
+      tenant_workspace_id: currentWorkspaceId,
+    }),
     onSuccess: (project: Project) => {
       queryClient.setQueryData(['project', project.id], project);
       queryClient.invalidateQueries({ queryKey: ['projects'], refetchType: 'none' });
