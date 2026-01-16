@@ -24,8 +24,9 @@ export function useTags(teamId?: string) {
         );
       });
       // Also invalidate the general tags query if teamId is specified
+      // This ensures the general tags list is refreshed when needed
       if (teamId) {
-        queryClient.invalidateQueries({ queryKey: ["tags", undefined], refetchType: 'none' });
+        queryClient.invalidateQueries({ queryKey: ["tags", undefined] });
       }
     },
   });
@@ -47,7 +48,8 @@ export function useTags(teamId?: string) {
         old?.filter((t) => t.id !== tagId) ?? []
       );
       // Invalidate all task-tags queries since a tag was deleted
-      queryClient.invalidateQueries({ queryKey: ["task-tags"], refetchType: 'none' });
+      // This ensures task tag lists are refreshed when a tag is removed
+      queryClient.invalidateQueries({ queryKey: ["task-tags"] });
     },
   });
 

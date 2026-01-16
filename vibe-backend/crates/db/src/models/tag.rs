@@ -5,6 +5,8 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 const DEFAULT_TAG_COLOR: &str = "#6B7280";
+const MAX_TAG_NAME_LENGTH: usize = 100;
+const MAX_TAG_CONTENT_LENGTH: usize = 1000;
 
 /// Validates that a color string is a valid hex color (e.g., "#FF5733")
 fn is_valid_hex_color(color: &str) -> bool {
@@ -86,6 +88,23 @@ impl Tag {
     }
 
     pub async fn create(pool: &PgPool, data: &CreateTag) -> Result<Self, sqlx::Error> {
+        // Validate tag name length
+        if data.tag_name.is_empty() {
+            return Err(sqlx::Error::Protocol("Tag name cannot be empty".into()));
+        }
+        if data.tag_name.len() > MAX_TAG_NAME_LENGTH {
+            return Err(sqlx::Error::Protocol(
+                format!("Tag name too long (max {} characters)", MAX_TAG_NAME_LENGTH).into(),
+            ));
+        }
+        
+        // Validate content length
+        if data.content.len() > MAX_TAG_CONTENT_LENGTH {
+            return Err(sqlx::Error::Protocol(
+                format!("Tag content too long (max {} characters)", MAX_TAG_CONTENT_LENGTH).into(),
+            ));
+        }
+        
         let id = Uuid::new_v4();
         let color = sanitize_color(data.color.as_deref());
         sqlx::query_as!(
@@ -112,8 +131,33 @@ impl Tag {
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
-        let tag_name = data.tag_name.as_ref().unwrap_or(&existing.tag_name);
-        let content = data.content.as_ref().unwrap_or(&existing.content);
+        // Validate tag name if provided
+        let tag_name = if let Some(ref name) = data.tag_name {
+            if name.is_empty() {
+                return Err(sqlx::Error::Protocol("Tag name cannot be empty".into()));
+            }
+            if name.len() > MAX_TAG_NAME_LENGTH {
+                return Err(sqlx::Error::Protocol(
+                    format!("Tag name too long (max {} characters)", MAX_TAG_NAME_LENGTH).into(),
+                ));
+            }
+            name
+        } else {
+            &existing.tag_name
+        };
+
+        // Validate content if provided
+        let content = if let Some(ref c) = data.content {
+            if c.len() > MAX_TAG_CONTENT_LENGTH {
+                return Err(sqlx::Error::Protocol(
+                    format!("Tag content too long (max {} characters)", MAX_TAG_CONTENT_LENGTH).into(),
+                ));
+            }
+            c
+        } else {
+            &existing.content
+        };
+
         // Validate color: use new color if valid, else keep existing or default
         let color: Option<&str> = match &data.color {
             Some(c) if is_valid_hex_color(c) => Some(c.as_str()),

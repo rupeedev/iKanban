@@ -3,6 +3,7 @@ import { TagSelector } from './TagSelector';
 import { useTaskTags } from '@/hooks/useTaskTags';
 import { Loader2, Tag as TagIcon, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 interface TaskTagsSectionProps {
   taskId: string;
@@ -29,16 +30,20 @@ export function TaskTagsSection({
   const handleAddTag = async (tagId: string) => {
     try {
       await addTag(tagId);
+      toast.success('Tag added successfully');
     } catch (err) {
       console.error('Failed to add tag:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to add tag');
     }
   };
 
   const handleRemoveTag = async (tagId: string) => {
     try {
       await removeTag(tagId);
+      toast.success('Tag removed successfully');
     } catch (err) {
       console.error('Failed to remove tag:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to remove tag');
     }
   };
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronsUpDown, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -57,6 +58,10 @@ export function TagSelector({
         const newTag = await onTagCreate(search.trim());
         if (newTag) {
           onTagSelect(newTag.id);
+          toast.success('Tag created successfully');
+        } else {
+          toast.error('Failed to create tag');
+          return;
         }
       } else {
         const newTag = await createTag({
@@ -65,12 +70,18 @@ export function TagSelector({
           team_id: teamId,
           color: '#6B7280',
         });
+        if (!newTag) {
+          toast.error('Failed to create tag');
+          return;
+        }
         onTagSelect(newTag.id);
+        toast.success('Tag created successfully');
       }
       setSearch('');
       setOpen(false);
     } catch (err) {
       console.error('Failed to create tag:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to create tag');
     }
   };
 

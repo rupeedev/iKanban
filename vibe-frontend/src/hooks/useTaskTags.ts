@@ -24,8 +24,43 @@ export function useTaskTags(taskId: string | undefined) {
       if (!taskId) throw new Error("Task ID required");
       return tasksApi.addTag(taskId, tagId);
     },
+    onMutate: async (tagId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["task-tags", taskId] });
+
+      // Snapshot the previous value
+      const previousTags = queryClient.getQueryData<TaskTagWithDetails[]>(["task-tags", taskId]);
+
+      // Optimistically update - get tag details from tags cache
+      const allTags = queryClient.getQueryData<Array<{ id: string; tag_name: string; content?: string; color?: string | null }>>(["tags"]) || [];
+      const tag = allTags.find((t) => t.id === tagId);
+      
+      if (tag && previousTags) {
+        const optimisticTag: TaskTagWithDetails = {
+          id: crypto.randomUUID(), // Temporary ID
+          tag_id: tagId,
+          tag_name: tag.tag_name,
+          content: tag.content || '',
+          color: tag.color,
+          created_at: new Date().toISOString(),
+        };
+        
+        queryClient.setQueryData<TaskTagWithDetails[]>(
+          ["task-tags", taskId],
+          [...previousTags, optimisticTag]
+        );
+      }
+
+      return { previousTags };
+    },
+    onError: (_err, _tagId, context) => {
+      // Rollback on error
+      if (context?.previousTags) {
+        queryClient.setQueryData(["task-tags", taskId], context.previousTags);
+      }
+    },
     onSuccess: () => {
-      // Invalidate to fetch fresh data with tag details
+      // Invalidate to fetch fresh data with correct IDs
       queryClient.invalidateQueries({ queryKey: ["task-tags", taskId] });
     },
   });
