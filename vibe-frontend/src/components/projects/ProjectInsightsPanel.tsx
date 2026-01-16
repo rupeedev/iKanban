@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   ListChecks,
+  GitBranch,
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { format, differenceInDays, differenceInWeeks } from 'date-fns';
 import type { Project, TaskWithAttemptStatus } from 'shared/types';
 import { cn } from '@/lib/utils';
+import { FeatureTreeProgress } from './FeatureTreeProgress';
 
 interface ProjectInsightsPanelProps {
   project: Project;
@@ -38,10 +40,13 @@ function calculateTimelineStats(
   // Find start date: earliest task created_at, or project created_at if no tasks
   let startDate: Date | null = null;
   if (issues.length > 0) {
-    const earliestTask = issues.reduce((earliest, task) => {
-      const taskDate = new Date(task.created_at);
-      return !earliest || taskDate < earliest ? taskDate : earliest;
-    }, null as Date | null);
+    const earliestTask = issues.reduce(
+      (earliest, task) => {
+        const taskDate = new Date(task.created_at);
+        return !earliest || taskDate < earliest ? taskDate : earliest;
+      },
+      null as Date | null
+    );
     startDate = earliestTask;
   }
 
@@ -58,7 +63,9 @@ function calculateTimelineStats(
 
   // Calculate velocity: completed tasks per week
   const completedCount = issues.filter((t) => t.status === 'done').length;
-  const weeksActive = startDate ? Math.max(1, differenceInWeeks(now, startDate)) : 1;
+  const weeksActive = startDate
+    ? Math.max(1, differenceInWeeks(now, startDate))
+    : 1;
   const velocity = weeksActive > 0 ? completedCount / weeksActive : 0;
 
   return {
@@ -239,6 +246,22 @@ export function ProjectInsightsPanel({
           </CardContent>
         </Card>
       </div>
+
+      {/* Feature Progress */}
+      <Card className="border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <GitBranch className="h-4 w-4 text-purple-500" />
+            Feature Progress
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <FeatureTreeProgress
+            issues={issues}
+            teamIdentifier={teamIdentifier}
+          />
+        </CardContent>
+      </Card>
 
       {/* Completed Features */}
       <Card className="border">
