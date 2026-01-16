@@ -1,7 +1,8 @@
 import { TagChip } from './TagChip';
 import { TagSelector } from './TagSelector';
 import { useTaskTags } from '@/hooks/useTaskTags';
-import { Loader2, Tag as TagIcon } from 'lucide-react';
+import { Loader2, Tag as TagIcon, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface TaskTagsSectionProps {
   taskId: string;
@@ -17,6 +18,8 @@ export function TaskTagsSection({
   const {
     tags,
     isLoading,
+    error,
+    refetch,
     addTag,
     removeTag,
     isAdding,
@@ -56,6 +59,19 @@ export function TaskTagsSection({
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading tags...
+        </div>
+      ) : error ? (
+        <div className="flex items-center gap-2 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4" />
+          <span>Failed to load tags</span>
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-destructive underline"
+            onClick={() => refetch()}
+          >
+            Retry
+          </Button>
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-1.5">

@@ -2,15 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tasksApi } from "@/lib/api";
 import { TaskTagWithDetails } from "shared/types";
 
-// Helper to detect rate limit errors
-function isRateLimitError(error: unknown): boolean {
-  if (error instanceof Error) {
-    const msg = error.message.toLowerCase();
-    return msg.includes('429') || msg.includes('too many requests');
-  }
-  return false;
-}
-
 export function useTaskTags(taskId: string | undefined) {
   const queryClient = useQueryClient();
 
@@ -25,13 +16,7 @@ export function useTaskTags(taskId: string | undefined) {
     staleTime: 5 * 60 * 1000,
     // Keep in cache for 15 minutes
     gcTime: 15 * 60 * 1000,
-    // Don't retry rate limit errors
-    retry: (failureCount, error) => {
-      if (isRateLimitError(error)) return false;
-      return failureCount < 2;
-    },
-    // Don't refetch on window focus
-    refetchOnWindowFocus: false,
+    // Global defaults in main.tsx handle rate limiting and refetch behavior
   });
 
   const addTagMutation = useMutation({
@@ -63,6 +48,7 @@ export function useTaskTags(taskId: string | undefined) {
     isLoading: tagsQuery.isLoading,
     isFetching: tagsQuery.isFetching,
     error: tagsQuery.error,
+    refetch: tagsQuery.refetch,
     addTag: addTagMutation.mutateAsync,
     removeTag: removeTagMutation.mutateAsync,
     isAdding: addTagMutation.isPending,

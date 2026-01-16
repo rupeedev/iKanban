@@ -106,40 +106,19 @@ impl TaskTag {
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 
-    /// Add a tag to a task
+    /// Add a tag to a task (race-condition safe using ON CONFLICT)
     pub async fn add_tag(
         pool: &PgPool,
         task_id: Uuid,
         tag_id: Uuid,
     ) -> Result<TaskTag, sqlx::Error> {
-        // Check if link already exists
-        let existing = sqlx::query_scalar!(
-            r#"SELECT id as "id: Uuid" FROM task_tags
-               WHERE task_id = $1 AND tag_id = $2"#,
-            task_id,
-            tag_id
-        )
-        .fetch_optional(pool)
-        .await?;
-
-        if let Some(id) = existing {
-            // Return existing link
-            let row = sqlx::query_as!(
-                TaskTagRow,
-                r#"SELECT id as "id!: Uuid", task_id as "task_id!: Uuid", tag_id as "tag_id!: Uuid", created_at as "created_at!: DateTime<Utc>"
-                   FROM task_tags WHERE id = $1"#,
-                id
-            )
-            .fetch_one(pool)
-            .await?;
-            return Ok(row.into());
-        }
-
         let id = Uuid::new_v4();
+        // Use ON CONFLICT to handle race conditions - if link exists, return existing row
         let row = sqlx::query_as!(
             TaskTagRow,
             r#"INSERT INTO task_tags (id, task_id, tag_id, created_at)
                VALUES ($1, $2, $3, NOW())
+               ON CONFLICT (task_id, tag_id) DO UPDATE SET task_id = task_tags.task_id
                RETURNING id as "id!: Uuid",
                          task_id as "task_id!: Uuid",
                          tag_id as "tag_id!: Uuid",

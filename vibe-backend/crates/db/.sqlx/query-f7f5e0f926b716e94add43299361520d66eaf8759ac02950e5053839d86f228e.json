@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id as \"id!: Uuid\", task_id as \"task_id!: Uuid\", tag_id as \"tag_id!: Uuid\", created_at as \"created_at!: DateTime<Utc>\"\n                   FROM task_tags WHERE id = $1",
+  "query": "INSERT INTO task_tags (id, task_id, tag_id, created_at)\n               VALUES ($1, $2, $3, NOW())\n               ON CONFLICT (task_id, tag_id) DO UPDATE SET task_id = task_tags.task_id\n               RETURNING id as \"id!: Uuid\",\n                         task_id as \"task_id!: Uuid\",\n                         tag_id as \"tag_id!: Uuid\",\n                         created_at as \"created_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -26,6 +26,8 @@
     ],
     "parameters": {
       "Left": [
+        "Uuid",
+        "Uuid",
         "Uuid"
       ]
     },
@@ -36,5 +38,5 @@
       false
     ]
   },
-  "hash": "0acf56d76864947bfbc020d62aee697b1d47428ffe749a130a6d63f205d5d873"
+  "hash": "f7f5e0f926b716e94add43299361520d66eaf8759ac02950e5053839d86f228e"
 }

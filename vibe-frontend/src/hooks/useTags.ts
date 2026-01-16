@@ -47,7 +47,7 @@ export function useTags(teamId?: string) {
         old?.filter((t) => t.id !== tagId) ?? []
       );
       // Invalidate all task-tags queries since a tag was deleted
-      queryClient.invalidateQueries({ queryKey: ["task-tags"] });
+      queryClient.invalidateQueries({ queryKey: ["task-tags"], refetchType: 'none' });
     },
   });
 

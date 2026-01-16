@@ -4,6 +4,23 @@ use sqlx::{FromRow, PgPool};
 use ts_rs::TS;
 use uuid::Uuid;
 
+const DEFAULT_TAG_COLOR: &str = "#6B7280";
+
+/// Validates that a color string is a valid hex color (e.g., "#FF5733")
+fn is_valid_hex_color(color: &str) -> bool {
+    color.starts_with('#')
+        && color.len() == 7
+        && color[1..].chars().all(|c| c.is_ascii_hexdigit())
+}
+
+/// Returns a valid hex color or the default if invalid
+fn sanitize_color(color: Option<&str>) -> &str {
+    match color {
+        Some(c) if is_valid_hex_color(c) => c,
+        _ => DEFAULT_TAG_COLOR,
+    }
+}
+
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct Tag {
     pub id: Uuid,
@@ -70,7 +87,7 @@ impl Tag {
 
     pub async fn create(pool: &PgPool, data: &CreateTag) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
-        let color = data.color.as_deref().unwrap_or("#6B7280");
+        let color = sanitize_color(data.color.as_deref());
         sqlx::query_as!(
             Tag,
             r#"INSERT INTO tags (id, tag_name, content, color, team_id)
@@ -97,7 +114,12 @@ impl Tag {
 
         let tag_name = data.tag_name.as_ref().unwrap_or(&existing.tag_name);
         let content = data.content.as_ref().unwrap_or(&existing.content);
-        let color = data.color.as_ref().or(existing.color.as_ref());
+        // Validate color: use new color if valid, else keep existing or default
+        let color: Option<&str> = match &data.color {
+            Some(c) if is_valid_hex_color(c) => Some(c.as_str()),
+            Some(_) => existing.color.as_deref(), // Invalid new color, keep existing
+            None => existing.color.as_deref(),    // No new color, keep existing
+        };
         let team_id = data.team_id.or(existing.team_id);
 
         sqlx::query_as!(

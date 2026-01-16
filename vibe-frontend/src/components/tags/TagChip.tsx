@@ -54,7 +54,8 @@ export function TagChip({
             e.stopPropagation();
             onRemove();
           }}
-          className="ml-0.5 hover:opacity-70 rounded-full focus:outline-none"
+          className="ml-0.5 hover:opacity-70 rounded-full focus:outline-none focus:ring-1 focus:ring-offset-1"
+          aria-label={`Remove ${name} tag`}
         >
           <X className="h-3 w-3" />
         </button>
