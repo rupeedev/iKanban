@@ -57,10 +57,11 @@ function LinearIssueCardComponent({
 }: LinearIssueCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: task.id,
-    data: { index, parent: status },
-  });
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: task.id,
+      data: { index, parent: status },
+    });
 
   const combinedRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -84,17 +85,26 @@ function LinearIssueCardComponent({
     onViewDetails(task);
   }, [task, onViewDetails]);
 
-  const handleAssigneeChange = useCallback((assigneeId: string | null) => {
-    onAssigneeChange?.(task.id, assigneeId);
-  }, [task.id, onAssigneeChange]);
+  const handleAssigneeChange = useCallback(
+    (assigneeId: string | null) => {
+      onAssigneeChange?.(task.id, assigneeId);
+    },
+    [task.id, onAssigneeChange]
+  );
 
-  const handlePriorityChange = useCallback((priority: PriorityValue) => {
-    onPriorityChange?.(task.id, priority);
-  }, [task.id, onPriorityChange]);
+  const handlePriorityChange = useCallback(
+    (priority: PriorityValue) => {
+      onPriorityChange?.(task.id, priority);
+    },
+    [task.id, onPriorityChange]
+  );
 
-  const handleProjectChange = useCallback((newProjectId: string) => {
-    onProjectChange?.(task.id, newProjectId);
-  }, [task.id, onProjectChange]);
+  const handleProjectChange = useCallback(
+    (newProjectId: string) => {
+      onProjectChange?.(task.id, newProjectId);
+    },
+    [task.id, onProjectChange]
+  );
 
   // Get assigned member info
   const selectedMember = task.assignee_id
@@ -158,13 +168,25 @@ function LinearIssueCardComponent({
                     'border border-dashed border-muted-foreground/40',
                     'text-muted-foreground hover:border-primary hover:text-primary',
                     'transition-colors text-xs font-medium',
-                    hasAssignee && !hasAssigneeAvatar && 'border-solid bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700',
+                    hasAssignee &&
+                      !hasAssigneeAvatar &&
+                      'border-solid bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700',
                     hasAssigneeAvatar && 'border-none p-0'
                   )}
-                  title={selectedMember ? selectedMember.name : hasAssignee ? `Assigned: ${task.assignee_id}` : 'Assign'}
+                  title={
+                    selectedMember
+                      ? selectedMember.name
+                      : hasAssignee
+                        ? `Assigned: ${task.assignee_id}`
+                        : 'Assign'
+                  }
                 >
                   {hasAssigneeAvatar ? (
-                    <img src={selectedMember!.avatar} alt={selectedMember!.name} className="h-6 w-6 rounded-full object-cover" />
+                    <img
+                      src={selectedMember!.avatar}
+                      alt={selectedMember!.name}
+                      className="h-6 w-6 rounded-full object-cover"
+                    />
                   ) : assigneeInitials ? (
                     assigneeInitials
                   ) : (
@@ -176,13 +198,18 @@ function LinearIssueCardComponent({
                 {/* Unassign option */}
                 <DropdownMenuItem
                   onClick={() => handleAssigneeChange(null)}
-                  className={cn('cursor-pointer gap-2', !task.assignee_id && 'bg-accent')}
+                  className={cn(
+                    'cursor-pointer gap-2',
+                    !task.assignee_id && 'bg-accent'
+                  )}
                 >
                   <div className="h-6 w-6 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center">
                     <X className="h-3 w-3 text-muted-foreground" />
                   </div>
                   <span>No assignee</span>
-                  <span className="ml-auto text-xs text-muted-foreground font-mono">0</span>
+                  <span className="ml-auto text-xs text-muted-foreground font-mono">
+                    0
+                  </span>
                 </DropdownMenuItem>
 
                 {teamMembers.length > 0 && <DropdownMenuSeparator />}
@@ -195,7 +222,10 @@ function LinearIssueCardComponent({
                     <DropdownMenuItem
                       key={member.id}
                       onClick={() => handleAssigneeChange(member.id)}
-                      className={cn('cursor-pointer gap-2', isSelected && 'bg-accent')}
+                      className={cn(
+                        'cursor-pointer gap-2',
+                        isSelected && 'bg-accent'
+                      )}
                     >
                       <div className="h-6 w-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-xs font-medium">
                         {getInitials(member.name)}
@@ -203,11 +233,15 @@ function LinearIssueCardComponent({
                       <div className="flex flex-col flex-1 min-w-0">
                         <span className="truncate">{member.name}</span>
                         {member.email && (
-                          <span className="text-xs text-muted-foreground truncate">{member.email}</span>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {member.email}
+                          </span>
                         )}
                       </div>
                       {shortcut && (
-                        <span className="text-xs text-muted-foreground font-mono">{shortcut}</span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {shortcut}
+                        </span>
                       )}
                     </DropdownMenuItem>
                   );
@@ -230,13 +264,18 @@ function LinearIssueCardComponent({
           {/* Project Selector - clickable dropdown */}
           <div onClick={(e) => e.stopPropagation()}>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild disabled={!onProjectChange || teamProjects.length === 0}>
+              <DropdownMenuTrigger
+                asChild
+                disabled={!onProjectChange || teamProjects.length === 0}
+              >
                 <button
                   className={cn(
                     'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs',
                     'bg-muted/50 border border-border/50',
                     'transition-colors hover:bg-accent/50 hover:border-border',
-                    projectName ? 'text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground'
+                    projectName
+                      ? 'text-indigo-600 dark:text-indigo-400'
+                      : 'text-muted-foreground'
                   )}
                   title={projectName || 'Select project'}
                 >
@@ -245,7 +284,10 @@ function LinearIssueCardComponent({
                     viewBox="0 0 16 16"
                     fill="currentColor"
                   >
-                    <path d="M8 0L14.928 4v8L8 16 1.072 12V4L8 0z" fillOpacity="0.3" />
+                    <path
+                      d="M8 0L14.928 4v8L8 16 1.072 12V4L8 0z"
+                      fillOpacity="0.3"
+                    />
                     <path d="M8 2l5.196 3v6L8 14 2.804 11V5L8 2z" />
                   </svg>
                   {projectName || 'Project'}
@@ -263,14 +305,20 @@ function LinearIssueCardComponent({
                       <DropdownMenuItem
                         key={project.id}
                         onClick={() => handleProjectChange(project.id)}
-                        className={cn('cursor-pointer gap-2', isCurrentProject && 'bg-accent')}
+                        className={cn(
+                          'cursor-pointer gap-2',
+                          isCurrentProject && 'bg-accent'
+                        )}
                       >
                         <svg
                           className="h-3.5 w-3.5 text-indigo-500"
                           viewBox="0 0 16 16"
                           fill="currentColor"
                         >
-                          <path d="M8 0L14.928 4v8L8 16 1.072 12V4L8 0z" fillOpacity="0.3" />
+                          <path
+                            d="M8 0L14.928 4v8L8 16 1.072 12V4L8 0z"
+                            fillOpacity="0.3"
+                          />
                           <path d="M8 2l5.196 3v6L8 14 2.804 11V5L8 2z" />
                         </svg>
                         <span className="flex-1 truncate">{project.name}</span>

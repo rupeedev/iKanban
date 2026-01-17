@@ -47,7 +47,13 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 // Status groups in display order
-const STATUS_ORDER: TaskStatus[] = ['done', 'inreview', 'inprogress', 'todo', 'cancelled'];
+const STATUS_ORDER: TaskStatus[] = [
+  'done',
+  'inreview',
+  'inprogress',
+  'todo',
+  'cancelled',
+];
 
 // Priority display
 const PRIORITY_DISPLAY = [
@@ -74,7 +80,9 @@ const MOCK_TEAM_MEMBERS: TeamMember[] = [
 ];
 
 function getPriorityDots(priority: number | null | undefined) {
-  const p = PRIORITY_DISPLAY.find((d) => d.value === (priority ?? 0)) || PRIORITY_DISPLAY[0];
+  const p =
+    PRIORITY_DISPLAY.find((d) => d.value === (priority ?? 0)) ||
+    PRIORITY_DISPLAY[0];
   return p.dots;
 }
 
@@ -88,7 +96,10 @@ function formatDate(dateStr: string | null | undefined) {
 }
 
 // Generate issue key from team identifier and issue number
-function getIssueKey(teamIdentifier: string | null | undefined, issueNumber: number | null | undefined) {
+function getIssueKey(
+  teamIdentifier: string | null | undefined,
+  issueNumber: number | null | undefined
+) {
   if (!teamIdentifier || !issueNumber) return null;
   return `${teamIdentifier}-${issueNumber}`;
 }
@@ -102,7 +113,14 @@ interface IssueRowProps {
   onAssigneeChange: (issueId: string, assigneeId: string | null) => void;
 }
 
-function IssueRow({ issue, teamIdentifier, onClick, teamMembers, issueCountPerAssignee, onAssigneeChange }: IssueRowProps) {
+function IssueRow({
+  issue,
+  teamIdentifier,
+  onClick,
+  teamMembers,
+  issueCountPerAssignee,
+  onAssigneeChange,
+}: IssueRowProps) {
   const issueKey = getIssueKey(teamIdentifier, issue.issue_number);
   const selectedMember = teamMembers.find((m) => m.id === issue.assignee_id);
 
@@ -115,9 +133,12 @@ function IssueRow({ issue, teamIdentifier, onClick, teamMembers, issueCountPerAs
       .slice(0, 2);
   };
 
-  const handleAssigneeSelect = useCallback((assigneeId: string | null) => {
-    onAssigneeChange(issue.id, assigneeId);
-  }, [issue.id, onAssigneeChange]);
+  const handleAssigneeSelect = useCallback(
+    (assigneeId: string | null) => {
+      onAssigneeChange(issue.id, assigneeId);
+    },
+    [issue.id, onAssigneeChange]
+  );
 
   return (
     <div
@@ -125,11 +146,15 @@ function IssueRow({ issue, teamIdentifier, onClick, teamMembers, issueCountPerAs
       className="flex items-center gap-3 px-4 py-2 hover:bg-accent/50 cursor-pointer border-b border-border/30 last:border-b-0"
     >
       {/* Priority dots */}
-      <span className="text-xs text-muted-foreground font-mono w-8">{getPriorityDots(issue.priority)}</span>
+      <span className="text-xs text-muted-foreground font-mono w-8">
+        {getPriorityDots(issue.priority)}
+      </span>
 
       {/* Issue key */}
       {issueKey && (
-        <span className="text-xs text-muted-foreground font-mono w-16">{issueKey}</span>
+        <span className="text-xs text-muted-foreground font-mono w-16">
+          {issueKey}
+        </span>
       )}
 
       {/* Status icon */}
@@ -157,25 +182,36 @@ function IssueRow({ issue, teamIdentifier, onClick, teamMembers, issueCountPerAs
                   className="h-6 w-6 rounded-full object-cover"
                 />
               ) : (
-                <span className="text-xs font-medium">{getInitials(selectedMember.name)}</span>
+                <span className="text-xs font-medium">
+                  {getInitials(selectedMember.name)}
+                </span>
               )
             ) : (
               <User className="h-3 w-3" />
             )}
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuContent
+          align="end"
+          className="w-56"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* No assignee option */}
           <DropdownMenuItem
             onClick={() => handleAssigneeSelect(null)}
-            className={cn('cursor-pointer gap-2', !issue.assignee_id && 'bg-accent')}
+            className={cn(
+              'cursor-pointer gap-2',
+              !issue.assignee_id && 'bg-accent'
+            )}
           >
             <div className="h-6 w-6 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center">
               <User className="h-3 w-3 text-muted-foreground" />
             </div>
             <span className="flex-1">No assignee</span>
             {!issue.assignee_id && <Check className="h-4 w-4 text-primary" />}
-            <span className="text-xs text-muted-foreground">{issueCountPerAssignee['unassigned'] || 0}</span>
+            <span className="text-xs text-muted-foreground">
+              {issueCountPerAssignee['unassigned'] || 0}
+            </span>
           </DropdownMenuItem>
 
           {teamMembers.length > 0 && <DropdownMenuSeparator />}
@@ -187,7 +223,10 @@ function IssueRow({ issue, teamIdentifier, onClick, teamMembers, issueCountPerAs
               <DropdownMenuItem
                 key={member.id}
                 onClick={() => handleAssigneeSelect(member.id)}
-                className={cn('cursor-pointer gap-2', isSelected && 'bg-accent')}
+                className={cn(
+                  'cursor-pointer gap-2',
+                  isSelected && 'bg-accent'
+                )}
               >
                 {member.avatar ? (
                   <img
@@ -202,7 +241,9 @@ function IssueRow({ issue, teamIdentifier, onClick, teamMembers, issueCountPerAs
                 )}
                 <span className="flex-1 truncate">{member.name}</span>
                 {isSelected && <Check className="h-4 w-4 text-primary" />}
-                <span className="text-xs text-muted-foreground">{issueCountPerAssignee[member.id] || 0}</span>
+                <span className="text-xs text-muted-foreground">
+                  {issueCountPerAssignee[member.id] || 0}
+                </span>
               </DropdownMenuItem>
             );
           })}
@@ -242,7 +283,16 @@ interface StatusGroupProps {
   onAssigneeChange: (issueId: string, assigneeId: string | null) => void;
 }
 
-function StatusGroup({ status, issues, teamIdentifier, teamMembers, issueCountPerAssignee, onIssueClick, onAddIssue, onAssigneeChange }: StatusGroupProps) {
+function StatusGroup({
+  status,
+  issues,
+  teamIdentifier,
+  teamMembers,
+  issueCountPerAssignee,
+  onIssueClick,
+  onAddIssue,
+  onAssigneeChange,
+}: StatusGroupProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   if (issues.length === 0) return null;
@@ -297,7 +347,10 @@ function StatusGroup({ status, issues, teamIdentifier, teamMembers, issueCountPe
 }
 
 export function TeamProjectDetail() {
-  const { teamId, projectId } = useParams<{ teamId: string; projectId: string }>();
+  const { teamId, projectId } = useParams<{
+    teamId: string;
+    projectId: string;
+  }>();
   const navigate = useNavigate();
   const { resolveTeam } = useTeams();
   const { resolveProject, isLoading: projectsLoading } = useProjects();
@@ -305,13 +358,19 @@ export function TeamProjectDetail() {
   const project = projectId ? resolveProject(projectId) : null;
   const actualTeamId = team?.id;
 
-  const { issues, isLoading: issuesLoading, refresh: refreshIssues } = useTeamIssues(actualTeamId);
+  const {
+    issues,
+    isLoading: issuesLoading,
+    refresh: refreshIssues,
+  } = useTeamIssues(actualTeamId);
   const [activeTab, setActiveTab] = useState('issues');
   const [activityExpanded, setActivityExpanded] = useState(true);
   const [isDeletingRepo, setIsDeletingRepo] = useState<string | null>(null);
 
   // Project repositories
-  const { data: projectRepos = [], refetch: refetchRepos } = useProjectRepos(project?.id);
+  const { data: projectRepos = [], refetch: refetchRepos } = useProjectRepos(
+    project?.id
+  );
 
   // Handle adding a repository via dialog
   const handleOpenRepoDialog = useCallback(async () => {
@@ -319,7 +378,8 @@ export function TeamProjectDetail() {
     try {
       const result = await RepoPickerDialog.show({
         title: 'Link Repository',
-        description: 'Select a repository to link to this project for AI agent execution.',
+        description:
+          'Select a repository to link to this project for AI agent execution.',
       });
       if (result && result.path && result.display_name) {
         await projectsApi.addRepository(project.id, {
@@ -341,20 +401,23 @@ export function TeamProjectDetail() {
   }, [project?.id, refetchRepos]);
 
   // Handle removing a repository
-  const handleRemoveRepo = useCallback(async (repoId: string) => {
-    if (!project?.id) return;
-    setIsDeletingRepo(repoId);
-    try {
-      await projectsApi.deleteRepository(project.id, repoId);
-      await refetchRepos();
-      toast.success('Repository unlinked');
-    } catch (err) {
-      console.error('Failed to remove repository:', err);
-      toast.error('Failed to unlink repository');
-    } finally {
-      setIsDeletingRepo(null);
-    }
-  }, [project?.id, refetchRepos]);
+  const handleRemoveRepo = useCallback(
+    async (repoId: string) => {
+      if (!project?.id) return;
+      setIsDeletingRepo(repoId);
+      try {
+        await projectsApi.deleteRepository(project.id, repoId);
+        await refetchRepos();
+        toast.success('Repository unlinked');
+      } catch (err) {
+        console.error('Failed to remove repository:', err);
+        toast.error('Failed to unlink repository');
+      } finally {
+        setIsDeletingRepo(null);
+      }
+    },
+    [project?.id, refetchRepos]
+  );
 
   // Filter issues for this project only (use resolved project's actual ID)
   const projectIssues = useMemo(() => {
@@ -378,7 +441,10 @@ export function TeamProjectDetail() {
 
     // Sort by created date descending
     Object.values(grouped).forEach((list) => {
-      list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      list.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     });
 
     return grouped;
@@ -420,23 +486,26 @@ export function TeamProjectDetail() {
     navigate(`/projects/${projectId}/tasks/${issue.id}`);
   };
 
-  const handleAssigneeChange = useCallback(async (issueId: string, assigneeId: string | null) => {
-    try {
-      await tasksApi.update(issueId, {
-        title: null,
-        description: null,
-        status: null,
-        parent_workspace_id: null,
-        image_ids: null,
-        priority: null,
-        due_date: null,
-        assignee_id: assigneeId,
-      });
-      await refreshIssues();
-    } catch (err) {
-      console.error('Failed to update assignee:', err);
-    }
-  }, [refreshIssues]);
+  const handleAssigneeChange = useCallback(
+    async (issueId: string, assigneeId: string | null) => {
+      try {
+        await tasksApi.update(issueId, {
+          title: null,
+          description: null,
+          status: null,
+          parent_workspace_id: null,
+          image_ids: null,
+          priority: null,
+          due_date: null,
+          assignee_id: assigneeId,
+        });
+        await refreshIssues();
+      } catch (err) {
+        console.error('Failed to update assignee:', err);
+      }
+    },
+    [refreshIssues]
+  );
 
   const isLoading = projectsLoading || issuesLoading;
 
@@ -563,14 +632,21 @@ export function TeamProjectDetail() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Priority</span>
               <span className="text-sm">
-                {project.priority ? PRIORITY_DISPLAY.find((p) => p.value === project.priority)?.label : 'No priority'}
+                {project.priority
+                  ? PRIORITY_DISPLAY.find((p) => p.value === project.priority)
+                      ?.label
+                  : 'No priority'}
               </span>
             </div>
 
             {/* Lead */}
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Lead</span>
-              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground"
+              >
                 <User className="h-3.5 w-3.5 mr-1" />
                 Add lead
               </Button>
@@ -579,7 +655,11 @@ export function TeamProjectDetail() {
             {/* Members */}
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Members</span>
-              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground"
+              >
                 <Users className="h-3.5 w-3.5 mr-1" />
                 Add members
               </Button>
@@ -607,7 +687,11 @@ export function TeamProjectDetail() {
             {/* Labels */}
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Labels</span>
-              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground"
+              >
                 <Tag className="h-3.5 w-3.5 mr-1" />
                 Add label
               </Button>
@@ -631,7 +715,8 @@ export function TeamProjectDetail() {
               </div>
               {projectRepos.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  Link a repository to enable AI agent execution from task comments.
+                  Link a repository to enable AI agent execution from task
+                  comments.
                 </p>
               ) : (
                 <div className="space-y-1.5">
@@ -643,8 +728,12 @@ export function TeamProjectDetail() {
                       <div className="flex items-center gap-2 min-w-0">
                         <GitBranch className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                         <div className="min-w-0">
-                          <p className="text-sm truncate">{repo.display_name}</p>
-                          <p className="text-xs text-muted-foreground truncate">{repo.path}</p>
+                          <p className="text-sm truncate">
+                            {repo.display_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {repo.path}
+                          </p>
                         </div>
                       </div>
                       <Button
@@ -675,7 +764,8 @@ export function TeamProjectDetail() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Add milestones to organize work within your project and break it into more granular stages.
+                Add milestones to organize work within your project and break it
+                into more granular stages.
               </p>
             </div>
 
@@ -701,7 +791,9 @@ export function TeamProjectDetail() {
                   </div>
                   <div className="text-lg font-semibold">
                     {stats.done}
-                    <span className="text-sm text-muted-foreground ml-1">• {stats.percentage}%</span>
+                    <span className="text-sm text-muted-foreground ml-1">
+                      • {stats.percentage}%
+                    </span>
                   </div>
                 </div>
               </div>
@@ -726,9 +818,13 @@ export function TeamProjectDetail() {
                     <div className="w-6 h-6 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center">
                       <User className="h-3 w-3 text-muted-foreground" />
                     </div>
-                    <span className="text-sm text-muted-foreground">No assignee</span>
+                    <span className="text-sm text-muted-foreground">
+                      No assignee
+                    </span>
                   </div>
-                  <span className="text-sm">{projectIssues.filter((i) => !i.assignee_id).length}</span>
+                  <span className="text-sm">
+                    {projectIssues.filter((i) => !i.assignee_id).length}
+                  </span>
                 </div>
               </div>
             </div>
@@ -762,10 +858,15 @@ export function TeamProjectDetail() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm">
                         <span className="font-medium">rupesh panwar</span>
-                        <span className="text-muted-foreground"> created the project</span>
+                        <span className="text-muted-foreground">
+                          {' '}
+                          created the project
+                        </span>
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {project?.created_at ? formatDate(project.created_at.toString()) : 'Unknown date'}
+                        {project?.created_at
+                          ? formatDate(project.created_at.toString())
+                          : 'Unknown date'}
                       </p>
                     </div>
                   </div>
@@ -780,7 +881,10 @@ export function TeamProjectDetail() {
                         <p className="text-sm truncate">
                           <span className="text-muted-foreground">Issue </span>
                           <span className="font-medium">{issue.title}</span>
-                          <span className="text-muted-foreground"> created</span>
+                          <span className="text-muted-foreground">
+                            {' '}
+                            created
+                          </span>
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {formatDate(issue.created_at)}
@@ -790,7 +894,9 @@ export function TeamProjectDetail() {
                   ))}
 
                   {projectIssues.length === 0 && (
-                    <p className="text-xs text-muted-foreground">No recent activity</p>
+                    <p className="text-xs text-muted-foreground">
+                      No recent activity
+                    </p>
                   )}
                 </div>
               )}

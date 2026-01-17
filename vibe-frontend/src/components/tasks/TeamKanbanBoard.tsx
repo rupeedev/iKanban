@@ -18,7 +18,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, MoreHorizontal, ChevronRight, ChevronDown, EyeOff } from 'lucide-react';
+import {
+  Plus,
+  MoreHorizontal,
+  ChevronRight,
+  ChevronDown,
+  EyeOff,
+} from 'lucide-react';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { StatusIcon } from '@/utils/statusIcons';
 import { LinearIssueCard, type TeamProject } from './LinearIssueCard';
@@ -27,7 +33,13 @@ import type { TeamMember } from '@/components/selectors';
 
 // Default column configuration
 const DEFAULT_VISIBLE: TaskStatus[] = ['todo', 'inprogress', 'done'];
-const ALL_STATUSES: TaskStatus[] = ['todo', 'inprogress', 'inreview', 'done', 'cancelled'];
+const ALL_STATUSES: TaskStatus[] = [
+  'todo',
+  'inprogress',
+  'inreview',
+  'done',
+  'cancelled',
+];
 
 interface ColumnItem {
   task: TaskWithAttemptStatus;
@@ -163,7 +175,11 @@ interface HiddenColumnsSectionProps {
   onShowColumn: (status: TaskStatus) => void;
 }
 
-function HiddenColumnsSection({ columns, hiddenStatuses, onShowColumn }: HiddenColumnsSectionProps) {
+function HiddenColumnsSection({
+  columns,
+  hiddenStatuses,
+  onShowColumn,
+}: HiddenColumnsSectionProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   if (hiddenStatuses.length === 0) {
@@ -221,7 +237,8 @@ function TeamKanbanBoardComponent({
   onPriorityChange,
   onProjectChange,
 }: TeamKanbanBoardProps) {
-  const [visibleStatuses, setVisibleStatuses] = useState<TaskStatus[]>(DEFAULT_VISIBLE);
+  const [visibleStatuses, setVisibleStatuses] =
+    useState<TaskStatus[]>(DEFAULT_VISIBLE);
   const [activeItem, setActiveItem] = useState<ColumnItem | null>(null);
   const [activeStatus, setActiveStatus] = useState<TaskStatus | null>(null);
 
@@ -231,7 +248,9 @@ function TeamKanbanBoardComponent({
     })
   );
 
-  const hiddenStatuses = ALL_STATUSES.filter((s) => !visibleStatuses.includes(s));
+  const hiddenStatuses = ALL_STATUSES.filter(
+    (s) => !visibleStatuses.includes(s)
+  );
 
   const handleShowColumn = useCallback((status: TaskStatus) => {
     setVisibleStatuses((prev) => {
@@ -250,25 +269,31 @@ function TeamKanbanBoardComponent({
     });
   }, []);
 
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    const { active } = event;
-    const taskId = active.id as string;
-    // Find the item being dragged across all columns
-    for (const status of ALL_STATUSES) {
-      const item = columns[status]?.find((item) => item.task.id === taskId);
-      if (item) {
-        setActiveItem(item);
-        setActiveStatus(status);
-        break;
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const { active } = event;
+      const taskId = active.id as string;
+      // Find the item being dragged across all columns
+      for (const status of ALL_STATUSES) {
+        const item = columns[status]?.find((item) => item.task.id === taskId);
+        if (item) {
+          setActiveItem(item);
+          setActiveStatus(status);
+          break;
+        }
       }
-    }
-  }, [columns]);
+    },
+    [columns]
+  );
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    setActiveItem(null);
-    setActiveStatus(null);
-    onDragEnd(event);
-  }, [onDragEnd]);
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveItem(null);
+      setActiveStatus(null);
+      onDragEnd(event);
+    },
+    [onDragEnd]
+  );
 
   return (
     <DndContext

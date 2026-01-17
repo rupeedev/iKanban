@@ -49,7 +49,10 @@ const STATUS_COLORS: Record<TaskStatus, string> = {
 };
 
 // Priority icons and colors
-const PRIORITY_CONFIG: Record<number, { icon: typeof AlertCircle; color: string; label: string }> = {
+const PRIORITY_CONFIG: Record<
+  number,
+  { icon: typeof AlertCircle; color: string; label: string }
+> = {
   1: { icon: AlertCircle, color: 'text-red-500', label: 'Urgent' },
   2: { icon: ArrowUp, color: 'text-orange-500', label: 'High' },
   3: { icon: ArrowRight, color: 'text-yellow-500', label: 'Medium' },
@@ -72,7 +75,9 @@ function TeamIssuesLoader({
   // Filter to user's assigned issues and call parent callback
   useMemo(() => {
     if (userMemberId) {
-      const userIssues = issues.filter((issue) => issue.assignee_id === userMemberId);
+      const userIssues = issues.filter(
+        (issue) => issue.assignee_id === userMemberId
+      );
       onIssuesLoaded(teamId, userIssues);
     }
   }, [issues, userMemberId, teamId, onIssuesLoaded]);
@@ -85,7 +90,9 @@ export function MyIssues() {
   const { user } = useClerkUser();
   const { teams, isLoading: teamsLoading, error: teamsError } = useTeams();
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
-  const [allIssues, setAllIssues] = useState<Record<string, TaskWithAttemptStatus[]>>({});
+  const [allIssues, setAllIssues] = useState<
+    Record<string, TaskWithAttemptStatus[]>
+  >({});
 
   // Get current user email from Clerk (reliable source)
   const userEmail = user?.primaryEmailAddress?.emailAddress || null;
@@ -93,19 +100,21 @@ export function MyIssues() {
   // Get display name for header from Clerk
   const userName = useMemo(() => {
     if (!user) return null;
-    return user.fullName ||
-      user.firstName ||
-      userEmail?.split('@')[0] ||
-      'User';
+    return (
+      user.fullName || user.firstName || userEmail?.split('@')[0] || 'User'
+    );
   }, [user, userEmail]);
 
   // Handle issues loaded from each team
-  const handleIssuesLoaded = useCallback((teamId: string, issues: TaskWithAttemptStatus[]) => {
-    setAllIssues((prev) => ({
-      ...prev,
-      [teamId]: issues,
-    }));
-  }, []);
+  const handleIssuesLoaded = useCallback(
+    (teamId: string, issues: TaskWithAttemptStatus[]) => {
+      setAllIssues((prev) => ({
+        ...prev,
+        [teamId]: issues,
+      }));
+    },
+    []
+  );
 
   // Aggregate all issues from all teams
   const aggregatedIssues = useMemo(() => {
@@ -119,19 +128,26 @@ export function MyIssues() {
   }, [allIssues]);
 
   // Count by filter type
-  const counts = useMemo(() => ({
-    all: aggregatedIssues.length,
-    active: aggregatedIssues.filter((i) => ['inprogress', 'inreview'].includes(i.status)).length,
-    backlog: aggregatedIssues.filter((i) => i.status === 'todo').length,
-    done: aggregatedIssues.filter((i) => i.status === 'done').length,
-  }), [aggregatedIssues]);
+  const counts = useMemo(
+    () => ({
+      all: aggregatedIssues.length,
+      active: aggregatedIssues.filter((i) =>
+        ['inprogress', 'inreview'].includes(i.status)
+      ).length,
+      backlog: aggregatedIssues.filter((i) => i.status === 'todo').length,
+      done: aggregatedIssues.filter((i) => i.status === 'done').length,
+    }),
+    [aggregatedIssues]
+  );
 
   // Apply view filter
   const filteredIssues = useMemo(() => {
     let result = aggregatedIssues;
 
     if (viewFilter === 'active') {
-      result = result.filter((i) => ['inprogress', 'inreview'].includes(i.status));
+      result = result.filter((i) =>
+        ['inprogress', 'inreview'].includes(i.status)
+      );
     } else if (viewFilter === 'backlog') {
       result = result.filter((i) => i.status === 'todo');
     } else if (viewFilter === 'done') {
@@ -149,7 +165,9 @@ export function MyIssues() {
           return (priorityA || 5) - (priorityB || 5);
         }
       }
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      return (
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     });
   }, [aggregatedIssues, viewFilter]);
 
@@ -174,9 +192,12 @@ export function MyIssues() {
     setAllIssues({});
   }, []);
 
-  const handleIssueClick = useCallback((issue: TaskWithAttemptStatus & { teamId: string }) => {
-    navigate(`/teams/${issue.teamId}/issues`);
-  }, [navigate]);
+  const handleIssueClick = useCallback(
+    (issue: TaskWithAttemptStatus & { teamId: string }) => {
+      navigate(`/teams/${issue.teamId}/issues`);
+    },
+    [navigate]
+  );
 
   if (teamsLoading) {
     return <Loader message="Loading teams..." size={32} className="py-8" />;
@@ -242,7 +263,12 @@ export function MyIssues() {
               )}
             </div>
           </div>
-          <Button size="sm" variant="outline" onClick={handleRefresh} className="gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRefresh}
+            className="gap-2"
+          >
             <RefreshCw className="h-4 w-4" />
             Refresh
           </Button>
@@ -304,34 +330,37 @@ export function MyIssues() {
           ) : (
             <div className="space-y-8">
               {/* Render issues grouped by status */}
-              {(['inprogress', 'inreview', 'todo', 'done'] as TaskStatus[]).map((status) => {
-                const statusIssues = issuesByStatus[status];
-                if (statusIssues.length === 0) return null;
+              {(['inprogress', 'inreview', 'todo', 'done'] as TaskStatus[]).map(
+                (status) => {
+                  const statusIssues = issuesByStatus[status];
+                  if (statusIssues.length === 0) return null;
 
-                return (
-                  <div key={status}>
-                    <div className="flex items-center gap-2 mb-4 pb-2 border-b">
-                      <StatusIcon status={status} className={cn('h-5 w-5', STATUS_COLORS[status])} />
-                      <h2 className="font-medium">
-                        {STATUS_LABELS[status]}
-                      </h2>
-                      <Badge variant="secondary" className="rounded-full">
-                        {statusIssues.length}
-                      </Badge>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
-                      {statusIssues.map((issue) => (
-                        <IssueCard
-                          key={issue.id}
-                          issue={issue}
-                          teams={teams}
-                          onClick={() => handleIssueClick(issue)}
+                  return (
+                    <div key={status}>
+                      <div className="flex items-center gap-2 mb-4 pb-2 border-b">
+                        <StatusIcon
+                          status={status}
+                          className={cn('h-5 w-5', STATUS_COLORS[status])}
                         />
-                      ))}
+                        <h2 className="font-medium">{STATUS_LABELS[status]}</h2>
+                        <Badge variant="secondary" className="rounded-full">
+                          {statusIssues.length}
+                        </Badge>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
+                        {statusIssues.map((issue) => (
+                          <IssueCard
+                            key={issue.id}
+                            issue={issue}
+                            teams={teams}
+                            onClick={() => handleIssueClick(issue)}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                }
+              )}
             </div>
           )}
         </div>
@@ -366,7 +395,10 @@ function FilterTab({
         active
           ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
           : 'hover:bg-muted',
-        highlight && !active && count > 0 && 'text-yellow-600 dark:text-yellow-400'
+        highlight &&
+          !active &&
+          count > 0 &&
+          'text-yellow-600 dark:text-yellow-400'
       )}
     >
       <Icon className="h-4 w-4" />
@@ -422,9 +454,10 @@ function IssueCard({
   onClick: () => void;
 }) {
   const team = teams.find((t) => t.id === issue.teamId);
-  const issueKey = team && issue.issue_number != null
-    ? `${team.identifier || team.name.slice(0, 3).toUpperCase()}-${issue.issue_number}`
-    : undefined;
+  const issueKey =
+    team && issue.issue_number != null
+      ? `${team.identifier || team.name.slice(0, 3).toUpperCase()}-${issue.issue_number}`
+      : undefined;
 
   const priority = issue.priority ?? 0;
   const priorityConfig = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG[0];
@@ -460,7 +493,9 @@ function IssueCard({
                 </Badge>
               )}
               {priority > 0 && priority <= 2 && (
-                <PriorityIcon className={cn('h-4 w-4 ml-auto', priorityConfig.color)} />
+                <PriorityIcon
+                  className={cn('h-4 w-4 ml-auto', priorityConfig.color)}
+                />
               )}
             </div>
 
@@ -483,7 +518,12 @@ function IssueCard({
                 {new Date(issue.created_at).toLocaleDateString()}
               </span>
               {priority > 0 && (
-                <span className={cn('flex items-center gap-1', priorityConfig.color)}>
+                <span
+                  className={cn(
+                    'flex items-center gap-1',
+                    priorityConfig.color
+                  )}
+                >
                   <PriorityIcon className="h-3 w-3" />
                   {priorityConfig.label}
                 </span>
