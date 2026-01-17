@@ -32,7 +32,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Github, Loader2, Plus, Trash2, Unlink } from 'lucide-react';
+import { Github, GitlabIcon, Loader2, Plus, Trash2, Unlink } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useTeams } from '@/hooks/useTeams';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
@@ -45,6 +45,10 @@ import {
   useWorkspaceGitHubConnection,
   useWorkspaceGitHubMutations,
 } from '@/hooks/useWorkspaceGitHub';
+import {
+  useWorkspaceGitLabConnection,
+  useWorkspaceGitLabMutations,
+} from '@/hooks/useWorkspaceGitLab';
 import { repoBranchKeys } from '@/hooks/useRepoBranches';
 import type {
   Project,
@@ -200,6 +204,14 @@ export function ProjectSettings() {
   const { deleteConnection: deleteGitHubConnection } =
     useWorkspaceGitHubMutations();
   const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
+
+  // GitLab connection state
+  const { data: gitlabConnection, refetch: refetchGitLabConnection } =
+    useWorkspaceGitLabConnection();
+  const { deleteConnection: deleteGitLabConnection } =
+    useWorkspaceGitLabMutations();
+  const [showGitLabDisconnectDialog, setShowGitLabDisconnectDialog] =
+    useState(false);
 
   // Get OS-appropriate script placeholders
   const placeholders = useScriptPlaceholders();
@@ -400,8 +412,6 @@ export function ProjectSettings() {
     const repo = await RepoPickerDialog.show({
       title: 'Select Git Repository',
       description: 'Choose a git repository to add to this project',
-      hideGitHub: true, // GitHub repos require local paths, can't be added remotely
-      hideGitLab: true, // GitLab repos require local paths, can't be added remotely
     });
 
     if (!repo) return;
@@ -493,6 +503,39 @@ export function ProjectSettings() {
       setShowDisconnectDialog(false);
     } catch (err) {
       console.error('Error disconnecting GitHub:', err);
+    }
+  };
+
+  // GitLab connection handlers
+  const handleConnectGitLab = () => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || window.location.origin;
+    const oauthUrl = `${apiBaseUrl}/api/oauth/gitlab/authorize?callback_url=${encodeURIComponent(window.location.origin + '/settings/gitlab-callback')}`;
+    const popup = window.open(
+      oauthUrl,
+      'gitlab-oauth',
+      'width=600,height=700,scrollbars=yes'
+    );
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'gitlab-oauth-success') {
+        popup?.close();
+        refetchGitLabConnection();
+        window.removeEventListener('message', handleMessage);
+      } else if (event.data?.type === 'gitlab-oauth-error') {
+        popup?.close();
+        window.removeEventListener('message', handleMessage);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+  };
+
+  const handleDisconnectGitLab = async () => {
+    try {
+      await deleteGitLabConnection.mutateAsync();
+      setShowGitLabDisconnectDialog(false);
+    } catch (err) {
+      console.error('Error disconnecting GitLab:', err);
     }
   };
 
@@ -881,6 +924,39 @@ export function ProjectSettings() {
                 </div>
               </div>
 
+              {/* GitLab Connection Status */}
+              <div className="p-3 border rounded-md bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <GitlabIcon className="h-4 w-4" />
+                    <span className="text-sm font-medium">GitLab</span>
+                  </div>
+                  {gitlabConnection ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        @{gitlabConnection.connection.gitlab_username}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowGitLabDisconnectDialog(true)}
+                        title="Disconnect GitLab"
+                      >
+                        <Unlink className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleConnectGitLab}
+                    >
+                      Connect
+                    </Button>
+                  )}
+                </div>
+              </div>
+
               {repoError && (
                 <Alert variant="destructive">
                   <AlertDescription>{repoError}</AlertDescription>
@@ -1178,6 +1254,43 @@ export function ProjectSettings() {
               disabled={deleteGitHubConnection.isPending}
             >
               {deleteGitHubConnection.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Disconnecting...
+                </>
+              ) : (
+                'Disconnect'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Disconnect GitLab Confirmation Dialog */}
+      <Dialog
+        open={showGitLabDisconnectDialog}
+        onOpenChange={setShowGitLabDisconnectDialog}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Disconnect GitLab</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to disconnect your GitLab account?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowGitLabDisconnectDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDisconnectGitLab}
+              disabled={deleteGitLabConnection.isPending}
+            >
+              {deleteGitLabConnection.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Disconnecting...

@@ -56,6 +56,21 @@ impl RepoService {
         Ok(())
     }
 
+    /// Check if a path string is a GitHub URL (e.g., https://github.com/user/repo)
+    pub fn is_github_url(&self, path: &str) -> bool {
+        path.starts_with("https://github.com/") || path.starts_with("http://github.com/")
+    }
+
+    /// Check if a path string is a GitLab URL (e.g., https://gitlab.com/user/repo)
+    pub fn is_gitlab_url(&self, path: &str) -> bool {
+        path.starts_with("https://gitlab.com/") || path.starts_with("http://gitlab.com/")
+    }
+
+    /// Check if a path string is a remote git URL (GitHub, GitLab, etc.)
+    pub fn is_remote_git_url(&self, path: &str) -> bool {
+        self.is_github_url(path) || self.is_gitlab_url(path)
+    }
+
     pub fn normalize_path(&self, path: &str) -> std::io::Result<PathBuf> {
         std::path::absolute(expand_tilde(path))
     }

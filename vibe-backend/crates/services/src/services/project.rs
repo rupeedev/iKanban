@@ -256,8 +256,15 @@ impl ProjectService {
             payload.git_repo_path
         );
 
-        let path = repo_service.normalize_path(&payload.git_repo_path)?;
-        repo_service.validate_git_repo_path(&path)?;
+        // For remote git URLs (GitHub, GitLab), skip local path validation
+        let repo_path = if repo_service.is_remote_git_url(&payload.git_repo_path) {
+            tracing::debug!("Remote git URL detected, skipping local validation");
+            payload.git_repo_path.clone()
+        } else {
+            let path = repo_service.normalize_path(&payload.git_repo_path)?;
+            repo_service.validate_git_repo_path(&path)?;
+            path.to_string_lossy().to_string()
+        };
 
         // Count repos before adding
         let repo_count_before = ProjectRepo::find_by_project_id(pool, project_id)
@@ -267,7 +274,7 @@ impl ProjectService {
         let repository = ProjectRepo::add_repo_to_project(
             pool,
             project_id,
-            &path.to_string_lossy(),
+            &repo_path,
             &payload.display_name,
         )
         .await
