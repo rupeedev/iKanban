@@ -41,9 +41,18 @@ import { CopyFilesField } from '@/components/projects/CopyFilesField';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { projectsApi, teamsApi } from '@/lib/api';
-import { useWorkspaceGitHubConnection, useWorkspaceGitHubMutations } from '@/hooks/useWorkspaceGitHub';
+import {
+  useWorkspaceGitHubConnection,
+  useWorkspaceGitHubMutations,
+} from '@/hooks/useWorkspaceGitHub';
 import { repoBranchKeys } from '@/hooks/useRepoBranches';
-import type { Project, ProjectRepo, Repo, Team, UpdateProject } from 'shared/types';
+import type {
+  Project,
+  ProjectRepo,
+  Repo,
+  Team,
+  UpdateProject,
+} from 'shared/types';
 
 interface ProjectFormState {
   name: string;
@@ -145,7 +154,7 @@ export function ProjectSettings() {
 
     sortedTeamIds.forEach((teamId) => {
       const teamProjects = teamMap.get(teamId) ?? [];
-      const team = teamId ? teams.find((t) => t.id === teamId) ?? null : null;
+      const team = teamId ? (teams.find((t) => t.id === teamId) ?? null) : null;
       grouped.push({ team, projects: teamProjects });
     });
 
@@ -186,8 +195,10 @@ export function ProjectSettings() {
   const [scriptsError, setScriptsError] = useState<string | null>(null);
 
   // GitHub connection state
-  const { data: githubConnection, refetch: refetchGitHubConnection } = useWorkspaceGitHubConnection();
-  const { deleteConnection: deleteGitHubConnection } = useWorkspaceGitHubMutations();
+  const { data: githubConnection, refetch: refetchGitHubConnection } =
+    useWorkspaceGitHubConnection();
+  const { deleteConnection: deleteGitHubConnection } =
+    useWorkspaceGitHubMutations();
   const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
 
   // Get OS-appropriate script placeholders
@@ -449,9 +460,16 @@ export function ProjectSettings() {
 
   // GitHub connection handlers
   const handleConnectGitHub = () => {
-    const backendUrl = window.location.origin;
-    const oauthUrl = `${backendUrl}/api/oauth/github/authorize?callback_url=${encodeURIComponent(window.location.origin + '/settings/github-callback')}`;
-    const popup = window.open(oauthUrl, 'github-oauth', 'width=600,height=700,scrollbars=yes');
+    // Use VITE_API_URL for OAuth requests to handle production environments
+    // where the API is on a different domain (e.g., api.scho1ar.com vs app.scho1ar.com)
+    // window.open() bypasses Vercel proxy rewrites, so we need the actual API URL
+    const apiBaseUrl = import.meta.env.VITE_API_URL || window.location.origin;
+    const oauthUrl = `${apiBaseUrl}/api/oauth/github/authorize?callback_url=${encodeURIComponent(window.location.origin + '/settings/github-callback')}`;
+    const popup = window.open(
+      oauthUrl,
+      'github-oauth',
+      'width=600,height=700,scrollbars=yes'
+    );
 
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
@@ -640,7 +658,9 @@ export function ProjectSettings() {
               onValueChange={handleProjectSelect}
             >
               <SelectTrigger id="project-selector">
-                <SelectValue placeholder={t('settings.projects.selector.placeholder')}>
+                <SelectValue
+                  placeholder={t('settings.projects.selector.placeholder')}
+                >
                   {selectedProject && (
                     <span className="flex items-center gap-2">
                       <span className="text-muted-foreground text-xs">
@@ -656,7 +676,9 @@ export function ProjectSettings() {
                   projectsByTeam.map(({ team, projects: teamProjects }) => (
                     <SelectGroup key={team?.id ?? 'unassigned'}>
                       <SelectLabel className="text-xs text-muted-foreground font-normal px-2 py-1">
-                        {team ? `${team.icon ?? '👥'} ${team.name}` : 'Other Projects'}
+                        {team
+                          ? `${team.icon ?? '👥'} ${team.name}`
+                          : 'Other Projects'}
                       </SelectLabel>
                       {teamProjects.map((project) => (
                         <SelectItem key={project.id} value={project.id}>
@@ -1130,7 +1152,10 @@ export function ProjectSettings() {
       )}
 
       {/* Disconnect GitHub Confirmation Dialog */}
-      <Dialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
+      <Dialog
+        open={showDisconnectDialog}
+        onOpenChange={setShowDisconnectDialog}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Disconnect GitHub</DialogTitle>
@@ -1139,7 +1164,10 @@ export function ProjectSettings() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDisconnectDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowDisconnectDialog(false)}
+            >
               Cancel
             </Button>
             <Button
