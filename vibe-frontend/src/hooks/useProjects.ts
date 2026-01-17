@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 import type { Project } from 'shared/types';
-import { resolveProjectFromParam } from '@/lib/url-utils';
+import { resolveProjectFromParam } from '@/lib/urlUtils';
 import { useClerkAuth } from '@/hooks/auth/useClerkAuth';
 import { useWorkspaceOptional } from '@/contexts/WorkspaceContext';
 

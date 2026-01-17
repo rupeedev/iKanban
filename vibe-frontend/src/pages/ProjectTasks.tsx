@@ -20,7 +20,7 @@ import { useTaskAttemptWithSession } from '@/hooks/useTaskAttempt';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
 import { paths } from '@/lib/paths';
-import { getProjectSlug, getTaskSlug, resolveTaskFromParam } from '@/lib/url-utils';
+import { getProjectSlug, getTaskSlug, resolveTaskFromParam } from '@/lib/urlUtils';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
 import { ReviewProvider } from '@/contexts/ReviewProvider';

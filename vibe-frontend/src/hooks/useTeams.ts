@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { teamsApi } from '@/lib/api';
 import type { Team, CreateTeam, UpdateTeam } from 'shared/types';
-import { resolveTeamFromParam } from '@/lib/url-utils';
+import { resolveTeamFromParam } from '@/lib/urlUtils';
 import { useWorkspaceOptional } from '@/contexts/WorkspaceContext';
 
 // Query key factory for workspace-scoped teams

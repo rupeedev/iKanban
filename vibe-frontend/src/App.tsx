@@ -55,7 +55,7 @@ import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
 import { ThemeMode } from 'shared/types';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
-import { BackendErrorState } from '@/components/ui/BackendErrorState';
+import { BackendErrorState } from '@/components/ui/backend-error-state';
 import { ConnectionStatusBar } from '@/components/ui/connection-status-bar';
 import { ServiceUnavailable } from '@/components/ui/service-unavailable';
 

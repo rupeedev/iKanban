@@ -31,7 +31,7 @@ import { LinkProjectDialog } from '@/components/dialogs/projects/LinkProjectDial
 import { MigrateTasksDialog } from '@/components/dialogs/teams/MigrateTasksDialog';
 import { useTranslation } from 'react-i18next';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
-import { getProjectSlug } from '@/lib/url-utils';
+import { getProjectSlug } from '@/lib/urlUtils';
 
 type Props = {
   project: Project;

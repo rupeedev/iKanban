@@ -28,7 +28,7 @@ import { useTeamIssues } from '@/hooks/useTeamIssues';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useTeams } from '@/hooks/useTeams';
 import { useKeyCreate, Scope } from '@/keyboard';
-import { getTeamSlug, getProjectSlug } from '@/lib/url-utils';
+import { getTeamSlug, getProjectSlug } from '@/lib/urlUtils';
 import type { Project } from 'shared/types';
 import { cn } from '@/lib/utils';
 
