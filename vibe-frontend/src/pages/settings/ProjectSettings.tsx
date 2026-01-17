@@ -32,12 +32,20 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Github, GitlabIcon, Loader2, Plus, Trash2, Unlink } from 'lucide-react';
+import {
+  Github,
+  GitlabIcon,
+  Loader2,
+  Plus,
+  Trash2,
+  Unlink,
+} from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useTeams } from '@/hooks/useTeams';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { CopyFilesField } from '@/components/projects/CopyFilesField';
+import { ProjectRepoMappingPanel } from '@/components/projects/ProjectRepoMappingPanel';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { projectsApi, teamsApi } from '@/lib/api';
@@ -60,9 +68,6 @@ import type {
 
 interface ProjectFormState {
   name: string;
-  dev_script: string;
-  dev_script_working_dir: string;
-  default_agent_working_dir: string;
 }
 
 interface RepoScriptsFormState {
@@ -75,9 +80,6 @@ interface RepoScriptsFormState {
 function projectToFormState(project: Project): ProjectFormState {
   return {
     name: project.name,
-    dev_script: project.dev_script ?? '',
-    dev_script_working_dir: project.dev_script_working_dir ?? '',
-    default_agent_working_dir: project.default_agent_working_dir ?? '',
   };
 }
 
@@ -566,10 +568,9 @@ export function ProjectSettings() {
     try {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
-        dev_script: draft.dev_script.trim() || null,
-        dev_script_working_dir: draft.dev_script_working_dir.trim() || null,
-        default_agent_working_dir:
-          draft.default_agent_working_dir.trim() || null,
+        dev_script: null,
+        dev_script_working_dir: null,
+        default_agent_working_dir: null,
         priority: null,
         lead_id: null,
         start_date: null,
@@ -775,63 +776,6 @@ export function ProjectSettings() {
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.general.name.helper')}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dev-script">
-                  {t('settings.projects.scripts.dev.label')}
-                </Label>
-                <AutoExpandingTextarea
-                  id="dev-script"
-                  value={draft.dev_script}
-                  onChange={(e) => updateDraft({ dev_script: e.target.value })}
-                  placeholder={placeholders.dev}
-                  maxRows={12}
-                  className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-                />
-                <p className="text-sm text-muted-foreground">
-                  {t('settings.projects.scripts.dev.helper')}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dev-script-working-dir">
-                  {t('settings.projects.scripts.devWorkingDir.label')}
-                </Label>
-                <Input
-                  id="dev-script-working-dir"
-                  value={draft.dev_script_working_dir}
-                  onChange={(e) =>
-                    updateDraft({ dev_script_working_dir: e.target.value })
-                  }
-                  placeholder={t(
-                    'settings.projects.scripts.devWorkingDir.placeholder'
-                  )}
-                  className="font-mono"
-                />
-                <p className="text-sm text-muted-foreground">
-                  {t('settings.projects.scripts.devWorkingDir.helper')}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="agent-working-dir">
-                  {t('settings.projects.scripts.agentWorkingDir.label')}
-                </Label>
-                <Input
-                  id="agent-working-dir"
-                  value={draft.default_agent_working_dir}
-                  onChange={(e) =>
-                    updateDraft({ default_agent_working_dir: e.target.value })
-                  }
-                  placeholder={t(
-                    'settings.projects.scripts.agentWorkingDir.placeholder'
-                  )}
-                  className="font-mono"
-                />
-                <p className="text-sm text-muted-foreground">
-                  {t('settings.projects.scripts.agentWorkingDir.helper')}
                 </p>
               </div>
 
