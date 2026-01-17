@@ -15,8 +15,6 @@ import {
   UserPlus,
   Mail,
   GitCommit,
-  GitBranch,
-  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -32,11 +30,8 @@ import {
 import { useTeams } from '@/hooks/useTeams';
 import { useProjects } from '@/hooks/useProjects';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
-import { useProjectRepos } from '@/hooks/useProjectRepos';
-import { tasksApi, projectsApi } from '@/lib/api';
+import { tasksApi } from '@/lib/api';
 import { ProjectInsightsPanel } from '@/components/projects/ProjectInsightsPanel';
-import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
-import { toast } from 'sonner';
 import { IssueFormDialog } from '@/components/dialogs/issues/IssueFormDialog';
 import { StatusIcon } from '@/utils/StatusIcons';
 import { statusLabels } from '@/utils/statusLabels';
@@ -445,7 +440,6 @@ export function TeamProjectDetail() {
   } = useTeamIssues(actualTeamId);
   const [activeTab, setActiveTab] = useState('overview');
   const [activityExpanded, setActivityExpanded] = useState(true);
-  const [isDeletingRepo, setIsDeletingRepo] = useState<string | null>(null);
 
   // Filter and display state
   const [filters, setFilters] = useState<FilterState>({
@@ -458,58 +452,6 @@ export function TeamProjectDetail() {
     sortBy: 'created',
     sortDirection: 'desc',
   });
-
-  // Project repositories
-  const { data: projectRepos = [], refetch: refetchRepos } = useProjectRepos(
-    project?.id
-  );
-
-  // Handle adding a repository via dialog
-  const handleOpenRepoDialog = useCallback(async () => {
-    if (!project?.id) return;
-    try {
-      const result = await RepoPickerDialog.show({
-        title: 'Link Repository',
-        description:
-          'Select a repository to link to this project for AI agent execution.',
-      });
-      if (result && result.path && result.display_name) {
-        await projectsApi.addRepository(project.id, {
-          git_repo_path: result.path,
-          display_name: result.display_name,
-        });
-        await refetchRepos();
-        toast.success('Repository linked', {
-          description: `${result.display_name} has been linked to this project.`,
-        });
-      }
-    } catch (err) {
-      // User cancelled the dialog - not an error
-      if (err !== undefined) {
-        console.error('Failed to add repository:', err);
-        toast.error('Failed to link repository');
-      }
-    }
-  }, [project?.id, refetchRepos]);
-
-  // Handle removing a repository
-  const handleRemoveRepo = useCallback(
-    async (repoId: string) => {
-      if (!project?.id) return;
-      setIsDeletingRepo(repoId);
-      try {
-        await projectsApi.deleteRepository(project.id, repoId);
-        await refetchRepos();
-        toast.success('Repository unlinked');
-      } catch (err) {
-        console.error('Failed to remove repository:', err);
-        toast.error('Failed to unlink repository');
-      } finally {
-        setIsDeletingRepo(null);
-      }
-    },
-    [project?.id, refetchRepos]
-  );
 
   // Filter issues for this project only (use resolved project's actual ID)
   const projectIssues = useMemo(() => {
@@ -993,78 +935,6 @@ export function TeamProjectDetail() {
                 <Tag className="h-3.5 w-3.5 mr-1" />
                 Add label
               </Button>
-            </div>
-
-            {/* Repositories */}
-            <div className="border-t pt-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium flex items-center gap-1.5">
-                  <GitBranch className="h-3.5 w-3.5" />
-                  Repositories
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={handleOpenRepoDialog}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              {projectRepos.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Link a repository to enable AI agent execution from task
-                  comments.
-                </p>
-              ) : (
-                <div className="space-y-1.5">
-                  {projectRepos.map((repo) => (
-                    <div
-                      key={repo.id}
-                      className="flex items-center justify-between py-1.5 px-2 rounded-md bg-muted/50 group"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <GitBranch className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-sm truncate">
-                            {repo.display_name}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {repo.path}
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                        onClick={() => handleRemoveRepo(repo.id)}
-                        disabled={isDeletingRepo === repo.id}
-                      >
-                        {isDeletingRepo === repo.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                        )}
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Milestones */}
-            <div className="border-t pt-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Milestones</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Add milestones to organize work within your project and break it
-                into more granular stages.
-              </p>
             </div>
 
             {/* Progress */}
