@@ -6,10 +6,6 @@ import {
   AlertCircle,
   ChevronRight,
   ChevronDown,
-  Calendar,
-  ArrowRight,
-  Users,
-  Tag,
   User,
   Check,
   UserPlus,
@@ -30,6 +26,7 @@ import {
 import { useTeams } from '@/hooks/useTeams';
 import { useProjects } from '@/hooks/useProjects';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { tasksApi } from '@/lib/api';
 import { ProjectInsightsPanel } from '@/components/projects/ProjectInsightsPanel';
 import { IssueFormDialog } from '@/components/dialogs/issues/IssueFormDialog';
@@ -65,20 +62,13 @@ const PRIORITY_DISPLAY = [
   { value: 4, label: 'Low', dots: '...' },
 ];
 
-// Team member type for assignee dropdown
-interface TeamMember {
+// Helper type for assignee display in dropdowns
+interface AssigneeDisplayInfo {
   id: string;
   name: string;
   email?: string;
   avatar?: string;
 }
-
-// Mock team members - in real app, fetch from API
-const MOCK_TEAM_MEMBERS: TeamMember[] = [
-  { id: '1', name: 'rupesh panwar', email: 'rupesh@example.com' },
-  { id: '2', name: 'Jane Smith', email: 'jane@example.com' },
-  { id: '3', name: 'Bob Johnson', email: 'bob@example.com' },
-];
 
 function getPriorityDots(priority: number | null | undefined) {
   const p =
@@ -109,7 +99,7 @@ interface IssueRowProps {
   issue: TaskWithAttemptStatus;
   teamIdentifier?: string;
   onClick: () => void;
-  teamMembers: TeamMember[];
+  teamMembers: AssigneeDisplayInfo[];
   issueCountPerAssignee: Record<string | 'unassigned', number>;
   onAssigneeChange: (issueId: string, assigneeId: string | null) => void;
 }
@@ -277,7 +267,7 @@ interface StatusGroupProps {
   status: TaskStatus;
   issues: TaskWithAttemptStatus[];
   teamIdentifier?: string;
-  teamMembers: TeamMember[];
+  teamMembers: AssigneeDisplayInfo[];
   issueCountPerAssignee: Record<string | 'unassigned', number>;
   onIssueClick: (issue: TaskWithAttemptStatus) => void;
   onAddIssue: () => void;
@@ -352,7 +342,7 @@ interface GenericGroupProps {
   title: string;
   issues: TaskWithAttemptStatus[];
   teamIdentifier?: string;
-  teamMembers: TeamMember[];
+  teamMembers: AssigneeDisplayInfo[];
   issueCountPerAssignee: Record<string | 'unassigned', number>;
   onIssueClick: (issue: TaskWithAttemptStatus) => void;
   onAddIssue: () => void;
@@ -438,8 +428,19 @@ export function TeamProjectDetail() {
     isLoading: issuesLoading,
     refresh: refreshIssues,
   } = useTeamIssues(actualTeamId);
+  const { members: teamMembers } = useTeamMembers(actualTeamId);
   const [activeTab, setActiveTab] = useState('overview');
   const [activityExpanded, setActivityExpanded] = useState(true);
+
+  // Convert TeamMember to AssigneeDisplayInfo for dropdowns
+  const assigneeDisplayList = useMemo<AssigneeDisplayInfo[]>(() => {
+    return teamMembers.map((m) => ({
+      id: m.id,
+      name: m.display_name || m.email || 'Unknown',
+      email: m.email || undefined,
+      avatar: m.avatar_url || undefined,
+    }));
+  }, [teamMembers]);
 
   // Filter and display state
   const [filters, setFilters] = useState<FilterState>({
@@ -718,7 +719,7 @@ export function TeamProjectDetail() {
                 <IssueFilterDropdown
                   filters={filters}
                   onFiltersChange={setFilters}
-                  teamMembers={MOCK_TEAM_MEMBERS}
+                  teamMembers={assigneeDisplayList}
                   projects={[]}
                   issues={projectIssues}
                 />
@@ -738,7 +739,7 @@ export function TeamProjectDetail() {
                       status={status}
                       issues={issuesByStatus[status]}
                       teamIdentifier={team?.identifier || undefined}
-                      teamMembers={MOCK_TEAM_MEMBERS}
+                      teamMembers={assigneeDisplayList}
                       issueCountPerAssignee={issueCountPerAssignee}
                       onIssueClick={handleIssueClick}
                       onAddIssue={() => handleCreateIssue()}
@@ -762,7 +763,7 @@ export function TeamProjectDetail() {
                         title={priorityInfo?.label || 'Unknown'}
                         issues={priorityIssues}
                         teamIdentifier={team?.identifier || undefined}
-                        teamMembers={MOCK_TEAM_MEMBERS}
+                        teamMembers={assigneeDisplayList}
                         issueCountPerAssignee={issueCountPerAssignee}
                         onIssueClick={handleIssueClick}
                         onAddIssue={() => handleCreateIssue()}
@@ -778,7 +779,7 @@ export function TeamProjectDetail() {
                         (assigneeIssues as TaskWithAttemptStatus[]).length === 0
                       )
                         return null;
-                      const member = MOCK_TEAM_MEMBERS.find(
+                      const member = assigneeDisplayList.find(
                         (m) => m.id === assigneeKey
                       );
                       const title =
@@ -791,7 +792,7 @@ export function TeamProjectDetail() {
                           title={title}
                           issues={assigneeIssues as TaskWithAttemptStatus[]}
                           teamIdentifier={team?.identifier || undefined}
-                          teamMembers={MOCK_TEAM_MEMBERS}
+                          teamMembers={assigneeDisplayList}
                           issueCountPerAssignee={issueCountPerAssignee}
                           onIssueClick={handleIssueClick}
                           onAddIssue={() => handleCreateIssue()}
@@ -810,7 +811,7 @@ export function TeamProjectDetail() {
                         key={issue.id}
                         issue={issue}
                         teamIdentifier={team?.identifier || undefined}
-                        teamMembers={MOCK_TEAM_MEMBERS}
+                        teamMembers={assigneeDisplayList}
                         issueCountPerAssignee={issueCountPerAssignee}
                         onClick={() => handleIssueClick(issue)}
                         onAssigneeChange={handleAssigneeChange}
@@ -868,77 +869,8 @@ export function TeamProjectDetail() {
         {/* Right sidebar - Project details */}
         <div className="w-80 flex-shrink-0 overflow-y-auto bg-muted/10">
           <div className="p-4 space-y-4">
-            {/* Priority */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Priority</span>
-              <span className="text-sm">
-                {project.priority
-                  ? PRIORITY_DISPLAY.find((p) => p.value === project.priority)
-                      ?.label
-                  : 'No priority'}
-              </span>
-            </div>
-
-            {/* Lead */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Lead</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-muted-foreground"
-              >
-                <User className="h-3.5 w-3.5 mr-1" />
-                Add lead
-              </Button>
-            </div>
-
-            {/* Members */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Members</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-muted-foreground"
-              >
-                <Users className="h-3.5 w-3.5 mr-1" />
-                Add members
-              </Button>
-            </div>
-
-            {/* Dates */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Dates</span>
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                <span>{formatDate(project.start_date) || 'Start'}</span>
-                <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                <span>{formatDate(project.target_date) || 'Target'}</span>
-              </div>
-            </div>
-
-            {/* Teams */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Teams</span>
-              <Badge variant="secondary" className="text-xs">
-                {team?.icon} {team?.name}
-              </Badge>
-            </div>
-
-            {/* Labels */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Labels</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-muted-foreground"
-              >
-                <Tag className="h-3.5 w-3.5 mr-1" />
-                Add label
-              </Button>
-            </div>
-
             {/* Progress */}
-            <div className="border-t pt-4">
+            <div>
               <div className="flex items-center justify-between mb-4">
                 <span className="text-sm font-medium">Progress</span>
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -969,31 +901,64 @@ export function TeamProjectDetail() {
 
             {/* Assignees breakdown */}
             <div className="border-t pt-4">
-              <Tabs defaultValue="assignees" className="w-full">
-                <TabsList className="w-full h-8">
-                  <TabsTrigger value="assignees" className="flex-1 text-xs h-7">
-                    Assignees
-                  </TabsTrigger>
-                  <TabsTrigger value="labels" className="flex-1 text-xs h-7">
-                    Labels
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium">Assignees</span>
+                <span className="text-xs text-muted-foreground">
+                  {assigneeDisplayList.length + 1} total
+                </span>
+              </div>
 
-              <div className="mt-3">
-                <div className="flex items-center justify-between py-2">
+              <div className="space-y-1">
+                {/* Unassigned */}
+                <div className="flex items-center justify-between py-1.5">
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center">
                       <User className="h-3 w-3 text-muted-foreground" />
                     </div>
                     <span className="text-sm text-muted-foreground">
-                      No assignee
+                      Unassigned
                     </span>
                   </div>
                   <span className="text-sm">
-                    {projectIssues.filter((i) => !i.assignee_id).length}
+                    {issueCountPerAssignee['unassigned'] || 0}
                   </span>
                 </div>
+
+                {/* Real assignees from team members */}
+                {assigneeDisplayList.map((member) => {
+                  const count = issueCountPerAssignee[member.id] || 0;
+                  const getInitials = (name: string) =>
+                    name
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .toUpperCase()
+                      .slice(0, 2);
+                  return (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between py-1.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        {member.avatar ? (
+                          <img
+                            src={member.avatar}
+                            alt={member.name}
+                            className="w-6 h-6 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-primary/10 text-primary font-medium flex items-center justify-center text-xs">
+                            {getInitials(member.name)}
+                          </div>
+                        )}
+                        <span className="text-sm truncate max-w-[140px]">
+                          {member.name}
+                        </span>
+                      </div>
+                      <span className="text-sm">{count}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -1025,11 +990,7 @@ export function TeamProjectDetail() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm">
-                        <span className="font-medium">rupesh panwar</span>
-                        <span className="text-muted-foreground">
-                          {' '}
-                          created the project
-                        </span>
+                        <span className="font-medium">Project created</span>
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {project?.created_at
@@ -1039,27 +1000,68 @@ export function TeamProjectDetail() {
                     </div>
                   </div>
 
-                  {/* Recent issue activities */}
-                  {projectIssues.slice(0, 3).map((issue) => (
-                    <div key={issue.id} className="flex items-start gap-2">
-                      <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center mt-0.5">
-                        <Plus className="h-3 w-3 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm truncate">
-                          <span className="text-muted-foreground">Issue </span>
-                          <span className="font-medium">{issue.title}</span>
-                          <span className="text-muted-foreground">
-                            {' '}
-                            created
-                          </span>
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDate(issue.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                  {/* Recent issue activities with task keys */}
+                  {projectIssues
+                    .slice()
+                    .sort(
+                      (a, b) =>
+                        new Date(b.updated_at || b.created_at).getTime() -
+                        new Date(a.updated_at || a.created_at).getTime()
+                    )
+                    .slice(0, 5)
+                    .map((issue) => {
+                      const issueKey = getIssueKey(
+                        team?.identifier,
+                        issue.issue_number
+                      );
+                      const assignee = assigneeDisplayList.find(
+                        (m) => m.id === issue.assignee_id
+                      );
+                      const isUpdated =
+                        issue.updated_at &&
+                        issue.updated_at !== issue.created_at;
+                      return (
+                        <div
+                          key={issue.id}
+                          className="flex items-start gap-2"
+                        >
+                          <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center mt-0.5">
+                            <StatusIcon
+                              status={issue.status}
+                              className="h-3 w-3"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm">
+                              {assignee ? (
+                                <span className="font-medium">
+                                  {assignee.name}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  Someone
+                                </span>
+                              )}
+                              <span className="text-muted-foreground">
+                                {' '}
+                                {isUpdated ? 'worked on' : 'created'}{' '}
+                              </span>
+                              {issueKey && (
+                                <span className="font-mono text-xs text-primary">
+                                  {issueKey}
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {issue.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatDate(issue.updated_at || issue.created_at)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
 
                   {projectIssues.length === 0 && (
                     <p className="text-xs text-muted-foreground">
