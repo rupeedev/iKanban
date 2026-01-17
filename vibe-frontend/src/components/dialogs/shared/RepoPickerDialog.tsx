@@ -33,6 +33,8 @@ export interface RepoPickerDialogProps {
   value?: string;
   title?: string;
   description?: string;
+  /** Hide GitHub option (use for project repos that require local paths) */
+  hideGitHub?: boolean;
 }
 
 type Stage = 'options' | 'existing' | 'github' | 'new';
@@ -41,6 +43,7 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
   ({
     title = 'Select Repository',
     description = 'Choose or create a git repository',
+    hideGitHub = false,
   }) => {
     const modal = useModal();
     const [stage, setStage] = useState<Stage>('options');
@@ -168,8 +171,8 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
               {/* Stage: Options */}
               {stage === 'options' && (
                 <>
-                  {/* GitHub option - only show if connected */}
-                  {githubConnection && (
+                  {/* GitHub option - only show if connected and not hidden */}
+                  {githubConnection && !hideGitHub && (
                     <div
                       className="p-4 border cursor-pointer hover:shadow-md transition-shadow rounded-lg bg-card"
                       onClick={() => setStage('github')}

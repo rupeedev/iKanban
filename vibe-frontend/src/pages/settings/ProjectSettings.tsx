@@ -400,6 +400,7 @@ export function ProjectSettings() {
     const repo = await RepoPickerDialog.show({
       title: 'Select Git Repository',
       description: 'Choose a git repository to add to this project',
+      hideGitHub: true, // GitHub repos require local paths, can't be added remotely
     });
 
     if (!repo) return;
