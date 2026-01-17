@@ -25,6 +25,7 @@ pub mod containers;
 pub mod documents;
 pub mod filesystem;
 pub mod github;
+pub mod gitlab;
 pub mod events;
 pub mod execution_processes;
 // pub mod frontend;
@@ -95,6 +96,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(inbox::router(&deployment))
         .merge(organizations::router())
         .merge(github::router(&deployment))
+        .merge(gitlab::router(&deployment))
         .merge(filesystem::router())
         .merge(repo::router())
         .merge(events::router(&deployment))

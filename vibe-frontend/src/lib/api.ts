@@ -117,6 +117,13 @@ import {
   LinkGitHubRepository,
   GitHubAuthorizeResponse,
   GitHubRepoInfo,
+  GitLabConnection,
+  GitLabConnectionWithRepos,
+  GitLabRepository,
+  CreateGitLabConnection,
+  UpdateGitLabConnection,
+  LinkGitLabRepository,
+  GitLabProjectInfo,
   ConfigureSyncRequest,
   PushDocumentsRequest,
   SyncOperationResponse,
@@ -1879,6 +1886,66 @@ export const teamsApi = {
 
   unlinkWorkspaceGitHubRepository: async (repoId: string): Promise<void> => {
     const response = await makeRequest(`/api/settings/github/repos/${repoId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  // Workspace-level GitLab connection methods
+  getWorkspaceGitLabConnection: async (): Promise<GitLabConnectionWithRepos | null> => {
+    const response = await makeRequest('/api/settings/gitlab');
+    return handleApiResponse<GitLabConnectionWithRepos | null>(response);
+  },
+
+  createWorkspaceGitLabConnection: async (
+    data: CreateGitLabConnection
+  ): Promise<GitLabConnection> => {
+    const response = await makeRequest('/api/settings/gitlab', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<GitLabConnection>(response);
+  },
+
+  updateWorkspaceGitLabConnection: async (
+    data: UpdateGitLabConnection
+  ): Promise<GitLabConnection> => {
+    const response = await makeRequest('/api/settings/gitlab', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<GitLabConnection>(response);
+  },
+
+  deleteWorkspaceGitLabConnection: async (): Promise<void> => {
+    const response = await makeRequest('/api/settings/gitlab', {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  getWorkspaceGitLabRepositories: async (): Promise<GitLabRepository[]> => {
+    const response = await makeRequest('/api/settings/gitlab/repos');
+    return handleApiResponse<GitLabRepository[]>(response);
+  },
+
+  getWorkspaceAvailableGitLabRepos: async (): Promise<GitLabProjectInfo[]> => {
+    const response = await makeRequest('/api/settings/gitlab/repos/available');
+    return handleApiResponse<GitLabProjectInfo[]>(response);
+  },
+
+  linkWorkspaceGitLabRepository: async (
+    data: LinkGitLabRepository
+  ): Promise<GitLabRepository> => {
+    const response = await makeRequest('/api/settings/gitlab/repos', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<GitLabRepository>(response);
+  },
+
+  unlinkWorkspaceGitLabRepository: async (repoId: string): Promise<void> => {
+    const response = await makeRequest(`/api/settings/gitlab/repos/${repoId}`, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
