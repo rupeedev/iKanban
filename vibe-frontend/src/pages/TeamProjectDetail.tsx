@@ -1,414 +1,21 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useMemo, useCallback } from 'react';
-import {
-  Plus,
-  Loader2,
-  AlertCircle,
-  ChevronRight,
-  ChevronDown,
-  User,
-  Check,
-  UserPlus,
-  Mail,
-  GitCommit,
-} from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Loader2, AlertCircle, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useTeams } from '@/hooks/useTeams';
 import { useProjects } from '@/hooks/useProjects';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
-import { useTeamMembers } from '@/hooks/useTeamMembers';
-import { tasksApi } from '@/lib/api';
+import { useProjectTaskTags } from '@/hooks/useProjectTaskTags';
 import { ProjectInsightsPanel } from '@/components/projects/ProjectInsightsPanel';
+import { TimelineView } from '@/components/projects/TimelineView';
 import { IssueFormDialog } from '@/components/dialogs/issues/IssueFormDialog';
-import { StatusIcon } from '@/utils/StatusIcons';
-import { statusLabels } from '@/utils/statusLabels';
 import {
   IssueFilterDropdown,
   type FilterState,
 } from '@/components/filters/IssueFilterDropdown';
-import {
-  DisplayOptionsDropdown,
-  type DisplayOptions,
-} from '@/components/filters/DisplayOptionsDropdown';
-import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-
-// Status groups in display order
-const STATUS_ORDER: TaskStatus[] = [
-  'done',
-  'inreview',
-  'inprogress',
-  'todo',
-  'cancelled',
-];
-
-// Priority display
-const PRIORITY_DISPLAY = [
-  { value: 0, label: 'No priority', dots: '---' },
-  { value: 1, label: 'Urgent', dots: '!!!' },
-  { value: 2, label: 'High', dots: '.!!' },
-  { value: 3, label: 'Medium', dots: '..!' },
-  { value: 4, label: 'Low', dots: '...' },
-];
-
-// Helper type for assignee display in dropdowns
-interface AssigneeDisplayInfo {
-  id: string;
-  name: string;
-  email?: string;
-  avatar?: string;
-}
-
-function getPriorityDots(priority: number | null | undefined) {
-  const p =
-    PRIORITY_DISPLAY.find((d) => d.value === (priority ?? 0)) ||
-    PRIORITY_DISPLAY[0];
-  return p.dots;
-}
-
-function formatDate(dateStr: string | null | undefined) {
-  if (!dateStr) return null;
-  try {
-    return format(new Date(dateStr), 'MMM d');
-  } catch {
-    return null;
-  }
-}
-
-// Generate issue key from team identifier and issue number
-function getIssueKey(
-  teamIdentifier: string | null | undefined,
-  issueNumber: number | null | undefined
-) {
-  if (!teamIdentifier || !issueNumber) return null;
-  return `${teamIdentifier}-${issueNumber}`;
-}
-
-interface IssueRowProps {
-  issue: TaskWithAttemptStatus;
-  teamIdentifier?: string;
-  onClick: () => void;
-  teamMembers: AssigneeDisplayInfo[];
-  issueCountPerAssignee: Record<string | 'unassigned', number>;
-  onAssigneeChange: (issueId: string, assigneeId: string | null) => void;
-}
-
-function IssueRow({
-  issue,
-  teamIdentifier,
-  onClick,
-  teamMembers,
-  issueCountPerAssignee,
-  onAssigneeChange,
-}: IssueRowProps) {
-  const issueKey = getIssueKey(teamIdentifier, issue.issue_number);
-  const selectedMember = teamMembers.find((m) => m.id === issue.assignee_id);
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const handleAssigneeSelect = useCallback(
-    (assigneeId: string | null) => {
-      onAssigneeChange(issue.id, assigneeId);
-    },
-    [issue.id, onAssigneeChange]
-  );
-
-  return (
-    <div
-      onClick={onClick}
-      className="flex items-center gap-3 px-4 py-2 hover:bg-accent/50 cursor-pointer border-b border-border/30 last:border-b-0"
-    >
-      {/* Priority dots */}
-      <span className="text-xs text-muted-foreground font-mono w-8">
-        {getPriorityDots(issue.priority)}
-      </span>
-
-      {/* Issue key */}
-      {issueKey && (
-        <span className="text-xs text-muted-foreground font-mono w-16">
-          {issueKey}
-        </span>
-      )}
-
-      {/* Status icon */}
-      <StatusIcon status={issue.status} className="h-4 w-4 flex-shrink-0" />
-
-      {/* Title */}
-      <span className="flex-1 text-sm truncate">{issue.title}</span>
-
-      {/* Assignee Dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-          <button
-            className={cn(
-              'h-6 w-6 rounded-full flex items-center justify-center',
-              'border border-dashed border-muted-foreground/40',
-              'text-muted-foreground hover:border-primary hover:text-primary',
-              'transition-colors'
-            )}
-          >
-            {selectedMember ? (
-              selectedMember.avatar ? (
-                <img
-                  src={selectedMember.avatar}
-                  alt={selectedMember.name}
-                  className="h-6 w-6 rounded-full object-cover"
-                />
-              ) : (
-                <span className="text-xs font-medium">
-                  {getInitials(selectedMember.name)}
-                </span>
-              )
-            ) : (
-              <User className="h-3 w-3" />
-            )}
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          className="w-56"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* No assignee option */}
-          <DropdownMenuItem
-            onClick={() => handleAssigneeSelect(null)}
-            className={cn(
-              'cursor-pointer gap-2',
-              !issue.assignee_id && 'bg-accent'
-            )}
-          >
-            <div className="h-6 w-6 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center">
-              <User className="h-3 w-3 text-muted-foreground" />
-            </div>
-            <span className="flex-1">No assignee</span>
-            {!issue.assignee_id && <Check className="h-4 w-4 text-primary" />}
-            <span className="text-xs text-muted-foreground">
-              {issueCountPerAssignee['unassigned'] || 0}
-            </span>
-          </DropdownMenuItem>
-
-          {teamMembers.length > 0 && <DropdownMenuSeparator />}
-
-          {/* Team members */}
-          {teamMembers.map((member) => {
-            const isSelected = issue.assignee_id === member.id;
-            return (
-              <DropdownMenuItem
-                key={member.id}
-                onClick={() => handleAssigneeSelect(member.id)}
-                className={cn(
-                  'cursor-pointer gap-2',
-                  isSelected && 'bg-accent'
-                )}
-              >
-                {member.avatar ? (
-                  <img
-                    src={member.avatar}
-                    alt={member.name}
-                    className="h-6 w-6 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="h-6 w-6 rounded-full bg-primary/10 text-primary font-medium flex items-center justify-center text-xs">
-                    {getInitials(member.name)}
-                  </div>
-                )}
-                <span className="flex-1 truncate">{member.name}</span>
-                {isSelected && <Check className="h-4 w-4 text-primary" />}
-                <span className="text-xs text-muted-foreground">
-                  {issueCountPerAssignee[member.id] || 0}
-                </span>
-              </DropdownMenuItem>
-            );
-          })}
-
-          <DropdownMenuSeparator />
-
-          {/* New user option */}
-          <DropdownMenuItem className="cursor-pointer gap-2">
-            <UserPlus className="h-4 w-4 text-muted-foreground" />
-            <span>New user</span>
-          </DropdownMenuItem>
-
-          {/* Invite option */}
-          <DropdownMenuItem className="cursor-pointer gap-2">
-            <Mail className="h-4 w-4 text-muted-foreground" />
-            <span>Invite and assign...</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Date */}
-      <span className="text-xs text-muted-foreground w-16 text-right">
-        {formatDate(issue.created_at)}
-      </span>
-    </div>
-  );
-}
-
-interface StatusGroupProps {
-  status: TaskStatus;
-  issues: TaskWithAttemptStatus[];
-  teamIdentifier?: string;
-  teamMembers: AssigneeDisplayInfo[];
-  issueCountPerAssignee: Record<string | 'unassigned', number>;
-  onIssueClick: (issue: TaskWithAttemptStatus) => void;
-  onAddIssue: () => void;
-  onAssigneeChange: (issueId: string, assigneeId: string | null) => void;
-}
-
-function StatusGroup({
-  status,
-  issues,
-  teamIdentifier,
-  teamMembers,
-  issueCountPerAssignee,
-  onIssueClick,
-  onAddIssue,
-  onAssigneeChange,
-}: StatusGroupProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
-
-  if (issues.length === 0) return null;
-
-  return (
-    <div className="border-b border-border/50">
-      {/* Group header */}
-      <div
-        className="flex items-center gap-2 px-4 py-2 hover:bg-accent/30 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        )}
-        <StatusIcon status={status} />
-        <span className="font-medium text-sm">{statusLabels[status]}</span>
-        <span className="text-sm text-muted-foreground">{issues.length}</span>
-        <div className="flex-1" />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-muted-foreground hover:text-foreground"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddIssue();
-          }}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Issues */}
-      {isExpanded && (
-        <div className="bg-muted/20">
-          {issues.map((issue) => (
-            <IssueRow
-              key={issue.id}
-              issue={issue}
-              teamIdentifier={teamIdentifier}
-              teamMembers={teamMembers}
-              issueCountPerAssignee={issueCountPerAssignee}
-              onClick={() => onIssueClick(issue)}
-              onAssigneeChange={onAssigneeChange}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Generic group component for non-status grouping (priority, assignee)
-interface GenericGroupProps {
-  title: string;
-  issues: TaskWithAttemptStatus[];
-  teamIdentifier?: string;
-  teamMembers: AssigneeDisplayInfo[];
-  issueCountPerAssignee: Record<string | 'unassigned', number>;
-  onIssueClick: (issue: TaskWithAttemptStatus) => void;
-  onAddIssue: () => void;
-  onAssigneeChange: (issueId: string, assigneeId: string | null) => void;
-}
-
-function GenericGroup({
-  title,
-  issues,
-  teamIdentifier,
-  teamMembers,
-  issueCountPerAssignee,
-  onIssueClick,
-  onAddIssue,
-  onAssigneeChange,
-}: GenericGroupProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
-
-  if (issues.length === 0) return null;
-
-  return (
-    <div className="border-b border-border/50">
-      {/* Group header */}
-      <div
-        className="flex items-center gap-2 px-4 py-2 hover:bg-accent/30 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        )}
-        <span className="font-medium text-sm">{title}</span>
-        <span className="text-sm text-muted-foreground">{issues.length}</span>
-        <div className="flex-1" />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-muted-foreground hover:text-foreground"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddIssue();
-          }}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Issues */}
-      {isExpanded && (
-        <div className="bg-muted/20">
-          {issues.map((issue) => (
-            <IssueRow
-              key={issue.id}
-              issue={issue}
-              teamIdentifier={teamIdentifier}
-              teamMembers={teamMembers}
-              issueCountPerAssignee={issueCountPerAssignee}
-              onClick={() => onIssueClick(issue)}
-              onAssigneeChange={onAssigneeChange}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+import type { TaskWithAttemptStatus } from 'shared/types';
 
 export function TeamProjectDetail() {
   const { teamId, projectId } = useParams<{
@@ -422,38 +29,17 @@ export function TeamProjectDetail() {
   const project = projectId ? resolveProject(projectId) : null;
   const actualTeamId = team?.id;
 
-  const {
-    issues,
-    isLoading: issuesLoading,
-    refresh: refreshIssues,
-  } = useTeamIssues(actualTeamId);
-  const { members: teamMembers } = useTeamMembers(actualTeamId);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [activityExpanded, setActivityExpanded] = useState(true);
+  const { issues, isLoading: issuesLoading } = useTeamIssues(actualTeamId);
+  const [activeTab, setActiveTab] = useState('timeline');
 
-  // Convert TeamMember to AssigneeDisplayInfo for dropdowns
-  const assigneeDisplayList = useMemo<AssigneeDisplayInfo[]>(() => {
-    return teamMembers.map((m) => ({
-      id: m.id,
-      name: m.display_name || m.email || 'Unknown',
-      email: m.email || undefined,
-      avatar: m.avatar_url || undefined,
-    }));
-  }, [teamMembers]);
-
-  // Filter and display state
+  // Filter state
   const [filters, setFilters] = useState<FilterState>({
     priority: null,
     assigneeId: null,
     projectId: null,
   });
-  const [displayOptions, setDisplayOptions] = useState<DisplayOptions>({
-    groupBy: 'status',
-    sortBy: 'created',
-    sortDirection: 'desc',
-  });
 
-  // Filter issues for this project only (use resolved project's actual ID)
+  // Filter issues for this project only
   const projectIssues = useMemo(() => {
     if (!project) return [];
     return issues.filter((issue) => issue.project_id === project.id);
@@ -463,14 +49,12 @@ export function TeamProjectDetail() {
   const filteredIssues = useMemo(() => {
     let result = projectIssues;
 
-    // Priority filter
     if (filters.priority?.length) {
       result = result.filter((i) =>
         filters.priority!.includes(i.priority ?? 0)
       );
     }
 
-    // Assignee filter
     if (filters.assigneeId?.length) {
       result = result.filter(
         (i) => i.assignee_id && filters.assigneeId!.includes(i.assignee_id)
@@ -480,140 +64,9 @@ export function TeamProjectDetail() {
     return result;
   }, [projectIssues, filters]);
 
-  // Sort issues based on display options
-  const sortIssues = useCallback(
-    (issuesToSort: TaskWithAttemptStatus[]) => {
-      const sorted = [...issuesToSort];
-      const multiplier = displayOptions.sortDirection === 'desc' ? -1 : 1;
-
-      sorted.sort((a, b) => {
-        switch (displayOptions.sortBy) {
-          case 'priority':
-            return ((a.priority ?? 5) - (b.priority ?? 5)) * multiplier;
-          case 'updated':
-            return (
-              (new Date(a.updated_at || a.created_at).getTime() -
-                new Date(b.updated_at || b.created_at).getTime()) *
-              multiplier
-            );
-          case 'created':
-          default:
-            return (
-              (new Date(a.created_at).getTime() -
-                new Date(b.created_at).getTime()) *
-              multiplier
-            );
-        }
-      });
-
-      return sorted;
-    },
-    [displayOptions.sortBy, displayOptions.sortDirection]
-  );
-
-  // Group issues based on display options
-  const groupedIssues = useMemo(() => {
-    const groupBy = displayOptions.groupBy;
-
-    if (groupBy === 'none') {
-      return { all: sortIssues(filteredIssues) };
-    }
-
-    if (groupBy === 'status') {
-      const grouped: Record<TaskStatus, TaskWithAttemptStatus[]> = {
-        todo: [],
-        inprogress: [],
-        inreview: [],
-        done: [],
-        cancelled: [],
-      };
-      filteredIssues.forEach((issue) => {
-        grouped[issue.status]?.push(issue);
-      });
-      Object.keys(grouped).forEach((key) => {
-        grouped[key as TaskStatus] = sortIssues(grouped[key as TaskStatus]);
-      });
-      return grouped;
-    }
-
-    if (groupBy === 'priority') {
-      const grouped: Record<string, TaskWithAttemptStatus[]> = {
-        '1': [], // Urgent
-        '2': [], // High
-        '3': [], // Medium
-        '4': [], // Low
-        '0': [], // No priority
-      };
-      filteredIssues.forEach((issue) => {
-        const key = String(issue.priority ?? 0);
-        if (!grouped[key]) grouped[key] = [];
-        grouped[key].push(issue);
-      });
-      Object.keys(grouped).forEach((key) => {
-        grouped[key] = sortIssues(grouped[key]);
-      });
-      return grouped;
-    }
-
-    if (groupBy === 'assignee') {
-      const grouped: Record<string, TaskWithAttemptStatus[]> = {
-        unassigned: [],
-      };
-      filteredIssues.forEach((issue) => {
-        const key = issue.assignee_id || 'unassigned';
-        if (!grouped[key]) grouped[key] = [];
-        grouped[key].push(issue);
-      });
-      Object.keys(grouped).forEach((key) => {
-        grouped[key] = sortIssues(grouped[key]);
-      });
-      return grouped;
-    }
-
-    return { all: sortIssues(filteredIssues) };
-  }, [filteredIssues, displayOptions.groupBy, sortIssues]);
-
-  // For backwards compatibility, keep issuesByStatus for status grouping
-  const issuesByStatus = useMemo(() => {
-    if (displayOptions.groupBy === 'status') {
-      return groupedIssues as Record<TaskStatus, TaskWithAttemptStatus[]>;
-    }
-    // Fallback to status grouping
-    const grouped: Record<TaskStatus, TaskWithAttemptStatus[]> = {
-      todo: [],
-      inprogress: [],
-      inreview: [],
-      done: [],
-      cancelled: [],
-    };
-    filteredIssues.forEach((issue) => {
-      grouped[issue.status]?.push(issue);
-    });
-    return grouped;
-  }, [filteredIssues, displayOptions.groupBy, groupedIssues]);
-
-  // Calculate progress stats
-  const stats = useMemo(() => {
-    const total = projectIssues.length;
-    const done = projectIssues.filter((i) => i.status === 'done').length;
-    const percentage = total > 0 ? Math.round((done / total) * 100) : 0;
-    return { total, done, percentage };
-  }, [projectIssues]);
-
-  // Calculate issue count per assignee
-  const issueCountPerAssignee = useMemo(() => {
-    const counts: Record<string | 'unassigned', number> = { unassigned: 0 };
-
-    projectIssues.forEach((issue) => {
-      if (issue.assignee_id) {
-        counts[issue.assignee_id] = (counts[issue.assignee_id] || 0) + 1;
-      } else {
-        counts.unassigned++;
-      }
-    });
-
-    return counts;
-  }, [projectIssues]);
+  // Fetch tags for all tasks in the project
+  const { taskTagsMap, allTags, isLoading: tagsLoading } =
+    useProjectTaskTags(filteredIssues);
 
   const handleCreateIssue = async () => {
     try {
@@ -623,31 +76,9 @@ export function TeamProjectDetail() {
     }
   };
 
-  const handleIssueClick = (issue: TaskWithAttemptStatus) => {
-    // Navigate to issue detail (or open dialog)
-    navigate(`/projects/${projectId}/tasks/${issue.id}`);
+  const handleTaskClick = (task: TaskWithAttemptStatus) => {
+    navigate(`/projects/${projectId}/tasks/${task.id}`);
   };
-
-  const handleAssigneeChange = useCallback(
-    async (issueId: string, assigneeId: string | null) => {
-      try {
-        await tasksApi.update(issueId, {
-          title: null,
-          description: null,
-          status: null,
-          parent_workspace_id: null,
-          image_ids: null,
-          priority: null,
-          due_date: null,
-          assignee_id: assigneeId,
-        });
-        await refreshIssues();
-      } catch (err) {
-        console.error('Failed to update assignee:', err);
-      }
-    },
-    [refreshIssues]
-  );
 
   const isLoading = projectsLoading || issuesLoading;
 
@@ -691,8 +122,8 @@ export function TeamProjectDetail() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="h-8">
-            <TabsTrigger value="overview" className="text-xs px-3 h-7">
-              Overview
+            <TabsTrigger value="timeline" className="text-xs px-3 h-7">
+              Timeline
             </TabsTrigger>
             <TabsTrigger value="insights" className="text-xs px-3 h-7">
               Insights
@@ -702,376 +133,48 @@ export function TeamProjectDetail() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left side - Content based on tab */}
-        <div className="flex-1 flex flex-col overflow-hidden border-r">
-          {activeTab === 'insights' ? (
-            <ProjectInsightsPanel
-              project={project}
-              issues={projectIssues}
-              teamIdentifier={team?.identifier || undefined}
-            />
-          ) : (
-            <>
-              {/* Filter bar */}
-              <div className="flex items-center justify-between px-4 py-2 border-b">
-                <IssueFilterDropdown
-                  filters={filters}
-                  onFiltersChange={setFilters}
-                  teamMembers={assigneeDisplayList}
-                  projects={[]}
-                  issues={projectIssues}
-                />
-                <DisplayOptionsDropdown
-                  options={displayOptions}
-                  onOptionsChange={setDisplayOptions}
-                />
-              </div>
-
-              {/* Issues grouped based on display options */}
-              <div className="flex-1 overflow-y-auto">
-                {displayOptions.groupBy === 'status' ? (
-                  // Status grouping
-                  STATUS_ORDER.map((status) => (
-                    <StatusGroup
-                      key={status}
-                      status={status}
-                      issues={issuesByStatus[status]}
-                      teamIdentifier={team?.identifier || undefined}
-                      teamMembers={assigneeDisplayList}
-                      issueCountPerAssignee={issueCountPerAssignee}
-                      onIssueClick={handleIssueClick}
-                      onAddIssue={() => handleCreateIssue()}
-                      onAssigneeChange={handleAssigneeChange}
-                    />
-                  ))
-                ) : displayOptions.groupBy === 'priority' ? (
-                  // Priority grouping
-                  ['1', '2', '3', '4', '0'].map((priorityKey) => {
-                    const priorityIssues =
-                      (
-                        groupedIssues as Record<string, TaskWithAttemptStatus[]>
-                      )[priorityKey] || [];
-                    if (priorityIssues.length === 0) return null;
-                    const priorityInfo = PRIORITY_DISPLAY.find(
-                      (p) => p.value === Number(priorityKey)
-                    );
-                    return (
-                      <GenericGroup
-                        key={priorityKey}
-                        title={priorityInfo?.label || 'Unknown'}
-                        issues={priorityIssues}
-                        teamIdentifier={team?.identifier || undefined}
-                        teamMembers={assigneeDisplayList}
-                        issueCountPerAssignee={issueCountPerAssignee}
-                        onIssueClick={handleIssueClick}
-                        onAddIssue={() => handleCreateIssue()}
-                        onAssigneeChange={handleAssigneeChange}
-                      />
-                    );
-                  })
-                ) : displayOptions.groupBy === 'assignee' ? (
-                  // Assignee grouping
-                  Object.entries(groupedIssues).map(
-                    ([assigneeKey, assigneeIssues]) => {
-                      if (
-                        (assigneeIssues as TaskWithAttemptStatus[]).length === 0
-                      )
-                        return null;
-                      const member = assigneeDisplayList.find(
-                        (m) => m.id === assigneeKey
-                      );
-                      const title =
-                        assigneeKey === 'unassigned'
-                          ? 'Unassigned'
-                          : member?.name || assigneeKey;
-                      return (
-                        <GenericGroup
-                          key={assigneeKey}
-                          title={title}
-                          issues={assigneeIssues as TaskWithAttemptStatus[]}
-                          teamIdentifier={team?.identifier || undefined}
-                          teamMembers={assigneeDisplayList}
-                          issueCountPerAssignee={issueCountPerAssignee}
-                          onIssueClick={handleIssueClick}
-                          onAddIssue={() => handleCreateIssue()}
-                          onAssigneeChange={handleAssigneeChange}
-                        />
-                      );
-                    }
-                  )
-                ) : (
-                  // No grouping - flat list
-                  <div className="border-b border-border/50">
-                    {(
-                      groupedIssues as { all: TaskWithAttemptStatus[] }
-                    ).all?.map((issue) => (
-                      <IssueRow
-                        key={issue.id}
-                        issue={issue}
-                        teamIdentifier={team?.identifier || undefined}
-                        teamMembers={assigneeDisplayList}
-                        issueCountPerAssignee={issueCountPerAssignee}
-                        onClick={() => handleIssueClick(issue)}
-                        onAssigneeChange={handleAssigneeChange}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {filteredIssues.length === 0 && projectIssues.length > 0 && (
-                  <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center mb-4">
-                      <AlertCircle className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-medium mb-2">
-                      No matching issues
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Try adjusting your filters
-                    </p>
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        setFilters({
-                          priority: null,
-                          assigneeId: null,
-                          projectId: null,
-                        })
-                      }
-                    >
-                      Clear filters
-                    </Button>
-                  </div>
-                )}
-
-                {projectIssues.length === 0 && (
-                  <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center mb-4">
-                      <Plus className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-medium mb-2">No issues yet</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Create your first issue for this project
-                    </p>
-                    <Button onClick={() => handleCreateIssue()}>
-                      <Plus className="h-4 w-4 mr-1" />
-                      New issue
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Right sidebar - Project details */}
-        <div className="w-80 flex-shrink-0 overflow-y-auto bg-muted/10">
-          <div className="p-4 space-y-4">
-            {/* Progress */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-medium">Progress</span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </div>
-
-              <div className="flex items-center gap-8 mb-4">
-                <div className="text-center">
-                  <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                    <div className="w-2 h-2 bg-muted-foreground/40 rounded-sm" />
-                    Scope
-                  </div>
-                  <div className="text-lg font-semibold">{stats.total}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                    <div className="w-2 h-2 bg-blue-500 rounded-sm" />
-                    Completed
-                  </div>
-                  <div className="text-lg font-semibold">
-                    {stats.done}
-                    <span className="text-sm text-muted-foreground ml-1">
-                      • {stats.percentage}%
-                    </span>
-                  </div>
-                </div>
-              </div>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {activeTab === 'insights' ? (
+          <ProjectInsightsPanel
+            project={project}
+            issues={projectIssues}
+            teamIdentifier={team?.identifier || undefined}
+          />
+        ) : (
+          <>
+            {/* Filter bar - simplified, no Display dropdown */}
+            <div className="flex items-center justify-between px-4 py-2 border-b">
+              <IssueFilterDropdown
+                filters={filters}
+                onFiltersChange={setFilters}
+                teamMembers={[]}
+                projects={[]}
+                issues={projectIssues}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCreateIssue}
+                className="h-7 text-xs gap-1"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                New Issue
+              </Button>
             </div>
 
-            {/* Assignees breakdown */}
-            <div className="border-t pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium">Assignees</span>
-                <span className="text-xs text-muted-foreground">
-                  {assigneeDisplayList.length + 1} total
-                </span>
-              </div>
-
-              <div className="space-y-1">
-                {/* Unassigned */}
-                <div className="flex items-center justify-between py-1.5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center">
-                      <User className="h-3 w-3 text-muted-foreground" />
-                    </div>
-                    <span className="text-sm text-muted-foreground">
-                      Unassigned
-                    </span>
-                  </div>
-                  <span className="text-sm">
-                    {issueCountPerAssignee['unassigned'] || 0}
-                  </span>
-                </div>
-
-                {/* Real assignees from team members */}
-                {assigneeDisplayList.map((member) => {
-                  const count = issueCountPerAssignee[member.id] || 0;
-                  const getInitials = (name: string) =>
-                    name
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')
-                      .toUpperCase()
-                      .slice(0, 2);
-                  return (
-                    <div
-                      key={member.id}
-                      className="flex items-center justify-between py-1.5"
-                    >
-                      <div className="flex items-center gap-2">
-                        {member.avatar ? (
-                          <img
-                            src={member.avatar}
-                            alt={member.name}
-                            className="w-6 h-6 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-primary/10 text-primary font-medium flex items-center justify-center text-xs">
-                            {getInitials(member.name)}
-                          </div>
-                        )}
-                        <span className="text-sm truncate max-w-[140px]">
-                          {member.name}
-                        </span>
-                      </div>
-                      <span className="text-sm">{count}</span>
-                    </div>
-                  );
-                })}
-              </div>
+            {/* Timeline View */}
+            <div className="flex-1 overflow-hidden">
+              <TimelineView
+                tasks={filteredIssues}
+                tags={allTags}
+                taskTagsMap={taskTagsMap}
+                teamIdentifier={team?.identifier || undefined}
+                onTaskClick={handleTaskClick}
+                isLoadingTags={tagsLoading}
+              />
             </div>
-
-            {/* Activity Section */}
-            <div className="border-t pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <button
-                  onClick={() => setActivityExpanded(!activityExpanded)}
-                  className="flex items-center gap-1 text-sm font-medium hover:text-foreground"
-                >
-                  Activity
-                  {activityExpanded ? (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </button>
-                <button className="text-xs text-muted-foreground hover:text-foreground">
-                  See all
-                </button>
-              </div>
-
-              {activityExpanded && (
-                <div className="space-y-3">
-                  {/* Project creation activity */}
-                  <div className="flex items-start gap-2">
-                    <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center mt-0.5">
-                      <GitCommit className="h-3 w-3 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm">
-                        <span className="font-medium">Project created</span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {project?.created_at
-                          ? formatDate(project.created_at.toString())
-                          : 'Unknown date'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Recent issue activities with task keys */}
-                  {projectIssues
-                    .slice()
-                    .sort(
-                      (a, b) =>
-                        new Date(b.updated_at || b.created_at).getTime() -
-                        new Date(a.updated_at || a.created_at).getTime()
-                    )
-                    .slice(0, 5)
-                    .map((issue) => {
-                      const issueKey = getIssueKey(
-                        team?.identifier,
-                        issue.issue_number
-                      );
-                      const assignee = assigneeDisplayList.find(
-                        (m) => m.id === issue.assignee_id
-                      );
-                      const isUpdated =
-                        issue.updated_at &&
-                        issue.updated_at !== issue.created_at;
-                      return (
-                        <div
-                          key={issue.id}
-                          className="flex items-start gap-2"
-                        >
-                          <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center mt-0.5">
-                            <StatusIcon
-                              status={issue.status}
-                              className="h-3 w-3"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm">
-                              {assignee ? (
-                                <span className="font-medium">
-                                  {assignee.name}
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground">
-                                  Someone
-                                </span>
-                              )}
-                              <span className="text-muted-foreground">
-                                {' '}
-                                {isUpdated ? 'worked on' : 'created'}{' '}
-                              </span>
-                              {issueKey && (
-                                <span className="font-mono text-xs text-primary">
-                                  {issueKey}
-                                </span>
-                              )}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {issue.title}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatDate(issue.updated_at || issue.created_at)}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                  {projectIssues.length === 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      No recent activity
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
