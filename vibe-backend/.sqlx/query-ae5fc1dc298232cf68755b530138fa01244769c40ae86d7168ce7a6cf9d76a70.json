@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS(\n                        SELECT 1 FROM projects\n                        WHERE LOWER(TRIM(name)) = $1\n                        AND tenant_workspace_id IS NULL\n                    ) as \"exists!: bool\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists!: bool",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ae5fc1dc298232cf68755b530138fa01244769c40ae86d7168ce7a6cf9d76a70"
+}

@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id as \"id!: Uuid\",\n                      connection_id as \"connection_id!: Uuid\",\n                      repo_full_name,\n                      repo_name,\n                      repo_namespace,\n                      repo_url,\n                      default_branch,\n                      is_private as \"is_private!: bool\",\n                      linked_at as \"linked_at!: DateTime<Utc>\"\n               FROM gitlab_repositories\n               WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "connection_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "repo_full_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "repo_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "repo_namespace",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "repo_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "default_branch",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "is_private!: bool",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "linked_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "0d0599491ba8d2a7ce6213078870ed80ede5235d4e6485c32ebd592a165b179b"
+}

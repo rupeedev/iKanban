@@ -198,6 +198,74 @@ error: string | null, };
 
 export type GitHubRepoInfo = { id: bigint, name: string, full_name: string, html_url: string, default_branch: string | null, private: boolean, description: string | null, };
 
+// GitLab connection types (similar to GitHub)
+export type GitLabConnection = {
+  id: string,
+  /** Team ID - NULL for workspace-level connection */
+  team_id: string | null,
+  gitlab_username: string | null,
+  /** GitLab instance URL (for self-hosted instances) */
+  gitlab_url: string,
+  connected_at: Date,
+  updated_at: Date,
+};
+
+export type GitLabRepository = {
+  id: string,
+  connection_id: string,
+  repo_full_name: string,
+  repo_name: string,
+  repo_namespace: string,
+  repo_url: string,
+  default_branch: string | null,
+  is_private: boolean,
+  linked_at: Date,
+};
+
+export type CreateGitLabConnection = {
+  access_token: string,
+  /** GitLab instance URL - defaults to https://gitlab.com */
+  gitlab_url: string | null,
+};
+
+export type UpdateGitLabConnection = {
+  access_token: string | null,
+  gitlab_username: string | null,
+  gitlab_url: string | null,
+};
+
+export type LinkGitLabRepository = {
+  repo_full_name: string,
+  repo_name: string,
+  repo_namespace: string,
+  repo_url: string,
+  default_branch: string | null,
+  is_private: boolean,
+};
+
+export type GitLabConnectionWithRepos = {
+  connection: GitLabConnection,
+  repositories: Array<GitLabRepository>,
+};
+
+export type GitLabNamespace = {
+  id: bigint,
+  name: string,
+  path: string,
+  full_path: string,
+};
+
+export type GitLabProjectInfo = {
+  id: bigint,
+  name: string,
+  path_with_namespace: string,
+  web_url: string,
+  default_branch: string | null,
+  visibility: string,
+  description: string | null,
+  namespace: GitLabNamespace,
+};
+
 export type ConfigureSyncRequest = { 
 /**
  * Path in the repo where documents will be synced (e.g., "docs/team-notes")

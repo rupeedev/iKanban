@@ -9,6 +9,7 @@ pub mod copilot_deployment_config;
 pub mod document;
 pub mod execution_process;
 pub mod github_connection;
+pub mod gitlab_connection;
 pub mod execution_process_logs;
 pub mod execution_process_repo_state;
 pub mod image;

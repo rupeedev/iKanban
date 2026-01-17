@@ -1,7 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -13,10 +10,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertCircle,
   ArrowLeft,
-  Folder,
   FolderGit,
-  FolderPlus,
   Github,
+  GitlabIcon,
   Loader2,
   Search,
 } from 'lucide-react';
@@ -27,7 +23,9 @@ import { defineModal } from '@/lib/modals';
 import { FolderPickerDialog } from './FolderPickerDialog';
 import { useGitRepos } from '@/hooks/useGitRepos';
 import { useWorkspaceGitHubConnection } from '@/hooks/useWorkspaceGitHub';
+import { useWorkspaceGitLabConnection } from '@/hooks/useWorkspaceGitLab';
 import { GitHubRepoPickerStage } from './GitHubRepoPickerStage';
+import { GitLabRepoPickerStage } from './GitLabRepoPickerStage';
 
 export interface RepoPickerDialogProps {
   value?: string;
@@ -35,15 +33,18 @@ export interface RepoPickerDialogProps {
   description?: string;
   /** Hide GitHub option (use for project repos that require local paths) */
   hideGitHub?: boolean;
+  /** Hide GitLab option (use for project repos that require local paths) */
+  hideGitLab?: boolean;
 }
 
-type Stage = 'options' | 'existing' | 'github' | 'new';
+type Stage = 'options' | 'existing' | 'github' | 'gitlab';
 
 const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
   ({
     title = 'Select Repository',
-    description = 'Choose or create a git repository',
+    description = 'Choose a git repository',
     hideGitHub = false,
+    hideGitLab = false,
   }) => {
     const modal = useModal();
     const [stage, setStage] = useState<Stage>('options');
@@ -61,17 +62,14 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
     // GitHub connection check (for showing GitHub option)
     const { data: githubConnection } = useWorkspaceGitHubConnection();
 
-    // Stage: new
-    const [repoName, setRepoName] = useState('');
-    const [parentPath, setParentPath] = useState('');
+    // GitLab connection check (for showing GitLab option)
+    const { data: gitlabConnection } = useWorkspaceGitLabConnection();
 
     useEffect(() => {
       if (modal.visible) {
         setStage('options');
         setError('');
         setShowMoreRepos(false);
-        setRepoName('');
-        setParentPath('');
       }
     }, [modal.visible]);
 
@@ -107,6 +105,11 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
       modal.hide();
     };
 
+    const handleSelectGitLabRepo = (repo: Repo) => {
+      modal.resolve(repo);
+      modal.hide();
+    };
+
     const handleBrowseForRepo = async () => {
       setError('');
       const selectedPath = await FolderPickerDialog.show({
@@ -115,30 +118,6 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
       });
       if (selectedPath) {
         registerAndReturn(selectedPath);
-      }
-    };
-
-    const handleCreateRepo = async () => {
-      if (!repoName.trim()) {
-        setError('Repository name is required');
-        return;
-      }
-
-      setIsWorking(true);
-      setError('');
-      try {
-        const repo = await repoApi.init({
-          parent_path: parentPath.trim() || '.',
-          folder_name: repoName.trim(),
-        });
-        modal.resolve(repo);
-        modal.hide();
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to create repository'
-        );
-      } finally {
-        setIsWorking(false);
       }
     };
 
@@ -192,6 +171,28 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
                     </div>
                   )}
 
+                  {/* GitLab option - only show if connected and not hidden */}
+                  {gitlabConnection && !hideGitLab && (
+                    <div
+                      className="p-4 border cursor-pointer hover:shadow-md transition-shadow rounded-lg bg-card"
+                      onClick={() => setStage('gitlab')}
+                    >
+                      <div className="flex items-start gap-3">
+                        <GitlabIcon className="h-5 w-5 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-foreground">
+                            From GitLab
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Select from your GitLab repositories
+                            {gitlabConnection.connection.gitlab_username &&
+                              ` (@${gitlabConnection.connection.gitlab_username})`}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div
                     className="p-4 border cursor-pointer hover:shadow-md transition-shadow rounded-lg bg-card"
                     onClick={() => setStage('existing')}
@@ -204,23 +205,6 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
                           Select an existing repository from your system
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    className="p-4 border cursor-pointer hover:shadow-md transition-shadow rounded-lg bg-card"
-                    onClick={() => setStage('new')}
-                  >
-                    <div className="flex items-start gap-3">
-                      <FolderPlus className="h-5 w-5 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium text-foreground">
-                          Create New Repository
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Initialize a new git repository
                         </div>
                       </div>
                     </div>
@@ -322,89 +306,13 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
                 />
               )}
 
-              {/* Stage: New */}
-              {stage === 'new' && (
-                <>
-                  <button
-                    className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
-                    onClick={goBack}
-                    disabled={isWorking}
-                  >
-                    <ArrowLeft className="h-3 w-3" />
-                    Back to options
-                  </button>
-
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="repo-name">
-                        Repository Name <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="repo-name"
-                        type="text"
-                        value={repoName}
-                        onChange={(e) => setRepoName(e.target.value)}
-                        placeholder="my-project"
-                        disabled={isWorking}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        This will be the folder name for your new repository
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="parent-path">Parent Directory</Label>
-                      <div className="flex space-x-2">
-                        <Input
-                          id="parent-path"
-                          type="text"
-                          value={parentPath}
-                          onChange={(e) => setParentPath(e.target.value)}
-                          placeholder="Current Directory"
-                          className="flex-1"
-                          disabled={isWorking}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          disabled={isWorking}
-                          onClick={async () => {
-                            const selectedPath = await FolderPickerDialog.show({
-                              title: 'Select Parent Directory',
-                              description:
-                                'Choose where to create the new repository',
-                              value: parentPath,
-                            });
-                            if (selectedPath) {
-                              setParentPath(selectedPath);
-                            }
-                          }}
-                        >
-                          <Folder className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Leave empty to use your current working directory
-                      </p>
-                    </div>
-
-                    <Button
-                      onClick={handleCreateRepo}
-                      disabled={isWorking || !repoName.trim()}
-                      className="w-full"
-                    >
-                      {isWorking ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        'Create Repository'
-                      )}
-                    </Button>
-                  </div>
-                </>
+              {/* Stage: GitLab */}
+              {stage === 'gitlab' && (
+                <GitLabRepoPickerStage
+                  onBack={goBack}
+                  onSelect={handleSelectGitLabRepo}
+                  onError={setError}
+                />
               )}
 
               {error && (

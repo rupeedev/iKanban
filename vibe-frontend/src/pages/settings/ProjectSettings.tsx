@@ -401,6 +401,7 @@ export function ProjectSettings() {
       title: 'Select Git Repository',
       description: 'Choose a git repository to add to this project',
       hideGitHub: true, // GitHub repos require local paths, can't be added remotely
+      hideGitLab: true, // GitLab repos require local paths, can't be added remotely
     });
 
     if (!repo) return;

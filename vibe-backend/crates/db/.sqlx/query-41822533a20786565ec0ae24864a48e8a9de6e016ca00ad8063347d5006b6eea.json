@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id as \"id!: Uuid\",\n                      team_id as \"team_id: Uuid\",\n                      access_token,\n                      gitlab_username,\n                      gitlab_url,\n                      connected_at as \"connected_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM gitlab_connections\n               WHERE team_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "access_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "gitlab_username",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "gitlab_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "connected_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "41822533a20786565ec0ae24864a48e8a9de6e016ca00ad8063347d5006b6eea"
+}
