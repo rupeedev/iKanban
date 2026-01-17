@@ -37,9 +37,9 @@ export function TeamProjectDetail() {
   // Transform members to the format expected by TimelineView
   const teamMembersForTimeline = useMemo(() => {
     return members.map((m) => ({
-      id: m.user_id,
-      name: m.name || m.email || 'Unknown',
-      avatar: m.avatar || undefined,
+      id: m.id,
+      name: m.display_name || m.email || 'Unknown',
+      avatar: m.avatar_url || undefined,
     }));
   }, [members]);
 
