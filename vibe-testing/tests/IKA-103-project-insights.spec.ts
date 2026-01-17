@@ -89,7 +89,7 @@ test.describe('IKA-103: Project Insights Tab', () => {
     await expect(page.getByText('Velocity')).toBeVisible();
   });
 
-  test('should display Completed Features section', async ({ page }) => {
+  test('should display Feature Progress section', async ({ page }) => {
     // Click on a project row to navigate to detail page
     const projectRow = page.locator('table tbody tr').first();
     await projectRow.click();
@@ -101,9 +101,9 @@ test.describe('IKA-103: Project Insights Tab', () => {
     const insightsTab = page.getByRole('tab', { name: 'Insights' });
     await insightsTab.click();
 
-    // Look for Completed Features section
-    const completedSection = page.locator('text=Completed Features').first();
-    await expect(completedSection).toBeVisible();
+    // Look for Feature Progress section (replaced Completed Features in IKA-116)
+    const featureProgressSection = page.getByText('Feature Progress').first();
+    await expect(featureProgressSection).toBeVisible();
   });
 
   test('should switch between tabs correctly', async ({ page }) => {

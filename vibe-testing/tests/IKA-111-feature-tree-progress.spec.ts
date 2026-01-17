@@ -197,12 +197,12 @@ test.describe('IKA-111: Feature Tree Progress View', () => {
     await insightsTab.click();
 
     // Verify all existing sections are still present
+    // Note: Completed Features was removed in IKA-116, replaced by Feature Progress
     await expect(page.getByText('Project Insights')).toBeVisible();
     await expect(page.getByText('Progress')).toBeVisible();
     await expect(page.getByText('Timeline')).toBeVisible();
-    await expect(page.getByText('Completed Features')).toBeVisible();
 
-    // New Feature Progress section should also be present
+    // Feature Progress section should be present (replaced Completed Features)
     await expect(page.getByText('Feature Progress')).toBeVisible();
   });
 });

@@ -1,22 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   CheckCircle2,
   Calendar,
   Clock,
   Target,
   TrendingUp,
-  ChevronDown,
-  ChevronRight,
   ListChecks,
   GitBranch,
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format, differenceInDays, differenceInWeeks } from 'date-fns';
 import type { Project, TaskWithAttemptStatus } from 'shared/types';
-import { cn } from '@/lib/utils';
 import { FeatureTreeProgress } from './FeatureTreeProgress';
 
 interface ProjectInsightsPanelProps {
@@ -82,21 +78,11 @@ function formatDateShort(date: Date | null): string {
   return format(date, 'MMM d, yyyy');
 }
 
-function getIssueKey(
-  teamIdentifier: string | undefined,
-  issueNumber: number | null | undefined
-): string | null {
-  if (!teamIdentifier || !issueNumber) return null;
-  return `${teamIdentifier}-${issueNumber}`;
-}
-
 export function ProjectInsightsPanel({
   project,
   issues,
   teamIdentifier,
 }: ProjectInsightsPanelProps) {
-  const [showAllCompleted, setShowAllCompleted] = useState(false);
-
   // Calculate stats
   const stats = useMemo(() => {
     const total = issues.length;
@@ -109,20 +95,6 @@ export function ProjectInsightsPanel({
     () => calculateTimelineStats(project, issues),
     [project, issues]
   );
-
-  // Get completed tasks sorted by most recent
-  const completedTasks = useMemo(() => {
-    return issues
-      .filter((i) => i.status === 'done')
-      .sort(
-        (a, b) =>
-          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-      );
-  }, [issues]);
-
-  const displayedCompletedTasks = showAllCompleted
-    ? completedTasks
-    : completedTasks.slice(0, 5);
 
   if (issues.length === 0) {
     return (
@@ -259,80 +231,8 @@ export function ProjectInsightsPanel({
           <FeatureTreeProgress
             issues={issues}
             teamIdentifier={teamIdentifier}
+            projectId={project.id}
           />
-        </CardContent>
-      </Card>
-
-      {/* Completed Features */}
-      <Card className="border">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <ListChecks className="h-4 w-4 text-green-500" />
-              Completed Features
-              <Badge variant="secondary" className="ml-1">
-                {completedTasks.length}
-              </Badge>
-            </CardTitle>
-            {completedTasks.length > 5 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => setShowAllCompleted(!showAllCompleted)}
-              >
-                {showAllCompleted ? (
-                  <>
-                    <ChevronDown className="h-3.5 w-3.5 mr-1" />
-                    Show less
-                  </>
-                ) : (
-                  <>
-                    <ChevronRight className="h-3.5 w-3.5 mr-1" />
-                    Show all {completedTasks.length}
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {completedTasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No completed tasks yet. Keep going!
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {displayedCompletedTasks.map((task) => {
-                const issueKey = getIssueKey(teamIdentifier, task.issue_number);
-                return (
-                  <li
-                    key={task.id}
-                    className={cn(
-                      'flex items-start gap-2 py-1.5 px-2 rounded-md',
-                      'bg-green-500/5 border border-green-500/10'
-                    )}
-                  >
-                    <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        {issueKey && (
-                          <span className="text-xs text-muted-foreground font-mono">
-                            {issueKey}
-                          </span>
-                        )}
-                        <span className="text-sm truncate">{task.title}</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        Completed{' '}
-                        {format(new Date(task.updated_at), 'MMM d, yyyy')}
-                      </span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
         </CardContent>
       </Card>
     </div>
