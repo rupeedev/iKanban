@@ -6,8 +6,6 @@ import {
   AlertCircle,
   ChevronRight,
   ChevronDown,
-  Filter,
-  SlidersHorizontal,
   Calendar,
   ArrowRight,
   Users,
@@ -42,6 +40,14 @@ import { toast } from 'sonner';
 import { IssueFormDialog } from '@/components/dialogs/issues/IssueFormDialog';
 import { StatusIcon } from '@/utils/StatusIcons';
 import { statusLabels } from '@/utils/statusLabels';
+import {
+  IssueFilterDropdown,
+  type FilterState,
+} from '@/components/filters/IssueFilterDropdown';
+import {
+  DisplayOptionsDropdown,
+  type DisplayOptions,
+} from '@/components/filters/DisplayOptionsDropdown';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -346,6 +352,80 @@ function StatusGroup({
   );
 }
 
+// Generic group component for non-status grouping (priority, assignee)
+interface GenericGroupProps {
+  title: string;
+  issues: TaskWithAttemptStatus[];
+  teamIdentifier?: string;
+  teamMembers: TeamMember[];
+  issueCountPerAssignee: Record<string | 'unassigned', number>;
+  onIssueClick: (issue: TaskWithAttemptStatus) => void;
+  onAddIssue: () => void;
+  onAssigneeChange: (issueId: string, assigneeId: string | null) => void;
+}
+
+function GenericGroup({
+  title,
+  issues,
+  teamIdentifier,
+  teamMembers,
+  issueCountPerAssignee,
+  onIssueClick,
+  onAddIssue,
+  onAssigneeChange,
+}: GenericGroupProps) {
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  if (issues.length === 0) return null;
+
+  return (
+    <div className="border-b border-border/50">
+      {/* Group header */}
+      <div
+        className="flex items-center gap-2 px-4 py-2 hover:bg-accent/30 cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        {isExpanded ? (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        )}
+        <span className="font-medium text-sm">{title}</span>
+        <span className="text-sm text-muted-foreground">{issues.length}</span>
+        <div className="flex-1" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddIssue();
+          }}
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Issues */}
+      {isExpanded && (
+        <div className="bg-muted/20">
+          {issues.map((issue) => (
+            <IssueRow
+              key={issue.id}
+              issue={issue}
+              teamIdentifier={teamIdentifier}
+              teamMembers={teamMembers}
+              issueCountPerAssignee={issueCountPerAssignee}
+              onClick={() => onIssueClick(issue)}
+              onAssigneeChange={onAssigneeChange}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TeamProjectDetail() {
   const { teamId, projectId } = useParams<{
     teamId: string;
@@ -366,6 +446,18 @@ export function TeamProjectDetail() {
   const [activeTab, setActiveTab] = useState('overview');
   const [activityExpanded, setActivityExpanded] = useState(true);
   const [isDeletingRepo, setIsDeletingRepo] = useState<string | null>(null);
+
+  // Filter and display state
+  const [filters, setFilters] = useState<FilterState>({
+    priority: null,
+    assigneeId: null,
+    projectId: null,
+  });
+  const [displayOptions, setDisplayOptions] = useState<DisplayOptions>({
+    groupBy: 'status',
+    sortBy: 'created',
+    sortDirection: 'desc',
+  });
 
   // Project repositories
   const { data: projectRepos = [], refetch: refetchRepos } = useProjectRepos(
@@ -425,8 +517,126 @@ export function TeamProjectDetail() {
     return issues.filter((issue) => issue.project_id === project.id);
   }, [issues, project]);
 
-  // Group issues by status
+  // Apply filters to project issues
+  const filteredIssues = useMemo(() => {
+    let result = projectIssues;
+
+    // Priority filter
+    if (filters.priority?.length) {
+      result = result.filter((i) =>
+        filters.priority!.includes(i.priority ?? 0)
+      );
+    }
+
+    // Assignee filter
+    if (filters.assigneeId?.length) {
+      result = result.filter(
+        (i) => i.assignee_id && filters.assigneeId!.includes(i.assignee_id)
+      );
+    }
+
+    return result;
+  }, [projectIssues, filters]);
+
+  // Sort issues based on display options
+  const sortIssues = useCallback(
+    (issuesToSort: TaskWithAttemptStatus[]) => {
+      const sorted = [...issuesToSort];
+      const multiplier = displayOptions.sortDirection === 'desc' ? -1 : 1;
+
+      sorted.sort((a, b) => {
+        switch (displayOptions.sortBy) {
+          case 'priority':
+            return ((a.priority ?? 5) - (b.priority ?? 5)) * multiplier;
+          case 'updated':
+            return (
+              (new Date(a.updated_at || a.created_at).getTime() -
+                new Date(b.updated_at || b.created_at).getTime()) *
+              multiplier
+            );
+          case 'created':
+          default:
+            return (
+              (new Date(a.created_at).getTime() -
+                new Date(b.created_at).getTime()) *
+              multiplier
+            );
+        }
+      });
+
+      return sorted;
+    },
+    [displayOptions.sortBy, displayOptions.sortDirection]
+  );
+
+  // Group issues based on display options
+  const groupedIssues = useMemo(() => {
+    const groupBy = displayOptions.groupBy;
+
+    if (groupBy === 'none') {
+      return { all: sortIssues(filteredIssues) };
+    }
+
+    if (groupBy === 'status') {
+      const grouped: Record<TaskStatus, TaskWithAttemptStatus[]> = {
+        todo: [],
+        inprogress: [],
+        inreview: [],
+        done: [],
+        cancelled: [],
+      };
+      filteredIssues.forEach((issue) => {
+        grouped[issue.status]?.push(issue);
+      });
+      Object.keys(grouped).forEach((key) => {
+        grouped[key as TaskStatus] = sortIssues(grouped[key as TaskStatus]);
+      });
+      return grouped;
+    }
+
+    if (groupBy === 'priority') {
+      const grouped: Record<string, TaskWithAttemptStatus[]> = {
+        '1': [], // Urgent
+        '2': [], // High
+        '3': [], // Medium
+        '4': [], // Low
+        '0': [], // No priority
+      };
+      filteredIssues.forEach((issue) => {
+        const key = String(issue.priority ?? 0);
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(issue);
+      });
+      Object.keys(grouped).forEach((key) => {
+        grouped[key] = sortIssues(grouped[key]);
+      });
+      return grouped;
+    }
+
+    if (groupBy === 'assignee') {
+      const grouped: Record<string, TaskWithAttemptStatus[]> = {
+        unassigned: [],
+      };
+      filteredIssues.forEach((issue) => {
+        const key = issue.assignee_id || 'unassigned';
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(issue);
+      });
+      Object.keys(grouped).forEach((key) => {
+        grouped[key] = sortIssues(grouped[key]);
+      });
+      return grouped;
+    }
+
+    return { all: sortIssues(filteredIssues) };
+  }, [filteredIssues, displayOptions.groupBy, sortIssues]);
+
+  // For backwards compatibility, keep issuesByStatus for status grouping
   const issuesByStatus = useMemo(() => {
+    if (displayOptions.groupBy === 'status') {
+      return groupedIssues as Record<TaskStatus, TaskWithAttemptStatus[]>;
+    }
+    // Fallback to status grouping
     const grouped: Record<TaskStatus, TaskWithAttemptStatus[]> = {
       todo: [],
       inprogress: [],
@@ -434,21 +644,11 @@ export function TeamProjectDetail() {
       done: [],
       cancelled: [],
     };
-
-    projectIssues.forEach((issue) => {
+    filteredIssues.forEach((issue) => {
       grouped[issue.status]?.push(issue);
     });
-
-    // Sort by created date descending
-    Object.values(grouped).forEach((list) => {
-      list.sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-    });
-
     return grouped;
-  }, [projectIssues]);
+  }, [filteredIssues, displayOptions.groupBy, groupedIssues]);
 
   // Calculate progress stats
   const stats = useMemo(() => {
@@ -573,31 +773,135 @@ export function TeamProjectDetail() {
             <>
               {/* Filter bar */}
               <div className="flex items-center justify-between px-4 py-2 border-b">
-                <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs">
-                  <Filter className="h-3.5 w-3.5" />
-                  Filter
-                </Button>
-                <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs">
-                  <SlidersHorizontal className="h-3.5 w-3.5" />
-                  Display
-                </Button>
+                <IssueFilterDropdown
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  teamMembers={MOCK_TEAM_MEMBERS}
+                  projects={[]}
+                  issues={projectIssues}
+                />
+                <DisplayOptionsDropdown
+                  options={displayOptions}
+                  onOptionsChange={setDisplayOptions}
+                />
               </div>
 
-              {/* Issues grouped by status */}
+              {/* Issues grouped based on display options */}
               <div className="flex-1 overflow-y-auto">
-                {STATUS_ORDER.map((status) => (
-                  <StatusGroup
-                    key={status}
-                    status={status}
-                    issues={issuesByStatus[status]}
-                    teamIdentifier={team?.identifier || undefined}
-                    teamMembers={MOCK_TEAM_MEMBERS}
-                    issueCountPerAssignee={issueCountPerAssignee}
-                    onIssueClick={handleIssueClick}
-                    onAddIssue={() => handleCreateIssue()}
-                    onAssigneeChange={handleAssigneeChange}
-                  />
-                ))}
+                {displayOptions.groupBy === 'status' ? (
+                  // Status grouping
+                  STATUS_ORDER.map((status) => (
+                    <StatusGroup
+                      key={status}
+                      status={status}
+                      issues={issuesByStatus[status]}
+                      teamIdentifier={team?.identifier || undefined}
+                      teamMembers={MOCK_TEAM_MEMBERS}
+                      issueCountPerAssignee={issueCountPerAssignee}
+                      onIssueClick={handleIssueClick}
+                      onAddIssue={() => handleCreateIssue()}
+                      onAssigneeChange={handleAssigneeChange}
+                    />
+                  ))
+                ) : displayOptions.groupBy === 'priority' ? (
+                  // Priority grouping
+                  ['1', '2', '3', '4', '0'].map((priorityKey) => {
+                    const priorityIssues =
+                      (
+                        groupedIssues as Record<string, TaskWithAttemptStatus[]>
+                      )[priorityKey] || [];
+                    if (priorityIssues.length === 0) return null;
+                    const priorityInfo = PRIORITY_DISPLAY.find(
+                      (p) => p.value === Number(priorityKey)
+                    );
+                    return (
+                      <GenericGroup
+                        key={priorityKey}
+                        title={priorityInfo?.label || 'Unknown'}
+                        issues={priorityIssues}
+                        teamIdentifier={team?.identifier || undefined}
+                        teamMembers={MOCK_TEAM_MEMBERS}
+                        issueCountPerAssignee={issueCountPerAssignee}
+                        onIssueClick={handleIssueClick}
+                        onAddIssue={() => handleCreateIssue()}
+                        onAssigneeChange={handleAssigneeChange}
+                      />
+                    );
+                  })
+                ) : displayOptions.groupBy === 'assignee' ? (
+                  // Assignee grouping
+                  Object.entries(groupedIssues).map(
+                    ([assigneeKey, assigneeIssues]) => {
+                      if (
+                        (assigneeIssues as TaskWithAttemptStatus[]).length === 0
+                      )
+                        return null;
+                      const member = MOCK_TEAM_MEMBERS.find(
+                        (m) => m.id === assigneeKey
+                      );
+                      const title =
+                        assigneeKey === 'unassigned'
+                          ? 'Unassigned'
+                          : member?.name || assigneeKey;
+                      return (
+                        <GenericGroup
+                          key={assigneeKey}
+                          title={title}
+                          issues={assigneeIssues as TaskWithAttemptStatus[]}
+                          teamIdentifier={team?.identifier || undefined}
+                          teamMembers={MOCK_TEAM_MEMBERS}
+                          issueCountPerAssignee={issueCountPerAssignee}
+                          onIssueClick={handleIssueClick}
+                          onAddIssue={() => handleCreateIssue()}
+                          onAssigneeChange={handleAssigneeChange}
+                        />
+                      );
+                    }
+                  )
+                ) : (
+                  // No grouping - flat list
+                  <div className="border-b border-border/50">
+                    {(
+                      groupedIssues as { all: TaskWithAttemptStatus[] }
+                    ).all?.map((issue) => (
+                      <IssueRow
+                        key={issue.id}
+                        issue={issue}
+                        teamIdentifier={team?.identifier || undefined}
+                        teamMembers={MOCK_TEAM_MEMBERS}
+                        issueCountPerAssignee={issueCountPerAssignee}
+                        onClick={() => handleIssueClick(issue)}
+                        onAssigneeChange={handleAssigneeChange}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {filteredIssues.length === 0 && projectIssues.length > 0 && (
+                  <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center mb-4">
+                      <AlertCircle className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-medium mb-2">
+                      No matching issues
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Try adjusting your filters
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        setFilters({
+                          priority: null,
+                          assigneeId: null,
+                          projectId: null,
+                        })
+                      }
+                    >
+                      Clear filters
+                    </Button>
+                  </div>
+                )}
 
                 {projectIssues.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-full p-8 text-center">
