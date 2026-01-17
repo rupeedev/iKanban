@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { useProjects } from '@/hooks/useProjects';
 import { useTeams } from '@/hooks/useTeams';
+import { useProjectTeamMap } from '@/hooks/useProjectTeamMap';
 import { Button } from '@/components/ui/button';
 import { getTeamSlug, getProjectSlug } from '@/lib/urlUtils';
 import {
@@ -104,6 +105,8 @@ interface SidebarItemProps {
   isCollapsed?: boolean;
   badge?: number;
   indent?: boolean;
+  teamIndicator?: string;
+  teamIcon?: string;
 }
 
 function SidebarItem({
@@ -115,7 +118,11 @@ function SidebarItem({
   isCollapsed,
   badge,
   indent,
+  teamIndicator,
+  teamIcon,
 }: SidebarItemProps) {
+  const teamDisplay = teamIcon || teamIndicator;
+
   const content = (
     <div
       className={cn(
@@ -130,6 +137,14 @@ function SidebarItem({
       {!isCollapsed && (
         <>
           <span className="flex-1 truncate">{label}</span>
+          {teamDisplay && (
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium shrink-0"
+              title={teamIndicator ? `Team: ${teamIndicator}` : undefined}
+            >
+              {teamDisplay}
+            </span>
+          )}
           {badge !== undefined && badge > 0 && (
             <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
               {badge}
@@ -157,6 +172,11 @@ function SidebarItem({
           </TooltipTrigger>
           <TooltipContent side="right" className="flex items-center gap-2">
             {label}
+            {teamDisplay && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+                {teamDisplay}
+              </span>
+            )}
             {badge !== undefined && badge > 0 && (
               <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
                 {badge}
@@ -344,6 +364,7 @@ export function Sidebar() {
   } = useSidebar();
   const { projects } = useProjects();
   const { teams } = useTeams();
+  const { getTeamForProject } = useProjectTeamMap(teams);
 
   const handleCreateProject = async () => {
     try {
@@ -444,16 +465,21 @@ export function Sidebar() {
             onAdd={handleCreateProject}
           >
             <div className="space-y-0.5">
-              {projects.map((project) => (
-                <SidebarItem
-                  key={project.id}
-                  icon={FolderKanban}
-                  label={project.name}
-                  to={`/projects/${getProjectSlug(project)}/tasks`}
-                  isActive={isProjectActive(project)}
-                  isCollapsed={isCollapsed}
-                />
-              ))}
+              {projects.map((project) => {
+                const teamInfo = getTeamForProject(project.id);
+                return (
+                  <SidebarItem
+                    key={project.id}
+                    icon={FolderKanban}
+                    label={project.name}
+                    to={`/projects/${getProjectSlug(project)}/tasks`}
+                    isActive={isProjectActive(project)}
+                    isCollapsed={isCollapsed}
+                    teamIndicator={teamInfo?.teamIdentifier || teamInfo?.teamName}
+                    teamIcon={teamInfo?.teamIcon || undefined}
+                  />
+                );
+              })}
               {!isCollapsed && projects.length === 0 && (
                 <div className="px-3 py-1.5 text-sm text-muted-foreground">
                   No projects yet
