@@ -16,6 +16,7 @@ import {
   Folder,
   FolderGit,
   FolderPlus,
+  Github,
   Loader2,
   Search,
 } from 'lucide-react';
@@ -25,6 +26,8 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { FolderPickerDialog } from './FolderPickerDialog';
 import { useGitRepos } from '@/hooks/useGitRepos';
+import { useWorkspaceGitHubConnection } from '@/hooks/useWorkspaceGitHub';
+import { GitHubRepoPickerStage } from './GitHubRepoPickerStage';
 
 export interface RepoPickerDialogProps {
   value?: string;
@@ -32,7 +35,7 @@ export interface RepoPickerDialogProps {
   description?: string;
 }
 
-type Stage = 'options' | 'existing' | 'new';
+type Stage = 'options' | 'existing' | 'github' | 'new';
 
 const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
   ({
@@ -51,6 +54,9 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
       isLoading: reposLoading,
       error: reposError,
     } = useGitRepos(stage === 'existing');
+
+    // GitHub connection check (for showing GitHub option)
+    const { data: githubConnection } = useWorkspaceGitHubConnection();
 
     // Stage: new
     const [repoName, setRepoName] = useState('');
@@ -91,6 +97,11 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
 
     const handleSelectRepo = (repo: DirectoryEntry) => {
       registerAndReturn(repo.path);
+    };
+
+    const handleSelectGitHubRepo = (repo: Repo) => {
+      modal.resolve(repo);
+      modal.hide();
     };
 
     const handleBrowseForRepo = async () => {
@@ -157,6 +168,27 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
               {/* Stage: Options */}
               {stage === 'options' && (
                 <>
+                  {/* GitHub option - only show if connected */}
+                  {githubConnection && (
+                    <div
+                      className="p-4 border cursor-pointer hover:shadow-md transition-shadow rounded-lg bg-card"
+                      onClick={() => setStage('github')}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Github className="h-5 w-5 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-foreground">
+                            From GitHub
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Select from your GitHub repositories (@
+                            {githubConnection.github_username})
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div
                     className="p-4 border cursor-pointer hover:shadow-md transition-shadow rounded-lg bg-card"
                     onClick={() => setStage('existing')}
@@ -276,6 +308,15 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
                     </div>
                   </div>
                 </>
+              )}
+
+              {/* Stage: GitHub */}
+              {stage === 'github' && (
+                <GitHubRepoPickerStage
+                  onBack={goBack}
+                  onSelect={handleSelectGitHubRepo}
+                  onError={setError}
+                />
               )}
 
               {/* Stage: New */}
