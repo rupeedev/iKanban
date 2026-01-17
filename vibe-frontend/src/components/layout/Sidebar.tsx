@@ -4,7 +4,7 @@ import { useSidebar } from '@/contexts/SidebarContext';
 import { useProjects } from '@/hooks/useProjects';
 import { useTeams } from '@/hooks/useTeams';
 import { Button } from '@/components/ui/button';
-import { getTeamSlug, getProjectSlug } from '@/lib/url-utils';
+import { getTeamSlug, getProjectSlug } from '@/lib/urlUtils';
 import {
   Tooltip,
   TooltipContent,
@@ -201,7 +201,9 @@ function SidebarTeamItem({
   const teamSlug = getTeamSlug(team);
   const teamBasePath = `/teams/${teamSlug}`;
   // Check both slug-based and ID-based paths for active state
-  const isTeamActive = pathname.startsWith(teamBasePath) || pathname.startsWith(`/teams/${team.id}`);
+  const isTeamActive =
+    pathname.startsWith(teamBasePath) ||
+    pathname.startsWith(`/teams/${team.id}`);
 
   if (isCollapsed) {
     return (
@@ -332,7 +334,14 @@ function SidebarTeamItem({
 export function Sidebar() {
   const location = useLocation();
   const { projectId } = useParams();
-  const { isCollapsed, toggleCollapsed, sections, toggleSection, expandedTeams, toggleTeamExpanded } = useSidebar();
+  const {
+    isCollapsed,
+    toggleCollapsed,
+    sections,
+    toggleSection,
+    expandedTeams,
+    toggleTeamExpanded,
+  } = useSidebar();
   const { projects } = useProjects();
   const { teams } = useTeams();
 
@@ -425,35 +434,8 @@ export function Sidebar() {
           />
         </div>
 
-        {/* Workspace Section */}
-        <div className="mt-4 px-2">
-          <SidebarSection
-            title="Workspace"
-            isExpanded={sections.workspace}
-            onToggle={() => toggleSection('workspace')}
-            isCollapsed={isCollapsed}
-          >
-            <div className="space-y-0.5">
-              <SidebarItem
-                icon={FolderKanban}
-                label="Projects"
-                to="/projects"
-                isActive={location.pathname === '/projects' && !projectId}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarItem
-                icon={Layers}
-                label="Views"
-                to="/views"
-                isActive={location.pathname === '/views'}
-                isCollapsed={isCollapsed}
-              />
-            </div>
-          </SidebarSection>
-        </div>
-
         {/* Your Projects Section */}
-        <div className="mt-2 px-2">
+        <div className="mt-4 px-2">
           <SidebarSection
             title="Your projects"
             isExpanded={sections.teams}
@@ -511,7 +493,6 @@ export function Sidebar() {
             </div>
           </SidebarSection>
         </div>
-
       </div>
 
       {/* Footer */}
