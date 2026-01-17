@@ -45,7 +45,6 @@ import { useTeams } from '@/hooks/useTeams';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { CopyFilesField } from '@/components/projects/CopyFilesField';
-import { ProjectRepoMappingPanel } from '@/components/projects/ProjectRepoMappingPanel';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { projectsApi, teamsApi } from '@/lib/api';
