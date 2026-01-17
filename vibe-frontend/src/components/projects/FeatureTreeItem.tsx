@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { StatusIcon } from '@/utils/statusIcons';
+import { StatusIcon } from '@/utils/StatusIcons';
 import { useFeatureExpanded } from '@/stores/featureTreeStore';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';

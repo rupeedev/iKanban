@@ -1,4 +1,11 @@
-import { Circle, CircleDot, CheckCircle2, XCircle, Clock, CircleDashed } from 'lucide-react';
+import {
+  Circle,
+  CircleDot,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  CircleDashed,
+} from 'lucide-react';
 import type { TaskStatus } from 'shared/types';
 import type { ReactNode } from 'react';
 
@@ -36,12 +43,16 @@ export const statusIconConfig: Record<TaskStatus, StatusIconInfo> = {
   },
 };
 
-export function StatusIcon({ status, className }: { status: TaskStatus; className?: string }) {
+export function StatusIcon({
+  status,
+  className,
+}: {
+  status: TaskStatus;
+  className?: string;
+}) {
   const info = statusIconConfig[status] || statusIconConfig.todo;
   return (
-    <span className={`${info.color} ${className || ''}`}>
-      {info.icon}
-    </span>
+    <span className={`${info.color} ${className || ''}`}>{info.icon}</span>
   );
 }
 

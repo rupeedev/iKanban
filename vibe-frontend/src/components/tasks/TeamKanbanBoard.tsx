@@ -26,7 +26,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
-import { StatusIcon } from '@/utils/statusIcons';
+import { StatusIcon } from '@/utils/StatusIcons';
 import { LinearIssueCard, type TeamProject } from './LinearIssueCard';
 import { statusLabels } from '@/utils/statusLabels';
 import type { TeamMember } from '@/components/selectors';

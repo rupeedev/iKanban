@@ -40,7 +40,7 @@ import { ProjectInsightsPanel } from '@/components/projects/ProjectInsightsPanel
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { toast } from 'sonner';
 import { IssueFormDialog } from '@/components/dialogs/issues/IssueFormDialog';
-import { StatusIcon } from '@/utils/statusIcons';
+import { StatusIcon } from '@/utils/StatusIcons';
 import { statusLabels } from '@/utils/statusLabels';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { format } from 'date-fns';
@@ -363,7 +363,7 @@ export function TeamProjectDetail() {
     isLoading: issuesLoading,
     refresh: refreshIssues,
   } = useTeamIssues(actualTeamId);
-  const [activeTab, setActiveTab] = useState('issues');
+  const [activeTab, setActiveTab] = useState('overview');
   const [activityExpanded, setActivityExpanded] = useState(true);
   const [isDeletingRepo, setIsDeletingRepo] = useState<string | null>(null);
 
@@ -551,12 +551,6 @@ export function TeamProjectDetail() {
           <TabsList className="h-8">
             <TabsTrigger value="overview" className="text-xs px-3 h-7">
               Overview
-            </TabsTrigger>
-            <TabsTrigger value="updates" className="text-xs px-3 h-7">
-              Updates
-            </TabsTrigger>
-            <TabsTrigger value="issues" className="text-xs px-3 h-7">
-              Issues
             </TabsTrigger>
             <TabsTrigger value="insights" className="text-xs px-3 h-7">
               Insights

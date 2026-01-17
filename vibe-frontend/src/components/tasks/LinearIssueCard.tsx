@@ -3,7 +3,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
-import { StatusIcon } from '@/utils/statusIcons';
+import { StatusIcon } from '@/utils/StatusIcons';
 import {
   PrioritySelector,
   type TeamMember,

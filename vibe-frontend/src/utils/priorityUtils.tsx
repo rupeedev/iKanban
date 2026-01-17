@@ -1,4 +1,10 @@
-import { AlertCircle, Minus, Signal, SignalMedium, SignalLow } from 'lucide-react';
+import {
+  AlertCircle,
+  Minus,
+  Signal,
+  SignalMedium,
+  SignalLow,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 
 // Priority levels: 0=none, 1=urgent, 2=high, 3=medium, 4=low
@@ -44,21 +50,31 @@ export const priorityConfig: Record<PriorityLevel, PriorityInfo> = {
   },
 };
 
-export function getPriorityInfo(priority: number | null | undefined): PriorityInfo {
+export function getPriorityInfo(
+  priority: number | null | undefined
+): PriorityInfo {
   const level = (priority ?? 0) as PriorityLevel;
   return priorityConfig[level] || priorityConfig[0];
 }
 
-export function PriorityIcon({ priority, className }: { priority: number | null | undefined; className?: string }) {
+export function PriorityIcon({
+  priority,
+  className,
+}: {
+  priority: number | null | undefined;
+  className?: string;
+}) {
   const info = getPriorityInfo(priority);
   return (
-    <span className={`${info.color} ${className || ''}`}>
-      {info.icon}
-    </span>
+    <span className={`${info.color} ${className || ''}`}>{info.icon}</span>
   );
 }
 
-export function PriorityBadge({ priority }: { priority: number | null | undefined }) {
+export function PriorityBadge({
+  priority,
+}: {
+  priority: number | null | undefined;
+}) {
   const info = getPriorityInfo(priority);
   if (priority === 0 || priority === null || priority === undefined) {
     return (
@@ -68,7 +84,9 @@ export function PriorityBadge({ priority }: { priority: number | null | undefine
     );
   }
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs ${info.color}`}>
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs ${info.color}`}
+    >
       {info.icon}
     </span>
   );

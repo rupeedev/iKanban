@@ -25,7 +25,7 @@ import { useClerkUser } from '@/hooks/auth/useClerkAuth';
 import { useTeams } from '@/hooks/useTeams';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
-import { StatusIcon } from '@/utils/statusIcons';
+import { StatusIcon } from '@/utils/StatusIcons';
 import { cn } from '@/lib/utils';
 
 import type { TaskWithAttemptStatus, TaskStatus, Team } from 'shared/types';
