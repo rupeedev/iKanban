@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTeams } from '@/hooks/useTeams';
 import { useProjects } from '@/hooks/useProjects';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useProjectTaskTags } from '@/hooks/useProjectTaskTags';
 import { ProjectInsightsPanel } from '@/components/projects/ProjectInsightsPanel';
 import { TimelineView } from '@/components/projects/TimelineView';
@@ -30,7 +31,17 @@ export function TeamProjectDetail() {
   const actualTeamId = team?.id;
 
   const { issues, isLoading: issuesLoading } = useTeamIssues(actualTeamId);
+  const { members } = useTeamMembers(actualTeamId);
   const [activeTab, setActiveTab] = useState('timeline');
+
+  // Transform members to the format expected by TimelineView
+  const teamMembersForTimeline = useMemo(() => {
+    return members.map((m) => ({
+      id: m.user_id,
+      name: m.name || m.email || 'Unknown',
+      avatar: m.avatar || undefined,
+    }));
+  }, [members]);
 
   // Filter state
   const [filters, setFilters] = useState<FilterState>({
@@ -65,7 +76,7 @@ export function TeamProjectDetail() {
   }, [projectIssues, filters]);
 
   // Fetch tags for all tasks in the project
-  const { taskTagsMap, allTags, isLoading: tagsLoading } =
+  const { taskTagsMap, isLoading: tagsLoading } =
     useProjectTaskTags(filteredIssues);
 
   const handleCreateIssue = async () => {
@@ -166,9 +177,9 @@ export function TeamProjectDetail() {
             <div className="flex-1 overflow-hidden">
               <TimelineView
                 tasks={filteredIssues}
-                tags={allTags}
                 taskTagsMap={taskTagsMap}
                 teamIdentifier={team?.identifier || undefined}
+                teamMembers={teamMembersForTimeline}
                 onTaskClick={handleTaskClick}
                 isLoadingTags={tagsLoading}
               />
