@@ -9,6 +9,8 @@ export interface FeatureTreeProgressProps {
   issues: TaskWithAttemptStatus[];
   /** Team identifier for issue key display */
   teamIdentifier?: string;
+  /** Project ID for defensive filtering - ensures only project tasks are shown */
+  projectId?: string;
 }
 
 /**
@@ -24,12 +26,22 @@ export interface FeatureTreeProgressProps {
 export function FeatureTreeProgress({
   issues,
   teamIdentifier,
+  projectId,
 }: FeatureTreeProgressProps) {
-  // Group tasks by detected features (pure function, no API calls)
-  const featureGroups = useMemo(() => groupTasksByFeatures(issues), [issues]);
+  // IKA-114: Defensive filter - ensures only project tasks are used even if parent passes unfiltered data
+  const filteredIssues = useMemo(() => {
+    if (!projectId) return issues;
+    return issues.filter((issue) => issue.project_id === projectId);
+  }, [issues, projectId]);
 
-  // Empty state - no tasks
-  if (issues.length === 0) {
+  // Group tasks by detected features (pure function, no API calls)
+  const featureGroups = useMemo(
+    () => groupTasksByFeatures(filteredIssues),
+    [filteredIssues]
+  );
+
+  // Empty state - no tasks (use filteredIssues for accurate project-specific count)
+  if (filteredIssues.length === 0) {
     return (
       <div
         data-testid="feature-tree-progress"

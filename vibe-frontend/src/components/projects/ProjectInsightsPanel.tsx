@@ -259,6 +259,7 @@ export function ProjectInsightsPanel({
           <FeatureTreeProgress
             issues={issues}
             teamIdentifier={teamIdentifier}
+            projectId={project.id}
           />
         </CardContent>
       </Card>
