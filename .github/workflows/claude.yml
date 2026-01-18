@@ -35,3 +35,16 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            IMPORTANT: Before starting any work, read and follow:
+            1. .claude/GITHUB-AGENT-WORKFLOW.md - Your workflow instructions
+            2. .claude/FILE-MAP.md - Find file paths (DO NOT explore/grep)
+            3. .claude/CODING-GUIDELINES.md - Rules and limits
+
+            CRITICAL RULES:
+            - Run ALL validation gates (Quality, Test, Review, Security) before committing
+            - Create feature branch, NEVER commit directly to main
+            - NEVER merge to main - only push to feature branch, let PR process handle merge
+            - Deployment happens automatically on main merge, not from feature branches
+
+            Now proceed with the task from the issue/comment.
