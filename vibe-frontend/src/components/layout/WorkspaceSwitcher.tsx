@@ -45,7 +45,10 @@ export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   // Get workspaces from context or use fallback
-  const workspaces = workspaceContext?.workspaces ?? [];
+  const workspaces = useMemo(
+    () => workspaceContext?.workspaces ?? [],
+    [workspaceContext?.workspaces]
+  );
   const currentWorkspace = workspaceContext?.currentWorkspace;
   const isLoading = workspaceContext?.isLoading ?? false;
   const setCurrentWorkspaceId = workspaceContext?.setCurrentWorkspaceId;

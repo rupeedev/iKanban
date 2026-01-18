@@ -453,6 +453,50 @@ export function AgentSettings() {
         </Alert>
       )}
 
+      {/* Configuration Summary Table - only show when using form editor, not JSON editor */}
+      {useFormEditor &&
+        localParsedProfiles?.executors &&
+        Object.keys(localParsedProfiles.executors).length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('settings.agents.summary.title')}</CardTitle>
+              <CardDescription>
+                {t('settings.agents.summary.description')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeaderCell>{t('settings.agents.summary.agent')}</TableHeaderCell>
+                    <TableHeaderCell>{t('settings.agents.summary.variant')}</TableHeaderCell>
+                    <TableHeaderCell>{t('settings.agents.summary.model')}</TableHeaderCell>
+                    <TableHeaderCell>
+                      {t('settings.agents.summary.keySettings')}
+                    </TableHeaderCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {buildConfigSummary(
+                    localParsedProfiles.executors as unknown as ExecutorsMap
+                  ).map((row, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell className="font-medium">{row.agent}</TableCell>
+                      <TableCell>{row.variant}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {row.model}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
+                        {row.keySettings}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+
       <Card>
         <CardHeader>
           <CardTitle>{t('settings.agents.title')}</CardTitle>
@@ -645,50 +689,6 @@ export function AgentSettings() {
           )}
         </CardContent>
       </Card>
-
-      {/* Configuration Summary Table - only show when using form editor, not JSON editor */}
-      {useFormEditor &&
-        localParsedProfiles?.executors &&
-        Object.keys(localParsedProfiles.executors).length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('settings.agents.summary.title')}</CardTitle>
-              <CardDescription>
-                {t('settings.agents.summary.description')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableHeaderCell>{t('settings.agents.summary.agent')}</TableHeaderCell>
-                    <TableHeaderCell>{t('settings.agents.summary.variant')}</TableHeaderCell>
-                    <TableHeaderCell>{t('settings.agents.summary.model')}</TableHeaderCell>
-                    <TableHeaderCell>
-                      {t('settings.agents.summary.keySettings')}
-                    </TableHeaderCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {buildConfigSummary(
-                    localParsedProfiles.executors as unknown as ExecutorsMap
-                  ).map((row, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell className="font-medium">{row.agent}</TableCell>
-                      <TableCell>{row.variant}</TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {row.model}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
-                        {row.keySettings}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )}
 
       {!useFormEditor && (
         <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm border-t py-4">

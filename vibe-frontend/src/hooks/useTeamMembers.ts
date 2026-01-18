@@ -92,8 +92,14 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
     retryDelay: 60000, // 60 seconds - respect rate limit window
   });
 
-  const members = membersQuery.data ?? [];
-  const invitations = invitationsQuery.data ?? [];
+  const members = useMemo(
+    () => membersQuery.data ?? [],
+    [membersQuery.data]
+  );
+  const invitations = useMemo(
+    () => invitationsQuery.data ?? [],
+    [invitationsQuery.data]
+  );
 
   // Find current member from cached data
   const currentMember = useMemo(() => {
@@ -145,9 +151,7 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
     if (isClerkLoaded && user && teamId && !syncedTeams.has(teamId) && membersQuery.isSuccess) {
       syncClerkMember();
     }
-    // Intentionally exclude syncClerkMember from deps to prevent re-triggering
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClerkLoaded, user, teamId, membersQuery.isSuccess]);
+  }, [isClerkLoaded, user, teamId, membersQuery.isSuccess, syncClerkMember]);
 
   const refresh = useCallback(async () => {
     if (!teamId) return;

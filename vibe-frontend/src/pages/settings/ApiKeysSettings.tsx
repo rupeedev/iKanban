@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Card,
@@ -44,11 +44,7 @@ export function ApiKeysSettings() {
   const [deleting, setDeleting] = useState(false);
 
   // Load API keys
-  useEffect(() => {
-    loadApiKeys();
-  }, []);
-
-  const loadApiKeys = async () => {
+  const loadApiKeys = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -60,7 +56,11 @@ export function ApiKeysSettings() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    loadApiKeys();
+  }, [loadApiKeys]);
 
   const handleCreateKey = async () => {
     if (!newKeyName.trim()) return;

@@ -13,7 +13,8 @@ import {
   Terminal,
   Loader2,
 } from 'lucide-react';
-import NiceModal from '@ebay/nice-modal-react';
+import { OnboardingWizard } from '@/components/dialogs/OnboardingWizard';
+import { PendingApprovalDialog } from '@/components/dialogs/PendingApprovalDialog';
 import { useUserRegistration } from '@/hooks/useUserRegistration';
 
 // Check if Clerk is configured
@@ -39,13 +40,11 @@ function AboutWithClerk() {
   useEffect(() => {
     if (isSignedIn && user && !isLoadingRegistration && !hasRegistration) {
       // First-time user - show onboarding wizard
-      import('@/components/dialogs/OnboardingWizard').then(() => {
-        NiceModal.show('onboarding-wizard', {
-          clerkUserId: user.id,
-          email: user.primaryEmailAddress?.emailAddress || '',
-          firstName: user.firstName,
-          lastName: user.lastName,
-        });
+      OnboardingWizard.show({
+        clerkUserId: user.id,
+        email: user.primaryEmailAddress?.emailAddress || '',
+        firstName: user.firstName,
+        lastName: user.lastName,
       });
     }
   }, [isSignedIn, user, isLoadingRegistration, hasRegistration]);
@@ -53,11 +52,9 @@ function AboutWithClerk() {
   // Show pending/rejected dialog
   useEffect(() => {
     if (isSignedIn && registration && (isPending || isRejected)) {
-      import('@/components/dialogs/PendingApprovalDialog').then(() => {
-        NiceModal.show('pending-approval-dialog', {
-          registration,
-          onRefresh: refresh,
-        });
+      PendingApprovalDialog.show({
+        registration,
+        onRefresh: refresh,
       });
     }
   }, [isSignedIn, registration, isPending, isRejected, refresh]);

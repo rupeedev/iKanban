@@ -116,7 +116,7 @@ export function TeamDocuments() {
       setEditingDoc(null);
       setDocContent(null);
     }
-  }, [docIdFromUrl]);
+  }, [docIdFromUrl, editingDoc]);
 
   // Handle URL query param for direct document linking
   useEffect(() => {
@@ -169,7 +169,7 @@ export function TeamDocuments() {
           setSearchParams(searchParams, { replace: true });
         });
     }
-  }, [docIdFromUrl, teamId, isLoading]);
+  }, [docIdFromUrl, teamId, isLoading, editingDoc, currentFolderId, setCurrentFolderId, searchParams, setSearchParams]);
 
   // Build breadcrumb path
   const breadcrumbs = useMemo(() => {
