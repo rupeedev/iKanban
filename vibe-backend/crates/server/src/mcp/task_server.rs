@@ -257,6 +257,8 @@ pub struct TaskServer {
     base_url: String,
     tool_router: ToolRouter<TaskServer>,
     context: Option<McpContext>,
+    /// API token for authenticating with the backend
+    api_token: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
@@ -283,12 +285,32 @@ pub struct McpContext {
 }
 
 impl TaskServer {
+    /// Create a new TaskServer with optional API token for backend authentication
     pub fn new(base_url: &str) -> Self {
+        Self::with_token(base_url, None)
+    }
+
+    /// Create a new TaskServer with API token for backend authentication
+    pub fn with_token(base_url: &str, api_token: Option<String>) -> Self {
+        if api_token.is_some() {
+            tracing::info!("[MCP] TaskServer configured with API token");
+        } else {
+            tracing::debug!("[MCP] TaskServer running without API token");
+        }
         Self {
             client: reqwest::Client::new(),
             base_url: base_url.to_string(),
             tool_router: Self::tool_router(),
             context: None,
+            api_token,
+        }
+    }
+
+    /// Add Authorization header to request if API token is configured
+    fn with_auth(&self, rb: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        match &self.api_token {
+            Some(token) => rb.header("Authorization", format!("Bearer {}", token)),
+            None => rb,
         }
     }
 
@@ -316,13 +338,11 @@ impl TaskServer {
             container_ref: normalized_path.to_string_lossy().to_string(),
         };
 
-        let response = tokio::time::timeout(
-            std::time::Duration::from_millis(500),
-            self.client.get(&url).query(&query).send(),
-        )
-        .await
-        .ok()?
-        .ok()?;
+        let request = self.with_auth(self.client.get(&url).query(&query));
+        let response = tokio::time::timeout(std::time::Duration::from_millis(500), request.send())
+            .await
+            .ok()?
+            .ok()?;
 
         if !response.status().is_success() {
             return None;
@@ -392,10 +412,10 @@ impl TaskServer {
         &self,
         rb: reqwest::RequestBuilder,
     ) -> Result<T, CallToolResult> {
-        let resp = rb
-            .send()
-            .await
-            .map_err(|e| Self::err("Failed to connect to VK API", Some(&e.to_string())).unwrap())?;
+        let resp =
+            self.with_auth(rb).send().await.map_err(|e| {
+                Self::err("Failed to connect to VK API", Some(&e.to_string())).unwrap()
+            })?;
 
         if !resp.status().is_success() {
             let status = resp.status();
@@ -448,9 +468,9 @@ impl TaskServer {
             return text.to_string();
         }
 
-        // Fetch all tags from the API
+        // Fetch all tags from the API (with auth if configured)
         let url = self.url("/api/tags");
-        let tags: Vec<Tag> = match self.client.get(&url).send().await {
+        let tags: Vec<Tag> = match self.with_auth(self.client.get(&url)).send().await {
             Ok(resp) if resp.status().is_success() => {
                 match resp.json::<ApiResponseEnvelope<Vec<Tag>>>().await {
                     Ok(envelope) if envelope.success => envelope.data.unwrap_or_default(),
