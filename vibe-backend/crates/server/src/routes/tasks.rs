@@ -698,21 +698,44 @@ pub async fn assign_task_to_copilot(
 ) -> Result<ResponseJson<ApiResponse<CopilotAssignment>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    // Get GitHub connection to find linked repository
-    let connection = GitHubConnection::find_workspace_connection(pool)
-        .await?
-        .ok_or_else(|| {
-            ApiError::BadRequest(
-                "No GitHub connection configured. Please connect GitHub first.".to_string(),
-            )
-        })?;
+    // Try to find GitHub connection - first check team-level, then workspace-level
+    let connection = if let Some(team_id) = task.team_id {
+        // Try team-level connection first
+        match GitHubConnection::find_by_team_id(pool, team_id).await? {
+            Some(conn) => conn,
+            None => {
+                // Fall back to workspace-level connection
+                GitHubConnection::find_workspace_connection(pool)
+                    .await?
+                    .ok_or_else(|| {
+                        ApiError::BadRequest(
+                            "No GitHub connection configured. Please connect GitHub in Settings > Repositories first.".to_string(),
+                        )
+                    })?
+            }
+        }
+    } else {
+        // No team, use workspace-level connection
+        GitHubConnection::find_workspace_connection(pool)
+            .await?
+            .ok_or_else(|| {
+                ApiError::BadRequest(
+                    "No GitHub connection configured. Please connect GitHub in Settings > Repositories first.".to_string(),
+                )
+            })?
+    };
 
-    // Verify at least one repository is linked
+    // Verify at least one repository is linked to this connection
     let repos = GitHubRepository::find_by_connection_id(pool, connection.id).await?;
     if repos.is_empty() {
-        return Err(ApiError::BadRequest(
-            "No repository linked. Please link a repository in Settings first.".to_string(),
-        ));
+        let github_user = connection
+            .github_username
+            .as_deref()
+            .unwrap_or("your account");
+        return Err(ApiError::BadRequest(format!(
+            "No repository linked to GitHub connection (@{}). Please link a repository in Settings > Repositories by clicking 'Add Repository'.",
+            github_user
+        )));
     }
 
     let repo = &repos[0]; // Use first linked repo
