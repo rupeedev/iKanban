@@ -1,5 +1,5 @@
 {
-  "vibe_kanban": {
+  "ikanban": {
     "command": "npx",
     "args": [
       "-y",
@@ -268,7 +268,7 @@
     }
   },
   "meta": {
-    "vibe_kanban": {
+    "ikanban": {
       "name": "iKanban",
       "description": "Create, update and delete iKanban tasks",
       "url": "https://www.vibekanban.com/docs/integrations/vibe-kanban-mcp-server",
@@ -293,189 +293,162 @@
       "name": "GitHub",
       "description": "Manage repositories, issues, PRs, and workflows",
       "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/github",
-      "icon": "mcp/github.svg",
       "category": "version_control"
     },
     "postgres": {
       "name": "PostgreSQL",
       "description": "Query and manage PostgreSQL databases",
       "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/postgres",
-      "icon": "mcp/postgresql.svg",
       "category": "database"
     },
     "sqlite": {
       "name": "SQLite",
       "description": "Query and manage SQLite databases",
       "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/sqlite",
-      "icon": "mcp/sqlite.svg",
       "category": "database"
     },
     "supabase": {
       "name": "Supabase",
       "description": "Manage Supabase projects, databases, and auth",
       "url": "https://github.com/supabase-community/supabase-mcp",
-      "icon": "mcp/supabase.svg",
       "category": "backend"
     },
     "firebase": {
       "name": "Firebase",
       "description": "Manage Firebase projects, Firestore, and auth",
       "url": "https://firebase.google.com/docs/mcp",
-      "icon": "mcp/firebase.svg",
       "category": "backend"
     },
     "aws": {
       "name": "AWS",
       "description": "Interact with AWS services (S3, Lambda, EC2, etc.)",
       "url": "https://github.com/aws/mcp-server-aws",
-      "icon": "mcp/aws.svg",
       "category": "cloud"
     },
     "terraform": {
       "name": "Terraform",
       "description": "Infrastructure as Code with Terraform",
       "url": "https://github.com/hashicorp/terraform-mcp",
-      "icon": "mcp/terraform.svg",
       "category": "infrastructure"
     },
     "pulumi": {
       "name": "Pulumi",
       "description": "Infrastructure as Code with Pulumi",
       "url": "https://github.com/pulumi/pulumi-mcp",
-      "icon": "mcp/pulumi.svg",
       "category": "infrastructure"
     },
     "docker": {
       "name": "Docker",
       "description": "Manage Docker containers, images, and compose",
       "url": "https://github.com/docker/mcp-server",
-      "icon": "mcp/docker.svg",
       "category": "infrastructure"
     },
     "kubernetes": {
       "name": "Kubernetes",
       "description": "Manage Kubernetes clusters and workloads",
       "url": "https://github.com/kubernetes/mcp-server",
-      "icon": "mcp/kubernetes.svg",
       "category": "infrastructure"
     },
     "vercel": {
       "name": "Vercel",
       "description": "Deploy and manage Vercel projects",
       "url": "https://vercel.com/docs/mcp",
-      "icon": "mcp/vercel.svg",
       "category": "deployment"
     },
     "netlify": {
       "name": "Netlify",
       "description": "Deploy and manage Netlify sites",
       "url": "https://github.com/netlify/mcp-server",
-      "icon": "mcp/netlify.svg",
       "category": "deployment"
     },
     "stripe": {
       "name": "Stripe",
       "description": "Manage payments, subscriptions, and customers",
       "url": "https://github.com/stripe/mcp-server",
-      "icon": "mcp/stripe.svg",
       "category": "payments"
     },
     "sentry": {
       "name": "Sentry",
       "description": "Monitor errors and application performance",
       "url": "https://github.com/getsentry/sentry-mcp",
-      "icon": "mcp/sentry.svg",
       "category": "monitoring"
     },
     "linear": {
       "name": "Linear",
       "description": "Manage Linear issues and projects",
       "url": "https://github.com/linear/mcp-server",
-      "icon": "mcp/linear.svg",
       "category": "productivity"
     },
     "notion": {
       "name": "Notion",
       "description": "Read and write Notion pages and databases",
       "url": "https://github.com/notion-community/notion-mcp",
-      "icon": "mcp/notion.svg",
       "category": "productivity"
     },
     "slack": {
       "name": "Slack",
       "description": "Send messages and manage Slack workspaces",
       "url": "https://github.com/slack/mcp-server",
-      "icon": "mcp/slack.svg",
       "category": "communication"
     },
     "filesystem": {
       "name": "Filesystem",
       "description": "Read, write, and manage local files safely",
       "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem",
-      "icon": "mcp/filesystem.svg",
       "category": "utilities"
     },
     "memory": {
       "name": "Memory",
       "description": "Persistent memory and knowledge graph storage",
       "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
-      "icon": "mcp/memory.svg",
       "category": "utilities"
     },
     "brave_search": {
       "name": "Brave Search",
       "description": "Web search using Brave Search API",
       "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/brave-search",
-      "icon": "mcp/brave.svg",
       "category": "search"
     },
     "puppeteer": {
       "name": "Puppeteer",
       "description": "Headless browser automation with Puppeteer",
       "url": "https://github.com/anthropics/puppeteer-mcp",
-      "icon": "mcp/puppeteer.svg",
       "category": "testing"
     },
     "redis": {
       "name": "Redis",
       "description": "Interact with Redis cache and data structures",
       "url": "https://github.com/redis/mcp-server",
-      "icon": "mcp/redis.svg",
       "category": "database"
     },
     "mongodb": {
       "name": "MongoDB",
       "description": "Query and manage MongoDB databases",
       "url": "https://github.com/mongodb/mcp-server",
-      "icon": "mcp/mongodb.svg",
       "category": "database"
     },
     "prisma": {
       "name": "Prisma",
       "description": "Database toolkit and ORM operations",
       "url": "https://github.com/prisma/prisma-mcp",
-      "icon": "mcp/prisma.svg",
       "category": "database"
     },
     "graphql": {
       "name": "GraphQL",
       "description": "Query GraphQL APIs with introspection",
       "url": "https://github.com/graphql/mcp-server",
-      "icon": "mcp/graphql.svg",
       "category": "api"
     },
     "openapi": {
       "name": "OpenAPI",
       "description": "Interact with REST APIs via OpenAPI specs",
       "url": "https://github.com/openapi-tools/mcp-server",
-      "icon": "mcp/openapi.svg",
       "category": "api"
     },
     "cloudflare": {
       "name": "Cloudflare",
       "description": "Manage Cloudflare Workers, DNS, and CDN",
       "url": "https://github.com/cloudflare/mcp-server",
-      "icon": "mcp/cloudflare.svg",
       "category": "cloud"
     }
   }
