@@ -26,7 +26,10 @@ interface IssueListViewProps {
   selectedIssueId?: string;
   teamMembers?: TeamMember[];
   teamProjects?: TeamProject[];
-  onAssigneeChange?: (taskId: string, assigneeId: string | null) => Promise<void>;
+  onAssigneeChange?: (
+    taskId: string,
+    assigneeId: string | null
+  ) => Promise<void>;
   onPriorityChange?: (taskId: string, priority: number) => Promise<void>;
   onProjectChange?: (taskId: string, newProjectId: string) => Promise<void>;
 }
@@ -49,7 +52,10 @@ interface StatusGroupProps {
   selectedIssueId?: string;
   teamMembers?: TeamMember[];
   teamProjects?: TeamProject[];
-  onAssigneeChange?: (taskId: string, assigneeId: string | null) => Promise<void>;
+  onAssigneeChange?: (
+    taskId: string,
+    assigneeId: string | null
+  ) => Promise<void>;
   onPriorityChange?: (taskId: string, priority: number) => Promise<void>;
   onProjectChange?: (taskId: string, newProjectId: string) => Promise<void>;
 }
@@ -145,7 +151,9 @@ function IssueListViewComponent({
   onProjectChange,
 }: IssueListViewProps) {
   // Track expanded state for each status group
-  const [expandedGroups, setExpandedGroups] = useState<Record<TaskStatus, boolean>>({
+  const [expandedGroups, setExpandedGroups] = useState<
+    Record<TaskStatus, boolean>
+  >({
     inprogress: true,
     todo: true,
     inreview: true,

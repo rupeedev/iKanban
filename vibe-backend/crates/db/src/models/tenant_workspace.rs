@@ -21,6 +21,16 @@ pub struct TenantWorkspace {
     pub color: Option<String>,
     #[ts(type = "Record<string, unknown>")]
     pub settings: serde_json::Value,
+    /// Subscription plan: free, pro, enterprise
+    pub plan: String,
+    /// Maximum teams allowed
+    pub max_teams: i64,
+    /// Maximum projects allowed
+    pub max_projects: i64,
+    /// Maximum members allowed
+    pub max_members: i64,
+    /// Maximum storage in GB
+    pub max_storage_gb: i64,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -36,6 +46,11 @@ struct TenantWorkspaceRow {
     icon: Option<String>,
     color: Option<String>,
     settings: serde_json::Value,
+    plan: String,
+    max_teams: i64,
+    max_projects: i64,
+    max_members: i64,
+    max_storage_gb: i64,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -49,6 +64,11 @@ impl From<TenantWorkspaceRow> for TenantWorkspace {
             icon: row.icon,
             color: row.color,
             settings: row.settings,
+            plan: row.plan,
+            max_teams: row.max_teams,
+            max_projects: row.max_projects,
+            max_members: row.max_members,
+            max_storage_gb: row.max_storage_gb,
             created_at: row.created_at,
             updated_at: row.updated_at,
         }
@@ -213,6 +233,11 @@ impl TenantWorkspace {
                          icon,
                          color,
                          settings as "settings!: serde_json::Value",
+                         plan,
+                         max_teams,
+                         max_projects,
+                         max_members,
+                         max_storage_gb,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             data.name,
@@ -259,6 +284,11 @@ impl TenantWorkspace {
                       tw.icon,
                       tw.color,
                       tw.settings as "settings!: serde_json::Value",
+                      tw.plan,
+                      tw.max_teams,
+                      tw.max_projects,
+                      tw.max_members,
+                      tw.max_storage_gb,
                       tw.created_at as "created_at!: DateTime<Utc>",
                       tw.updated_at as "updated_at!: DateTime<Utc>"
                FROM tenant_workspaces tw
@@ -283,6 +313,11 @@ impl TenantWorkspace {
                       icon,
                       color,
                       settings as "settings!: serde_json::Value",
+                      plan,
+                      max_teams,
+                      max_projects,
+                      max_members,
+                      max_storage_gb,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM tenant_workspaces
@@ -308,6 +343,11 @@ impl TenantWorkspace {
                       icon,
                       color,
                       settings as "settings!: serde_json::Value",
+                      plan,
+                      max_teams,
+                      max_projects,
+                      max_members,
+                      max_storage_gb,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM tenant_workspaces
@@ -346,6 +386,11 @@ impl TenantWorkspace {
                          icon,
                          color,
                          settings as "settings!: serde_json::Value",
+                         plan,
+                         max_teams,
+                         max_projects,
+                         max_members,
+                         max_storage_gb,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -387,6 +432,11 @@ impl TenantWorkspace {
                          icon,
                          color,
                          settings as "settings!: serde_json::Value",
+                         plan,
+                         max_teams,
+                         max_projects,
+                         max_members,
+                         max_storage_gb,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#
         )

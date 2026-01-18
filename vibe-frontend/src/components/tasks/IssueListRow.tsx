@@ -31,7 +31,10 @@ interface IssueListRowProps {
   isSelected?: boolean;
   teamMembers?: TeamMember[];
   teamProjects?: TeamProject[];
-  onAssigneeChange?: (taskId: string, assigneeId: string | null) => Promise<void>;
+  onAssigneeChange?: (
+    taskId: string,
+    assigneeId: string | null
+  ) => Promise<void>;
   onPriorityChange?: (taskId: string, priority: number) => Promise<void>;
   onProjectChange?: (taskId: string, projectId: string) => Promise<void>;
 }
@@ -145,7 +148,9 @@ function IssueListRowComponent({
               title={projectName || 'Select project'}
             >
               <ProjectIcon />
-              <span className="max-w-24 truncate">{projectName || 'Project'}</span>
+              <span className="max-w-24 truncate">
+                {projectName || 'Project'}
+              </span>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
@@ -167,7 +172,9 @@ function IssueListRowComponent({
                   >
                     <ProjectIcon className="text-indigo-500" />
                     <span className="flex-1 truncate">{project.name}</span>
-                    {isCurrentProject && <Check className="h-4 w-4 text-primary" />}
+                    {isCurrentProject && (
+                      <Check className="h-4 w-4 text-primary" />
+                    )}
                   </DropdownMenuItem>
                 );
               })
@@ -225,7 +232,10 @@ function IssueListRowComponent({
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem
               onClick={() => handleAssigneeChange(null)}
-              className={cn('cursor-pointer gap-2', !task.assignee_id && 'bg-accent')}
+              className={cn(
+                'cursor-pointer gap-2',
+                !task.assignee_id && 'bg-accent'
+              )}
             >
               <div className="h-6 w-6 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center">
                 <X className="h-3 w-3 text-muted-foreground" />
@@ -241,7 +251,10 @@ function IssueListRowComponent({
                 <DropdownMenuItem
                   key={member.id}
                   onClick={() => handleAssigneeChange(member.id)}
-                  className={cn('cursor-pointer gap-2', memberSelected && 'bg-accent')}
+                  className={cn(
+                    'cursor-pointer gap-2',
+                    memberSelected && 'bg-accent'
+                  )}
                 >
                   <div className="h-6 w-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-xs font-medium">
                     {getInitials(member.name)}
@@ -276,7 +289,11 @@ function MoreHorizontalIcon() {
 
 function ProjectIcon({ className }: { className?: string }) {
   return (
-    <svg className={cn('h-3.5 w-3.5', className)} viewBox="0 0 16 16" fill="currentColor">
+    <svg
+      className={cn('h-3.5 w-3.5', className)}
+      viewBox="0 0 16 16"
+      fill="currentColor"
+    >
       <path d="M8 0L14.928 4v8L8 16 1.072 12V4L8 0z" fillOpacity="0.3" />
       <path d="M8 2l5.196 3v6L8 14 2.804 11V5L8 2z" />
     </svg>

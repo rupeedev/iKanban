@@ -519,7 +519,7 @@ async fn check_agent_availability(
 // WIP: AgentConfig and UpsertAgentConfig unused until agent config handlers are re-enabled (IKA-175)
 #[allow(unused_imports)]
 use db::models::agent_config::{AgentConfig, UpsertAgentConfig};
-use executors::storage::{detect_recommended_storage, AgentStorageLocation};
+use executors::storage::{AgentStorageLocation, detect_recommended_storage};
 
 // WIP: These structs are temporarily unused (IKA-175)
 #[allow(dead_code)]

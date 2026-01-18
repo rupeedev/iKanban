@@ -614,6 +614,12 @@ export const tenantWorkspaces = pgTable("tenant_workspaces", {
     icon: text("icon"),
     color: text("color"),
     settings: jsonb("settings").default({}).notNull(),
+    // Plan and limits columns (IKA-176)
+    plan: text("plan").default("free").notNull(),
+    maxTeams: bigint("max_teams", { mode: "number" }).default(2).notNull(),
+    maxProjects: bigint("max_projects", { mode: "number" }).default(5).notNull(),
+    maxMembers: bigint("max_members", { mode: "number" }).default(3).notNull(),
+    maxStorageGb: bigint("max_storage_gb", { mode: "number" }).default(1).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

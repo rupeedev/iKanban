@@ -886,10 +886,7 @@ async fn assign_issue_to_copilot(
             .text()
             .await
             .unwrap_or_else(|_| "Unknown error".to_string());
-        return Err(format!(
-            "Copilot assignment failed ({}): {}",
-            status, body
-        ));
+        return Err(format!("Copilot assignment failed ({}): {}", status, body));
     }
 
     tracing::info!("Successfully assigned issue #{} to Copilot", issue_number);
@@ -959,14 +956,12 @@ async fn assign_issue_to_claude(
         .find(|actor| {
             actor["login"]
                 .as_str()
-                .map(|l| {
-                    l == "claude[bot]"
-                        || l == "claude-code[bot]"
-                        || l.starts_with("claude")
-                })
+                .map(|l| l == "claude[bot]" || l == "claude-code[bot]" || l.starts_with("claude"))
                 .unwrap_or(false)
         })
-        .ok_or("Claude bot not found. Ensure Claude Code Action is configured for this repository.")?;
+        .ok_or(
+            "Claude bot not found. Ensure Claude Code Action is configured for this repository.",
+        )?;
 
     let claude_actor_id = claude_actor["id"]
         .as_str()
@@ -1129,9 +1124,13 @@ async fn create_github_issue_for_copilot(
 
         // Attempt to assign the issue to Copilot via REST API
         // This is best-effort: if it fails, the issue is still created with labels
-        if let Err(e) =
-            assign_issue_to_copilot(issue_response.number as u64, repo_owner, repo_name, access_token)
-                .await
+        if let Err(e) = assign_issue_to_copilot(
+            issue_response.number as u64,
+            repo_owner,
+            repo_name,
+            access_token,
+        )
+        .await
         {
             tracing::warn!(
                 "Failed to assign issue #{} to Copilot: {}. Issue created with 'copilot' label.",

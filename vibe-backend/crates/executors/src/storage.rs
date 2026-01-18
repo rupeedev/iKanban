@@ -1,5 +1,6 @@
-use crate::executors::BaseCodingAgent;
 use std::path::PathBuf;
+
+use crate::executors::BaseCodingAgent;
 
 /// Storage location type for agent configurations
 #[derive(Debug, Clone, PartialEq)]

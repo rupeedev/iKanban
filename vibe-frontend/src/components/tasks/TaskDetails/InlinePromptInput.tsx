@@ -458,7 +458,12 @@ export function InlinePromptInput({
               'Type a message or @agent to use AI...'
             )}
             className="min-h-[60px] max-h-[200px] resize-none pr-2"
-            disabled={isCreating || isCreatingComment || isAssigningCopilot || isAssigningClaude}
+            disabled={
+              isCreating ||
+              isCreatingComment ||
+              isAssigningCopilot ||
+              isAssigningClaude
+            }
             data-testid="inline-prompt-input"
           />
         </div>
@@ -471,7 +476,10 @@ export function InlinePromptInput({
           className="h-10 w-10 flex-shrink-0"
           data-testid="inline-prompt-submit"
         >
-          {isCreating || isCreatingComment || isAssigningCopilot || isAssigningClaude ? (
+          {isCreating ||
+          isCreatingComment ||
+          isAssigningCopilot ||
+          isAssigningClaude ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <SendHorizonal className="h-4 w-4" />

@@ -156,7 +156,12 @@ impl AgentConfig {
         .bind(&request.agent_type)
         .bind(&request.storage_location)
         .bind(&request.local_path)
-        .bind(request.config_data.as_ref().unwrap_or(&serde_json::json!({})))
+        .bind(
+            request
+                .config_data
+                .as_ref()
+                .unwrap_or(&serde_json::json!({})),
+        )
         .fetch_one(pool)
         .await?;
 
@@ -185,11 +190,7 @@ impl AgentConfig {
     }
 
     /// Delete agent config
-    pub async fn delete(
-        pool: &PgPool,
-        team_id: i64,
-        agent_type: &str,
-    ) -> Result<(), sqlx::Error> {
+    pub async fn delete(pool: &PgPool, team_id: i64, agent_type: &str) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             DELETE FROM agent_configs

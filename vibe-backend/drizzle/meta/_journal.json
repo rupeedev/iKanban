@@ -50,6 +50,13 @@
       "when": 1768398282022,
       "tag": "0006_known_junta",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1768840800000,
+      "tag": "0007_tenant_workspace_plan_limits",
+      "breakpoints": true
     }
   ]
 }

@@ -295,7 +295,7 @@ impl BaseCodingAgent {
             BaseCodingAgent::QwenCode => None, // Uses Qwen's own API
             // CLI-only agents have no API provider mapping
             BaseCodingAgent::CursorAgent => None,
-            BaseCodingAgent::Copilot => None,       // GitHub-specific auth
+            BaseCodingAgent::Copilot => None, // GitHub-specific auth
             BaseCodingAgent::Claude => None,  // GitHub-specific (IKA-171)
         }
     }
