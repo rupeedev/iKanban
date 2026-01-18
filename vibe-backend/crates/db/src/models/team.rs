@@ -8,7 +8,7 @@ use uuid::Uuid;
 pub struct Team {
     pub id: Uuid,
     pub name: String,
-    pub slug: Option<String>,       // Unique slug for database naming (e.g., "acme-corp")
+    pub slug: Option<String>, // Unique slug for database naming (e.g., "acme-corp")
     pub identifier: Option<String>, // Team prefix for issue IDs (e.g., "VIB")
     pub icon: Option<String>,
     pub color: Option<String>,
@@ -225,11 +225,7 @@ impl Team {
         .await
     }
 
-    pub async fn update(
-        pool: &PgPool,
-        id: Uuid,
-        data: &UpdateTeam,
-    ) -> Result<Self, sqlx::Error> {
+    pub async fn update(pool: &PgPool, id: Uuid, data: &UpdateTeam) -> Result<Self, sqlx::Error> {
         let existing = Self::find_by_id(pool, id)
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;

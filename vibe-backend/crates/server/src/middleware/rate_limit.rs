@@ -1,22 +1,17 @@
+use std::{collections::HashMap, net::SocketAddr, num::NonZeroU32, sync::Arc, time::Duration};
+
 use axum::{
+    Json,
     extract::{ConnectInfo, Request},
     http::StatusCode,
     middleware::Next,
     response::{IntoResponse, Response},
-    Json,
 };
 use governor::{
+    Quota, RateLimiter,
     clock::DefaultClock,
     middleware::NoOpMiddleware,
     state::{InMemoryState, NotKeyed},
-    Quota, RateLimiter,
-};
-use std::{
-    collections::HashMap,
-    net::SocketAddr,
-    num::NonZeroU32,
-    sync::Arc,
-    time::Duration,
 };
 use tokio::sync::RwLock;
 use utils::response::ApiResponse;
@@ -40,13 +35,16 @@ impl Default for RateLimitConfig {
 
 /// Per-IP rate limiter using governor
 pub struct IpRateLimiter {
-    limiters: RwLock<HashMap<String, Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock, NoOpMiddleware>>>>,
+    limiters: RwLock<
+        HashMap<String, Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock, NoOpMiddleware>>>,
+    >,
     quota: Quota,
 }
 
 impl IpRateLimiter {
     pub fn new(config: RateLimitConfig) -> Self {
-        let requests = NonZeroU32::new(config.requests_per_window).unwrap_or(NonZeroU32::new(100).unwrap());
+        let requests =
+            NonZeroU32::new(config.requests_per_window).unwrap_or(NonZeroU32::new(100).unwrap());
         let quota = Quota::with_period(Duration::from_secs(config.window_seconds))
             .unwrap()
             .allow_burst(requests);
@@ -58,7 +56,10 @@ impl IpRateLimiter {
     }
 
     /// Get or create a rate limiter for an IP
-    async fn get_limiter(&self, ip: &str) -> Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock, NoOpMiddleware>> {
+    async fn get_limiter(
+        &self,
+        ip: &str,
+    ) -> Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock, NoOpMiddleware>> {
         // Check if limiter exists
         {
             let limiters = self.limiters.read().await;
@@ -86,7 +87,8 @@ impl IpRateLimiter {
         match limiter.check() {
             Ok(_) => Ok(()),
             Err(not_until) => {
-                let wait_time = not_until.wait_time_from(governor::clock::Clock::now(&DefaultClock::default()));
+                let wait_time =
+                    not_until.wait_time_from(governor::clock::Clock::now(&DefaultClock::default()));
                 Err(RateLimitError {
                     retry_after_secs: wait_time.as_secs(),
                 })
@@ -118,7 +120,8 @@ impl IntoResponse for RateLimitError {
             StatusCode::TOO_MANY_REQUESTS,
             [("Retry-After", self.retry_after_secs.to_string())],
             Json(response),
-        ).into_response()
+        )
+            .into_response()
     }
 }
 

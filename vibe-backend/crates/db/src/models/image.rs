@@ -125,10 +125,7 @@ impl Image {
         .await
     }
 
-    pub async fn find_by_task_id(
-        pool: &PgPool,
-        task_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn find_by_task_id(pool: &PgPool, task_id: Uuid) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Image,
             r#"SELECT i.id as "id!: Uuid",

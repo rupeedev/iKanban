@@ -5,7 +5,10 @@ import type { Project } from 'shared/types';
 // Helper to check if error is a rate limit (429)
 function isRateLimitError(error: unknown): boolean {
   if (error instanceof Error) {
-    return error.message.includes('429') || error.message.includes('Too Many Requests');
+    return (
+      error.message.includes('429') ||
+      error.message.includes('Too Many Requests')
+    );
   }
   return false;
 }
@@ -13,7 +16,13 @@ function isRateLimitError(error: unknown): boolean {
 export function useTeamProjects(teamId: string | undefined) {
   // Fetch full project data for this team directly from API
   // This ensures refresh button works properly
-  const { data: projects = [], isLoading, error, refetch, isFetching } = useQuery<Project[]>({
+  const {
+    data: projects = [],
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery<Project[]>({
     queryKey: ['teams', teamId, 'projects', 'full'],
     queryFn: async () => {
       if (!teamId) return [];
@@ -25,9 +34,10 @@ export function useTeamProjects(teamId: string | undefined) {
       const fetched = await projectsApi.getMany(projectIds);
 
       // Sort by creation date descending
-      return fetched.sort((a, b) =>
-        new Date(b.created_at as unknown as string).getTime() -
-        new Date(a.created_at as unknown as string).getTime()
+      return fetched.sort(
+        (a, b) =>
+          new Date(b.created_at as unknown as string).getTime() -
+          new Date(a.created_at as unknown as string).getTime()
       );
     },
     enabled: Boolean(teamId),
@@ -45,7 +55,7 @@ export function useTeamProjects(teamId: string | undefined) {
 
   return {
     projects,
-    projectIds: projects.map(p => p.id),
+    projectIds: projects.map((p) => p.id),
     isLoading,
     isFetching,
     refetch,

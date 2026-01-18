@@ -28,18 +28,28 @@ export interface UseGitHubConnectionResult {
   deleteConnection: () => Promise<void>;
   linkRepository: (data: LinkGitHubRepository) => Promise<GitHubRepository>;
   unlinkRepository: (repoId: string) => Promise<void>;
-  configureSync: (repoId: string, data: ConfigureSyncRequest) => Promise<GitHubRepository>;
+  configureSync: (
+    repoId: string,
+    data: ConfigureSyncRequest
+  ) => Promise<GitHubRepository>;
   clearSync: (repoId: string) => Promise<GitHubRepository>;
-  pushDocuments: (repoId: string, commitMessage?: string) => Promise<SyncOperationResponse>;
+  pushDocuments: (
+    repoId: string,
+    commitMessage?: string
+  ) => Promise<SyncOperationResponse>;
   pullDocuments: (repoId: string) => Promise<SyncOperationResponse>;
   // Multi-folder sync
   getSyncConfigs: (repoId: string) => Promise<GitHubRepoSyncConfig[]>;
-  configureMultiFolderSync: (repoId: string, data: ConfigureMultiFolderSync) => Promise<GitHubRepoSyncConfig[]>;
+  configureMultiFolderSync: (
+    repoId: string,
+    data: ConfigureMultiFolderSync
+  ) => Promise<GitHubRepoSyncConfig[]>;
   clearMultiFolderSync: (repoId: string) => Promise<void>;
 }
 
 export function useGitHubConnection(teamId: string): UseGitHubConnectionResult {
-  const [connection, setConnection] = useState<GitHubConnectionWithRepos | null>(null);
+  const [connection, setConnection] =
+    useState<GitHubConnectionWithRepos | null>(null);
   const [availableRepos, setAvailableRepos] = useState<GitHubRepoInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingAvailableRepos, setIsLoadingAvailableRepos] = useState(false);
@@ -54,7 +64,11 @@ export function useGitHubConnection(teamId: string): UseGitHubConnectionResult {
       const data = await teamsApi.getGitHubConnection(teamId);
       setConnection(data);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch GitHub connection'));
+      setError(
+        err instanceof Error
+          ? err
+          : new Error('Failed to fetch GitHub connection')
+      );
     } finally {
       setIsLoading(false);
     }
@@ -92,7 +106,9 @@ export function useGitHubConnection(teamId: string): UseGitHubConnectionResult {
         `width=${width},height=${height},left=${left},top=${top}`
       );
     } catch (err) {
-      throw err instanceof Error ? err : new Error('Failed to start OAuth flow');
+      throw err instanceof Error
+        ? err
+        : new Error('Failed to start OAuth flow');
     }
   }, [teamId]);
 
@@ -195,7 +211,11 @@ export function useGitHubConnection(teamId: string): UseGitHubConnectionResult {
 
   const configureMultiFolderSync = useCallback(
     async (repoId: string, data: ConfigureMultiFolderSync) => {
-      const result = await teamsApi.configureMultiFolderSync(teamId, repoId, data);
+      const result = await teamsApi.configureMultiFolderSync(
+        teamId,
+        repoId,
+        data
+      );
       await refresh();
       return result;
     },

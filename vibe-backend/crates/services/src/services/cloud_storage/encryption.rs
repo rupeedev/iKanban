@@ -4,8 +4,9 @@
 //! This is a basic implementation - for production, consider using a proper
 //! secrets manager like AWS Secrets Manager or HashiCorp Vault.
 
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
+
 use super::CloudStorageError;
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 
 /// Encrypt a plaintext credential
 ///

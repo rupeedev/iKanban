@@ -21,8 +21,10 @@ impl DBPoolManager {
     /// Create a new pool manager with a registry service
     pub async fn new(registry: Arc<RegistryService>) -> Result<Self, crate::PoolManagerError> {
         // Initialize the global connection pool
-        let global_pool = DBService::new().await.map_err(crate::PoolManagerError::Database)?;
-        
+        let global_pool = DBService::new()
+            .await
+            .map_err(crate::PoolManagerError::Database)?;
+
         Ok(Self {
             global_pool: Arc::new(global_pool),
             registry,
@@ -30,12 +32,18 @@ impl DBPoolManager {
     }
 
     /// Get the connection pool (ignores team_id as we use single DB)
-    pub async fn get_pool(&self, _team_id: &str) -> Result<Arc<DBService>, crate::PoolManagerError> {
+    pub async fn get_pool(
+        &self,
+        _team_id: &str,
+    ) -> Result<Arc<DBService>, crate::PoolManagerError> {
         Ok(self.global_pool.clone())
     }
 
     /// Get pool by team slug (returns global pool)
-    pub async fn get_pool_by_slug(&self, _slug: &str) -> Result<Arc<DBService>, crate::PoolManagerError> {
+    pub async fn get_pool_by_slug(
+        &self,
+        _slug: &str,
+    ) -> Result<Arc<DBService>, crate::PoolManagerError> {
         Ok(self.global_pool.clone())
     }
 
@@ -81,4 +89,3 @@ pub enum PoolManagerError {
     #[error("Migration error: {0}")]
     Migration(String),
 }
-

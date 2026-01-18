@@ -6,7 +6,10 @@ import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 // Helper to check if error is a rate limit (429)
 function isRateLimitError(error: unknown): boolean {
   if (error instanceof Error) {
-    return error.message.includes('429') || error.message.includes('Too Many Requests');
+    return (
+      error.message.includes('429') ||
+      error.message.includes('Too Many Requests')
+    );
   }
   return false;
 }
@@ -34,7 +37,11 @@ export interface UseTeamIssuesResult {
 export function useTeamIssues(teamId: string | undefined): UseTeamIssuesResult {
   const queryClient = useQueryClient();
 
-  const { data: issues = [], isLoading, error } = useQuery<TaskWithAttemptStatus[]>({
+  const {
+    data: issues = [],
+    isLoading,
+    error,
+  } = useQuery<TaskWithAttemptStatus[]>({
     queryKey: teamIssuesKeys.team(teamId!),
     queryFn: () => teamsApi.getIssues(teamId!),
     enabled: !!teamId,
@@ -52,7 +59,10 @@ export function useTeamIssues(teamId: string | undefined): UseTeamIssuesResult {
 
   const refresh = useCallback(async () => {
     if (!teamId) return;
-    await queryClient.invalidateQueries({ queryKey: teamIssuesKeys.team(teamId), refetchType: 'none' });
+    await queryClient.invalidateQueries({
+      queryKey: teamIssuesKeys.team(teamId),
+      refetchType: 'none',
+    });
   }, [teamId, queryClient]);
 
   const issuesById = useMemo(() => {
@@ -94,7 +104,11 @@ export function useTeamIssues(teamId: string | undefined): UseTeamIssuesResult {
     issuesById,
     issuesByStatus,
     isLoading,
-    error: error ? (error instanceof Error ? error : new Error('Failed to fetch team issues')) : null,
+    error: error
+      ? error instanceof Error
+        ? error
+        : new Error('Failed to fetch team issues')
+      : null,
     refresh,
   };
 }

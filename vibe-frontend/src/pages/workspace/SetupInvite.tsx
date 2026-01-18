@@ -16,8 +16,16 @@ interface SetupInviteProps {
   onChange: (invites: InviteSetupData[]) => void;
 }
 
-const ROLE_OPTIONS: { value: WorkspaceMemberRole; label: string; description: string }[] = [
-  { value: 'member', label: 'Member', description: 'Can view and edit content' },
+const ROLE_OPTIONS: {
+  value: WorkspaceMemberRole;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: 'member',
+    label: 'Member',
+    description: 'Can view and edit content',
+  },
   { value: 'admin', label: 'Admin', description: 'Can manage team members' },
 ];
 
@@ -33,7 +41,9 @@ export function SetupInvite({ invites, onChange }: SetupInviteProps) {
     if (!newEmail.trim() || !isValidEmail(newEmail)) return;
 
     // Check for duplicates
-    if (invites.some((inv) => inv.email.toLowerCase() === newEmail.toLowerCase())) {
+    if (
+      invites.some((inv) => inv.email.toLowerCase() === newEmail.toLowerCase())
+    ) {
       return;
     }
 
@@ -57,11 +67,7 @@ export function SetupInvite({ invites, onChange }: SetupInviteProps) {
 
   const updateInvite = useCallback(
     (id: string, updates: Partial<InviteSetupData>) => {
-      onChange(
-        invites.map((i) =>
-          i.id === id ? { ...i, ...updates } : i
-        )
-      );
+      onChange(invites.map((i) => (i.id === id ? { ...i, ...updates } : i)));
     },
     [invites, onChange]
   );
@@ -139,7 +145,9 @@ export function SetupInvite({ invites, onChange }: SetupInviteProps) {
               <Select
                 value={invite.role}
                 onValueChange={(value) =>
-                  updateInvite(invite.id, { role: value as WorkspaceMemberRole })
+                  updateInvite(invite.id, {
+                    role: value as WorkspaceMemberRole,
+                  })
                 }
               >
                 <SelectTrigger className="w-32">
@@ -185,7 +193,8 @@ export function SetupInvite({ invites, onChange }: SetupInviteProps) {
 
       {/* Skip hint */}
       <p className="text-sm text-muted-foreground text-center">
-        This step is optional. You can invite members later from workspace settings.
+        This step is optional. You can invite members later from workspace
+        settings.
       </p>
     </div>
   );

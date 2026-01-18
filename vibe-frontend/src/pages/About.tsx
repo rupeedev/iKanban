@@ -21,7 +21,11 @@ import { useUserRegistration } from '@/hooks/useUserRegistration';
 const CLERK_ENABLED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 export function About() {
-  return CLERK_ENABLED ? <AboutWithClerk /> : <AboutContent isSignedIn={false} />;
+  return CLERK_ENABLED ? (
+    <AboutWithClerk />
+  ) : (
+    <AboutContent isSignedIn={false} />
+  );
 }
 
 function AboutWithClerk() {
@@ -60,7 +64,8 @@ function AboutWithClerk() {
   }, [isSignedIn, registration, isPending, isRejected, refresh]);
 
   // Determine welcome message
-  const welcomeMessage = isSignedIn && user?.firstName ? `Welcome back, ${user.firstName}!` : null;
+  const welcomeMessage =
+    isSignedIn && user?.firstName ? `Welcome back, ${user.firstName}!` : null;
 
   // Show loading state while checking registration
   if (isSignedIn && isLoadingRegistration) {
@@ -86,7 +91,11 @@ interface AboutContentProps {
   welcomeMessage?: string | null;
 }
 
-function AboutContent({ isSignedIn, isApproved = false, welcomeMessage }: AboutContentProps) {
+function AboutContent({
+  isSignedIn,
+  isApproved = false,
+  welcomeMessage,
+}: AboutContentProps) {
   // If user is signed in but not approved, they can see the page but not access dashboard
   const canAccessDashboard = isSignedIn && isApproved;
 

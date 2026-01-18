@@ -186,17 +186,16 @@ impl ProjectService {
             }
 
             // Only check if the name is actually changing (case-insensitive)
-            if normalized_name.to_lowercase() != existing.name.trim().to_lowercase() {
-                if Project::exists_by_name_in_workspace(
+            if normalized_name.to_lowercase() != existing.name.trim().to_lowercase()
+                && Project::exists_by_name_in_workspace(
                     pool,
                     normalized_name,
                     existing.tenant_workspace_id,
                     Some(existing.id),
                 )
                 .await?
-                {
-                    return Err(ProjectServiceError::DuplicateProjectName);
-                }
+            {
+                return Err(ProjectServiceError::DuplicateProjectName);
             }
         }
 
@@ -221,11 +220,7 @@ impl ProjectService {
         Ok(project)
     }
 
-    pub async fn unlink_from_remote(
-        &self,
-        pool: &PgPool,
-        project: &Project,
-    ) -> Result<Project> {
+    pub async fn unlink_from_remote(&self, pool: &PgPool, project: &Project) -> Result<Project> {
         if let Some(remote_project_id) = project.remote_project_id {
             let mut tx = pool.begin().await?;
 
@@ -271,22 +266,18 @@ impl ProjectService {
             .await?
             .len();
 
-        let repository = ProjectRepo::add_repo_to_project(
-            pool,
-            project_id,
-            &repo_path,
-            &payload.display_name,
-        )
-        .await
-        .map_err(|e| match e {
-            db::models::project_repo::ProjectRepoError::AlreadyExists => {
-                ProjectServiceError::DuplicateGitRepoPath
-            }
-            db::models::project_repo::ProjectRepoError::Database(e) => {
-                ProjectServiceError::Database(e)
-            }
-            _ => ProjectServiceError::RepositoryNotFound,
-        })?;
+        let repository =
+            ProjectRepo::add_repo_to_project(pool, project_id, &repo_path, &payload.display_name)
+                .await
+                .map_err(|e| match e {
+                    db::models::project_repo::ProjectRepoError::AlreadyExists => {
+                        ProjectServiceError::DuplicateGitRepoPath
+                    }
+                    db::models::project_repo::ProjectRepoError::Database(e) => {
+                        ProjectServiceError::Database(e)
+                    }
+                    _ => ProjectServiceError::RepositoryNotFound,
+                })?;
 
         // If project just went from 1 to 2 repos, clear default_agent_working_dir
         if repo_count_before == 1 {

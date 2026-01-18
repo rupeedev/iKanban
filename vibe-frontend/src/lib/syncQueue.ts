@@ -86,7 +86,9 @@ export async function dequeueOperation(operationId: string): Promise<void> {
 /**
  * Update an operation's retry count
  */
-export async function incrementRetryCount(operationId: string): Promise<QueuedOperation | null> {
+export async function incrementRetryCount(
+  operationId: string
+): Promise<QueuedOperation | null> {
   const state = await loadSyncQueue();
   const operation = state.operations.find((op) => op.id === operationId);
 

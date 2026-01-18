@@ -4,12 +4,14 @@ use axum::{
     response::Json as ResponseJson,
     routing::{delete, get, post, put},
 };
-use db::models::chat_message::{ChatMessage, ChatMessageWithSender, CreateChatMessage, UpdateChatMessage};
-use db::models::conversation::{
-    Conversation, ConversationType, CreateDirectConversation, CreateGroupConversation,
+use db::models::{
+    chat_message::{ChatMessage, ChatMessageWithSender, CreateChatMessage, UpdateChatMessage},
+    conversation::{
+        Conversation, ConversationType, CreateDirectConversation, CreateGroupConversation,
+    },
+    conversation_participant::{ConversationParticipant, ParticipantWithInfo},
+    team_member::TeamMember,
 };
-use db::models::conversation_participant::{ConversationParticipant, ParticipantWithInfo};
-use db::models::team_member::TeamMember;
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -173,9 +175,7 @@ pub async fn create_direct_conversation(
     // Get recipient's team member record - PRIVACY CHECK: recipient must be in same team
     let recipient_member = get_team_member(pool, &payload.recipient_user_id, query.team_id)
         .await?
-        .ok_or_else(|| {
-            ApiError::Forbidden("Recipient is not a member of this team".to_string())
-        })?;
+        .ok_or_else(|| ApiError::Forbidden("Recipient is not a member of this team".to_string()))?;
 
     // Get workspace ID from team
     let workspace_id = sqlx::query_scalar!(
@@ -319,7 +319,9 @@ pub async fn send_message(
 
     // Validate content
     if payload.content.trim().is_empty() {
-        return Err(ApiError::BadRequest("Message content cannot be empty".to_string()));
+        return Err(ApiError::BadRequest(
+            "Message content cannot be empty".to_string(),
+        ));
     }
 
     if payload.content.len() > 10000 {
@@ -351,7 +353,9 @@ pub async fn update_message(
 
     // Validate content
     if payload.content.trim().is_empty() {
-        return Err(ApiError::BadRequest("Message content cannot be empty".to_string()));
+        return Err(ApiError::BadRequest(
+            "Message content cannot be empty".to_string(),
+        ));
     }
 
     // Update message (only works if user is sender)
@@ -433,7 +437,10 @@ pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
         // Conversations
         .route("/chat/conversations", get(list_conversations))
-        .route("/chat/conversations/direct", post(create_direct_conversation))
+        .route(
+            "/chat/conversations/direct",
+            post(create_direct_conversation),
+        )
         .route("/chat/conversations/group", post(create_group_conversation))
         .route("/chat/conversations/{id}", get(get_conversation))
         .route("/chat/conversations/{id}/leave", post(leave_conversation))

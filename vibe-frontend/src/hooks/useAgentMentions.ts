@@ -1,6 +1,10 @@
 import { useMemo, useCallback } from 'react';
 import { useUserSystem } from '@/components/ConfigProvider';
-import type { ExecutorProfileId, BaseCodingAgent, ExecutorConfig } from 'shared/types';
+import type {
+  ExecutorProfileId,
+  BaseCodingAgent,
+  ExecutorConfig,
+} from 'shared/types';
 
 export interface AgentMention {
   trigger: string;
@@ -196,7 +200,10 @@ export function useAgentMentions() {
   );
 
   const getMentionPosition = useCallback(
-    (text: string, cursorPosition: number): { start: number; searchTerm: string } | null => {
+    (
+      text: string,
+      cursorPosition: number
+    ): { start: number; searchTerm: string } | null => {
       // Find if we're currently in an @mention
       const beforeCursor = text.slice(0, cursorPosition);
       const atIndex = beforeCursor.lastIndexOf('@');

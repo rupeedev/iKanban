@@ -6,24 +6,28 @@ use axum::{
     routing::{delete, get, post, put},
 };
 use base64::Engine as _;
-use db::models::github_connection::{
-    ConfigureMultiFolderSync, CreateGitHubConnection, GitHubConnection,
-    GitHubConnectionWithRepos, GitHubRepoSyncConfig, GitHubRepository, LinkGitHubRepository,
-    UpdateGitHubConnection,
+use db::{
+    CreateTeamRegistry,
+    models::{
+        github_connection::{
+            ConfigureMultiFolderSync, CreateGitHubConnection, GitHubConnection,
+            GitHubConnectionWithRepos, GitHubRepoSyncConfig, GitHubRepository,
+            LinkGitHubRepository, UpdateGitHubConnection,
+        },
+        member_project_access::{MemberProjectAccess, SetMemberProjectAccess},
+        project::Project,
+        task::{Task, TaskWithAttemptStatus},
+        team::{CreateTeam, Team, TeamProject, TeamProjectAssignment, UpdateTeam},
+        team_member::{
+            CreateTeamInvitation, CreateTeamMember, SyncClerkMember, TeamInvitation,
+            TeamInvitationWithTeam, TeamMember, UpdateTeamInvitation, UpdateTeamMemberRole,
+        },
+    },
 };
-use db::models::project::Project;
-use db::models::task::{Task, TaskWithAttemptStatus};
-use db::models::team::{CreateTeam, Team, TeamProject, TeamProjectAssignment, UpdateTeam};
-use db::CreateTeamRegistry;
-use db::models::team_member::{
-    CreateTeamInvitation, CreateTeamMember, SyncClerkMember, TeamInvitation, TeamInvitationWithTeam,
-    TeamMember, UpdateTeamInvitation, UpdateTeamMemberRole,
-};
-use db::models::member_project_access::{MemberProjectAccess, SetMemberProjectAccess};
+use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use services::services::document_storage::DocumentStorageService;
 use ts_rs::TS;
-use deployment::Deployment;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -132,7 +136,8 @@ pub async fn get_teams(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ListTeamsQuery>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Team>>>, ApiError> {
-    let teams = Team::find_all_with_workspace_filter(&deployment.db().pool, query.workspace_id).await?;
+    let teams =
+        Team::find_all_with_workspace_filter(&deployment.db().pool, query.workspace_id).await?;
     Ok(ResponseJson(ApiResponse::success(teams)))
 }
 
@@ -367,12 +372,9 @@ pub async fn migrate_tasks_to_team(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<MigrateTasksRequest>,
 ) -> Result<ResponseJson<ApiResponse<MigrateTasksResponse>>, ApiError> {
-    let migrated_tasks = Task::migrate_project_tasks_to_team(
-        &deployment.db().pool,
-        payload.project_id,
-        team.id,
-    )
-    .await?;
+    let migrated_tasks =
+        Task::migrate_project_tasks_to_team(&deployment.db().pool, payload.project_id, team.id)
+            .await?;
 
     let task_ids: Vec<Uuid> = migrated_tasks.iter().map(|t| t.id).collect();
     let migrated_count = task_ids.len();
@@ -499,7 +501,9 @@ pub async fn delete_github_connection(
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let rows_affected = GitHubConnection::delete_by_team_id(&deployment.db().pool, team.id).await?;
     if rows_affected == 0 {
-        return Err(ApiError::NotFound("GitHub connection not found".to_string()));
+        return Err(ApiError::NotFound(
+            "GitHub connection not found".to_string(),
+        ));
     }
 
     deployment
@@ -562,7 +566,9 @@ pub async fn unlink_github_repository(
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let rows_affected = GitHubRepository::unlink(&deployment.db().pool, repo_id).await?;
     if rows_affected == 0 {
-        return Err(ApiError::NotFound("GitHub repository not found".to_string()));
+        return Err(ApiError::NotFound(
+            "GitHub repository not found".to_string(),
+        ));
     }
 
     deployment
@@ -595,7 +601,10 @@ pub async fn get_available_github_repos(
     let client = reqwest::Client::new();
     let response = client
         .get("https://api.github.com/user/repos")
-        .header("Authorization", format!("Bearer {}", connection.access_token))
+        .header(
+            "Authorization",
+            format!("Bearer {}", connection.access_token),
+        )
         .header("User-Agent", "vibe-kanban")
         .query(&[("per_page", "100"), ("sort", "updated")])
         .send()
@@ -702,7 +711,8 @@ pub async fn push_documents_to_github(
     use utils::assets::asset_dir;
 
     // Get connection (try team-level first, then fall back to workspace-level)
-    let connection = match GitHubConnection::find_by_team_id(&deployment.db().pool, team.id).await? {
+    let connection = match GitHubConnection::find_by_team_id(&deployment.db().pool, team.id).await?
+    {
         Some(conn) => conn,
         None => GitHubConnection::find_workspace_connection(&deployment.db().pool)
             .await?
@@ -721,7 +731,8 @@ pub async fn push_documents_to_github(
     }
 
     // Get multi-folder sync configs (new approach)
-    let sync_configs = GitHubRepoSyncConfig::find_by_repo_id(&deployment.db().pool, repo_id).await?;
+    let sync_configs =
+        GitHubRepoSyncConfig::find_by_repo_id(&deployment.db().pool, repo_id).await?;
 
     // Build list of (folder_id, github_path) pairs
     let folder_sync_list: Vec<(Option<Uuid>, String)> = if !sync_configs.is_empty() {
@@ -740,7 +751,9 @@ pub async fn push_documents_to_github(
                 } else {
                     // Empty github_path: use folder name
                     if let Some(fid) = folder_id {
-                        if let Ok(Some(folder)) = DocumentFolder::find_by_id(&deployment.db().pool, fid).await {
+                        if let Ok(Some(folder)) =
+                            DocumentFolder::find_by_id(&deployment.db().pool, fid).await
+                        {
                             folder.name.clone()
                         } else {
                             "docs".to_string()
@@ -752,7 +765,9 @@ pub async fn push_documents_to_github(
             } else {
                 // Null github_path: use folder name
                 if let Some(fid) = folder_id {
-                    if let Ok(Some(folder)) = DocumentFolder::find_by_id(&deployment.db().pool, fid).await {
+                    if let Ok(Some(folder)) =
+                        DocumentFolder::find_by_id(&deployment.db().pool, fid).await
+                    {
                         folder.name.clone()
                     } else {
                         "docs".to_string()
@@ -766,10 +781,9 @@ pub async fn push_documents_to_github(
         list
     } else {
         // Fall back to legacy single-folder sync
-        let sync_path = repo
-            .sync_path
-            .as_ref()
-            .ok_or_else(|| ApiError::BadRequest("Sync not configured for this repository".to_string()))?;
+        let sync_path = repo.sync_path.as_ref().ok_or_else(|| {
+            ApiError::BadRequest("Sync not configured for this repository".to_string())
+        })?;
 
         let sync_folder_id = repo
             .sync_folder_id
@@ -791,7 +805,8 @@ pub async fn push_documents_to_github(
 
     for (folder_id, github_path) in folder_sync_list {
         // Get documents from the folder
-        let mut folder_docs = Document::find_by_folder(&deployment.db().pool, team.id, folder_id).await?;
+        let mut folder_docs =
+            Document::find_by_folder(&deployment.db().pool, team.id, folder_id).await?;
         total_docs += folder_docs.len();
 
         // Load content from filesystem for documents that have file_path
@@ -801,7 +816,11 @@ pub async fn push_documents_to_github(
                     match storage.read_document(file_path).await {
                         Ok(content) => doc.content = Some(content),
                         Err(e) => {
-                            tracing::warn!("Failed to read document content from {}: {}", file_path, e);
+                            tracing::warn!(
+                                "Failed to read document content from {}: {}",
+                                file_path,
+                                e
+                            );
                         }
                     }
                 }
@@ -830,7 +849,10 @@ pub async fn push_documents_to_github(
                 "https://api.github.com/repos/{}/contents/{}",
                 repo.repo_full_name, github_path
             ))
-            .header("Authorization", format!("Bearer {}", connection.access_token))
+            .header(
+                "Authorization",
+                format!("Bearer {}", connection.access_token),
+            )
             .header("User-Agent", "vibe-kanban")
             .query(&[("ref", repo.default_branch.as_deref().unwrap_or("main"))])
             .send()
@@ -865,7 +887,10 @@ pub async fn push_documents_to_github(
                                         "https://api.github.com/repos/{}/contents/{}",
                                         repo.repo_full_name, delete_path
                                     ))
-                                    .header("Authorization", format!("Bearer {}", connection.access_token))
+                                    .header(
+                                        "Authorization",
+                                        format!("Bearer {}", connection.access_token),
+                                    )
                                     .header("User-Agent", "vibe-kanban")
                                     .json(&delete_body)
                                     .send()
@@ -929,7 +954,10 @@ pub async fn push_documents_to_github(
                     "https://api.github.com/repos/{}/contents/{}",
                     repo.repo_full_name, github_file_path
                 ))
-                .header("Authorization", format!("Bearer {}", connection.access_token))
+                .header(
+                    "Authorization",
+                    format!("Bearer {}", connection.access_token),
+                )
                 .header("User-Agent", "vibe-kanban")
                 .send()
                 .await;
@@ -963,7 +991,10 @@ pub async fn push_documents_to_github(
                     "https://api.github.com/repos/{}/contents/{}",
                     repo.repo_full_name, github_file_path
                 ))
-                .header("Authorization", format!("Bearer {}", connection.access_token))
+                .header(
+                    "Authorization",
+                    format!("Bearer {}", connection.access_token),
+                )
                 .header("User-Agent", "vibe-kanban")
                 .json(&body)
                 .send()
@@ -1009,7 +1040,8 @@ pub async fn pull_documents_from_github(
     use db::models::document::{CreateDocument, Document, DocumentFolder, UpdateDocument};
 
     // Get connection (try team-level first, then fall back to workspace-level)
-    let connection = match GitHubConnection::find_by_team_id(&deployment.db().pool, team.id).await? {
+    let connection = match GitHubConnection::find_by_team_id(&deployment.db().pool, team.id).await?
+    {
         Some(conn) => conn,
         None => GitHubConnection::find_workspace_connection(&deployment.db().pool)
             .await?
@@ -1028,7 +1060,8 @@ pub async fn pull_documents_from_github(
     }
 
     // Get multi-folder sync configs (new approach)
-    let sync_configs = GitHubRepoSyncConfig::find_by_repo_id(&deployment.db().pool, repo_id).await?;
+    let sync_configs =
+        GitHubRepoSyncConfig::find_by_repo_id(&deployment.db().pool, repo_id).await?;
 
     // Build list of (folder_id, github_path) pairs
     let folder_sync_list: Vec<(Option<Uuid>, String)> = if !sync_configs.is_empty() {
@@ -1047,7 +1080,9 @@ pub async fn pull_documents_from_github(
                 } else {
                     // Empty github_path: use folder name
                     if let Some(fid) = folder_id {
-                        if let Ok(Some(folder)) = DocumentFolder::find_by_id(&deployment.db().pool, fid).await {
+                        if let Ok(Some(folder)) =
+                            DocumentFolder::find_by_id(&deployment.db().pool, fid).await
+                        {
                             folder.name.clone()
                         } else {
                             "docs".to_string()
@@ -1059,7 +1094,9 @@ pub async fn pull_documents_from_github(
             } else {
                 // Null github_path: use folder name
                 if let Some(fid) = folder_id {
-                    if let Ok(Some(folder)) = DocumentFolder::find_by_id(&deployment.db().pool, fid).await {
+                    if let Ok(Some(folder)) =
+                        DocumentFolder::find_by_id(&deployment.db().pool, fid).await
+                    {
                         folder.name.clone()
                     } else {
                         "docs".to_string()
@@ -1073,10 +1110,9 @@ pub async fn pull_documents_from_github(
         list
     } else {
         // Fall back to legacy single-folder sync
-        let sync_path = repo
-            .sync_path
-            .as_ref()
-            .ok_or_else(|| ApiError::BadRequest("Sync not configured for this repository".to_string()))?;
+        let sync_path = repo.sync_path.as_ref().ok_or_else(|| {
+            ApiError::BadRequest("Sync not configured for this repository".to_string())
+        })?;
 
         let sync_folder_id = repo
             .sync_folder_id
@@ -1101,7 +1137,10 @@ pub async fn pull_documents_from_github(
                 "https://api.github.com/repos/{}/contents/{}",
                 repo.repo_full_name, github_path
             ))
-            .header("Authorization", format!("Bearer {}", connection.access_token))
+            .header(
+                "Authorization",
+                format!("Bearer {}", connection.access_token),
+            )
             .header("User-Agent", "vibe-kanban")
             .query(&[("ref", repo.default_branch.as_deref().unwrap_or("main"))])
             .send()
@@ -1111,11 +1150,17 @@ pub async fn pull_documents_from_github(
         if !list_response.status().is_success() {
             if list_response.status() == reqwest::StatusCode::NOT_FOUND {
                 // Skip this folder if the path doesn't exist
-                tracing::info!("Sync path {} does not exist in repository, skipping", github_path);
+                tracing::info!(
+                    "Sync path {} does not exist in repository, skipping",
+                    github_path
+                );
                 continue;
             }
             let error = list_response.text().await.unwrap_or_default();
-            return Err(ApiError::BadRequest(format!("Failed to list files: {}", error)));
+            return Err(ApiError::BadRequest(format!(
+                "Failed to list files: {}",
+                error
+            )));
         }
 
         let files: Vec<serde_json::Value> = list_response
@@ -1146,9 +1191,12 @@ pub async fn pull_documents_from_github(
             .collect();
 
         // Delete local documents that don't exist on GitHub
-        let local_docs = Document::find_by_folder(&deployment.db().pool, team.id, folder_id).await?;
+        let local_docs =
+            Document::find_by_folder(&deployment.db().pool, team.id, folder_id).await?;
         for doc in &local_docs {
-            let normalized_doc_title = doc.title.to_lowercase()
+            let normalized_doc_title = doc
+                .title
+                .to_lowercase()
                 .split_whitespace()
                 .collect::<Vec<_>>()
                 .join(" ");
@@ -1198,7 +1246,9 @@ pub async fn pull_documents_from_github(
 
                             // Check if document already exists in this folder
                             // Use normalized comparison to match regardless of case/spacing
-                            let existing_docs = Document::find_by_folder(&deployment.db().pool, team.id, folder_id).await?;
+                            let existing_docs =
+                                Document::find_by_folder(&deployment.db().pool, team.id, folder_id)
+                                    .await?;
                             let normalize_title = |t: &str| -> String {
                                 t.to_lowercase()
                                     .chars()
@@ -1209,7 +1259,9 @@ pub async fn pull_documents_from_github(
                                     .join(" ")
                             };
                             let normalized_title = normalize_title(&title);
-                            let existing = existing_docs.into_iter().find(|d| normalize_title(&d.title) == normalized_title);
+                            let existing = existing_docs
+                                .into_iter()
+                                .find(|d| normalize_title(&d.title) == normalized_title);
 
                             if let Some(doc) = existing {
                                 // Update existing document
@@ -1391,9 +1443,12 @@ pub async fn add_team_member(
     Json(payload): Json<CreateTeamMember>,
 ) -> Result<ResponseJson<ApiResponse<TeamMember>>, ApiError> {
     // Check if member already exists
-    let existing = TeamMember::find_by_team_and_email(&deployment.db().pool, team.id, &payload.email).await?;
+    let existing =
+        TeamMember::find_by_team_and_email(&deployment.db().pool, team.id, &payload.email).await?;
     if existing.is_some() {
-        return Err(ApiError::BadRequest("Member with this email already exists in the team".to_string()));
+        return Err(ApiError::BadRequest(
+            "Member with this email already exists in the team".to_string(),
+        ));
     }
 
     let member = TeamMember::create(&deployment.db().pool, team.id, &payload, None).await?;
@@ -1424,7 +1479,9 @@ pub async fn update_team_member_role(
         .ok_or_else(|| ApiError::NotFound("Team member not found".to_string()))?;
 
     if existing.team_id != team.id {
-        return Err(ApiError::BadRequest("Member does not belong to this team".to_string()));
+        return Err(ApiError::BadRequest(
+            "Member does not belong to this team".to_string(),
+        ));
     }
 
     let updated = TeamMember::update_role(&deployment.db().pool, member_id, payload.role).await?;
@@ -1455,7 +1512,9 @@ pub async fn remove_team_member(
         .ok_or_else(|| ApiError::NotFound("Team member not found".to_string()))?;
 
     if existing.team_id != team.id {
-        return Err(ApiError::BadRequest("Member does not belong to this team".to_string()));
+        return Err(ApiError::BadRequest(
+            "Member does not belong to this team".to_string(),
+        ));
     }
 
     let rows_affected = TeamMember::delete(&deployment.db().pool, member_id).await?;
@@ -1514,10 +1573,13 @@ pub async fn get_member_projects(
         .ok_or_else(|| ApiError::NotFound("Team member not found".to_string()))?;
 
     if existing.team_id != team.id {
-        return Err(ApiError::BadRequest("Member does not belong to this team".to_string()));
+        return Err(ApiError::BadRequest(
+            "Member does not belong to this team".to_string(),
+        ));
     }
 
-    let project_ids = MemberProjectAccess::get_project_ids_for_member(&deployment.db().pool, member_id).await?;
+    let project_ids =
+        MemberProjectAccess::get_project_ids_for_member(&deployment.db().pool, member_id).await?;
     Ok(ResponseJson(ApiResponse::success(project_ids)))
 }
 
@@ -1534,15 +1596,14 @@ pub async fn set_member_projects(
         .ok_or_else(|| ApiError::NotFound("Team member not found".to_string()))?;
 
     if existing.team_id != team.id {
-        return Err(ApiError::BadRequest("Member does not belong to this team".to_string()));
+        return Err(ApiError::BadRequest(
+            "Member does not belong to this team".to_string(),
+        ));
     }
 
-    let project_ids = MemberProjectAccess::set_for_member(
-        &deployment.db().pool,
-        member_id,
-        &payload.project_ids,
-    )
-    .await?;
+    let project_ids =
+        MemberProjectAccess::set_for_member(&deployment.db().pool, member_id, &payload.project_ids)
+            .await?;
 
     deployment
         .track_if_analytics_allowed(
@@ -1578,9 +1639,12 @@ pub async fn create_team_invitation(
     Json(payload): Json<CreateTeamInvitation>,
 ) -> Result<ResponseJson<ApiResponse<TeamInvitation>>, ApiError> {
     // Check if member already exists
-    let existing_member = TeamMember::find_by_team_and_email(&deployment.db().pool, team.id, &payload.email).await?;
+    let existing_member =
+        TeamMember::find_by_team_and_email(&deployment.db().pool, team.id, &payload.email).await?;
     if existing_member.is_some() {
-        return Err(ApiError::BadRequest("User is already a member of this team".to_string()));
+        return Err(ApiError::BadRequest(
+            "User is already a member of this team".to_string(),
+        ));
     }
 
     let invitation = TeamInvitation::create(&deployment.db().pool, team.id, &payload, None).await?;
@@ -1610,7 +1674,9 @@ pub async fn delete_team_invitation(
         .ok_or_else(|| ApiError::NotFound("Invitation not found".to_string()))?;
 
     if existing.team_id != team.id {
-        return Err(ApiError::BadRequest("Invitation does not belong to this team".to_string()));
+        return Err(ApiError::BadRequest(
+            "Invitation does not belong to this team".to_string(),
+        ));
     }
 
     let rows_affected = TeamInvitation::delete(&deployment.db().pool, invitation_id).await?;
@@ -1644,15 +1710,20 @@ pub async fn update_team_invitation(
         .ok_or_else(|| ApiError::NotFound("Invitation not found".to_string()))?;
 
     if existing.team_id != team.id {
-        return Err(ApiError::BadRequest("Invitation does not belong to this team".to_string()));
+        return Err(ApiError::BadRequest(
+            "Invitation does not belong to this team".to_string(),
+        ));
     }
 
     // Only pending invitations can be updated
     if existing.status != db::models::team_member::TeamInvitationStatus::Pending {
-        return Err(ApiError::BadRequest("Only pending invitations can be updated".to_string()));
+        return Err(ApiError::BadRequest(
+            "Only pending invitations can be updated".to_string(),
+        ));
     }
 
-    let updated = TeamInvitation::update_role(&deployment.db().pool, invitation_id, payload.role).await?;
+    let updated =
+        TeamInvitation::update_role(&deployment.db().pool, invitation_id, payload.role).await?;
 
     deployment
         .track_if_analytics_allowed(
@@ -1677,7 +1748,8 @@ pub async fn get_my_invitations(
     State(deployment): State<DeploymentImpl>,
     axum::extract::Query(params): axum::extract::Query<MyInvitationsQuery>,
 ) -> Result<ResponseJson<ApiResponse<Vec<TeamInvitationWithTeam>>>, ApiError> {
-    let invitations = TeamInvitation::find_pending_by_email(&deployment.db().pool, &params.email).await?;
+    let invitations =
+        TeamInvitation::find_pending_by_email(&deployment.db().pool, &params.email).await?;
     Ok(ResponseJson(ApiResponse::success(invitations)))
 }
 
@@ -1693,7 +1765,9 @@ pub async fn accept_invitation(
 ) -> Result<ResponseJson<ApiResponse<TeamMember>>, ApiError> {
     let member = TeamInvitation::accept(&deployment.db().pool, invitation_id)
         .await
-        .map_err(|_| ApiError::BadRequest("Invitation not found, already accepted, or expired".to_string()))?;
+        .map_err(|_| {
+            ApiError::BadRequest("Invitation not found, already accepted, or expired".to_string())
+        })?;
 
     deployment
         .track_if_analytics_allowed(
@@ -1753,10 +1827,12 @@ pub async fn get_invitation_by_token(
         .await?
         .ok_or_else(|| ApiError::NotFound("Team not found".to_string()))?;
 
-    Ok(ResponseJson(ApiResponse::success(InvitationByTokenResponse {
-        invitation,
-        team_name: team.name,
-    })))
+    Ok(ResponseJson(ApiResponse::success(
+        InvitationByTokenResponse {
+            invitation,
+            team_name: team.name,
+        },
+    )))
 }
 
 /// Accept an invitation via token
@@ -1814,7 +1890,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/dashboard", get(get_team_dashboard))
         .route("/issues", get(get_team_issues))
         .route("/migrate-tasks", post(migrate_tasks_to_team))
-        .route("/projects", get(get_team_projects).post(assign_project_to_team))
+        .route(
+            "/projects",
+            get(get_team_projects).post(assign_project_to_team),
+        )
         .route("/projects/{project_id}", delete(remove_project_from_team))
         // Team members routes
         .route("/members", get(get_team_members).post(add_team_member))
@@ -1857,7 +1936,9 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         )
         .route(
             "/github/repos/{repo_id}/sync-configs",
-            get(get_repo_sync_configs).post(configure_multi_folder_sync).delete(clear_multi_folder_sync),
+            get(get_repo_sync_configs)
+                .post(configure_multi_folder_sync)
+                .delete(clear_multi_folder_sync),
         )
         .route(
             "/github/repos/{repo_id}/push",
@@ -1883,7 +1964,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         // Token-based routes for shareable links
         .route("/by-token/{token}", get(get_invitation_by_token))
         .route("/by-token/{token}/accept", post(accept_invitation_by_token))
-        .route("/by-token/{token}/decline", post(decline_invitation_by_token));
+        .route(
+            "/by-token/{token}/decline",
+            post(decline_invitation_by_token),
+        );
 
     Router::new()
         .nest("/teams", inner)

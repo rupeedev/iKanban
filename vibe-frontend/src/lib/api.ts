@@ -276,7 +276,7 @@ export const getAuthToken = async (): Promise<string | null> => {
 const RETRY_CONFIG = {
   maxRetries: 1, // Only 1 retry for server errors
   baseDelayMs: 2000, // 2 seconds
-  maxDelayMs: 5000,  // 5 seconds max
+  maxDelayMs: 5000, // 5 seconds max
   retryableStatuses: [503, 502, 504], // Server errors only - NOT 429!
 };
 
@@ -409,7 +409,12 @@ const makeRequest = async (url: string, options: RequestInit = {}) => {
     }
 
     // This shouldn't be reached, but TypeScript needs it
-    throw lastError || new Error(`Failed to fetch ${url} after ${RETRY_CONFIG.maxRetries} retries`);
+    throw (
+      lastError ||
+      new Error(
+        `Failed to fetch ${url} after ${RETRY_CONFIG.maxRetries} retries`
+      )
+    );
   });
 };
 
@@ -863,7 +868,9 @@ export const tasksApi = {
   },
 
   // Copilot assignments (IKA-93: GitHub Copilot Integration)
-  getCopilotAssignments: async (taskId: string): Promise<CopilotAssignment[]> => {
+  getCopilotAssignments: async (
+    taskId: string
+  ): Promise<CopilotAssignment[]> => {
     const response = await makeRequest(`/api/tasks/${taskId}/copilot`);
     return handleApiResponse<CopilotAssignment[]>(response);
   },
@@ -1307,7 +1314,9 @@ export const tagsApi = {
       queryParams.set('team_id', params.team_id);
     }
     const queryString = queryParams.toString();
-    const response = await makeRequest(`/api/tags${queryString ? `?${queryString}` : ''}`);
+    const response = await makeRequest(
+      `/api/tags${queryString ? `?${queryString}` : ''}`
+    );
     return handleApiResponse<Tag[]>(response);
   },
 
@@ -1415,11 +1424,14 @@ export const imagesApi = {
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch(buildApiUrl(`/api/images/task/${taskId}/upload`), {
-      method: 'POST',
-      body: formData,
-      credentials: 'include',
-    });
+    const response = await fetch(
+      buildApiUrl(`/api/images/task/${taskId}/upload`),
+      {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -1832,10 +1844,11 @@ export const teamsApi = {
   },
 
   // Workspace-level GitHub connection methods
-  getWorkspaceGitHubConnection: async (): Promise<GitHubConnectionWithRepos | null> => {
-    const response = await makeRequest('/api/settings/github');
-    return handleApiResponse<GitHubConnectionWithRepos | null>(response);
-  },
+  getWorkspaceGitHubConnection:
+    async (): Promise<GitHubConnectionWithRepos | null> => {
+      const response = await makeRequest('/api/settings/github');
+      return handleApiResponse<GitHubConnectionWithRepos | null>(response);
+    },
 
   createWorkspaceGitHubConnection: async (
     data: CreateGitHubConnection
@@ -1892,10 +1905,11 @@ export const teamsApi = {
   },
 
   // Workspace-level GitLab connection methods
-  getWorkspaceGitLabConnection: async (): Promise<GitLabConnectionWithRepos | null> => {
-    const response = await makeRequest('/api/settings/gitlab');
-    return handleApiResponse<GitLabConnectionWithRepos | null>(response);
-  },
+  getWorkspaceGitLabConnection:
+    async (): Promise<GitLabConnectionWithRepos | null> => {
+      const response = await makeRequest('/api/settings/gitlab');
+      return handleApiResponse<GitLabConnectionWithRepos | null>(response);
+    },
 
   createWorkspaceGitLabConnection: async (
     data: CreateGitLabConnection
@@ -1988,7 +2002,9 @@ export const teamsApi = {
     return handleApiResponse<void>(response);
   },
 
-  getGitHubRepositories: async (teamId: string): Promise<GitHubRepository[]> => {
+  getGitHubRepositories: async (
+    teamId: string
+  ): Promise<GitHubRepository[]> => {
     const response = await makeRequest(`/api/teams/${teamId}/github/repos`);
     return handleApiResponse<GitHubRepository[]>(response);
   },
@@ -2119,7 +2135,10 @@ export const teamsApi = {
     return handleApiResponse<GitHubRepoSyncConfig[]>(response);
   },
 
-  clearMultiFolderSync: async (teamId: string, repoId: string): Promise<void> => {
+  clearMultiFolderSync: async (
+    teamId: string,
+    repoId: string
+  ): Promise<void> => {
     const response = await makeRequest(
       `/api/teams/${teamId}/github/repos/${repoId}/sync-configs`,
       {
@@ -2135,7 +2154,10 @@ export const teamsApi = {
     return handleApiResponse<TeamMember[]>(response);
   },
 
-  addMember: async (teamId: string, data: CreateTeamMember): Promise<TeamMember> => {
+  addMember: async (
+    teamId: string,
+    data: CreateTeamMember
+  ): Promise<TeamMember> => {
     const response = await makeRequest(`/api/teams/${teamId}/members`, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -2148,21 +2170,30 @@ export const teamsApi = {
     memberId: string,
     data: UpdateTeamMemberRole
   ): Promise<TeamMember> => {
-    const response = await makeRequest(`/api/teams/${teamId}/members/${memberId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
+    const response = await makeRequest(
+      `/api/teams/${teamId}/members/${memberId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<TeamMember>(response);
   },
 
   removeMember: async (teamId: string, memberId: string): Promise<void> => {
-    const response = await makeRequest(`/api/teams/${teamId}/members/${memberId}`, {
-      method: 'DELETE',
-    });
+    const response = await makeRequest(
+      `/api/teams/${teamId}/members/${memberId}`,
+      {
+        method: 'DELETE',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
-  syncClerkMember: async (teamId: string, data: SyncClerkMember): Promise<TeamMember> => {
+  syncClerkMember: async (
+    teamId: string,
+    data: SyncClerkMember
+  ): Promise<TeamMember> => {
     const response = await makeRequest(`/api/teams/${teamId}/members/sync`, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -2171,8 +2202,13 @@ export const teamsApi = {
   },
 
   // Member Project Access API
-  getMemberProjects: async (teamId: string, memberId: string): Promise<string[]> => {
-    const response = await makeRequest(`/api/teams/${teamId}/members/${memberId}/projects`);
+  getMemberProjects: async (
+    teamId: string,
+    memberId: string
+  ): Promise<string[]> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/members/${memberId}/projects`
+    );
     return handleApiResponse<string[]>(response);
   },
 
@@ -2208,7 +2244,10 @@ export const teamsApi = {
     return handleApiResponse<TeamInvitation>(response);
   },
 
-  cancelInvitation: async (teamId: string, invitationId: string): Promise<void> => {
+  cancelInvitation: async (
+    teamId: string,
+    invitationId: string
+  ): Promise<void> => {
     const response = await makeRequest(
       `/api/teams/${teamId}/invitations/${invitationId}`,
       {
@@ -2242,36 +2281,52 @@ export const userInvitationsApi = {
   },
 
   acceptInvitation: async (invitationId: string): Promise<TeamMember> => {
-    const response = await makeRequest(`/api/team-invitations/${invitationId}/accept`, {
-      method: 'POST',
-    });
+    const response = await makeRequest(
+      `/api/team-invitations/${invitationId}/accept`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<TeamMember>(response);
   },
 
   declineInvitation: async (invitationId: string): Promise<void> => {
-    const response = await makeRequest(`/api/team-invitations/${invitationId}/decline`, {
-      method: 'POST',
-    });
+    const response = await makeRequest(
+      `/api/team-invitations/${invitationId}/decline`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
   // Token-based invitation methods (for shareable links)
-  getInvitationByToken: async (token: string): Promise<InvitationByTokenResponse> => {
-    const response = await makeRequest(`/api/team-invitations/by-token/${token}`);
+  getInvitationByToken: async (
+    token: string
+  ): Promise<InvitationByTokenResponse> => {
+    const response = await makeRequest(
+      `/api/team-invitations/by-token/${token}`
+    );
     return handleApiResponse<InvitationByTokenResponse>(response);
   },
 
   acceptInvitationByToken: async (token: string): Promise<TeamMember> => {
-    const response = await makeRequest(`/api/team-invitations/by-token/${token}/accept`, {
-      method: 'POST',
-    });
+    const response = await makeRequest(
+      `/api/team-invitations/by-token/${token}/accept`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<TeamMember>(response);
   },
 
   declineInvitationByToken: async (token: string): Promise<void> => {
-    const response = await makeRequest(`/api/team-invitations/by-token/${token}/decline`, {
-      method: 'POST',
-    });
+    const response = await makeRequest(
+      `/api/team-invitations/by-token/${token}/decline`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 };
@@ -2338,12 +2393,20 @@ export const documentsApi = {
     return handleApiResponse<DocumentFolder[]>(response);
   },
 
-  getFolder: async (teamId: string, folderId: string): Promise<DocumentFolder> => {
-    const response = await makeRequest(`/api/teams/${teamId}/folders/${folderId}`);
+  getFolder: async (
+    teamId: string,
+    folderId: string
+  ): Promise<DocumentFolder> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/folders/${folderId}`
+    );
     return handleApiResponse<DocumentFolder>(response);
   },
 
-  createFolder: async (teamId: string, data: CreateDocumentFolder): Promise<DocumentFolder> => {
+  createFolder: async (
+    teamId: string,
+    data: CreateDocumentFolder
+  ): Promise<DocumentFolder> => {
     const response = await makeRequest(`/api/teams/${teamId}/folders`, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -2356,24 +2419,35 @@ export const documentsApi = {
     folderId: string,
     data: UpdateDocumentFolder
   ): Promise<DocumentFolder> => {
-    const response = await makeRequest(`/api/teams/${teamId}/folders/${folderId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    const response = await makeRequest(
+      `/api/teams/${teamId}/folders/${folderId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<DocumentFolder>(response);
   },
 
   deleteFolder: async (teamId: string, folderId: string): Promise<void> => {
-    const response = await makeRequest(`/api/teams/${teamId}/folders/${folderId}`, {
-      method: 'DELETE',
-    });
+    const response = await makeRequest(
+      `/api/teams/${teamId}/folders/${folderId}`,
+      {
+        method: 'DELETE',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
   // Documents
   list: async (
     teamId: string,
-    options?: { folderId?: string; includeArchived?: boolean; search?: string; all?: boolean }
+    options?: {
+      folderId?: string;
+      includeArchived?: boolean;
+      search?: string;
+      all?: boolean;
+    }
   ): Promise<Document[]> => {
     const params = new URLSearchParams();
     if (options?.folderId) params.append('folder_id', options.folderId);
@@ -2387,12 +2461,16 @@ export const documentsApi = {
   },
 
   get: async (teamId: string, documentId: string): Promise<Document> => {
-    const response = await makeRequest(`/api/teams/${teamId}/documents/${documentId}`);
+    const response = await makeRequest(
+      `/api/teams/${teamId}/documents/${documentId}`
+    );
     return handleApiResponse<Document>(response);
   },
 
   getBySlug: async (teamId: string, slug: string): Promise<Document> => {
-    const response = await makeRequest(`/api/teams/${teamId}/documents/by-slug/${slug}`);
+    const response = await makeRequest(
+      `/api/teams/${teamId}/documents/by-slug/${slug}`
+    );
     return handleApiResponse<Document>(response);
   },
 
@@ -2409,17 +2487,23 @@ export const documentsApi = {
     documentId: string,
     data: UpdateDocument
   ): Promise<Document> => {
-    const response = await makeRequest(`/api/teams/${teamId}/documents/${documentId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    const response = await makeRequest(
+      `/api/teams/${teamId}/documents/${documentId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<Document>(response);
   },
 
   delete: async (teamId: string, documentId: string): Promise<void> => {
-    const response = await makeRequest(`/api/teams/${teamId}/documents/${documentId}`, {
-      method: 'DELETE',
-    });
+    const response = await makeRequest(
+      `/api/teams/${teamId}/documents/${documentId}`,
+      {
+        method: 'DELETE',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
@@ -2428,25 +2512,34 @@ export const documentsApi = {
     teamId: string,
     folderId: string
   ): Promise<ScanFilesystemResponse> => {
-    const response = await makeRequest(`/api/teams/${teamId}/folders/${folderId}/scan`, {
-      method: 'POST',
-    });
+    const response = await makeRequest(
+      `/api/teams/${teamId}/folders/${folderId}/scan`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<ScanFilesystemResponse>(response);
   },
 
   // Discover folders from filesystem and create them in database
   discoverFolders: async (teamId: string): Promise<DiscoverFoldersResponse> => {
-    const response = await makeRequest(`/api/teams/${teamId}/documents/discover-folders`, {
-      method: 'POST',
-    });
+    const response = await makeRequest(
+      `/api/teams/${teamId}/documents/discover-folders`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<DiscoverFoldersResponse>(response);
   },
 
   // Recursive scan: create all nested folders and documents from filesystem
   scanAll: async (teamId: string): Promise<ScanAllResponse> => {
-    const response = await makeRequest(`/api/teams/${teamId}/documents/scan-all`, {
-      method: 'POST',
-    });
+    const response = await makeRequest(
+      `/api/teams/${teamId}/documents/scan-all`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<ScanAllResponse>(response);
   },
 
@@ -2455,7 +2548,9 @@ export const documentsApi = {
     teamId: string,
     documentId: string
   ): Promise<DocumentContentResponse> => {
-    const response = await makeRequest(`/api/teams/${teamId}/documents/${documentId}/content`);
+    const response = await makeRequest(
+      `/api/teams/${teamId}/documents/${documentId}/content`
+    );
     return handleApiResponse<DocumentContentResponse>(response);
   },
 
@@ -2472,15 +2567,20 @@ export const documentsApi = {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     } else {
-      console.warn('No auth token available for upload - user may need to sign in again');
+      console.warn(
+        'No auth token available for upload - user may need to sign in again'
+      );
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/teams/${teamId}/documents/upload`, {
-      method: 'POST',
-      headers,
-      body: formData,
-      // Note: Don't set Content-Type header - browser sets it with boundary for multipart
-    });
+    const response = await fetch(
+      `${API_BASE_URL}/api/teams/${teamId}/documents/upload`,
+      {
+        method: 'POST',
+        headers,
+        body: formData,
+        // Note: Don't set Content-Type header - browser sets it with boundary for multipart
+      }
+    );
     return handleApiResponse<UploadResult>(response);
   },
 
@@ -2489,10 +2589,13 @@ export const documentsApi = {
     filename: string,
     folderId: string | null
   ): Promise<SignedUrlResponse> => {
-    const response = await makeRequest(`/api/teams/${teamId}/documents/upload-url`, {
-      method: 'POST',
-      body: JSON.stringify({ filename, folder_id: folderId }),
-    });
+    const response = await makeRequest(
+      `/api/teams/${teamId}/documents/upload-url`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ filename, folder_id: folderId }),
+      }
+    );
     return handleApiResponse<SignedUrlResponse>(response);
   },
 };
@@ -2561,12 +2664,17 @@ export const aiProviderKeysApi = {
 export const tenantWorkspacesApi = {
   // List workspaces the user belongs to
   list: async (userId: string): Promise<TenantWorkspace[]> => {
-    const response = await makeRequest(`/api/tenant-workspaces?user_id=${encodeURIComponent(userId)}`);
+    const response = await makeRequest(
+      `/api/tenant-workspaces?user_id=${encodeURIComponent(userId)}`
+    );
     return handleApiResponse<TenantWorkspace[]>(response);
   },
 
   // Ensure user is in default workspace (for first login or missing membership)
-  ensureDefault: async (userId: string, email: string): Promise<TenantWorkspace[]> => {
+  ensureDefault: async (
+    userId: string,
+    email: string
+  ): Promise<TenantWorkspace[]> => {
     const response = await makeRequest(
       `/api/tenant-workspaces/ensure-default?user_id=${encodeURIComponent(userId)}&email=${encodeURIComponent(email)}`,
       { method: 'POST' }
@@ -2575,55 +2683,91 @@ export const tenantWorkspacesApi = {
   },
 
   // Get a single workspace
-  get: async (workspaceId: string, userId: string): Promise<TenantWorkspace> => {
-    const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}?user_id=${encodeURIComponent(userId)}`);
+  get: async (
+    workspaceId: string,
+    userId: string
+  ): Promise<TenantWorkspace> => {
+    const response = await makeRequest(
+      `/api/tenant-workspaces/${workspaceId}?user_id=${encodeURIComponent(userId)}`
+    );
     return handleApiResponse<TenantWorkspace>(response);
   },
 
   // Get workspace by slug
   getBySlug: async (slug: string, userId: string): Promise<TenantWorkspace> => {
-    const response = await makeRequest(`/api/tenant-workspaces/by-slug/${slug}?user_id=${encodeURIComponent(userId)}`);
+    const response = await makeRequest(
+      `/api/tenant-workspaces/by-slug/${slug}?user_id=${encodeURIComponent(userId)}`
+    );
     return handleApiResponse<TenantWorkspace>(response);
   },
 
   // Create a new workspace
-  create: async (data: CreateTenantWorkspace, userId: string, email: string): Promise<TenantWorkspace> => {
-    const response = await makeRequest(`/api/tenant-workspaces?user_id=${encodeURIComponent(userId)}&email=${encodeURIComponent(email)}`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  create: async (
+    data: CreateTenantWorkspace,
+    userId: string,
+    email: string
+  ): Promise<TenantWorkspace> => {
+    const response = await makeRequest(
+      `/api/tenant-workspaces?user_id=${encodeURIComponent(userId)}&email=${encodeURIComponent(email)}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<TenantWorkspace>(response);
   },
 
   // Update a workspace
-  update: async (workspaceId: string, data: UpdateTenantWorkspace, userId: string): Promise<TenantWorkspace> => {
-    const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}?user_id=${encodeURIComponent(userId)}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+  update: async (
+    workspaceId: string,
+    data: UpdateTenantWorkspace,
+    userId: string
+  ): Promise<TenantWorkspace> => {
+    const response = await makeRequest(
+      `/api/tenant-workspaces/${workspaceId}?user_id=${encodeURIComponent(userId)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<TenantWorkspace>(response);
   },
 
   // Delete a workspace
   delete: async (workspaceId: string, userId: string): Promise<void> => {
-    const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}?user_id=${encodeURIComponent(userId)}`, {
-      method: 'DELETE',
-    });
+    const response = await makeRequest(
+      `/api/tenant-workspaces/${workspaceId}?user_id=${encodeURIComponent(userId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
   // Get workspace members
-  getMembers: async (workspaceId: string, userId: string): Promise<TenantWorkspaceMember[]> => {
-    const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}/members?user_id=${encodeURIComponent(userId)}`);
+  getMembers: async (
+    workspaceId: string,
+    userId: string
+  ): Promise<TenantWorkspaceMember[]> => {
+    const response = await makeRequest(
+      `/api/tenant-workspaces/${workspaceId}/members?user_id=${encodeURIComponent(userId)}`
+    );
     return handleApiResponse<TenantWorkspaceMember[]>(response);
   },
 
   // Add a member to workspace
-  addMember: async (workspaceId: string, data: AddWorkspaceMember, callerUserId: string): Promise<TenantWorkspaceMember> => {
-    const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}/members?user_id=${encodeURIComponent(callerUserId)}`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  addMember: async (
+    workspaceId: string,
+    data: AddWorkspaceMember,
+    callerUserId: string
+  ): Promise<TenantWorkspaceMember> => {
+    const response = await makeRequest(
+      `/api/tenant-workspaces/${workspaceId}/members?user_id=${encodeURIComponent(callerUserId)}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<TenantWorkspaceMember>(response);
   },
 
@@ -2634,18 +2778,28 @@ export const tenantWorkspacesApi = {
     data: UpdateWorkspaceMemberRole,
     callerUserId: string
   ): Promise<TenantWorkspaceMember> => {
-    const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}/members/${targetUserId}?user_id=${encodeURIComponent(callerUserId)}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    const response = await makeRequest(
+      `/api/tenant-workspaces/${workspaceId}/members/${targetUserId}?user_id=${encodeURIComponent(callerUserId)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<TenantWorkspaceMember>(response);
   },
 
   // Remove a member
-  removeMember: async (workspaceId: string, targetUserId: string, callerUserId: string): Promise<void> => {
-    const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}/members/${targetUserId}?user_id=${encodeURIComponent(callerUserId)}`, {
-      method: 'DELETE',
-    });
+  removeMember: async (
+    workspaceId: string,
+    targetUserId: string,
+    callerUserId: string
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/tenant-workspaces/${workspaceId}/members/${targetUserId}?user_id=${encodeURIComponent(callerUserId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 };
@@ -2682,18 +2836,27 @@ export const registrationsApi = {
 
   // Approve a registration (admin only)
   approve: async (registrationId: string): Promise<UserRegistration> => {
-    const response = await makeRequest(`/api/registrations/${registrationId}/approve`, {
-      method: 'POST',
-    });
+    const response = await makeRequest(
+      `/api/registrations/${registrationId}/approve`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<UserRegistration>(response);
   },
 
   // Reject a registration (admin only)
-  reject: async (registrationId: string, reason?: string): Promise<UserRegistration> => {
-    const response = await makeRequest(`/api/registrations/${registrationId}/reject`, {
-      method: 'POST',
-      body: JSON.stringify({ reason }),
-    });
+  reject: async (
+    registrationId: string,
+    reason?: string
+  ): Promise<UserRegistration> => {
+    const response = await makeRequest(
+      `/api/registrations/${registrationId}/reject`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      }
+    );
     return handleApiResponse<UserRegistration>(response);
   },
 };
@@ -2808,29 +2971,49 @@ export const adminApi = {
     return handleApiResponse<AdminUser[]>(response);
   },
 
-  updateUserStatus: async (workspaceId: string, userId: string, status: string): Promise<AdminUser> => {
-    const response = await makeRequest(`/api/admin/${workspaceId}/users/${userId}/status`, {
-      method: 'PUT',
-      body: JSON.stringify({ status }),
-    });
+  updateUserStatus: async (
+    workspaceId: string,
+    userId: string,
+    status: string
+  ): Promise<AdminUser> => {
+    const response = await makeRequest(
+      `/api/admin/${workspaceId}/users/${userId}/status`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+      }
+    );
     return handleApiResponse<AdminUser>(response);
   },
 
-  updateUserRole: async (workspaceId: string, userId: string, role: string): Promise<AdminUser> => {
-    const response = await makeRequest(`/api/admin/${workspaceId}/users/${userId}/role`, {
-      method: 'PUT',
-      body: JSON.stringify({ role }),
-    });
+  updateUserRole: async (
+    workspaceId: string,
+    userId: string,
+    role: string
+  ): Promise<AdminUser> => {
+    const response = await makeRequest(
+      `/api/admin/${workspaceId}/users/${userId}/role`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ role }),
+      }
+    );
     return handleApiResponse<AdminUser>(response);
   },
 
   removeUser: async (workspaceId: string, userId: string): Promise<void> => {
-    const response = await makeRequest(`/api/admin/${workspaceId}/users/${userId}`, {
-      method: 'DELETE',
-    });
+    const response = await makeRequest(
+      `/api/admin/${workspaceId}/users/${userId}`,
+      {
+        method: 'DELETE',
+      }
+    );
     if (!response.ok) {
       const error = await response.json();
-      throw new ApiError(error.message || 'Failed to remove user', response.status);
+      throw new ApiError(
+        error.message || 'Failed to remove user',
+        response.status
+      );
     }
   },
 
@@ -2840,28 +3023,49 @@ export const adminApi = {
     return handleApiResponse<AdminInvitation[]>(response);
   },
 
-  createInvitation: async (workspaceId: string, data: CreateInvitationRequest): Promise<AdminInvitation> => {
-    const response = await makeRequest(`/api/admin/${workspaceId}/invitations`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  createInvitation: async (
+    workspaceId: string,
+    data: CreateInvitationRequest
+  ): Promise<AdminInvitation> => {
+    const response = await makeRequest(
+      `/api/admin/${workspaceId}/invitations`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<AdminInvitation>(response);
   },
 
-  resendInvitation: async (workspaceId: string, invitationId: string): Promise<AdminInvitation> => {
-    const response = await makeRequest(`/api/admin/${workspaceId}/invitations/${invitationId}/resend`, {
-      method: 'POST',
-    });
+  resendInvitation: async (
+    workspaceId: string,
+    invitationId: string
+  ): Promise<AdminInvitation> => {
+    const response = await makeRequest(
+      `/api/admin/${workspaceId}/invitations/${invitationId}/resend`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<AdminInvitation>(response);
   },
 
-  revokeInvitation: async (workspaceId: string, invitationId: string): Promise<void> => {
-    const response = await makeRequest(`/api/admin/${workspaceId}/invitations/${invitationId}`, {
-      method: 'DELETE',
-    });
+  revokeInvitation: async (
+    workspaceId: string,
+    invitationId: string
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/admin/${workspaceId}/invitations/${invitationId}`,
+      {
+        method: 'DELETE',
+      }
+    );
     if (!response.ok) {
       const error = await response.json();
-      throw new ApiError(error.message || 'Failed to revoke invitation', response.status);
+      throw new ApiError(
+        error.message || 'Failed to revoke invitation',
+        response.status
+      );
     }
   },
 
@@ -2871,11 +3075,19 @@ export const adminApi = {
     return handleApiResponse<AdminPermission[]>(response);
   },
 
-  updatePermission: async (workspaceId: string, permissionId: string, role: string, enabled: boolean): Promise<AdminPermission> => {
-    const response = await makeRequest(`/api/admin/${workspaceId}/permissions/${permissionId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ role, enabled }),
-    });
+  updatePermission: async (
+    workspaceId: string,
+    permissionId: string,
+    role: string,
+    enabled: boolean
+  ): Promise<AdminPermission> => {
+    const response = await makeRequest(
+      `/api/admin/${workspaceId}/permissions/${permissionId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ role, enabled }),
+      }
+    );
     return handleApiResponse<AdminPermission>(response);
   },
 
@@ -2884,25 +3096,42 @@ export const adminApi = {
     return handleApiResponse<AdminFeatureToggle[]>(response);
   },
 
-  updateFeature: async (workspaceId: string, featureId: string, enabled: boolean): Promise<AdminFeatureToggle> => {
-    const response = await makeRequest(`/api/admin/${workspaceId}/features/${featureId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ enabled }),
-    });
+  updateFeature: async (
+    workspaceId: string,
+    featureId: string,
+    enabled: boolean
+  ): Promise<AdminFeatureToggle> => {
+    const response = await makeRequest(
+      `/api/admin/${workspaceId}/features/${featureId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ enabled }),
+      }
+    );
     return handleApiResponse<AdminFeatureToggle>(response);
   },
 
   // Configuration
-  getConfiguration: async (workspaceId: string): Promise<AdminConfiguration> => {
-    const response = await makeRequest(`/api/admin/${workspaceId}/configuration`);
+  getConfiguration: async (
+    workspaceId: string
+  ): Promise<AdminConfiguration> => {
+    const response = await makeRequest(
+      `/api/admin/${workspaceId}/configuration`
+    );
     return handleApiResponse<AdminConfiguration>(response);
   },
 
-  updateConfiguration: async (workspaceId: string, config: AdminConfiguration): Promise<AdminConfiguration> => {
-    const response = await makeRequest(`/api/admin/${workspaceId}/configuration`, {
-      method: 'PUT',
-      body: JSON.stringify({ config }),
-    });
+  updateConfiguration: async (
+    workspaceId: string,
+    config: AdminConfiguration
+  ): Promise<AdminConfiguration> => {
+    const response = await makeRequest(
+      `/api/admin/${workspaceId}/configuration`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ config }),
+      }
+    );
     return handleApiResponse<AdminConfiguration>(response);
   },
 };
@@ -2923,14 +3152,22 @@ import type {
 
 export const chatApi = {
   // List conversations for the current user in a team
-  listConversations: async (teamId: string): Promise<ConversationListItem[]> => {
-    const response = await makeRequest(`/api/chat/conversations?team_id=${teamId}`);
+  listConversations: async (
+    teamId: string
+  ): Promise<ConversationListItem[]> => {
+    const response = await makeRequest(
+      `/api/chat/conversations?team_id=${teamId}`
+    );
     return handleApiResponse<ConversationListItem[]>(response);
   },
 
   // Get a single conversation with details
-  getConversation: async (conversationId: string): Promise<ConversationListItem> => {
-    const response = await makeRequest(`/api/chat/conversations/${conversationId}`);
+  getConversation: async (
+    conversationId: string
+  ): Promise<ConversationListItem> => {
+    const response = await makeRequest(
+      `/api/chat/conversations/${conversationId}`
+    );
     return handleApiResponse<ConversationListItem>(response);
   },
 
@@ -2939,10 +3176,13 @@ export const chatApi = {
     teamId: string,
     data: CreateDirectConversation
   ): Promise<Conversation> => {
-    const response = await makeRequest(`/api/chat/conversations/direct?team_id=${teamId}`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    const response = await makeRequest(
+      `/api/chat/conversations/direct?team_id=${teamId}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<Conversation>(response);
   },
 
@@ -2951,10 +3191,13 @@ export const chatApi = {
     teamId: string,
     data: CreateGroupConversation
   ): Promise<Conversation> => {
-    const response = await makeRequest(`/api/chat/conversations/group?team_id=${teamId}`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    const response = await makeRequest(
+      `/api/chat/conversations/group?team_id=${teamId}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<Conversation>(response);
   },
 
@@ -2977,10 +3220,13 @@ export const chatApi = {
     conversationId: string,
     data: CreateChatMessage
   ): Promise<ChatMessageFromApi> => {
-    const response = await makeRequest(`/api/chat/conversations/${conversationId}/messages`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    const response = await makeRequest(
+      `/api/chat/conversations/${conversationId}/messages`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<ChatMessageFromApi>(response);
   },
 
@@ -3001,7 +3247,10 @@ export const chatApi = {
   },
 
   // Delete a message (soft delete, only sender can delete)
-  deleteMessage: async (conversationId: string, messageId: string): Promise<void> => {
+  deleteMessage: async (
+    conversationId: string,
+    messageId: string
+  ): Promise<void> => {
     const response = await makeRequest(
       `/api/chat/conversations/${conversationId}/messages/${messageId}`,
       {
@@ -3013,17 +3262,23 @@ export const chatApi = {
 
   // Mark messages in a conversation as read
   markAsRead: async (conversationId: string): Promise<void> => {
-    const response = await makeRequest(`/api/chat/conversations/${conversationId}/read`, {
-      method: 'POST',
-    });
+    const response = await makeRequest(
+      `/api/chat/conversations/${conversationId}/read`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
   // Leave a conversation (group chats only)
   leaveConversation: async (conversationId: string): Promise<void> => {
-    const response = await makeRequest(`/api/chat/conversations/${conversationId}/leave`, {
-      method: 'POST',
-    });
+    const response = await makeRequest(
+      `/api/chat/conversations/${conversationId}/leave`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 };

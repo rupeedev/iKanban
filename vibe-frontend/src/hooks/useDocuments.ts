@@ -26,8 +26,10 @@ function isRateLimitError(error: unknown): boolean {
 export const documentsKeys = {
   all: ['documents'] as const,
   team: (teamId: string) => [...documentsKeys.all, teamId] as const,
-  list: (teamId: string, folderId: string | null) => [...documentsKeys.team(teamId), 'list', folderId] as const,
-  folders: (teamId: string) => [...documentsKeys.team(teamId), 'folders'] as const,
+  list: (teamId: string, folderId: string | null) =>
+    [...documentsKeys.team(teamId), 'list', folderId] as const,
+  folders: (teamId: string) =>
+    [...documentsKeys.team(teamId), 'folders'] as const,
 };
 
 export interface UseDocumentsResult {
@@ -40,11 +42,19 @@ export interface UseDocumentsResult {
   refresh: () => Promise<void>;
   // Document operations
   createDocument: (data: Omit<CreateDocument, 'team_id'>) => Promise<Document>;
-  updateDocument: (documentId: string, data: UpdateDocument) => Promise<Document>;
+  updateDocument: (
+    documentId: string,
+    data: UpdateDocument
+  ) => Promise<Document>;
   deleteDocument: (documentId: string) => Promise<void>;
   // Folder operations
-  createFolder: (data: Omit<CreateDocumentFolder, 'team_id'>) => Promise<DocumentFolder>;
-  updateFolder: (folderId: string, data: UpdateDocumentFolder) => Promise<DocumentFolder>;
+  createFolder: (
+    data: Omit<CreateDocumentFolder, 'team_id'>
+  ) => Promise<DocumentFolder>;
+  updateFolder: (
+    folderId: string,
+    data: UpdateDocumentFolder
+  ) => Promise<DocumentFolder>;
   deleteFolder: (folderId: string) => Promise<void>;
   // Search
   searchDocuments: (query: string) => Promise<Document[]>;
@@ -70,7 +80,8 @@ export function useDocuments(teamId: string): UseDocumentsResult {
     error: docsError,
   } = useQuery<Document[]>({
     queryKey: documentsKeys.list(teamId, currentFolderId),
-    queryFn: () => documentsApi.list(teamId, { folderId: currentFolderId ?? undefined }),
+    queryFn: () =>
+      documentsApi.list(teamId, { folderId: currentFolderId ?? undefined }),
     enabled: !!teamId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 15 * 60 * 1000, // 15 minutes cache retention
@@ -84,10 +95,9 @@ export function useDocuments(teamId: string): UseDocumentsResult {
   });
 
   // Query for all folders
-  const {
-    data: folders = [],
-    isLoading: foldersLoading,
-  } = useQuery<DocumentFolder[]>({
+  const { data: folders = [], isLoading: foldersLoading } = useQuery<
+    DocumentFolder[]
+  >({
     queryKey: documentsKeys.folders(teamId),
     queryFn: () => documentsApi.listFolders(teamId),
     enabled: !!teamId,
@@ -105,8 +115,14 @@ export function useDocuments(teamId: string): UseDocumentsResult {
   const refresh = useCallback(async () => {
     if (!teamId) return;
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: documentsKeys.list(teamId, currentFolderId), refetchType: 'none' }),
-      queryClient.invalidateQueries({ queryKey: documentsKeys.folders(teamId), refetchType: 'none' }),
+      queryClient.invalidateQueries({
+        queryKey: documentsKeys.list(teamId, currentFolderId),
+        refetchType: 'none',
+      }),
+      queryClient.invalidateQueries({
+        queryKey: documentsKeys.folders(teamId),
+        refetchType: 'none',
+      }),
     ]);
   }, [teamId, currentFolderId, queryClient]);
 
@@ -119,18 +135,26 @@ export function useDocuments(teamId: string): UseDocumentsResult {
         folder_id: data.folder_id ?? currentFolderId,
       }),
     onSuccess: (newDoc) => {
-      queryClient.setQueryData<Document[]>(documentsKeys.list(teamId, currentFolderId), (old) =>
-        old ? [...old, newDoc] : [newDoc]
+      queryClient.setQueryData<Document[]>(
+        documentsKeys.list(teamId, currentFolderId),
+        (old) => (old ? [...old, newDoc] : [newDoc])
       );
     },
   });
 
   const updateDocMutation = useMutation({
-    mutationFn: ({ documentId, data }: { documentId: string; data: UpdateDocument }) =>
-      documentsApi.update(teamId, documentId, data),
+    mutationFn: ({
+      documentId,
+      data,
+    }: {
+      documentId: string;
+      data: UpdateDocument;
+    }) => documentsApi.update(teamId, documentId, data),
     onSuccess: (updatedDoc) => {
-      queryClient.setQueryData<Document[]>(documentsKeys.list(teamId, currentFolderId), (old) =>
-        old?.map((doc) => (doc.id === updatedDoc.id ? updatedDoc : doc)) ?? []
+      queryClient.setQueryData<Document[]>(
+        documentsKeys.list(teamId, currentFolderId),
+        (old) =>
+          old?.map((doc) => (doc.id === updatedDoc.id ? updatedDoc : doc)) ?? []
       );
     },
   });
@@ -138,8 +162,9 @@ export function useDocuments(teamId: string): UseDocumentsResult {
   const deleteDocMutation = useMutation({
     mutationFn: (documentId: string) => documentsApi.delete(teamId, documentId),
     onSuccess: (_, documentId) => {
-      queryClient.setQueryData<Document[]>(documentsKeys.list(teamId, currentFolderId), (old) =>
-        old?.filter((doc) => doc.id !== documentId) ?? []
+      queryClient.setQueryData<Document[]>(
+        documentsKeys.list(teamId, currentFolderId),
+        (old) => old?.filter((doc) => doc.id !== documentId) ?? []
       );
     },
   });
@@ -153,34 +178,47 @@ export function useDocuments(teamId: string): UseDocumentsResult {
         parent_id: data.parent_id ?? currentFolderId,
       }),
     onSuccess: (newFolder) => {
-      queryClient.setQueryData<DocumentFolder[]>(documentsKeys.folders(teamId), (old) =>
-        old ? [...old, newFolder] : [newFolder]
+      queryClient.setQueryData<DocumentFolder[]>(
+        documentsKeys.folders(teamId),
+        (old) => (old ? [...old, newFolder] : [newFolder])
       );
     },
   });
 
   const updateFolderMutation = useMutation({
-    mutationFn: ({ folderId, data }: { folderId: string; data: UpdateDocumentFolder }) =>
-      documentsApi.updateFolder(teamId, folderId, data),
+    mutationFn: ({
+      folderId,
+      data,
+    }: {
+      folderId: string;
+      data: UpdateDocumentFolder;
+    }) => documentsApi.updateFolder(teamId, folderId, data),
     onSuccess: (updatedFolder) => {
-      queryClient.setQueryData<DocumentFolder[]>(documentsKeys.folders(teamId), (old) =>
-        old?.map((folder) => (folder.id === updatedFolder.id ? updatedFolder : folder)) ?? []
+      queryClient.setQueryData<DocumentFolder[]>(
+        documentsKeys.folders(teamId),
+        (old) =>
+          old?.map((folder) =>
+            folder.id === updatedFolder.id ? updatedFolder : folder
+          ) ?? []
       );
     },
   });
 
   const deleteFolderMutation = useMutation({
-    mutationFn: (folderId: string) => documentsApi.deleteFolder(teamId, folderId),
+    mutationFn: (folderId: string) =>
+      documentsApi.deleteFolder(teamId, folderId),
     onSuccess: (_, folderId) => {
-      queryClient.setQueryData<DocumentFolder[]>(documentsKeys.folders(teamId), (old) =>
-        old?.filter((folder) => folder.id !== folderId) ?? []
+      queryClient.setQueryData<DocumentFolder[]>(
+        documentsKeys.folders(teamId),
+        (old) => old?.filter((folder) => folder.id !== folderId) ?? []
       );
     },
   });
 
   // Callbacks
   const createDocument = useCallback(
-    async (data: Omit<CreateDocument, 'team_id'>) => createDocMutation.mutateAsync(data),
+    async (data: Omit<CreateDocument, 'team_id'>) =>
+      createDocMutation.mutateAsync(data),
     [createDocMutation]
   );
 
@@ -191,12 +229,15 @@ export function useDocuments(teamId: string): UseDocumentsResult {
   );
 
   const deleteDocument = useCallback(
-    async (documentId: string) => { await deleteDocMutation.mutateAsync(documentId); },
+    async (documentId: string) => {
+      await deleteDocMutation.mutateAsync(documentId);
+    },
     [deleteDocMutation]
   );
 
   const createFolder = useCallback(
-    async (data: Omit<CreateDocumentFolder, 'team_id'>) => createFolderMutation.mutateAsync(data),
+    async (data: Omit<CreateDocumentFolder, 'team_id'>) =>
+      createFolderMutation.mutateAsync(data),
     [createFolderMutation]
   );
 
@@ -207,7 +248,9 @@ export function useDocuments(teamId: string): UseDocumentsResult {
   );
 
   const deleteFolder = useCallback(
-    async (folderId: string) => { await deleteFolderMutation.mutateAsync(folderId); },
+    async (folderId: string) => {
+      await deleteFolderMutation.mutateAsync(folderId);
+    },
     [deleteFolderMutation]
   );
 
@@ -243,7 +286,11 @@ export function useDocuments(teamId: string): UseDocumentsResult {
     documents,
     folders,
     isLoading: docsLoading || foldersLoading,
-    error: docsError ? (docsError instanceof Error ? docsError : new Error('Failed to fetch documents')) : null,
+    error: docsError
+      ? docsError instanceof Error
+        ? docsError
+        : new Error('Failed to fetch documents')
+      : null,
     currentFolderId,
     setCurrentFolderId,
     refresh,

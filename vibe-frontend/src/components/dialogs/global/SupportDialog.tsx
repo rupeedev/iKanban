@@ -23,7 +23,8 @@ const SupportDialogImpl = NiceModal.create<NoProps>(() => {
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isValid = name.trim() !== '' && email.trim() !== '' && message.trim() !== '';
+  const isValid =
+    name.trim() !== '' && email.trim() !== '' && message.trim() !== '';
 
   const handleSubmit = async () => {
     if (!isValid) return;
@@ -37,7 +38,7 @@ const SupportDialogImpl = NiceModal.create<NoProps>(() => {
 
     // Show success toast
     toast.success('Message sent!', {
-      description: 'Thank you for reaching out. We\'ll get back to you soon.',
+      description: "Thank you for reaching out. We'll get back to you soon.",
     });
 
     // Close the dialog
@@ -57,7 +58,8 @@ const SupportDialogImpl = NiceModal.create<NoProps>(() => {
             <DialogTitle>Contact Support</DialogTitle>
           </div>
           <DialogDescription>
-            Have a question or need help? Send us a message and we'll get back to you.
+            Have a question or need help? Send us a message and we'll get back
+            to you.
           </DialogDescription>
         </DialogHeader>
 
@@ -99,7 +101,11 @@ const SupportDialogImpl = NiceModal.create<NoProps>(() => {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={!isValid || isSubmitting}>

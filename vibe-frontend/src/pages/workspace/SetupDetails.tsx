@@ -106,7 +106,8 @@ export function SetupDetails({ data, onChange }: SetupDetailsProps) {
         </div>
         {data.slug && (
           <p className="text-xs text-muted-foreground">
-            Your workspace will be available at: <span className="font-mono">/w/{data.slug}</span>
+            Your workspace will be available at:{' '}
+            <span className="font-mono">/w/{data.slug}</span>
           </p>
         )}
       </div>
@@ -128,9 +129,10 @@ export function SetupDetails({ data, onChange }: SetupDetailsProps) {
               onClick={() => handleColorChange(color.value)}
               className={`
                 w-10 h-10 rounded-lg transition-all
-                ${data.color === color.value
-                  ? 'ring-2 ring-offset-2 ring-primary scale-110'
-                  : 'hover:scale-105'
+                ${
+                  data.color === color.value
+                    ? 'ring-2 ring-offset-2 ring-primary scale-110'
+                    : 'hover:scale-105'
                 }
               `}
               style={{ backgroundColor: color.value }}

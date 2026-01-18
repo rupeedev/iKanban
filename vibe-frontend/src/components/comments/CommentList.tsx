@@ -5,7 +5,11 @@ import type { TaskComment } from 'shared/types';
 interface CommentListProps {
   comments: TaskComment[];
   isLoading?: boolean;
-  onUpdate: (commentId: string, content: string, isInternal: boolean) => Promise<void>;
+  onUpdate: (
+    commentId: string,
+    content: string,
+    isInternal: boolean
+  ) => Promise<void>;
   onDelete: (commentId: string) => Promise<void>;
   isUpdating?: boolean;
   isDeleting?: boolean;

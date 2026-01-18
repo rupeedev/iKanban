@@ -33,20 +33,27 @@ export function ChatMessage({ message, className }: ChatMessageProps) {
   return (
     <div className={cn('flex gap-3 px-4 py-2', className)}>
       <Avatar className="h-8 w-8 shrink-0">
-        <AvatarImage src={message.senderAvatarUrl || undefined} alt={message.senderName} />
+        <AvatarImage
+          src={message.senderAvatarUrl || undefined}
+          alt={message.senderName}
+        />
         <AvatarFallback className="text-xs">{initials}</AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-sm font-medium">{message.senderName}</span>
           {message.senderTeam && (
-            <span className="text-xs text-muted-foreground">({message.senderTeam})</span>
+            <span className="text-xs text-muted-foreground">
+              ({message.senderTeam})
+            </span>
           )}
           <span className="text-xs text-muted-foreground">
             {formatRelativeTime(message.timestamp)}
           </span>
         </div>
-        <p className="text-sm text-foreground mt-0.5 break-words">{message.content}</p>
+        <p className="text-sm text-foreground mt-0.5 break-words">
+          {message.content}
+        </p>
       </div>
     </div>
   );

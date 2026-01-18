@@ -4,14 +4,16 @@ use axum::{
     response::Json as ResponseJson,
     routing::{delete, get, post, put},
 };
-use db::models::github_connection::{
-    CreateGitHubConnection, GitHubConnection, GitHubConnectionWithRepos, GitHubRepository,
-    LinkGitHubRepository, UpdateGitHubConnection,
+use db::models::{
+    copilot_deployment_config::{CopilotDeploymentConfig, UpsertCopilotDeploymentConfig},
+    github_connection::{
+        CreateGitHubConnection, GitHubConnection, GitHubConnectionWithRepos, GitHubRepository,
+        LinkGitHubRepository, UpdateGitHubConnection,
+    },
 };
-use db::models::copilot_deployment_config::{CopilotDeploymentConfig, UpsertCopilotDeploymentConfig};
+use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
-use deployment::Deployment;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -35,15 +37,30 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/settings/github", get(get_workspace_github_connection))
         .route("/settings/github", post(create_workspace_github_connection))
         .route("/settings/github", put(update_workspace_github_connection))
-        .route("/settings/github", delete(delete_workspace_github_connection))
+        .route(
+            "/settings/github",
+            delete(delete_workspace_github_connection),
+        )
         // Workspace-level repository endpoints
         .route("/settings/github/repos", get(get_workspace_repositories))
-        .route("/settings/github/repos/available", get(get_available_github_repos))
+        .route(
+            "/settings/github/repos/available",
+            get(get_available_github_repos),
+        )
         .route("/settings/github/repos", post(link_workspace_repository))
-        .route("/settings/github/repos/{repo_id}", delete(unlink_workspace_repository))
+        .route(
+            "/settings/github/repos/{repo_id}",
+            delete(unlink_workspace_repository),
+        )
         // Deployment config endpoints
-        .route("/settings/github/repos/{repo_id}/deployment-config", get(get_deployment_config))
-        .route("/settings/github/repos/{repo_id}/deployment-config", put(update_deployment_config))
+        .route(
+            "/settings/github/repos/{repo_id}/deployment-config",
+            get(get_deployment_config),
+        )
+        .route(
+            "/settings/github/repos/{repo_id}/deployment-config",
+            put(update_deployment_config),
+        )
         .with_state(deployment.clone())
 }
 
@@ -85,10 +102,7 @@ pub async fn create_workspace_github_connection(
         GitHubConnection::create_workspace_connection(&deployment.db().pool, &payload).await?;
 
     deployment
-        .track_if_analytics_allowed(
-            "workspace_github_connection_created",
-            serde_json::json!({}),
-        )
+        .track_if_analytics_allowed("workspace_github_connection_created", serde_json::json!({}))
         .await;
 
     Ok(ResponseJson(ApiResponse::success(connection)))
@@ -106,10 +120,7 @@ pub async fn update_workspace_github_connection(
     let updated = GitHubConnection::update(&deployment.db().pool, existing.id, &payload).await?;
 
     deployment
-        .track_if_analytics_allowed(
-            "workspace_github_connection_updated",
-            serde_json::json!({}),
-        )
+        .track_if_analytics_allowed("workspace_github_connection_updated", serde_json::json!({}))
         .await;
 
     Ok(ResponseJson(ApiResponse::success(updated)))
@@ -128,10 +139,7 @@ pub async fn delete_workspace_github_connection(
     }
 
     deployment
-        .track_if_analytics_allowed(
-            "workspace_github_connection_deleted",
-            serde_json::json!({}),
-        )
+        .track_if_analytics_allowed("workspace_github_connection_deleted", serde_json::json!({}))
         .await;
 
     Ok(ResponseJson(ApiResponse::success(())))
@@ -163,7 +171,10 @@ pub async fn get_available_github_repos(
     let client = reqwest::Client::new();
     let response = client
         .get("https://api.github.com/user/repos")
-        .header("Authorization", format!("Bearer {}", connection.access_token))
+        .header(
+            "Authorization",
+            format!("Bearer {}", connection.access_token),
+        )
         .header("User-Agent", "vibe-kanban")
         .query(&[("per_page", "100"), ("sort", "updated")])
         .send()
@@ -217,7 +228,9 @@ pub async fn unlink_workspace_repository(
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let rows_affected = GitHubRepository::unlink(&deployment.db().pool, repo_id).await?;
     if rows_affected == 0 {
-        return Err(ApiError::NotFound("GitHub repository not found".to_string()));
+        return Err(ApiError::NotFound(
+            "GitHub repository not found".to_string(),
+        ));
     }
 
     deployment
@@ -253,7 +266,8 @@ pub async fn get_deployment_config(
     State(deployment): State<DeploymentImpl>,
     Path(repo_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<Option<CopilotDeploymentConfig>>>, ApiError> {
-    let config = CopilotDeploymentConfig::find_by_repository_id(&deployment.db().pool, repo_id).await?;
+    let config =
+        CopilotDeploymentConfig::find_by_repository_id(&deployment.db().pool, repo_id).await?;
     Ok(ResponseJson(ApiResponse::success(config)))
 }
 
@@ -266,7 +280,9 @@ pub async fn update_deployment_config(
     // Verify repository exists
     let repo = GitHubRepository::find_by_id(&deployment.db().pool, repo_id).await?;
     if repo.is_none() {
-        return Err(ApiError::NotFound("GitHub repository not found".to_string()));
+        return Err(ApiError::NotFound(
+            "GitHub repository not found".to_string(),
+        ));
     }
 
     let upsert_payload = UpsertCopilotDeploymentConfig {
@@ -280,11 +296,8 @@ pub async fn update_deployment_config(
         auto_mark_task_done: payload.auto_mark_task_done,
     };
 
-    let config = CopilotDeploymentConfig::upsert(
-        &deployment.db().pool,
-        repo_id,
-        &upsert_payload,
-    ).await?;
+    let config =
+        CopilotDeploymentConfig::upsert(&deployment.db().pool, repo_id, &upsert_payload).await?;
 
     deployment
         .track_if_analytics_allowed(

@@ -6,7 +6,17 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ListFilter, X, AlertCircle, ArrowUp, ArrowRight, ArrowDown, Minus, User, FolderKanban } from 'lucide-react';
+import {
+  ListFilter,
+  X,
+  AlertCircle,
+  ArrowUp,
+  ArrowRight,
+  ArrowDown,
+  Minus,
+  User,
+  FolderKanban,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus } from 'shared/types';
 
@@ -62,7 +72,7 @@ export function IssueFilterDropdown({
   // Count issues per assignee
   const assigneeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    issues.forEach(issue => {
+    issues.forEach((issue) => {
       if (issue.assignee_id) {
         counts[issue.assignee_id] = (counts[issue.assignee_id] || 0) + 1;
       }
@@ -117,7 +127,8 @@ export function IssueFilterDropdown({
           size="sm"
           className={cn(
             'text-muted-foreground hover:text-foreground gap-1.5',
-            activeFilterCount > 0 && 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950'
+            activeFilterCount > 0 &&
+              'text-indigo-600 bg-indigo-50 dark:bg-indigo-950'
           )}
         >
           <ListFilter className="h-4 w-4" />
@@ -158,7 +169,8 @@ export function IssueFilterDropdown({
             <div className="space-y-1">
               {PRIORITY_OPTIONS.map((option) => {
                 const Icon = option.icon;
-                const isChecked = filters.priority?.includes(option.value) || false;
+                const isChecked =
+                  filters.priority?.includes(option.value) || false;
                 return (
                   <label
                     key={option.value}
@@ -186,7 +198,8 @@ export function IssueFilterDropdown({
               </div>
               <div className="space-y-1">
                 {teamMembers.map((member) => {
-                  const isChecked = filters.assigneeId?.includes(member.id) || false;
+                  const isChecked =
+                    filters.assigneeId?.includes(member.id) || false;
                   const issueCount = assigneeCounts[member.id] || 0;
                   return (
                     <label

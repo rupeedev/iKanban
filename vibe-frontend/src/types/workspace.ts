@@ -97,11 +97,23 @@ export interface InviteSetupData {
 
 // Wizard step definitions
 export const WIZARD_STEPS = [
-  { id: 'details', title: 'Workspace Details', description: 'Name and customize your workspace' },
-  { id: 'teams', title: 'Teams', description: 'Create teams to organize your work' },
+  {
+    id: 'details',
+    title: 'Workspace Details',
+    description: 'Name and customize your workspace',
+  },
+  {
+    id: 'teams',
+    title: 'Teams',
+    description: 'Create teams to organize your work',
+  },
   { id: 'projects', title: 'Projects', description: 'Set up initial projects' },
-  { id: 'invite', title: 'Invite Members', description: 'Invite your team members' },
+  {
+    id: 'invite',
+    title: 'Invite Members',
+    description: 'Invite your team members',
+  },
   { id: 'complete', title: 'Complete', description: 'All set!' },
 ] as const;
 
-export type WizardStepId = typeof WIZARD_STEPS[number]['id'];
+export type WizardStepId = (typeof WIZARD_STEPS)[number]['id'];

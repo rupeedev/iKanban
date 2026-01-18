@@ -20,7 +20,11 @@ import { useTaskAttemptWithSession } from '@/hooks/useTaskAttempt';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
 import { paths } from '@/lib/paths';
-import { getProjectSlug, getTaskSlug, resolveTaskFromParam } from '@/lib/urlUtils';
+import {
+  getProjectSlug,
+  getTaskSlug,
+  resolveTaskFromParam,
+} from '@/lib/urlUtils';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
@@ -178,7 +182,8 @@ export function ProjectTasks() {
   } = useProjectTasks(projectId || '');
 
   const selectedTask = useMemo(
-    () => (taskId ? (resolveTaskFromParam(taskId, tasks, tasksById) ?? null) : null),
+    () =>
+      taskId ? (resolveTaskFromParam(taskId, tasks, tasksById) ?? null) : null,
     [taskId, tasks, tasksById]
   );
 
@@ -651,9 +656,13 @@ export function ProjectTasks() {
       const taskSlug = getTaskSlug(task);
 
       if (attemptIdToShow) {
-        navigateWithSearch(paths.attempt(projectSlug, taskSlug, attemptIdToShow));
+        navigateWithSearch(
+          paths.attempt(projectSlug, taskSlug, attemptIdToShow)
+        );
       } else {
-        navigateWithSearch(`${paths.task(projectSlug, taskSlug)}/attempts/latest`);
+        navigateWithSearch(
+          `${paths.task(projectSlug, taskSlug)}/attempts/latest`
+        );
       }
     },
     [projectId, project, navigateWithSearch]
@@ -920,8 +929,12 @@ export function ProjectTasks() {
                 <BreadcrumbLink
                   className="cursor-pointer hover:underline"
                   onClick={() => {
-                    const projectSlug = project ? getProjectSlug(project) : projectId!;
-                    const taskSlug = selectedTask ? getTaskSlug(selectedTask) : taskId!;
+                    const projectSlug = project
+                      ? getProjectSlug(project)
+                      : projectId!;
+                    const taskSlug = selectedTask
+                      ? getTaskSlug(selectedTask)
+                      : taskId!;
                     navigateWithSearch(paths.task(projectSlug, taskSlug));
                   }}
                 >

@@ -1,6 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { Plus, Loader2, AlertCircle, Circle, ChevronDown, RefreshCw, UserX, Pencil } from 'lucide-react';
+import {
+  Plus,
+  Loader2,
+  AlertCircle,
+  Circle,
+  ChevronDown,
+  RefreshCw,
+  UserX,
+  Pencil,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
@@ -48,34 +57,66 @@ const HEALTH_OPTIONS = [
 ];
 
 function getPriorityDisplay(priority: number | null | undefined) {
-  const option = PRIORITY_OPTIONS.find(o => o.value === (priority ?? 0)) || PRIORITY_OPTIONS[0];
+  const option =
+    PRIORITY_OPTIONS.find((o) => o.value === (priority ?? 0)) ||
+    PRIORITY_OPTIONS[0];
   return option;
 }
 
 function getHealthDisplay(health: number | null | undefined) {
-  const option = HEALTH_OPTIONS.find(o => o.value === (health ?? 0)) || HEALTH_OPTIONS[0];
+  const option =
+    HEALTH_OPTIONS.find((o) => o.value === (health ?? 0)) || HEALTH_OPTIONS[0];
   return option;
 }
 
 const getInitials = (name: string | null | undefined) =>
-  name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
+  name
+    ? name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : '?';
 
 // Lead cell component
-type MemberInfo = { id: string; display_name: string | null; email: string; avatar_url: string | null };
+type MemberInfo = {
+  id: string;
+  display_name: string | null;
+  email: string;
+  avatar_url: string | null;
+};
 
-function LeadCell({ leadId, members, onSelect }: { leadId: string | null; members: MemberInfo[]; onSelect: (id: string | null) => void }) {
-  const lead = leadId ? members.find(m => m.id === leadId) : null;
+function LeadCell({
+  leadId,
+  members,
+  onSelect,
+}: {
+  leadId: string | null;
+  members: MemberInfo[];
+  onSelect: (id: string | null) => void;
+}) {
+  const lead = leadId ? members.find((m) => m.id === leadId) : null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 gap-2 text-xs" onClick={(e) => e.stopPropagation()}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-2 text-xs"
+          onClick={(e) => e.stopPropagation()}
+        >
           {lead ? (
             <>
               <Avatar className="h-5 w-5">
                 <AvatarImage src={lead.avatar_url || ''} />
-                <AvatarFallback className="text-[10px]">{getInitials(lead.display_name)}</AvatarFallback>
+                <AvatarFallback className="text-[10px]">
+                  {getInitials(lead.display_name)}
+                </AvatarFallback>
               </Avatar>
-              <span className="hidden sm:inline truncate max-w-[80px]">{lead.display_name || lead.email}</span>
+              <span className="hidden sm:inline truncate max-w-[80px]">
+                {lead.display_name || lead.email}
+              </span>
             </>
           ) : (
             <span className="text-muted-foreground">—</span>
@@ -83,15 +124,33 @@ function LeadCell({ leadId, members, onSelect }: { leadId: string | null; member
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSelect(null); }}>
-          <UserX className="h-4 w-4 mr-2 text-muted-foreground" />No lead
+      <DropdownMenuContent
+        align="start"
+        className="max-h-60 overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <DropdownMenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(null);
+          }}
+        >
+          <UserX className="h-4 w-4 mr-2 text-muted-foreground" />
+          No lead
         </DropdownMenuItem>
         {members.map((m) => (
-          <DropdownMenuItem key={m.id} onClick={(e) => { e.stopPropagation(); onSelect(m.id); }}>
+          <DropdownMenuItem
+            key={m.id}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(m.id);
+            }}
+          >
             <Avatar className="h-5 w-5 mr-2">
               <AvatarImage src={m.avatar_url || ''} />
-              <AvatarFallback className="text-[10px]">{getInitials(m.display_name)}</AvatarFallback>
+              <AvatarFallback className="text-[10px]">
+                {getInitials(m.display_name)}
+              </AvatarFallback>
             </Avatar>
             {m.display_name || m.email}
           </DropdownMenuItem>
@@ -117,7 +176,12 @@ function ProgressCircle({ percentage }: { percentage: number }) {
   };
 
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" className="transform -rotate-90">
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      className="transform -rotate-90"
+    >
       {/* Background circle */}
       <circle
         cx="10"
@@ -153,7 +217,13 @@ interface EditableNameCellProps {
   onCancel: () => void;
 }
 
-function EditableNameCell({ project, isEditing, onStartEdit, onSave, onCancel }: EditableNameCellProps) {
+function EditableNameCell({
+  project,
+  isEditing,
+  onStartEdit,
+  onSave,
+  onCancel,
+}: EditableNameCellProps) {
   const [value, setValue] = useState(project.name);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -191,7 +261,10 @@ function EditableNameCell({ project, isEditing, onStartEdit, onSave, onCancel }:
 
   if (isEditing) {
     return (
-      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="flex items-center gap-2"
+        onClick={(e) => e.stopPropagation()}
+      >
         <span className="text-lg">{project.icon || '📁'}</span>
         <Input
           ref={inputRef}
@@ -243,7 +316,8 @@ export function TeamProjects() {
   const team = teamId ? resolveTeam(teamId) : undefined;
   const actualTeamId = team?.id;
 
-  const { projects, isLoading, error, refetch, isFetching } = useTeamProjects(actualTeamId);
+  const { projects, isLoading, error, refetch, isFetching } =
+    useTeamProjects(actualTeamId);
   const { issues } = useTeamIssues(actualTeamId);
   const { members } = useTeamMembers(actualTeamId);
   const { updateProject } = useProjectMutations();
@@ -255,7 +329,10 @@ export function TeamProjects() {
 
   // Calculate issue stats per project
   const projectStats = useMemo(() => {
-    const stats: Record<string, { total: number; done: number; percentage: number }> = {};
+    const stats: Record<
+      string,
+      { total: number; done: number; percentage: number }
+    > = {};
 
     // Initialize all projects with zero counts
     projects.forEach((project) => {
@@ -275,7 +352,8 @@ export function TeamProjects() {
     // Calculate percentages
     Object.keys(stats).forEach((projectId) => {
       const { total, done } = stats[projectId];
-      stats[projectId].percentage = total > 0 ? Math.round((done / total) * 100) : 0;
+      stats[projectId].percentage =
+        total > 0 ? Math.round((done / total) * 100) : 0;
     });
 
     return stats;
@@ -296,7 +374,10 @@ export function TeamProjects() {
   };
 
   // Handler for column resize
-  const handleColumnResize = (column: keyof typeof DEFAULT_COLUMN_WIDTHS, width: number) => {
+  const handleColumnResize = (
+    column: keyof typeof DEFAULT_COLUMN_WIDTHS,
+    width: number
+  ) => {
     setColumnWidths((prev) => ({ ...prev, [column]: width }));
   };
 
@@ -326,7 +407,11 @@ export function TeamProjects() {
   };
 
   // Inline update handler for dropdowns
-  const handleFieldChange = (project: Project, field: 'health' | 'priority' | 'lead_id' | 'target_date', value: number | string | null) => {
+  const handleFieldChange = (
+    project: Project,
+    field: 'health' | 'priority' | 'lead_id' | 'target_date',
+    value: number | string | null
+  ) => {
     updateProject.mutate({
       projectId: project.id,
       data: {
@@ -335,9 +420,13 @@ export function TeamProjects() {
         dev_script_working_dir: null,
         default_agent_working_dir: null,
         priority: field === 'priority' ? (value as number) : project.priority,
-        lead_id: field === 'lead_id' ? (value as string | null) : project.lead_id,
+        lead_id:
+          field === 'lead_id' ? (value as string | null) : project.lead_id,
         start_date: project.start_date,
-        target_date: field === 'target_date' ? (value as string | null) : project.target_date,
+        target_date:
+          field === 'target_date'
+            ? (value as string | null)
+            : project.target_date,
         status: project.status,
         health: field === 'health' ? (value as number) : project.health,
         description: project.description,
@@ -376,7 +465,9 @@ export function TeamProjects() {
             onClick={() => refetch()}
             disabled={isFetching}
           >
-            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`}
+            />
           </Button>
           <Button size="sm" onClick={handleCreateProject}>
             <Plus className="h-4 w-4 mr-1" />
@@ -476,7 +567,11 @@ export function TeamProjects() {
                     onClick={() => !isEditing && handleProjectClick(project)}
                   >
                     {/* Name */}
-                    <TableCell className="font-medium" bordered style={{ width: columnWidths.name }}>
+                    <TableCell
+                      className="font-medium"
+                      bordered
+                      style={{ width: columnWidths.name }}
+                    >
                       <EditableNameCell
                         project={project}
                         isEditing={isEditing}
@@ -487,7 +582,11 @@ export function TeamProjects() {
                     </TableCell>
 
                     {/* Health */}
-                    <TableCell onClick={(e) => e.stopPropagation()} bordered style={{ width: columnWidths.health }}>
+                    <TableCell
+                      onClick={(e) => e.stopPropagation()}
+                      bordered
+                      style={{ width: columnWidths.health }}
+                    >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -496,8 +595,12 @@ export function TeamProjects() {
                             className="h-7 gap-1 text-xs"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <Circle className={`h-2 w-2 fill-current ${health.color}`} />
-                            <span className="hidden sm:inline">{health.label}</span>
+                            <Circle
+                              className={`h-2 w-2 fill-current ${health.color}`}
+                            />
+                            <span className="hidden sm:inline">
+                              {health.label}
+                            </span>
                             <ChevronDown className="h-3 w-3 opacity-50" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -505,9 +608,17 @@ export function TeamProjects() {
                           {HEALTH_OPTIONS.map((option) => (
                             <DropdownMenuItem
                               key={option.value}
-                              onClick={() => handleFieldChange(project, 'health', option.value)}
+                              onClick={() =>
+                                handleFieldChange(
+                                  project,
+                                  'health',
+                                  option.value
+                                )
+                              }
                             >
-                              <Circle className={`h-2 w-2 mr-2 fill-current ${option.color}`} />
+                              <Circle
+                                className={`h-2 w-2 mr-2 fill-current ${option.color}`}
+                              />
                               {option.label}
                             </DropdownMenuItem>
                           ))}
@@ -516,7 +627,11 @@ export function TeamProjects() {
                     </TableCell>
 
                     {/* Priority */}
-                    <TableCell onClick={(e) => e.stopPropagation()} bordered style={{ width: columnWidths.priority }}>
+                    <TableCell
+                      onClick={(e) => e.stopPropagation()}
+                      bordered
+                      style={{ width: columnWidths.priority }}
+                    >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -526,7 +641,9 @@ export function TeamProjects() {
                             onClick={(e) => e.stopPropagation()}
                           >
                             <span>{priority.icon}</span>
-                            <span className="hidden sm:inline">{priority.label}</span>
+                            <span className="hidden sm:inline">
+                              {priority.label}
+                            </span>
                             <ChevronDown className="h-3 w-3 opacity-50" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -534,7 +651,13 @@ export function TeamProjects() {
                           {PRIORITY_OPTIONS.map((option) => (
                             <DropdownMenuItem
                               key={option.value}
-                              onClick={() => handleFieldChange(project, 'priority', option.value)}
+                              onClick={() =>
+                                handleFieldChange(
+                                  project,
+                                  'priority',
+                                  option.value
+                                )
+                              }
                             >
                               <span className="mr-2">{option.icon}</span>
                               {option.label}
@@ -545,32 +668,48 @@ export function TeamProjects() {
                     </TableCell>
 
                     {/* Lead */}
-                    <TableCell onClick={(e) => e.stopPropagation()} bordered style={{ width: columnWidths.lead }}>
+                    <TableCell
+                      onClick={(e) => e.stopPropagation()}
+                      bordered
+                      style={{ width: columnWidths.lead }}
+                    >
                       <LeadCell
                         leadId={project.lead_id}
                         members={members}
-                        onSelect={(id) => handleFieldChange(project, 'lead_id', id)}
+                        onSelect={(id) =>
+                          handleFieldChange(project, 'lead_id', id)
+                        }
                       />
                     </TableCell>
 
                     {/* Target date */}
-                    <TableCell onClick={(e) => e.stopPropagation()} bordered style={{ width: columnWidths.targetDate }}>
+                    <TableCell
+                      onClick={(e) => e.stopPropagation()}
+                      bordered
+                      style={{ width: columnWidths.targetDate }}
+                    >
                       <TargetDateCell
                         targetDate={project.target_date}
-                        onSelect={(date) => handleFieldChange(project, 'target_date', date)}
+                        onSelect={(date) =>
+                          handleFieldChange(project, 'target_date', date)
+                        }
                       />
                     </TableCell>
 
                     {/* Status - Completion Percentage */}
                     <TableCell style={{ width: columnWidths.status }}>
                       <div className="flex items-center gap-2">
-                        <ProgressCircle percentage={projectStats[project.id]?.percentage || 0} />
-                        <span className={cn(
-                          'text-sm font-medium',
-                          projectStats[project.id]?.percentage === 100
-                            ? 'text-green-500'
-                            : 'text-muted-foreground'
-                        )}>
+                        <ProgressCircle
+                          percentage={projectStats[project.id]?.percentage || 0}
+                        />
+                        <span
+                          className={cn(
+                            'text-sm font-medium',
+                            projectStats[project.id]?.percentage === 100
+                              ? 'text-green-500'
+                              : 'text-muted-foreground'
+                          )}
+                        >
                           {projectStats[project.id]?.percentage || 0}%
                         </span>
                       </div>

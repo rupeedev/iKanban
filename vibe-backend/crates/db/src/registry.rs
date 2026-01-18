@@ -4,20 +4,19 @@
 //! This enables multi-tenant database isolation where each team
 //! has their own SQLite database file.
 
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Pool, Postgres, PgPool, postgres::PgConnectOptions};
-use std::str::FromStr;
+use sqlx::{FromRow, PgPool, Pool, Postgres, postgres::PgConnectOptions};
 
 /// Registry entry for a team's database
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct TeamRegistry {
-    pub id: String,           // Team UUID
-    pub slug: String,         // Unique slug for DB naming (e.g., "acme-corp")
-    pub name: String,         // Display name
-    pub db_path: String,      // Local path: team-{slug}.sqlite
+    pub id: String,               // Team UUID
+    pub slug: String,             // Unique slug for DB naming (e.g., "acme-corp")
+    pub name: String,             // Display name
+    pub db_path: String,          // Local path: team-{slug}.sqlite
     pub turso_db: Option<String>, // Cloud DB: vibe-kanban-{slug}
     pub created_at: DateTime<Utc>,
     pub last_synced_at: Option<DateTime<Utc>>,
@@ -45,7 +44,7 @@ impl RegistryService {
         tracing::info!("Initializing team registry connection");
 
         let options = PgConnectOptions::from_str(&database_url)?;
-       
+
         let pool = PgPool::connect_with(options).await?;
 
         // Create registry table if not exists
@@ -79,7 +78,7 @@ impl RegistryService {
     pub fn get_team_db_path(slug: &str) -> PathBuf {
         PathBuf::from(format!("team-{}.sqlite", slug)) // Dummy
     }
-    
+
     // ... (Other legacy file checks omitted or stubbed if necessary) ...
 
     /// Register a new team
@@ -100,70 +99,60 @@ impl RegistryService {
         .execute(&self.pool)
         .await?;
 
-        self.find_by_id(&input.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.find_by_id(&input.id)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)
     }
 
     /// Find a team by ID
     pub async fn find_by_id(&self, id: &str) -> Result<Option<TeamRegistry>, sqlx::Error> {
-        sqlx::query_as::<_, TeamRegistry>(
-            "SELECT * FROM team_registry WHERE id = $1",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await
+        sqlx::query_as::<_, TeamRegistry>("SELECT * FROM team_registry WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
     }
 
     /// Find a team by slug
     pub async fn find_by_slug(&self, slug: &str) -> Result<Option<TeamRegistry>, sqlx::Error> {
-        sqlx::query_as::<_, TeamRegistry>(
-            "SELECT * FROM team_registry WHERE slug = $1",
-        )
-        .bind(slug)
-        .fetch_optional(&self.pool)
-        .await
+        sqlx::query_as::<_, TeamRegistry>("SELECT * FROM team_registry WHERE slug = $1")
+            .bind(slug)
+            .fetch_optional(&self.pool)
+            .await
     }
 
     /// Get all registered teams
     pub async fn find_all(&self) -> Result<Vec<TeamRegistry>, sqlx::Error> {
-        sqlx::query_as::<_, TeamRegistry>(
-            "SELECT * FROM team_registry ORDER BY created_at DESC",
-        )
-        .fetch_all(&self.pool)
-        .await
+        sqlx::query_as::<_, TeamRegistry>("SELECT * FROM team_registry ORDER BY created_at DESC")
+            .fetch_all(&self.pool)
+            .await
     }
 
     /// Update last synced timestamp
     pub async fn update_last_synced(&self, id: &str) -> Result<(), sqlx::Error> {
-        sqlx::query(
-            "UPDATE team_registry SET last_synced_at = NOW() WHERE id = $1",
-        )
-        .bind(id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("UPDATE team_registry SET last_synced_at = NOW() WHERE id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
     /// Update team name
     pub async fn update_name(&self, id: &str, name: &str) -> Result<(), sqlx::Error> {
-        sqlx::query(
-            "UPDATE team_registry SET name = $1 WHERE id = $2",
-        )
-        .bind(name)
-        .bind(id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("UPDATE team_registry SET name = $1 WHERE id = $2")
+            .bind(name)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
     /// Update Turso database name for a team
     pub async fn update_turso_db(&self, id: &str, turso_db: &str) -> Result<(), sqlx::Error> {
-        sqlx::query(
-            "UPDATE team_registry SET turso_db = $1 WHERE id = $2",
-        )
-        .bind(turso_db)
-        .bind(id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("UPDATE team_registry SET turso_db = $1 WHERE id = $2")
+            .bind(turso_db)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -199,14 +188,18 @@ impl RegistryService {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::TempDir;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_registry_crud() {
         // Use temp directory for test
         let temp_dir = TempDir::new().unwrap();
-        std::env::set_var("VK_ASSET_DIR", temp_dir.path().to_string_lossy().to_string());
+        std::env::set_var(
+            "VK_ASSET_DIR",
+            temp_dir.path().to_string_lossy().to_string(),
+        );
 
         let registry = RegistryService::new().await.unwrap();
 

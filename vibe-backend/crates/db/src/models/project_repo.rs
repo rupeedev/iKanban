@@ -80,10 +80,7 @@ impl ProjectRepo {
         .await
     }
 
-    pub async fn find_by_repo_id(
-        pool: &PgPool,
-        repo_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn find_by_repo_id(pool: &PgPool, repo_id: Uuid) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             ProjectRepo,
             r#"SELECT id as "id!: Uuid",

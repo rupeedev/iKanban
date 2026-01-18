@@ -83,10 +83,7 @@ impl InboxItem {
     }
 
     /// Find all unread inbox items
-    pub async fn find_unread(
-        pool: &PgPool,
-        limit: Option<i64>,
-    ) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn find_unread(pool: &PgPool, limit: Option<i64>) -> Result<Vec<Self>, sqlx::Error> {
         let limit = limit.unwrap_or(100);
         sqlx::query_as!(
             InboxItem,

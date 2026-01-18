@@ -25,12 +25,23 @@ import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus } from 'shared/types';
 
 // Status configuration
-const STATUS_CONFIG: Record<string, { icon: typeof Circle; label: string; color: string }> = {
+const STATUS_CONFIG: Record<
+  string,
+  { icon: typeof Circle; label: string; color: string }
+> = {
   todo: { icon: Circle, label: 'Todo', color: 'text-muted-foreground' },
-  inprogress: { icon: PlayCircle, label: 'In Progress', color: 'text-yellow-500' },
+  inprogress: {
+    icon: PlayCircle,
+    label: 'In Progress',
+    color: 'text-yellow-500',
+  },
   inreview: { icon: CircleDot, label: 'In Review', color: 'text-blue-500' },
   done: { icon: CheckCircle2, label: 'Done', color: 'text-green-500' },
-  cancelled: { icon: XCircle, label: 'Cancelled', color: 'text-muted-foreground' },
+  cancelled: {
+    icon: XCircle,
+    label: 'Cancelled',
+    color: 'text-muted-foreground',
+  },
 };
 
 function EmptyState() {
@@ -42,7 +53,12 @@ function EmptyState() {
         {/* Icon */}
         <div className="mb-6 flex justify-center">
           <div className="w-24 h-24 text-muted-foreground/30">
-            <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg
+              viewBox="0 0 100 100"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
               {/* Layered boxes icon similar to Linear */}
               <rect x="20" y="35" width="40" height="30" rx="2" />
               <rect x="30" y="25" width="40" height="30" rx="2" />
@@ -59,14 +75,20 @@ function EmptyState() {
 
         {/* Description */}
         <p className="text-muted-foreground text-sm mb-2">
-          Create custom views using filters to show only the issues you want to see.
-          You can save, share, and favorite these views for easy access and faster team collaboration.
+          Create custom views using filters to show only the issues you want to
+          see. You can save, share, and favorite these views for easy access and
+          faster team collaboration.
         </p>
         <p className="text-muted-foreground text-sm mb-6">
           You can also save any existing view by clicking the{' '}
           <Filter className="inline w-3.5 h-3.5" /> icon or by pressing{' '}
-          <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">Cmd</kbd>{' '}
-          <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">V</kbd>.
+          <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">
+            Cmd
+          </kbd>{' '}
+          <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">
+            V
+          </kbd>
+          .
         </p>
 
         {/* Actions */}
@@ -109,12 +131,15 @@ function IssueRow({ issue, projectName }: IssueRowProps) {
   };
 
   // Get short identifier from issue
-  const shortId = (issue as { identifier?: string }).identifier || issue.id.slice(0, 8);
+  const shortId =
+    (issue as { identifier?: string }).identifier || issue.id.slice(0, 8);
 
   return (
     <div
       className="group flex items-center gap-3 px-4 py-2 hover:bg-muted/50 cursor-pointer border-b border-border/50 last:border-b-0"
-      onClick={() => navigate(`/projects/${issue.project_id}/tasks/${issue.id}`)}
+      onClick={() =>
+        navigate(`/projects/${issue.project_id}/tasks/${issue.id}`)
+      }
     >
       {/* More menu */}
       <button className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground">
@@ -157,7 +182,12 @@ interface StatusGroupProps {
   defaultExpanded?: boolean;
 }
 
-function StatusGroup({ status, issues, projectNamesById, defaultExpanded = true }: StatusGroupProps) {
+function StatusGroup({
+  status,
+  issues,
+  projectNamesById,
+  defaultExpanded = true,
+}: StatusGroupProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.todo;
   const StatusIcon = statusConfig.icon;

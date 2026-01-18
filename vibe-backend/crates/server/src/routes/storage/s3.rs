@@ -3,9 +3,9 @@
 //! API endpoints for AWS S3 configuration and operations.
 
 use axum::{
+    Json,
     extract::{Query, State},
     response::Response,
-    Json,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -57,7 +57,11 @@ pub async fn validate(
     State(_deployment): State<DeploymentImpl>,
     Json(req): Json<S3ConfigRequest>,
 ) -> Result<Json<ValidateResponse>, Response> {
-    tracing::info!("Validating S3 config for team: {}, bucket: {}", req.team_id, req.bucket);
+    tracing::info!(
+        "Validating S3 config for team: {}, bucket: {}",
+        req.team_id,
+        req.bucket
+    );
 
     // Validate required fields
     if req.bucket.is_empty() {
@@ -90,11 +94,23 @@ pub async fn validate(
 
     // Validate region format
     let valid_regions = [
-        "us-east-1", "us-east-2", "us-west-1", "us-west-2",
-        "eu-west-1", "eu-west-2", "eu-west-3", "eu-central-1", "eu-north-1",
-        "ap-northeast-1", "ap-northeast-2", "ap-northeast-3",
-        "ap-southeast-1", "ap-southeast-2",
-        "ap-south-1", "sa-east-1", "ca-central-1",
+        "us-east-1",
+        "us-east-2",
+        "us-west-1",
+        "us-west-2",
+        "eu-west-1",
+        "eu-west-2",
+        "eu-west-3",
+        "eu-central-1",
+        "eu-north-1",
+        "ap-northeast-1",
+        "ap-northeast-2",
+        "ap-northeast-3",
+        "ap-southeast-1",
+        "ap-southeast-2",
+        "ap-south-1",
+        "sa-east-1",
+        "ca-central-1",
     ];
 
     if !valid_regions.contains(&req.region.as_str()) {
@@ -114,7 +130,11 @@ pub async fn configure(
     State(_deployment): State<DeploymentImpl>,
     Json(req): Json<S3ConfigRequest>,
 ) -> Result<Json<serde_json::Value>, Response> {
-    tracing::info!("Configuring S3 for team: {}, bucket: {}", req.team_id, req.bucket);
+    tracing::info!(
+        "Configuring S3 for team: {}, bucket: {}",
+        req.team_id,
+        req.bucket
+    );
 
     // TODO: Encrypt credentials
     // TODO: Store in team_storage_configs

@@ -1,8 +1,8 @@
+use std::{fmt, str::FromStr};
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
-use std::fmt;
-use std::str::FromStr;
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -274,10 +274,7 @@ impl TenantWorkspace {
     }
 
     /// Find a workspace by ID
-    pub async fn find_by_id(
-        pool: &PgPool,
-        id: Uuid,
-    ) -> Result<Option<Self>, TenantWorkspaceError> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Self>, TenantWorkspaceError> {
         let workspace = sqlx::query_as!(
             TenantWorkspaceRow,
             r#"SELECT id as "id!: Uuid",
@@ -329,7 +326,9 @@ impl TenantWorkspace {
         id: Uuid,
         data: &UpdateTenantWorkspace,
     ) -> Result<Self, TenantWorkspaceError> {
-        let existing = Self::find_by_id(pool, id).await?.ok_or(TenantWorkspaceError::NotFound)?;
+        let existing = Self::find_by_id(pool, id)
+            .await?
+            .ok_or(TenantWorkspaceError::NotFound)?;
 
         let name = data.name.as_ref().unwrap_or(&existing.name);
         let icon = data.icon.as_ref().or(existing.icon.as_ref());

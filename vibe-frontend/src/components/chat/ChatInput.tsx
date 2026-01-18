@@ -10,7 +10,11 @@ interface ChatInputProps {
   onSend?: (message: string) => void;
 }
 
-export function ChatInput({ className, disabled = false, onSend }: ChatInputProps) {
+export function ChatInput({
+  className,
+  disabled = false,
+  onSend,
+}: ChatInputProps) {
   const [message, setMessage] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -27,7 +31,10 @@ export function ChatInput({ className, disabled = false, onSend }: ChatInputProp
     : 'Type a message...';
 
   return (
-    <form onSubmit={handleSubmit} className={cn('px-4 py-3 border-t', className)}>
+    <form
+      onSubmit={handleSubmit}
+      className={cn('px-4 py-3 border-t', className)}
+    >
       <div className="flex gap-2">
         <Input
           type="text"

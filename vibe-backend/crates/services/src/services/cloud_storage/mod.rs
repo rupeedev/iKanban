@@ -5,10 +5,10 @@
 //! - AWS S3 (API credentials)
 //! - Dropbox (OAuth 2.0)
 
-pub mod google_drive;
-pub mod s3;
 pub mod dropbox;
 pub mod encryption;
+pub mod google_drive;
+pub mod s3;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -56,6 +56,7 @@ impl StorageProvider {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "google_drive" => Some(StorageProvider::GoogleDrive),
@@ -102,16 +103,15 @@ pub struct ConnectionStatus {
 }
 
 /// Generate a storage key/path for a file
-pub fn generate_storage_path(
-    team_id: Uuid,
-    folder_id: Option<Uuid>,
-    filename: &str,
-) -> String {
+pub fn generate_storage_path(team_id: Uuid, folder_id: Option<Uuid>, filename: &str) -> String {
     let file_uuid = Uuid::new_v4();
     let sanitized = sanitize_filename(filename);
 
     match folder_id {
-        Some(fid) => format!("teams/{}/folders/{}/{}_{}", team_id, fid, file_uuid, sanitized),
+        Some(fid) => format!(
+            "teams/{}/folders/{}/{}_{}",
+            team_id, fid, file_uuid, sanitized
+        ),
         None => format!("teams/{}/documents/{}_{}", team_id, file_uuid, sanitized),
     }
 }
@@ -139,9 +139,15 @@ mod tests {
 
     #[test]
     fn test_storage_provider_from_str() {
-        assert_eq!(StorageProvider::from_str("google_drive"), Some(StorageProvider::GoogleDrive));
+        assert_eq!(
+            StorageProvider::from_str("google_drive"),
+            Some(StorageProvider::GoogleDrive)
+        );
         assert_eq!(StorageProvider::from_str("s3"), Some(StorageProvider::S3));
-        assert_eq!(StorageProvider::from_str("dropbox"), Some(StorageProvider::Dropbox));
+        assert_eq!(
+            StorageProvider::from_str("dropbox"),
+            Some(StorageProvider::Dropbox)
+        );
         assert_eq!(StorageProvider::from_str("unknown"), None);
     }
 

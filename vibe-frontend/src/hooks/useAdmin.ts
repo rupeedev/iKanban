@@ -14,13 +14,20 @@ import {
 // Query keys factory
 export const adminKeys = {
   all: ['admin'] as const,
-  stats: (workspaceId: string) => [...adminKeys.all, 'stats', workspaceId] as const,
-  activity: (workspaceId: string) => [...adminKeys.all, 'activity', workspaceId] as const,
-  users: (workspaceId: string) => [...adminKeys.all, 'users', workspaceId] as const,
-  invitations: (workspaceId: string) => [...adminKeys.all, 'invitations', workspaceId] as const,
-  permissions: (workspaceId: string) => [...adminKeys.all, 'permissions', workspaceId] as const,
-  features: (workspaceId: string) => [...adminKeys.all, 'features', workspaceId] as const,
-  configuration: (workspaceId: string) => [...adminKeys.all, 'configuration', workspaceId] as const,
+  stats: (workspaceId: string) =>
+    [...adminKeys.all, 'stats', workspaceId] as const,
+  activity: (workspaceId: string) =>
+    [...adminKeys.all, 'activity', workspaceId] as const,
+  users: (workspaceId: string) =>
+    [...adminKeys.all, 'users', workspaceId] as const,
+  invitations: (workspaceId: string) =>
+    [...adminKeys.all, 'invitations', workspaceId] as const,
+  permissions: (workspaceId: string) =>
+    [...adminKeys.all, 'permissions', workspaceId] as const,
+  features: (workspaceId: string) =>
+    [...adminKeys.all, 'features', workspaceId] as const,
+  configuration: (workspaceId: string) =>
+    [...adminKeys.all, 'configuration', workspaceId] as const,
 };
 
 // Check if error is rate limit
@@ -88,8 +95,14 @@ export function useAdminUserMutations(workspaceId: string | undefined) {
     mutationFn: ({ userId, status }: { userId: string; status: string }) =>
       adminApi.updateUserStatus(workspaceId!, userId, status),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.users(workspaceId ?? ''), refetchType: 'none' });
-      queryClient.invalidateQueries({ queryKey: adminKeys.stats(workspaceId ?? ''), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.users(workspaceId ?? ''),
+        refetchType: 'none',
+      });
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.stats(workspaceId ?? ''),
+        refetchType: 'none',
+      });
     },
   });
 
@@ -97,15 +110,24 @@ export function useAdminUserMutations(workspaceId: string | undefined) {
     mutationFn: ({ userId, role }: { userId: string; role: string }) =>
       adminApi.updateUserRole(workspaceId!, userId, role),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.users(workspaceId ?? ''), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.users(workspaceId ?? ''),
+        refetchType: 'none',
+      });
     },
   });
 
   const removeUserMutation = useMutation({
     mutationFn: (userId: string) => adminApi.removeUser(workspaceId!, userId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.users(workspaceId ?? ''), refetchType: 'none' });
-      queryClient.invalidateQueries({ queryKey: adminKeys.stats(workspaceId ?? ''), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.users(workspaceId ?? ''),
+        refetchType: 'none',
+      });
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.stats(workspaceId ?? ''),
+        refetchType: 'none',
+      });
     },
   });
 
@@ -147,8 +169,14 @@ export function useAdminInvitationMutations(workspaceId: string | undefined) {
     mutationFn: (data: CreateInvitationRequest) =>
       adminApi.createInvitation(workspaceId!, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.invitations(workspaceId ?? ''), refetchType: 'none' });
-      queryClient.invalidateQueries({ queryKey: adminKeys.stats(workspaceId ?? ''), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.invitations(workspaceId ?? ''),
+        refetchType: 'none',
+      });
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.stats(workspaceId ?? ''),
+        refetchType: 'none',
+      });
     },
   });
 
@@ -156,7 +184,10 @@ export function useAdminInvitationMutations(workspaceId: string | undefined) {
     mutationFn: (invitationId: string) =>
       adminApi.resendInvitation(workspaceId!, invitationId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.invitations(workspaceId ?? ''), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.invitations(workspaceId ?? ''),
+        refetchType: 'none',
+      });
     },
   });
 
@@ -164,15 +195,24 @@ export function useAdminInvitationMutations(workspaceId: string | undefined) {
     mutationFn: (invitationId: string) =>
       adminApi.revokeInvitation(workspaceId!, invitationId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.invitations(workspaceId ?? ''), refetchType: 'none' });
-      queryClient.invalidateQueries({ queryKey: adminKeys.stats(workspaceId ?? ''), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.invitations(workspaceId ?? ''),
+        refetchType: 'none',
+      });
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.stats(workspaceId ?? ''),
+        refetchType: 'none',
+      });
     },
   });
 
   return {
-    createInvitation: (data: CreateInvitationRequest) => createMutation.mutateAsync(data),
-    resendInvitation: (invitationId: string) => resendMutation.mutateAsync(invitationId),
-    revokeInvitation: (invitationId: string) => revokeMutation.mutateAsync(invitationId),
+    createInvitation: (data: CreateInvitationRequest) =>
+      createMutation.mutateAsync(data),
+    resendInvitation: (invitationId: string) =>
+      resendMutation.mutateAsync(invitationId),
+    revokeInvitation: (invitationId: string) =>
+      revokeMutation.mutateAsync(invitationId),
     isCreating: createMutation.isPending,
     isResending: resendMutation.isPending,
     isRevoking: revokeMutation.isPending,
@@ -217,18 +257,36 @@ export function useAdminPermissionMutations(workspaceId: string | undefined) {
   const queryClient = useQueryClient();
 
   const updatePermissionMutation = useMutation({
-    mutationFn: ({ permissionId, role, enabled }: { permissionId: string; role: string; enabled: boolean }) =>
-      adminApi.updatePermission(workspaceId!, permissionId, role, enabled),
+    mutationFn: ({
+      permissionId,
+      role,
+      enabled,
+    }: {
+      permissionId: string;
+      role: string;
+      enabled: boolean;
+    }) => adminApi.updatePermission(workspaceId!, permissionId, role, enabled),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.permissions(workspaceId ?? ''), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.permissions(workspaceId ?? ''),
+        refetchType: 'none',
+      });
     },
   });
 
   const updateFeatureMutation = useMutation({
-    mutationFn: ({ featureId, enabled }: { featureId: string; enabled: boolean }) =>
-      adminApi.updateFeature(workspaceId!, featureId, enabled),
+    mutationFn: ({
+      featureId,
+      enabled,
+    }: {
+      featureId: string;
+      enabled: boolean;
+    }) => adminApi.updateFeature(workspaceId!, featureId, enabled),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.features(workspaceId ?? ''), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.features(workspaceId ?? ''),
+        refetchType: 'none',
+      });
     },
   });
 
@@ -261,19 +319,25 @@ export function useAdminConfiguration(workspaceId: string | undefined) {
   });
 }
 
-export function useAdminConfigurationMutations(workspaceId: string | undefined) {
+export function useAdminConfigurationMutations(
+  workspaceId: string | undefined
+) {
   const queryClient = useQueryClient();
 
   const updateMutation = useMutation({
     mutationFn: (config: AdminConfiguration) =>
       adminApi.updateConfiguration(workspaceId!, config),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.configuration(workspaceId ?? ''), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.configuration(workspaceId ?? ''),
+        refetchType: 'none',
+      });
     },
   });
 
   return {
-    updateConfiguration: (config: AdminConfiguration) => updateMutation.mutateAsync(config),
+    updateConfiguration: (config: AdminConfiguration) =>
+      updateMutation.mutateAsync(config),
     isUpdating: updateMutation.isPending,
   };
 }

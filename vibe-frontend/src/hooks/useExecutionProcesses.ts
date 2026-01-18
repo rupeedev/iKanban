@@ -50,12 +50,13 @@ export const useExecutionProcesses = (
     []
   );
 
-  const { data, isConnected, error } = useJsonPatchWsStream<ExecutionProcessState>(
-    endpoint,
-    !!taskAttemptId && !!token,
-    initialData,
-    { token }
-  );
+  const { data, isConnected, error } =
+    useJsonPatchWsStream<ExecutionProcessState>(
+      endpoint,
+      !!taskAttemptId && !!token,
+      initialData,
+      { token }
+    );
 
   const executionProcessesById = data?.execution_processes ?? {};
   const executionProcesses = Object.values(executionProcessesById).sort(

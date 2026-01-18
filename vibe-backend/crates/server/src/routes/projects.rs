@@ -55,7 +55,8 @@ pub async fn get_projects(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ListProjectsQuery>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Project>>>, ApiError> {
-    let projects = Project::find_all_with_workspace_filter(&deployment.db().pool, query.workspace_id).await?;
+    let projects =
+        Project::find_all_with_workspace_filter(&deployment.db().pool, query.workspace_id).await?;
     Ok(ResponseJson(ApiResponse::success(projects)))
 }
 
@@ -256,9 +257,9 @@ pub async fn create_project(
         Err(ProjectServiceError::DuplicateRepositoryName) => Ok(ResponseJson(ApiResponse::error(
             "Duplicate repository name provided",
         ))),
-        Err(ProjectServiceError::DuplicateProjectName) => {
-            Err(ApiError::Conflict("A project with this name already exists".to_string()))
-        }
+        Err(ProjectServiceError::DuplicateProjectName) => Err(ApiError::Conflict(
+            "A project with this name already exists".to_string(),
+        )),
         Err(ProjectServiceError::PathNotFound(_)) => Ok(ResponseJson(ApiResponse::error(
             "The specified path does not exist",
         ))),

@@ -77,355 +77,397 @@ function generateSlug(name: string): string {
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
-    .replace(/\s+/g, '-')         // Replace spaces with dashes
-    .replace(/-+/g, '-')          // Replace multiple dashes with single dash
-    .slice(0, 50);                // Limit length
+    .replace(/\s+/g, '-') // Replace spaces with dashes
+    .replace(/-+/g, '-') // Replace multiple dashes with single dash
+    .slice(0, 50); // Limit length
 }
 
-const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(({ editTeam }) => {
-  const modal = useModal();
-  const { createTeam, updateTeam, deleteTeam, teams } = useTeams();
-  const isEditing = !!editTeam;
+const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(
+  ({ editTeam }) => {
+    const modal = useModal();
+    const { createTeam, updateTeam, deleteTeam, teams } = useTeams();
+    const isEditing = !!editTeam;
 
-  const [name, setName] = useState(editTeam?.name || '');
-  const [icon, setIcon] = useState<string | null>(editTeam?.icon || null);
-  const [identifier, setIdentifier] = useState('');
-  const [identifierManuallySet, setIdentifierManuallySet] = useState(false);
-  const [slug, setSlug] = useState(editTeam?.slug || '');
-  const [slugManuallySet, setSlugManuallySet] = useState(!!editTeam?.slug);
-  const [parentTeamId, setParentTeamId] = useState<string>('none');
-  const [timezone, setTimezone] = useState<string>('UTC');
-  const [isPrivate, setIsPrivate] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+    const [name, setName] = useState(editTeam?.name || '');
+    const [icon, setIcon] = useState<string | null>(editTeam?.icon || null);
+    const [identifier, setIdentifier] = useState('');
+    const [identifierManuallySet, setIdentifierManuallySet] = useState(false);
+    const [slug, setSlug] = useState(editTeam?.slug || '');
+    const [slugManuallySet, setSlugManuallySet] = useState(!!editTeam?.slug);
+    const [parentTeamId, setParentTeamId] = useState<string>('none');
+    const [timezone, setTimezone] = useState<string>('UTC');
+    const [isPrivate, setIsPrivate] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-  // Storage provider state
-  const [storageProvider, setStorageProvider] = useState<StorageProvider | null>(null);
-  const [storageConfig, setStorageConfig] = useState<StorageConfig>({});
+    // Storage provider state
+    const [storageProvider, setStorageProvider] =
+      useState<StorageProvider | null>(null);
+    const [storageConfig, setStorageConfig] = useState<StorageConfig>({});
 
-  // Initialize storage provider from existing team data
-  useEffect(() => {
-    if (editTeam?.document_storage_path) {
-      setStorageProvider('local');
-      setStorageConfig({ path: editTeam.document_storage_path });
-    }
-  }, [editTeam]);
-
-  // Auto-generate identifier from name (only for new teams)
-  useEffect(() => {
-    if (!identifierManuallySet && !isEditing) {
-      setIdentifier(generateIdentifier(name));
-    }
-  }, [name, identifierManuallySet, isEditing]);
-
-  // Auto-generate slug from name (only for new teams)
-  useEffect(() => {
-    if (!slugManuallySet && !isEditing) {
-      setSlug(generateSlug(name));
-    }
-  }, [name, slugManuallySet, isEditing]);
-
-  const handleSlugChange = (value: string) => {
-    // Allow only lowercase alphanumeric and dashes
-    const sanitized = value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 50);
-    setSlug(sanitized);
-    setSlugManuallySet(true);
-  };
-
-  const handleIdentifierChange = (value: string) => {
-    setIdentifier(value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6));
-    setIdentifierManuallySet(true);
-  };
-
-  // Get document storage path based on provider selection
-  const getDocumentStoragePath = (): string | null => {
-    if (storageProvider === 'local' && storageConfig.path?.trim()) {
-      return storageConfig.path.trim();
-    }
-    return null;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!name.trim()) {
-      setError('Team name is required');
-      return;
-    }
-
-    if (!isEditing && !slug.trim()) {
-      setError('Database slug is required');
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      setError(null);
-
-      if (isEditing && editTeam) {
-        await updateTeam(editTeam.id, {
-          name: name.trim(),
-          identifier: null, // Keep existing identifier (auto-generated if null)
-          icon: icon,
-          color: editTeam.color,
-          document_storage_path: getDocumentStoragePath(),
-        });
-      } else {
-        await createTeam({
-          name: name.trim(),
-          slug: slug.trim(),
-          identifier: null, // Auto-generated from name on backend
-          icon: icon,
-          color: null,
-          tenant_workspace_id: null, // Injected by useTeams hook
-        });
+    // Initialize storage provider from existing team data
+    useEffect(() => {
+      if (editTeam?.document_storage_path) {
+        setStorageProvider('local');
+        setStorageConfig({ path: editTeam.document_storage_path });
       }
-      modal.resolve('saved' as TeamFormDialogResult);
-      modal.hide();
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : isEditing ? 'Failed to update team' : 'Failed to create team';
-      // Check for duplicate slug error and provide user-friendly message
-      if (errorMessage.includes('idx_teams_slug') || errorMessage.includes('duplicate key')) {
-        setError('A team with this database slug already exists. Please choose a different slug.');
-      } else {
-        setError(errorMessage);
+    }, [editTeam]);
+
+    // Auto-generate identifier from name (only for new teams)
+    useEffect(() => {
+      if (!identifierManuallySet && !isEditing) {
+        setIdentifier(generateIdentifier(name));
       }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    }, [name, identifierManuallySet, isEditing]);
 
-  const handleDelete = async () => {
-    if (!editTeam) return;
+    // Auto-generate slug from name (only for new teams)
+    useEffect(() => {
+      if (!slugManuallySet && !isEditing) {
+        setSlug(generateSlug(name));
+      }
+    }, [name, slugManuallySet, isEditing]);
 
-    try {
-      setIsDeleting(true);
-      setError(null);
-      await deleteTeam(editTeam.id);
-      modal.resolve('deleted' as TeamFormDialogResult);
-      modal.hide();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete team');
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteConfirm(false);
-    }
-  };
+    const handleSlugChange = (value: string) => {
+      // Allow only lowercase alphanumeric and dashes
+      const sanitized = value
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '')
+        .slice(0, 50);
+      setSlug(sanitized);
+      setSlugManuallySet(true);
+    };
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      modal.resolve('canceled' as TeamFormDialogResult);
-      modal.hide();
-    }
-  };
+    const handleIdentifierChange = (value: string) => {
+      setIdentifier(
+        value
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, '')
+          .slice(0, 6)
+      );
+      setIdentifierManuallySet(true);
+    };
 
-  return (
-    <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>{isEditing ? 'Edit team' : 'Create team'}</DialogTitle>
-            <DialogDescription>
-              {isEditing
-                ? 'Update your team settings and information.'
-                : 'Create a new team to organize your projects and collaborate with members.'}
-            </DialogDescription>
-          </DialogHeader>
+    // Get document storage path based on provider selection
+    const getDocumentStoragePath = (): string | null => {
+      if (storageProvider === 'local' && storageConfig.path?.trim()) {
+        return storageConfig.path.trim();
+      }
+      return null;
+    };
 
-          <div className="py-6 space-y-5">
-            {/* Team Icon and Name Row */}
-            <div className="flex gap-4">
-              <div className="space-y-2">
-                <Label>Team icon</Label>
-                <EmojiPicker value={icon} onChange={setIcon} />
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+
+      if (!name.trim()) {
+        setError('Team name is required');
+        return;
+      }
+
+      if (!isEditing && !slug.trim()) {
+        setError('Database slug is required');
+        return;
+      }
+
+      try {
+        setIsSubmitting(true);
+        setError(null);
+
+        if (isEditing && editTeam) {
+          await updateTeam(editTeam.id, {
+            name: name.trim(),
+            identifier: null, // Keep existing identifier (auto-generated if null)
+            icon: icon,
+            color: editTeam.color,
+            document_storage_path: getDocumentStoragePath(),
+          });
+        } else {
+          await createTeam({
+            name: name.trim(),
+            slug: slug.trim(),
+            identifier: null, // Auto-generated from name on backend
+            icon: icon,
+            color: null,
+            tenant_workspace_id: null, // Injected by useTeams hook
+          });
+        }
+        modal.resolve('saved' as TeamFormDialogResult);
+        modal.hide();
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : isEditing
+              ? 'Failed to update team'
+              : 'Failed to create team';
+        // Check for duplicate slug error and provide user-friendly message
+        if (
+          errorMessage.includes('idx_teams_slug') ||
+          errorMessage.includes('duplicate key')
+        ) {
+          setError(
+            'A team with this database slug already exists. Please choose a different slug.'
+          );
+        } else {
+          setError(errorMessage);
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    const handleDelete = async () => {
+      if (!editTeam) return;
+
+      try {
+        setIsDeleting(true);
+        setError(null);
+        await deleteTeam(editTeam.id);
+        modal.resolve('deleted' as TeamFormDialogResult);
+        modal.hide();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to delete team');
+      } finally {
+        setIsDeleting(false);
+        setShowDeleteConfirm(false);
+      }
+    };
+
+    const handleOpenChange = (open: boolean) => {
+      if (!open) {
+        modal.resolve('canceled' as TeamFormDialogResult);
+        modal.hide();
+      }
+    };
+
+    return (
+      <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-[480px]">
+          <form onSubmit={handleSubmit}>
+            <DialogHeader>
+              <DialogTitle>
+                {isEditing ? 'Edit team' : 'Create team'}
+              </DialogTitle>
+              <DialogDescription>
+                {isEditing
+                  ? 'Update your team settings and information.'
+                  : 'Create a new team to organize your projects and collaborate with members.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-6 space-y-5">
+              {/* Team Icon and Name Row */}
+              <div className="flex gap-4">
+                <div className="space-y-2">
+                  <Label>Team icon</Label>
+                  <EmojiPicker value={icon} onChange={setIcon} />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="team-name">Team name</Label>
+                  <Input
+                    id="team-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g., Engineering"
+                    autoFocus
+                    disabled={isSubmitting}
+                    className="h-10"
+                  />
+                </div>
               </div>
-              <div className="flex-1 space-y-2">
-                <Label htmlFor="team-name">Team name</Label>
-                <Input
-                  id="team-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., Engineering"
-                  autoFocus
-                  disabled={isSubmitting}
-                  className="h-10"
-                />
-              </div>
-            </div>
 
-            {/* Identifier */}
-            <div className="space-y-2">
-              <Label htmlFor="identifier">
-                Identifier
-                <span className="ml-1 text-xs text-muted-foreground">
-                  (used for issue IDs, e.g., {identifier || 'ENG'}-123)
-                </span>
-              </Label>
-              <Input
-                id="identifier"
-                value={identifier}
-                onChange={(e) => handleIdentifierChange(e.target.value)}
-                placeholder="ENG"
-                disabled={isSubmitting}
-                maxLength={6}
-                className="h-10 w-32 font-mono uppercase"
-              />
-            </div>
-
-            {/* Database Slug (only for new teams) */}
-            {!isEditing && (
+              {/* Identifier */}
               <div className="space-y-2">
-                <Label htmlFor="slug">
-                  Database slug
+                <Label htmlFor="identifier">
+                  Identifier
                   <span className="ml-1 text-xs text-muted-foreground">
-                    (unique identifier for database: team-{slug || 'acme-corp'}.sqlite)
+                    (used for issue IDs, e.g., {identifier || 'ENG'}-123)
                   </span>
                 </Label>
                 <Input
-                  id="slug"
-                  value={slug}
-                  onChange={(e) => handleSlugChange(e.target.value)}
-                  placeholder="acme-corp"
+                  id="identifier"
+                  value={identifier}
+                  onChange={(e) => handleIdentifierChange(e.target.value)}
+                  placeholder="ENG"
                   disabled={isSubmitting}
-                  maxLength={50}
-                  className="h-10 font-mono lowercase"
+                  maxLength={6}
+                  className="h-10 w-32 font-mono uppercase"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Lowercase letters, numbers, and dashes only. Cannot be changed after creation.
-                </p>
               </div>
-            )}
 
-            {/* Parent Team */}
-            <div className="space-y-2">
-              <Label htmlFor="parent-team">Parent team</Label>
-              <Select value={parentTeamId} onValueChange={setParentTeamId} disabled={isSubmitting}>
-                <SelectTrigger id="parent-team" className="h-10">
-                  <SelectValue placeholder="No parent team" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No parent team</SelectItem>
-                  {teams.map((team) => (
-                    <SelectItem key={team.id} value={team.id}>
-                      {team.icon && <span className="mr-2">{team.icon}</span>}
-                      {team.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Timezone */}
-            <div className="space-y-2">
-              <Label htmlFor="timezone">Timezone</Label>
-              <Select value={timezone} onValueChange={setTimezone} disabled={isSubmitting}>
-                <SelectTrigger id="timezone" className="h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIMEZONES.map((tz) => (
-                    <SelectItem key={tz.value} value={tz.value}>
-                      {tz.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Private Team Toggle */}
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="flex items-center gap-3">
-                <Lock className="h-4 w-4 text-muted-foreground" />
-                <div className="space-y-0.5">
-                  <Label htmlFor="private-team" className="cursor-pointer">
-                    Make team private
+              {/* Database Slug (only for new teams) */}
+              {!isEditing && (
+                <div className="space-y-2">
+                  <Label htmlFor="slug">
+                    Database slug
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      (unique identifier for database: team-
+                      {slug || 'acme-corp'}.sqlite)
+                    </span>
                   </Label>
+                  <Input
+                    id="slug"
+                    value={slug}
+                    onChange={(e) => handleSlugChange(e.target.value)}
+                    placeholder="acme-corp"
+                    disabled={isSubmitting}
+                    maxLength={50}
+                    className="h-10 font-mono lowercase"
+                  />
                   <p className="text-xs text-muted-foreground">
-                    Only team members can see private team issues
+                    Lowercase letters, numbers, and dashes only. Cannot be
+                    changed after creation.
                   </p>
                 </div>
+              )}
+
+              {/* Parent Team */}
+              <div className="space-y-2">
+                <Label htmlFor="parent-team">Parent team</Label>
+                <Select
+                  value={parentTeamId}
+                  onValueChange={setParentTeamId}
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger id="parent-team" className="h-10">
+                    <SelectValue placeholder="No parent team" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No parent team</SelectItem>
+                    {teams.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.icon && <span className="mr-2">{team.icon}</span>}
+                        {team.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <Switch
-                id="private-team"
-                checked={isPrivate}
-                onCheckedChange={setIsPrivate}
-                disabled={isSubmitting}
-              />
+
+              {/* Timezone */}
+              <div className="space-y-2">
+                <Label htmlFor="timezone">Timezone</Label>
+                <Select
+                  value={timezone}
+                  onValueChange={setTimezone}
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger id="timezone" className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIMEZONES.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Private Team Toggle */}
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="flex items-center gap-3">
+                  <Lock className="h-4 w-4 text-muted-foreground" />
+                  <div className="space-y-0.5">
+                    <Label htmlFor="private-team" className="cursor-pointer">
+                      Make team private
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Only team members can see private team issues
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="private-team"
+                  checked={isPrivate}
+                  onCheckedChange={setIsPrivate}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              {/* Document Storage (Edit mode only) */}
+              {isEditing && (
+                <StorageProviderConfig
+                  provider={storageProvider}
+                  config={storageConfig}
+                  onProviderChange={setStorageProvider}
+                  onConfigChange={setStorageConfig}
+                  disabled={isSubmitting}
+                />
+              )}
+
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
             </div>
 
-            {/* Document Storage (Edit mode only) */}
-            {isEditing && (
-              <StorageProviderConfig
-                provider={storageProvider}
-                config={storageConfig}
-                onProviderChange={setStorageProvider}
-                onConfigChange={setStorageConfig}
-                disabled={isSubmitting}
-              />
-            )}
-
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-          </div>
-
-          <DialogFooter className="flex justify-between">
-            <div>
-              {isEditing && !showDeleteConfirm && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  disabled={isSubmitting || isDeleting}
-                >
-                  Delete team
-                </Button>
-              )}
-              {showDeleteConfirm && (
-                <div className="flex gap-2">
+            <DialogFooter className="flex justify-between">
+              <div>
+                {isEditing && !showDeleteConfirm && (
                   <Button
                     type="button"
                     variant="destructive"
-                    onClick={handleDelete}
-                    disabled={isDeleting}
+                    onClick={() => setShowDeleteConfirm(true)}
+                    disabled={isSubmitting || isDeleting}
                   >
-                    {isDeleting ? 'Deleting...' : 'Confirm delete'}
+                    Delete team
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowDeleteConfirm(false)}
-                    disabled={isDeleting}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleOpenChange(false)}
-                disabled={isSubmitting || isDeleting}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting || isDeleting || !name.trim()}>
-                {isSubmitting ? (isEditing ? 'Saving...' : 'Creating...') : (isEditing ? 'Save changes' : 'Create team')}
-              </Button>
-            </div>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-});
+                )}
+                {showDeleteConfirm && (
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? 'Deleting...' : 'Confirm delete'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowDeleteConfirm(false)}
+                      disabled={isDeleting}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleOpenChange(false)}
+                  disabled={isSubmitting || isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting || isDeleting || !name.trim()}
+                >
+                  {isSubmitting
+                    ? isEditing
+                      ? 'Saving...'
+                      : 'Creating...'
+                    : isEditing
+                      ? 'Save changes'
+                      : 'Create team'}
+                </Button>
+              </div>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+);
 
 export const TeamFormDialog = defineModal<
   TeamFormDialogProps,

@@ -252,7 +252,11 @@ impl ChatMessage {
     }
 
     /// Soft delete a message (only by sender)
-    pub async fn soft_delete(pool: &PgPool, id: Uuid, sender_id: &str) -> Result<bool, sqlx::Error> {
+    pub async fn soft_delete(
+        pool: &PgPool,
+        id: Uuid,
+        sender_id: &str,
+    ) -> Result<bool, sqlx::Error> {
         let result = sqlx::query!(
             "UPDATE chat_messages SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND sender_id = $2 AND deleted_at IS NULL",
             id,

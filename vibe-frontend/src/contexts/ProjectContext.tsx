@@ -36,7 +36,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
 
   // Resolve the project - handles both UUID and slug lookups
   const project = useMemo(
-    () => projectParam ? resolveProject(projectParam) : undefined,
+    () => (projectParam ? resolveProject(projectParam) : undefined),
     [projectParam, resolveProject]
   );
 

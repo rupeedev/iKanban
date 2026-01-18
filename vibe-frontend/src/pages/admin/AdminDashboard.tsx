@@ -1,4 +1,10 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,11 +33,19 @@ interface StatCardProps {
   isLoading?: boolean;
 }
 
-function StatCard({ title, value, icon: Icon, description, isLoading }: StatCardProps) {
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+  description,
+  isLoading,
+}: StatCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {title}
+        </CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
@@ -80,20 +94,46 @@ function formatRelativeTime(timestamp: string): string {
 function getActivityMessage(activity: AdminActivity) {
   switch (activity.activity_type) {
     case 'user_joined':
-      return <><span className="font-medium">{activity.user_email}</span> joined the workspace</>;
+      return (
+        <>
+          <span className="font-medium">{activity.user_email}</span> joined the
+          workspace
+        </>
+      );
     case 'invitation_sent':
-      return <><span className="font-medium">{activity.user_email || 'Admin'}</span> invited <span className="font-medium">{activity.target_email}</span></>;
+      return (
+        <>
+          <span className="font-medium">{activity.user_email || 'Admin'}</span>{' '}
+          invited <span className="font-medium">{activity.target_email}</span>
+        </>
+      );
     case 'role_changed':
       return (
         <>
-          <span className="font-medium">{activity.user_email}</span> role changed
+          <span className="font-medium">{activity.user_email}</span> role
+          changed
           {activity.from_role && activity.to_role && (
-            <> from <Badge variant="outline" className="mx-1">{activity.from_role}</Badge> to <Badge variant="outline" className="mx-1">{activity.to_role}</Badge></>
+            <>
+              {' '}
+              from{' '}
+              <Badge variant="outline" className="mx-1">
+                {activity.from_role}
+              </Badge>{' '}
+              to{' '}
+              <Badge variant="outline" className="mx-1">
+                {activity.to_role}
+              </Badge>
+            </>
           )}
         </>
       );
     case 'invitation_expired':
-      return <>Invitation to <span className="font-medium">{activity.target_email}</span> expired</>;
+      return (
+        <>
+          Invitation to{' '}
+          <span className="font-medium">{activity.target_email}</span> expired
+        </>
+      );
     default:
       return <span className="text-muted-foreground">Activity recorded</span>;
   }
@@ -117,8 +157,16 @@ function ActivitySkeleton() {
 
 export function AdminDashboard() {
   const { currentWorkspaceId } = useWorkspace();
-  const { data: stats, isLoading: statsLoading, error: statsError } = useAdminStats(currentWorkspaceId ?? undefined);
-  const { data: activities, isLoading: activitiesLoading, error: activitiesError } = useAdminActivity(currentWorkspaceId ?? undefined);
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    error: statsError,
+  } = useAdminStats(currentWorkspaceId ?? undefined);
+  const {
+    data: activities,
+    isLoading: activitiesLoading,
+    error: activitiesError,
+  } = useAdminActivity(currentWorkspaceId ?? undefined);
 
   return (
     <div className="space-y-6">
@@ -128,9 +176,13 @@ export function AdminDashboard() {
           <CardContent className="flex items-center gap-3 py-4">
             <AlertCircle className="h-5 w-5 text-destructive" />
             <div>
-              <p className="font-medium text-destructive">Failed to load admin data</p>
+              <p className="font-medium text-destructive">
+                Failed to load admin data
+              </p>
               <p className="text-sm text-muted-foreground">
-                {statsError?.message || activitiesError?.message || 'Please try again later'}
+                {statsError?.message ||
+                  activitiesError?.message ||
+                  'Please try again later'}
               </p>
             </div>
           </CardContent>
@@ -183,7 +235,9 @@ export function AdminDashboard() {
               <div className="space-y-4">
                 {activities.map((activity) => (
                   <div key={activity.id} className="flex items-start gap-3">
-                    <div className="mt-0.5">{getActivityIcon(activity.activity_type)}</div>
+                    <div className="mt-0.5">
+                      {getActivityIcon(activity.activity_type)}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm">{getActivityMessage(activity)}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
@@ -250,7 +304,12 @@ export function AdminDashboard() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <div className={cn('w-2 h-2 rounded-full', statsError ? 'bg-red-500' : 'bg-green-500')} />
+              <div
+                className={cn(
+                  'w-2 h-2 rounded-full',
+                  statsError ? 'bg-red-500' : 'bg-green-500'
+                )}
+              />
               <div>
                 <p className="text-sm font-medium">API Status</p>
                 <p className="text-xs text-muted-foreground">

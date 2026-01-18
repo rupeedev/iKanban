@@ -78,13 +78,16 @@ export function AiProviderKeysSettings() {
 
   // Add/Edit dialog state
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<AiProvider>('anthropic');
+  const [selectedProvider, setSelectedProvider] =
+    useState<AiProvider>('anthropic');
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Delete confirmation state
-  const [keyToDelete, setKeyToDelete] = useState<AiProviderKeyInfo | null>(null);
+  const [keyToDelete, setKeyToDelete] = useState<AiProviderKeyInfo | null>(
+    null
+  );
   const [deleting, setDeleting] = useState(false);
 
   // Test key state
@@ -156,9 +159,17 @@ export function AiProviderKeysSettings() {
       setError(null);
       const isValid = await aiProviderKeysApi.test(provider);
       if (isValid) {
-        setSuccess(t('settings.aiProviderKeys.testSuccess', { provider: PROVIDERS[provider as AiProvider]?.name || provider }));
+        setSuccess(
+          t('settings.aiProviderKeys.testSuccess', {
+            provider: PROVIDERS[provider as AiProvider]?.name || provider,
+          })
+        );
       } else {
-        setError(t('settings.aiProviderKeys.testFailed', { provider: PROVIDERS[provider as AiProvider]?.name || provider }));
+        setError(
+          t('settings.aiProviderKeys.testFailed', {
+            provider: PROVIDERS[provider as AiProvider]?.name || provider,
+          })
+        );
       }
       setTimeout(() => {
         setSuccess(null);
@@ -214,7 +225,9 @@ export function AiProviderKeysSettings() {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-muted-foreground">{t('settings.aiProviderKeys.loading')}</span>
+        <span className="ml-2 text-muted-foreground">
+          {t('settings.aiProviderKeys.loading')}
+        </span>
       </div>
     );
   }
@@ -260,7 +273,9 @@ export function AiProviderKeysSettings() {
             <div className="text-center py-8 text-muted-foreground">
               <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>{t('settings.aiProviderKeys.noKeys')}</p>
-              <p className="text-sm mt-1">{t('settings.aiProviderKeys.noKeysHint')}</p>
+              <p className="text-sm mt-1">
+                {t('settings.aiProviderKeys.noKeysHint')}
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -282,11 +297,13 @@ export function AiProviderKeysSettings() {
                           </code>
                         </span>
                         <span>
-                          {t('settings.aiProviderKeys.table.added')}: {formatDate(key.created_at)}
+                          {t('settings.aiProviderKeys.table.added')}:{' '}
+                          {formatDate(key.created_at)}
                         </span>
                         {key.last_validated_at && (
                           <span>
-                            {t('settings.aiProviderKeys.table.validated')}: {formatDate(key.last_validated_at)}
+                            {t('settings.aiProviderKeys.table.validated')}:{' '}
+                            {formatDate(key.last_validated_at)}
                           </span>
                         )}
                       </div>
@@ -345,7 +362,9 @@ export function AiProviderKeysSettings() {
       {/* Info Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{t('settings.aiProviderKeys.info.title')}</CardTitle>
+          <CardTitle className="text-base">
+            {t('settings.aiProviderKeys.info.title')}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
@@ -373,14 +392,18 @@ export function AiProviderKeysSettings() {
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('settings.aiProviderKeys.addDialog.title')}</DialogTitle>
+            <DialogTitle>
+              {t('settings.aiProviderKeys.addDialog.title')}
+            </DialogTitle>
             <DialogDescription>
               {t('settings.aiProviderKeys.addDialog.description')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="provider">{t('settings.aiProviderKeys.addDialog.providerLabel')}</Label>
+              <Label htmlFor="provider">
+                {t('settings.aiProviderKeys.addDialog.providerLabel')}
+              </Label>
               <Select
                 value={selectedProvider}
                 onValueChange={(v) => setSelectedProvider(v as AiProvider)}
@@ -389,18 +412,20 @@ export function AiProviderKeysSettings() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.entries(PROVIDERS) as [AiProvider, ProviderConfig][]).map(
-                    ([provider, config]) => (
-                      <SelectItem key={provider} value={provider}>
-                        {config.name}
-                      </SelectItem>
-                    )
-                  )}
+                  {(
+                    Object.entries(PROVIDERS) as [AiProvider, ProviderConfig][]
+                  ).map(([provider, config]) => (
+                    <SelectItem key={provider} value={provider}>
+                      {config.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="api-key">{t('settings.aiProviderKeys.addDialog.keyLabel')}</Label>
+              <Label htmlFor="api-key">
+                {t('settings.aiProviderKeys.addDialog.keyLabel')}
+              </Label>
               <div className="relative">
                 <Input
                   id="api-key"
@@ -422,7 +447,11 @@ export function AiProviderKeysSettings() {
                   className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
                   onClick={() => setShowApiKey(!showApiKey)}
                 >
-                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showApiKey ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -448,10 +477,14 @@ export function AiProviderKeysSettings() {
       <Dialog open={!!keyToDelete} onOpenChange={() => setKeyToDelete(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('settings.aiProviderKeys.deleteDialog.title')}</DialogTitle>
+            <DialogTitle>
+              {t('settings.aiProviderKeys.deleteDialog.title')}
+            </DialogTitle>
             <DialogDescription>
               {t('settings.aiProviderKeys.deleteDialog.description', {
-                provider: PROVIDERS[keyToDelete?.provider as AiProvider]?.name || keyToDelete?.provider,
+                provider:
+                  PROVIDERS[keyToDelete?.provider as AiProvider]?.name ||
+                  keyToDelete?.provider,
               })}
             </DialogDescription>
           </DialogHeader>
@@ -471,7 +504,9 @@ export function AiProviderKeysSettings() {
             </Button>
             <Button
               variant="destructive"
-              onClick={() => keyToDelete && handleDeleteKey(keyToDelete.provider)}
+              onClick={() =>
+                keyToDelete && handleDeleteKey(keyToDelete.provider)
+              }
               disabled={deleting}
             >
               {deleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

@@ -5,20 +5,15 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 /// Supported document file types
-#[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum DocumentFileType {
+    #[default]
     Markdown,
     Pdf,
     Txt,
     Csv,
     Xlsx,
-}
-
-impl Default for DocumentFileType {
-    fn default() -> Self {
-        Self::Markdown
-    }
 }
 
 impl std::fmt::Display for DocumentFileType {
@@ -182,10 +177,7 @@ pub struct UpdateDocument {
 }
 
 impl DocumentFolder {
-    pub async fn find_all_by_team(
-        pool: &PgPool,
-        team_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn find_all_by_team(pool: &PgPool, team_id: Uuid) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             DocumentFolder,
             r#"SELECT id as "id!: Uuid",
@@ -441,14 +433,18 @@ impl DocumentFolder {
         }
 
         // Create new folder
-        Self::create(pool, &CreateDocumentFolder {
-            team_id,
-            parent_id,
-            name: name.to_string(),
-            icon: None,
-            color: None,
-            local_path: None,
-        }).await
+        Self::create(
+            pool,
+            &CreateDocumentFolder {
+                team_id,
+                parent_id,
+                name: name.to_string(),
+                icon: None,
+                color: None,
+                local_path: None,
+            },
+        )
+        .await
     }
 }
 
@@ -706,7 +702,10 @@ impl Document {
 
     pub async fn create(pool: &PgPool, data: &CreateDocument) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
-        let file_type = data.file_type.clone().unwrap_or_else(|| "markdown".to_string());
+        let file_type = data
+            .file_type
+            .clone()
+            .unwrap_or_else(|| "markdown".to_string());
         let slug = generate_slug(&data.title);
 
         // Get max position for ordering
@@ -731,8 +730,11 @@ impl Document {
             .await?
         };
 
-        let storage_provider = data.storage_provider.clone().unwrap_or_else(|| "local".to_string());
-        
+        let storage_provider = data
+            .storage_provider
+            .clone()
+            .unwrap_or_else(|| "local".to_string());
+
         sqlx::query_as!(
             Document,
             r#"INSERT INTO documents (id, team_id, folder_id, title, slug, content, file_type, icon, position, file_path, file_size, mime_type, storage_provider, storage_key)
@@ -900,6 +902,7 @@ impl Document {
     }
 
     /// Update storage information for Supabase uploads
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_storage_info(
         pool: &PgPool,
         id: Uuid,

@@ -191,7 +191,9 @@ export function LinkDocumentsDialog({
               {Object.entries(documentsByFolder).map(([folderId, docs]) => {
                 if (docs.length === 0) return null;
                 const folderName =
-                  folderId === 'root' ? 'Root' : folderMap[folderId] || 'Folder';
+                  folderId === 'root'
+                    ? 'Root'
+                    : folderMap[folderId] || 'Folder';
 
                 return (
                   <div key={folderId}>

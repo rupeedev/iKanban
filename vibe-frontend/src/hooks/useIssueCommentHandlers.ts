@@ -59,7 +59,8 @@ export function useIssueCommentHandlers({
       return { id: null, name: 'Unknown', email: '' };
     }
     const userEmail = user.primaryEmailAddress?.emailAddress || '';
-    const userName = user.fullName || user.firstName || userEmail.split('@')[0] || 'Unknown';
+    const userName =
+      user.fullName || user.firstName || userEmail.split('@')[0] || 'Unknown';
     const matchingMember = members?.find((m) => m.email === userEmail);
     return {
       id: matchingMember?.id ?? null,
@@ -83,7 +84,8 @@ export function useIssueCommentHandlers({
       if (agent && cleanPrompt) {
         if (projectRepos.length === 0) {
           toast.info('Comment saved', {
-            description: 'AI agent requires a project with repositories configured.',
+            description:
+              'AI agent requires a project with repositories configured.',
           });
           return;
         }
@@ -146,7 +148,8 @@ export function useIssueCommentHandlers({
       if (agent && cleanPrompt) {
         if (projectRepos.length === 0) {
           toast.info('Issue closed', {
-            description: 'AI agent requires a project with repositories configured.',
+            description:
+              'AI agent requires a project with repositories configured.',
           });
           return;
         }

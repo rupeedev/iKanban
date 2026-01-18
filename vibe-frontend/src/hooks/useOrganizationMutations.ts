@@ -47,7 +47,10 @@ export function useOrganizationMutations(
       );
 
       // Then invalidate to ensure server data stays fresh
-      queryClient.invalidateQueries({ queryKey: ['user', 'organizations'], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['user', 'organizations'],
+        refetchType: 'none',
+      });
       options?.onCreateSuccess?.(result);
     },
     onError: (err) => {
@@ -116,7 +119,10 @@ export function useOrganizationMutations(
         refetchType: 'none',
       });
       // Invalidate user's organizations in case we removed ourselves
-      queryClient.invalidateQueries({ queryKey: ['user', 'organizations'], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['user', 'organizations'],
+        refetchType: 'none',
+      });
       options?.onRemoveSuccess?.();
     },
     onError: (err) => {
@@ -138,7 +144,10 @@ export function useOrganizationMutations(
         refetchType: 'none',
       });
       // Invalidate user's organizations in case we changed our own role
-      queryClient.invalidateQueries({ queryKey: ['user', 'organizations'], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['user', 'organizations'],
+        refetchType: 'none',
+      });
       options?.onRoleChangeSuccess?.();
     },
     onError: (err) => {
@@ -162,7 +171,10 @@ export function useOrganizationMutations(
   const deleteOrganization = useMutation({
     mutationFn: (orgId: string) => organizationsApi.deleteOrganization(orgId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user', 'organizations'], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['user', 'organizations'],
+        refetchType: 'none',
+      });
       options?.onDeleteSuccess?.();
     },
     onError: (err) => {

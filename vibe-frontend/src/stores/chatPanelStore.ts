@@ -20,5 +20,6 @@ export const useChatPanelStore = create<ExtendedChatPanelState>((set) => ({
   setActiveTeamId: (teamId) => set({ activeTeamId: teamId }),
   // Conversation context
   activeConversationId: null,
-  setActiveConversationId: (conversationId) => set({ activeConversationId: conversationId }),
+  setActiveConversationId: (conversationId) =>
+    set({ activeConversationId: conversationId }),
 }));

@@ -72,11 +72,26 @@ import { toast } from 'sonner';
 function getStatusBadge(status: string) {
   switch (status) {
     case 'active':
-      return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"><CheckCircle className="h-3 w-3 mr-1" />Active</Badge>;
+      return (
+        <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Active
+        </Badge>
+      );
     case 'suspended':
-      return <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"><Ban className="h-3 w-3 mr-1" />Suspended</Badge>;
+      return (
+        <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+          <Ban className="h-3 w-3 mr-1" />
+          Suspended
+        </Badge>
+      );
     case 'pending':
-      return <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+      return (
+        <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+          <Clock className="h-3 w-3 mr-1" />
+          Pending
+        </Badge>
+      );
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
@@ -99,13 +114,17 @@ function getRoleIcon(role: string) {
 
 function getRoleBadge(role: string) {
   const colors: Record<string, string> = {
-    owner: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-    admin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+    owner:
+      'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+    admin:
+      'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
     member: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     viewer: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
   };
   return (
-    <Badge className={cn('capitalize flex items-center gap-1', colors[role] || '')}>
+    <Badge
+      className={cn('capitalize flex items-center gap-1', colors[role] || '')}
+    >
       {getRoleIcon(role)}
       {role}
     </Badge>
@@ -114,7 +133,11 @@ function getRoleBadge(role: string) {
 
 function formatDate(dateString: string) {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function getAvatarColor(str: string): string {
@@ -141,7 +164,14 @@ interface UserDetailsDialogProps {
   isUpdating: boolean;
 }
 
-function UserDetailsDialog({ user, open, onClose, onUpdateStatus, onUpdateRole, isUpdating }: UserDetailsDialogProps) {
+function UserDetailsDialog({
+  user,
+  open,
+  onClose,
+  onUpdateStatus,
+  onUpdateRole,
+  isUpdating,
+}: UserDetailsDialogProps) {
   if (!user) return null;
 
   const displayName = user.display_name || user.email.split('@')[0];
@@ -151,7 +181,9 @@ function UserDetailsDialog({ user, open, onClose, onUpdateStatus, onUpdateRole, 
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>User Details</DialogTitle>
-          <DialogDescription>View and manage user information</DialogDescription>
+          <DialogDescription>
+            View and manage user information
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-6 py-4">
           {/* User header */}
@@ -191,7 +223,9 @@ function UserDetailsDialog({ user, open, onClose, onUpdateStatus, onUpdateRole, 
             <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-sm font-medium">{formatDate(user.joined_at)}</p>
+                <p className="text-sm font-medium">
+                  {formatDate(user.joined_at)}
+                </p>
                 <p className="text-xs text-muted-foreground">Joined</p>
               </div>
             </div>
@@ -207,7 +241,11 @@ function UserDetailsDialog({ user, open, onClose, onUpdateStatus, onUpdateRole, 
           {/* Role change */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Change Role</label>
-            <Select value={user.role} onValueChange={onUpdateRole} disabled={isUpdating || user.role === 'owner'}>
+            <Select
+              value={user.role}
+              onValueChange={onUpdateRole}
+              disabled={isUpdating || user.role === 'owner'}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -219,7 +257,9 @@ function UserDetailsDialog({ user, open, onClose, onUpdateStatus, onUpdateRole, 
               </SelectContent>
             </Select>
             {user.role === 'owner' && (
-              <p className="text-xs text-muted-foreground">Owner role cannot be changed</p>
+              <p className="text-xs text-muted-foreground">
+                Owner role cannot be changed
+              </p>
             )}
           </div>
 
@@ -236,7 +276,11 @@ function UserDetailsDialog({ user, open, onClose, onUpdateStatus, onUpdateRole, 
                 onClick={() => onUpdateStatus('suspended')}
                 disabled={isUpdating || user.role === 'owner'}
               >
-                {isUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Ban className="h-4 w-4 mr-2" />}
+                {isUpdating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Ban className="h-4 w-4 mr-2" />
+                )}
                 Suspend
               </Button>
             ) : (
@@ -246,7 +290,11 @@ function UserDetailsDialog({ user, open, onClose, onUpdateStatus, onUpdateRole, 
                 onClick={() => onUpdateStatus('active')}
                 disabled={isUpdating}
               >
-                {isUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                {isUpdating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
                 Activate
               </Button>
             )}
@@ -277,8 +325,19 @@ function TableSkeleton() {
 
 export function AdminUsers() {
   const { currentWorkspaceId } = useWorkspace();
-  const { data: users, isLoading, error } = useAdminUsers(currentWorkspaceId ?? undefined);
-  const { updateStatus, updateRole, removeUser, isUpdatingStatus, isUpdatingRole, isRemoving } = useAdminUserMutations(currentWorkspaceId ?? undefined);
+  const {
+    data: users,
+    isLoading,
+    error,
+  } = useAdminUsers(currentWorkspaceId ?? undefined);
+  const {
+    updateStatus,
+    updateRole,
+    removeUser,
+    isUpdatingStatus,
+    isUpdatingRole,
+    isRemoving,
+  } = useAdminUserMutations(currentWorkspaceId ?? undefined);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -292,7 +351,10 @@ export function AdminUsers() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const displayName = user.display_name || user.email;
-      if (!displayName.toLowerCase().includes(query) && !user.email.toLowerCase().includes(query)) {
+      if (
+        !displayName.toLowerCase().includes(query) &&
+        !user.email.toLowerCase().includes(query)
+      ) {
         return false;
       }
     }
@@ -320,7 +382,9 @@ export function AdminUsers() {
     if (!selectedUser) return;
     try {
       await updateStatus(selectedUser.id, status);
-      toast.success(`User ${status === 'active' ? 'activated' : 'suspended'} successfully`);
+      toast.success(
+        `User ${status === 'active' ? 'activated' : 'suspended'} successfully`
+      );
       closeUserDetails();
     } catch (err) {
       toast.error('Failed to update user status');
@@ -362,7 +426,9 @@ export function AdminUsers() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Users</h2>
-          <p className="text-sm text-muted-foreground">Manage workspace members</p>
+          <p className="text-sm text-muted-foreground">
+            Manage workspace members
+          </p>
         </div>
       </div>
 
@@ -372,7 +438,9 @@ export function AdminUsers() {
           <CardContent className="flex items-center gap-3 py-4">
             <AlertCircle className="h-5 w-5 text-destructive" />
             <div>
-              <p className="font-medium text-destructive">Failed to load users</p>
+              <p className="font-medium text-destructive">
+                Failed to load users
+              </p>
               <p className="text-sm text-muted-foreground">{error.message}</p>
             </div>
           </CardContent>
@@ -382,19 +450,31 @@ export function AdminUsers() {
       {/* Quick Stats */}
       <div className="grid gap-4 grid-cols-4">
         <Card className="p-4">
-          <div className="text-2xl font-bold">{isLoading ? <Skeleton className="h-8 w-12" /> : userCounts.total}</div>
+          <div className="text-2xl font-bold">
+            {isLoading ? <Skeleton className="h-8 w-12" /> : userCounts.total}
+          </div>
           <p className="text-sm text-muted-foreground">Total Users</p>
         </Card>
         <Card className="p-4">
-          <div className="text-2xl font-bold text-green-600">{isLoading ? <Skeleton className="h-8 w-12" /> : userCounts.active}</div>
+          <div className="text-2xl font-bold text-green-600">
+            {isLoading ? <Skeleton className="h-8 w-12" /> : userCounts.active}
+          </div>
           <p className="text-sm text-muted-foreground">Active</p>
         </Card>
         <Card className="p-4">
-          <div className="text-2xl font-bold text-red-600">{isLoading ? <Skeleton className="h-8 w-12" /> : userCounts.suspended}</div>
+          <div className="text-2xl font-bold text-red-600">
+            {isLoading ? (
+              <Skeleton className="h-8 w-12" />
+            ) : (
+              userCounts.suspended
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">Suspended</p>
         </Card>
         <Card className="p-4">
-          <div className="text-2xl font-bold text-yellow-600">{isLoading ? <Skeleton className="h-8 w-12" /> : userCounts.pending}</div>
+          <div className="text-2xl font-bold text-yellow-600">
+            {isLoading ? <Skeleton className="h-8 w-12" /> : userCounts.pending}
+          </div>
           <p className="text-sm text-muted-foreground">Pending</p>
         </Card>
       </div>
@@ -458,45 +538,69 @@ export function AdminUsers() {
             </TableHead>
             <TableBody>
               {filteredUsers.map((user) => {
-                const displayName = user.display_name || user.email.split('@')[0];
+                const displayName =
+                  user.display_name || user.email.split('@')[0];
                 return (
-                  <TableRow key={user.id} className="cursor-pointer" onClick={() => openUserDetails(user)}>
+                  <TableRow
+                    key={user.id}
+                    className="cursor-pointer"
+                    onClick={() => openUserDetails(user)}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar>
                           <AvatarImage src={user.avatar_url} />
-                          <AvatarFallback className={getAvatarColor(user.email)}>
+                          <AvatarFallback
+                            className={getAvatarColor(user.email)}
+                          >
                             {displayName.slice(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <div className="font-medium">{displayName}</div>
-                          <div className="text-sm text-muted-foreground">{user.email}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {user.email}
+                          </div>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>{getRoleBadge(user.role)}</TableCell>
                     <TableCell>{getStatusBadge(user.status)}</TableCell>
                     <TableCell>
-                      <span className="text-sm">{user.teams} team{user.teams !== 1 ? 's' : ''}</span>
+                      <span className="text-sm">
+                        {user.teams} team{user.teams !== 1 ? 's' : ''}
+                      </span>
                     </TableCell>
-                    <TableCell className="text-sm">{formatDate(user.joined_at)}</TableCell>
+                    <TableCell className="text-sm">
+                      {formatDate(user.joined_at)}
+                    </TableCell>
                     <TableCell>
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <DropdownMenuTrigger
+                          asChild
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openUserDetails(user)}>
+                          <DropdownMenuItem
+                            onClick={() => openUserDetails(user)}
+                          >
                             <Eye className="h-4 w-4 mr-2" />
                             View details
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => {
-                            setSelectedUser(user);
-                            setIsDialogOpen(true);
-                          }}>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setIsDialogOpen(true);
+                            }}
+                          >
                             <Pencil className="h-4 w-4 mr-2" />
                             Edit role
                           </DropdownMenuItem>
@@ -575,13 +679,19 @@ export function AdminUsers() {
       />
 
       {/* Remove User Confirmation */}
-      <AlertDialog open={!!userToRemove} onOpenChange={() => setUserToRemove(null)}>
+      <AlertDialog
+        open={!!userToRemove}
+        onOpenChange={() => setUserToRemove(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove User</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove <strong>{userToRemove?.display_name || userToRemove?.email}</strong> from this workspace?
-              This action cannot be undone.
+              Are you sure you want to remove{' '}
+              <strong>
+                {userToRemove?.display_name || userToRemove?.email}
+              </strong>{' '}
+              from this workspace? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -591,7 +701,9 @@ export function AdminUsers() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={isRemoving}
             >
-              {isRemoving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              {isRemoving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>

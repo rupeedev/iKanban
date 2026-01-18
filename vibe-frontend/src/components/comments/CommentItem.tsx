@@ -13,7 +13,11 @@ import type { TaskComment } from 'shared/types';
 
 interface CommentItemProps {
   comment: TaskComment;
-  onUpdate: (commentId: string, content: string, isInternal: boolean) => Promise<void>;
+  onUpdate: (
+    commentId: string,
+    content: string,
+    isInternal: boolean
+  ) => Promise<void>;
   onDelete: (commentId: string) => Promise<void>;
   isUpdating?: boolean;
   isDeleting?: boolean;
@@ -76,7 +80,8 @@ export function CommentItem({
     <div
       className={cn(
         'flex gap-3 p-3 rounded-lg',
-        comment.is_internal && 'bg-yellow-50/50 dark:bg-yellow-950/20 border border-yellow-200/50 dark:border-yellow-800/30'
+        comment.is_internal &&
+          'bg-yellow-50/50 dark:bg-yellow-950/20 border border-yellow-200/50 dark:border-yellow-800/30'
       )}
     >
       {/* Avatar */}
@@ -97,7 +102,9 @@ export function CommentItem({
         <div className="flex items-center justify-between gap-2 mb-1">
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm">{comment.author_name}</span>
-            <span className="text-xs text-muted-foreground">{formatDate(comment.created_at)}</span>
+            <span className="text-xs text-muted-foreground">
+              {formatDate(comment.created_at)}
+            </span>
             {comment.is_internal && (
               <span className="inline-flex items-center gap-1 text-xs text-yellow-600 dark:text-yellow-400 font-medium">
                 <Lock className="h-3 w-3" />
@@ -145,16 +152,31 @@ export function CommentItem({
               autoFocus
             />
             <div className="flex items-center gap-2">
-              <Button size="sm" onClick={handleSaveEdit} disabled={!editContent.trim() || isUpdating}>
-                {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+              <Button
+                size="sm"
+                onClick={handleSaveEdit}
+                disabled={!editContent.trim() || isUpdating}
+              >
+                {isUpdating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Save'
+                )}
               </Button>
-              <Button size="sm" variant="ghost" onClick={handleCancelEdit} disabled={isUpdating}>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleCancelEdit}
+                disabled={isUpdating}
+              >
                 Cancel
               </Button>
             </div>
           </div>
         ) : (
-          <div className="text-sm text-foreground whitespace-pre-wrap">{comment.content}</div>
+          <div className="text-sm text-foreground whitespace-pre-wrap">
+            {comment.content}
+          </div>
         )}
       </div>
     </div>

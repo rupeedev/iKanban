@@ -32,7 +32,10 @@ export class CircuitOpenError extends Error {
   }
 }
 
-type StateChangeCallback = (state: CircuitState, previousState: CircuitState) => void;
+type StateChangeCallback = (
+  state: CircuitState,
+  previousState: CircuitState
+) => void;
 
 export class CircuitBreaker {
   private state: CircuitState = 'closed';
@@ -97,7 +100,10 @@ export class CircuitBreaker {
     if (this.state === 'half-open') {
       // Failure in half-open immediately reopens
       this.transitionTo('open');
-    } else if (this.state === 'closed' && this.failureCount >= this.config.failureThreshold) {
+    } else if (
+      this.state === 'closed' &&
+      this.failureCount >= this.config.failureThreshold
+    ) {
       this.transitionTo('open');
     }
   }

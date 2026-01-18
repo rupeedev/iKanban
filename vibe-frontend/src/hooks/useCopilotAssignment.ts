@@ -7,7 +7,8 @@ import type { CopilotAssignment, CreateCopilotAssignment } from 'shared/types';
  */
 export const copilotAssignmentKeys = {
   all: ['copilot-assignments'] as const,
-  list: (taskId: string) => [...copilotAssignmentKeys.all, 'list', taskId] as const,
+  list: (taskId: string) =>
+    [...copilotAssignmentKeys.all, 'list', taskId] as const,
 };
 
 /**
@@ -51,7 +52,9 @@ export function useAssignToCopilot(options?: {
     },
     onSuccess: (assignment, { taskId }) => {
       // Invalidate the assignments list for this task
-      queryClient.invalidateQueries({ queryKey: copilotAssignmentKeys.list(taskId) });
+      queryClient.invalidateQueries({
+        queryKey: copilotAssignmentKeys.list(taskId),
+      });
       // Also invalidate task comments since a comment may have been created
       queryClient.invalidateQueries({ queryKey: ['task-comments', taskId] });
       options?.onSuccess?.(assignment);

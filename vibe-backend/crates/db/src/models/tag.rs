@@ -8,9 +8,7 @@ const DEFAULT_TAG_COLOR: &str = "#6B7280";
 
 /// Validates that a color string is a valid hex color (e.g., "#FF5733")
 fn is_valid_hex_color(color: &str) -> bool {
-    color.starts_with('#')
-        && color.len() == 7
-        && color[1..].chars().all(|c| c.is_ascii_hexdigit())
+    color.starts_with('#') && color.len() == 7 && color[1..].chars().all(|c| c.is_ascii_hexdigit())
 }
 
 /// Returns a valid hex color or the default if invalid
@@ -103,11 +101,7 @@ impl Tag {
         .await
     }
 
-    pub async fn update(
-        pool: &PgPool,
-        id: Uuid,
-        data: &UpdateTag,
-    ) -> Result<Self, sqlx::Error> {
+    pub async fn update(pool: &PgPool, id: Uuid, data: &UpdateTag) -> Result<Self, sqlx::Error> {
         let existing = Self::find_by_id(pool, id)
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;

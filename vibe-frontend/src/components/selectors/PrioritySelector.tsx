@@ -6,19 +6,55 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Circle, AlertCircle, Signal, SignalMedium, SignalLow } from 'lucide-react';
+import {
+  Circle,
+  AlertCircle,
+  Signal,
+  SignalMedium,
+  SignalLow,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Priority levels matching Linear's design
 export const PRIORITY_OPTIONS = [
-  { value: 0, label: 'No priority', icon: Circle, shortcut: '0', color: 'text-muted-foreground' },
-  { value: 1, label: 'Urgent', icon: AlertCircle, shortcut: '1', color: 'text-orange-500' },
-  { value: 2, label: 'High', icon: Signal, shortcut: '2', color: 'text-orange-400' },
-  { value: 3, label: 'Medium', icon: SignalMedium, shortcut: '3', color: 'text-yellow-500' },
-  { value: 4, label: 'Low', icon: SignalLow, shortcut: '4', color: 'text-blue-400' },
+  {
+    value: 0,
+    label: 'No priority',
+    icon: Circle,
+    shortcut: '0',
+    color: 'text-muted-foreground',
+  },
+  {
+    value: 1,
+    label: 'Urgent',
+    icon: AlertCircle,
+    shortcut: '1',
+    color: 'text-orange-500',
+  },
+  {
+    value: 2,
+    label: 'High',
+    icon: Signal,
+    shortcut: '2',
+    color: 'text-orange-400',
+  },
+  {
+    value: 3,
+    label: 'Medium',
+    icon: SignalMedium,
+    shortcut: '3',
+    color: 'text-yellow-500',
+  },
+  {
+    value: 4,
+    label: 'Low',
+    icon: SignalLow,
+    shortcut: '4',
+    color: 'text-blue-400',
+  },
 ] as const;
 
-export type PriorityValue = typeof PRIORITY_OPTIONS[number]['value'];
+export type PriorityValue = (typeof PRIORITY_OPTIONS)[number]['value'];
 
 interface PrioritySelectorProps {
   value: PriorityValue;
@@ -39,7 +75,8 @@ export function PrioritySelector({
 }: PrioritySelectorProps) {
   const [open, setOpen] = useState(false);
 
-  const selectedPriority = PRIORITY_OPTIONS.find((p) => p.value === value) || PRIORITY_OPTIONS[0];
+  const selectedPriority =
+    PRIORITY_OPTIONS.find((p) => p.value === value) || PRIORITY_OPTIONS[0];
   const PriorityIcon = selectedPriority.icon;
 
   // Handle keyboard shortcuts when dropdown is open
@@ -59,10 +96,13 @@ export function PrioritySelector({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, enableKeyboardShortcuts, onChange]);
 
-  const handleSelect = useCallback((newValue: PriorityValue) => {
-    onChange(newValue);
-    setOpen(false);
-  }, [onChange]);
+  const handleSelect = useCallback(
+    (newValue: PriorityValue) => {
+      onChange(newValue);
+      setOpen(false);
+    },
+    [onChange]
+  );
 
   const renderTrigger = () => {
     switch (variant) {
@@ -93,7 +133,11 @@ export function PrioritySelector({
             disabled={disabled}
           >
             <PriorityIcon className={cn('h-3 w-3', selectedPriority.color)} />
-            <span className={value !== 0 ? selectedPriority.color : 'text-muted-foreground'}>
+            <span
+              className={
+                value !== 0 ? selectedPriority.color : 'text-muted-foreground'
+              }
+            >
               {value !== 0 ? selectedPriority.label : 'Priority'}
             </span>
           </Button>
@@ -111,8 +155,12 @@ export function PrioritySelector({
             )}
             disabled={disabled}
           >
-            <PriorityIcon className={cn('h-3.5 w-3.5', selectedPriority.color)} />
-            {selectedPriority.label !== 'No priority' ? selectedPriority.label : 'Priority'}
+            <PriorityIcon
+              className={cn('h-3.5 w-3.5', selectedPriority.color)}
+            />
+            {selectedPriority.label !== 'No priority'
+              ? selectedPriority.label
+              : 'Priority'}
           </Button>
         );
     }
@@ -131,13 +179,18 @@ export function PrioritySelector({
             <DropdownMenuItem
               key={option.value}
               onClick={() => handleSelect(option.value)}
-              className={cn('justify-between cursor-pointer', isSelected && 'bg-accent')}
+              className={cn(
+                'justify-between cursor-pointer',
+                isSelected && 'bg-accent'
+              )}
             >
               <span className="flex items-center gap-2">
                 <Icon className={cn('h-4 w-4', option.color)} />
                 {option.label}
               </span>
-              <span className="text-xs text-muted-foreground font-mono">{option.shortcut}</span>
+              <span className="text-xs text-muted-foreground font-mono">
+                {option.shortcut}
+              </span>
             </DropdownMenuItem>
           );
         })}
@@ -157,9 +210,16 @@ export function usePriorityKeyboardShortcut(
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only trigger on 'P' key when not in an input/textarea
       const target = e.target as HTMLElement;
-      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+      const isInput =
+        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
-      if (!isInput && e.key.toLowerCase() === 'p' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (
+        !isInput &&
+        e.key.toLowerCase() === 'p' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey
+      ) {
         e.preventDefault();
         onOpen();
       }

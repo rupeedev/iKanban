@@ -6,7 +6,8 @@ import type { UserRegistration } from 'shared/types';
 export const registrationsKeys = {
   all: ['registrations'] as const,
   pending: () => [...registrationsKeys.all, 'pending'] as const,
-  list: (status?: string) => [...registrationsKeys.all, 'list', status] as const,
+  list: (status?: string) =>
+    [...registrationsKeys.all, 'list', status] as const,
 };
 
 export interface UseRegistrationsResult {
@@ -15,7 +16,10 @@ export interface UseRegistrationsResult {
   error: Error | null;
   refetch: () => Promise<void>;
   approveRegistration: (registrationId: string) => Promise<UserRegistration>;
-  rejectRegistration: (registrationId: string, reason?: string) => Promise<UserRegistration>;
+  rejectRegistration: (
+    registrationId: string,
+    reason?: string
+  ) => Promise<UserRegistration>;
   isApproving: boolean;
   isRejecting: boolean;
 }
@@ -26,7 +30,9 @@ export interface UseRegistrationsResult {
  * Fetches pending registrations and provides approve/reject mutations.
  * Only owners can approve/reject registrations.
  */
-export function useRegistrations(enabled: boolean = true): UseRegistrationsResult {
+export function useRegistrations(
+  enabled: boolean = true
+): UseRegistrationsResult {
   const queryClient = useQueryClient();
 
   // Query for pending registrations
@@ -41,33 +47,53 @@ export function useRegistrations(enabled: boolean = true): UseRegistrationsResul
 
   // Mutation for approving a registration
   const approveMutation = useMutation({
-    mutationFn: (registrationId: string) => registrationsApi.approve(registrationId),
+    mutationFn: (registrationId: string) =>
+      registrationsApi.approve(registrationId),
     onSuccess: () => {
       // Invalidate the pending list to refetch
-      queryClient.invalidateQueries({ queryKey: registrationsKeys.pending(), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: registrationsKeys.pending(),
+        refetchType: 'none',
+      });
     },
   });
 
   // Mutation for rejecting a registration
   const rejectMutation = useMutation({
-    mutationFn: ({ registrationId, reason }: { registrationId: string; reason?: string }) =>
-      registrationsApi.reject(registrationId, reason),
+    mutationFn: ({
+      registrationId,
+      reason,
+    }: {
+      registrationId: string;
+      reason?: string;
+    }) => registrationsApi.reject(registrationId, reason),
     onSuccess: () => {
       // Invalidate the pending list to refetch
-      queryClient.invalidateQueries({ queryKey: registrationsKeys.pending(), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: registrationsKeys.pending(),
+        refetchType: 'none',
+      });
     },
   });
 
-  const approveRegistration = async (registrationId: string): Promise<UserRegistration> => {
+  const approveRegistration = async (
+    registrationId: string
+  ): Promise<UserRegistration> => {
     return approveMutation.mutateAsync(registrationId);
   };
 
-  const rejectRegistration = async (registrationId: string, reason?: string): Promise<UserRegistration> => {
+  const rejectRegistration = async (
+    registrationId: string,
+    reason?: string
+  ): Promise<UserRegistration> => {
     return rejectMutation.mutateAsync({ registrationId, reason });
   };
 
   const refetch = async () => {
-    await queryClient.invalidateQueries({ queryKey: registrationsKeys.pending(), refetchType: 'none' });
+    await queryClient.invalidateQueries({
+      queryKey: registrationsKeys.pending(),
+      refetchType: 'none',
+    });
   };
 
   return {

@@ -32,7 +32,10 @@ interface WorkspaceContextValue {
 
   // Mutations
   createWorkspace: (data: CreateTenantWorkspace) => Promise<TenantWorkspace>;
-  updateWorkspace: (id: string, data: UpdateTenantWorkspace) => Promise<TenantWorkspace>;
+  updateWorkspace: (
+    id: string,
+    data: UpdateTenantWorkspace
+  ) => Promise<TenantWorkspace>;
   deleteWorkspace: (id: string) => Promise<void>;
   isCreating: boolean;
   isUpdating: boolean;
@@ -58,7 +61,9 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const [hasTriedEnsureDefault, setHasTriedEnsureDefault] = useState(false);
 
   // Get persisted workspace ID from localStorage
-  const [currentWorkspaceId, setCurrentWorkspaceIdState] = useState<string | null>(() => {
+  const [currentWorkspaceId, setCurrentWorkspaceIdState] = useState<
+    string | null
+  >(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem(CURRENT_WORKSPACE_KEY);
     }
@@ -101,7 +106,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     },
     onSuccess: () => {
       // Mark as stale but don't trigger immediate refetch to prevent 429 errors
-      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY, refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: WORKSPACES_QUERY_KEY,
+        refetchType: 'none',
+      });
     },
   });
 
@@ -118,7 +126,14 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       setHasTriedEnsureDefault(true);
       ensureDefaultMutation.mutate();
     }
-  }, [isLoading, hasTriedEnsureDefault, workspaces.length, userId, userEmail, ensureDefaultMutation]);
+  }, [
+    isLoading,
+    hasTriedEnsureDefault,
+    workspaces.length,
+    userId,
+    userEmail,
+    ensureDefaultMutation,
+  ]);
 
   // Auto-select first workspace if none selected
   useEffect(() => {
@@ -127,7 +142,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     }
     // If current workspace doesn't exist anymore, clear it
     if (!isLoading && currentWorkspaceId && workspaces.length > 0) {
-      const exists = workspaces.some(w => w.id === currentWorkspaceId);
+      const exists = workspaces.some((w) => w.id === currentWorkspaceId);
       if (!exists) {
         setCurrentWorkspaceId(workspaces[0]?.id || null);
       }
@@ -137,7 +152,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   // Get current workspace
   const currentWorkspace = useMemo(() => {
     if (!currentWorkspaceId) return null;
-    return workspaces.find(w => w.id === currentWorkspaceId) || null;
+    return workspaces.find((w) => w.id === currentWorkspaceId) || null;
   }, [workspaces, currentWorkspaceId]);
 
   // Create workspace mutation
@@ -147,7 +162,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       return tenantWorkspacesApi.create(data, userId, userEmail);
     },
     onSuccess: (newWorkspace) => {
-      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY, refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: WORKSPACES_QUERY_KEY,
+        refetchType: 'none',
+      });
       // Auto-switch to new workspace
       setCurrentWorkspaceId(newWorkspace.id);
     },
@@ -160,7 +178,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       return tenantWorkspacesApi.update(id, data, userId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY, refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: WORKSPACES_QUERY_KEY,
+        refetchType: 'none',
+      });
     },
   });
 
@@ -171,10 +192,13 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       return tenantWorkspacesApi.delete(id, userId);
     },
     onSuccess: (_, deletedId) => {
-      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY, refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: WORKSPACES_QUERY_KEY,
+        refetchType: 'none',
+      });
       // If deleted workspace was current, switch to another
       if (currentWorkspaceId === deletedId) {
-        const remaining = workspaces.filter(w => w.id !== deletedId);
+        const remaining = workspaces.filter((w) => w.id !== deletedId);
         setCurrentWorkspaceId(remaining[0]?.id || null);
       }
     },
@@ -187,7 +211,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   );
 
   const updateWorkspace = useCallback(
-    (id: string, data: UpdateTenantWorkspace) => updateMutation.mutateAsync({ id, data }),
+    (id: string, data: UpdateTenantWorkspace) =>
+      updateMutation.mutateAsync({ id, data }),
     [updateMutation]
   );
 

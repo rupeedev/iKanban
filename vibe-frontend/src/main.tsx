@@ -23,7 +23,7 @@ const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 if (!CLERK_PUBLISHABLE_KEY) {
   console.warn(
     'Clerk publishable key not set. Authentication will be disabled. ' +
-    'To enable, copy frontend/.env.local.example to frontend/.env.local and add your key.'
+      'To enable, copy frontend/.env.local.example to frontend/.env.local and add your key.'
   );
 }
 
@@ -71,7 +71,10 @@ if (
 // Helper to check if error is a rate limit (429)
 function isRateLimitError(error: unknown): boolean {
   if (error instanceof Error) {
-    return error.message.includes('429') || error.message.includes('Too Many Requests');
+    return (
+      error.message.includes('429') ||
+      error.message.includes('Too Many Requests')
+    );
   }
   return false;
 }

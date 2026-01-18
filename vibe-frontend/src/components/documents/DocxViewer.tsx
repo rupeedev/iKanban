@@ -14,7 +14,11 @@ interface DocxViewerProps {
   showOutline?: boolean;
 }
 
-export function DocxViewer({ fileUrl, className, showOutline = true }: DocxViewerProps) {
+export function DocxViewer({
+  fileUrl,
+  className,
+  showOutline = true,
+}: DocxViewerProps) {
   const [html, setHtml] = useState<string>('');
   const [headings, setHeadings] = useState<HeadingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,20 +62,27 @@ export function DocxViewer({ fileUrl, className, showOutline = true }: DocxViewe
         const doc = parser.parseFromString(result.value, 'text/html');
         const extractedHeadings: HeadingItem[] = [];
 
-        doc.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((heading, index) => {
-          const level = parseInt(heading.tagName[1]);
-          const text = heading.textContent || '';
-          const id = `docx-heading-${index}-${text.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50)}`;
+        doc
+          .querySelectorAll('h1, h2, h3, h4, h5, h6')
+          .forEach((heading, index) => {
+            const level = parseInt(heading.tagName[1]);
+            const text = heading.textContent || '';
+            const id = `docx-heading-${index}-${text
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .slice(0, 50)}`;
 
-          heading.id = id;
-          extractedHeadings.push({ id, text, level });
-        });
+            heading.id = id;
+            extractedHeadings.push({ id, text, level });
+          });
 
         setHeadings(extractedHeadings);
         setHtml(doc.body.innerHTML);
       } catch (err) {
         console.error('Failed to load DOCX:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load document');
+        setError(
+          err instanceof Error ? err.message : 'Failed to load document'
+        );
       } finally {
         setIsLoading(false);
       }
@@ -89,7 +100,9 @@ export function DocxViewer({ fileUrl, className, showOutline = true }: DocxViewe
 
   if (isLoading) {
     return (
-      <div className={`flex items-center justify-center h-full ${className || ''}`}>
+      <div
+        className={`flex items-center justify-center h-full ${className || ''}`}
+      >
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">Loading document...</p>
@@ -100,7 +113,9 @@ export function DocxViewer({ fileUrl, className, showOutline = true }: DocxViewe
 
   if (error) {
     return (
-      <div className={`flex items-center justify-center h-full ${className || ''}`}>
+      <div
+        className={`flex items-center justify-center h-full ${className || ''}`}
+      >
         <div className="text-center">
           <FileWarning className="h-12 w-12 text-destructive mx-auto mb-2" />
           <p className="text-sm text-destructive">{error}</p>
@@ -124,10 +139,13 @@ export function DocxViewer({ fileUrl, className, showOutline = true }: DocxViewe
                   key={heading.id}
                   onClick={() => scrollToHeading(heading.id)}
                   className={`block w-full text-left text-sm py-1 hover:text-primary transition-colors truncate ${
-                    heading.level === 1 ? 'font-medium' :
-                    heading.level === 2 ? 'pl-3' :
-                    heading.level === 3 ? 'pl-6 text-muted-foreground' :
-                    'pl-9 text-muted-foreground text-xs'
+                    heading.level === 1
+                      ? 'font-medium'
+                      : heading.level === 2
+                        ? 'pl-3'
+                        : heading.level === 3
+                          ? 'pl-6 text-muted-foreground'
+                          : 'pl-9 text-muted-foreground text-xs'
                   }`}
                 >
                   {heading.text}

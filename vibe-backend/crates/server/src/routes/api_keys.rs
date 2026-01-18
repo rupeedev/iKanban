@@ -1,21 +1,15 @@
 use axum::{
-    extract::Path,
+    Json, Router,
+    extract::{Path, State},
     response::Json as ResponseJson,
     routing::{delete, get, post},
-    Json, Router,
 };
 use db::models::api_key::{ApiKey, ApiKeyInfo, ApiKeyWithSecret, CreateApiKey};
+use deployment::Deployment;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{
-    error::ApiError,
-    middleware::auth::ClerkUser,
-    DeploymentImpl,
-};
-use axum::extract::State;
-use deployment::Deployment;
-
+use crate::{DeploymentImpl, error::ApiError, middleware::auth::ClerkUser};
 
 /// List all API keys for the current user
 pub async fn list_api_keys(

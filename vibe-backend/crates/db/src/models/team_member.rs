@@ -1,28 +1,24 @@
+use std::str::FromStr;
+
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
-use std::str::FromStr;
 use ts_rs::TS;
 use uuid::Uuid;
 
 /// Team member roles with increasing permissions
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum TeamMemberRole {
     /// Can view issues and documents
     Viewer,
     /// Can create/edit issues, comment, update status
+    #[default]
     Contributor,
     /// Can manage issues, docs, assign tasks
     Maintainer,
     /// Full control: manage roles, invite/remove members, team settings
     Owner,
-}
-
-impl Default for TeamMemberRole {
-    fn default() -> Self {
-        Self::Contributor
-    }
 }
 
 impl std::fmt::Display for TeamMemberRole {
@@ -51,19 +47,14 @@ impl FromStr for TeamMemberRole {
 }
 
 /// Invitation status
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum TeamInvitationStatus {
+    #[default]
     Pending,
     Accepted,
     Declined,
     Expired,
-}
-
-impl Default for TeamInvitationStatus {
-    fn default() -> Self {
-        Self::Pending
-    }
 }
 
 impl std::fmt::Display for TeamInvitationStatus {
@@ -603,10 +594,7 @@ impl TeamInvitation {
     }
 
     /// Get all invitations for a team (all statuses)
-    pub async fn find_all_by_team(
-        pool: &PgPool,
-        team_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn find_all_by_team(pool: &PgPool, team_id: Uuid) -> Result<Vec<Self>, sqlx::Error> {
         let rows = sqlx::query_as!(
             TeamInvitationRow,
             r#"SELECT id as "id!: Uuid",

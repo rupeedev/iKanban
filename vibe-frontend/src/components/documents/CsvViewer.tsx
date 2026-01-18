@@ -20,7 +20,9 @@ export function CsvViewer({ data, className, maxRows = 1000 }: CsvViewerProps) {
   const [sortColumn, setSortColumn] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [columnFilters, setColumnFilters] = useState<Record<number, string>>({});
+  const [columnFilters, setColumnFilters] = useState<Record<number, string>>(
+    {}
+  );
 
   // Filter rows based on search and column filters
   const filteredRows = useMemo(() => {
@@ -29,8 +31,8 @@ export function CsvViewer({ data, className, maxRows = 1000 }: CsvViewerProps) {
     // Global search
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      rows = rows.filter(row =>
-        row.some(cell => cell.toLowerCase().includes(query))
+      rows = rows.filter((row) =>
+        row.some((cell) => cell.toLowerCase().includes(query))
       );
     }
 
@@ -39,7 +41,7 @@ export function CsvViewer({ data, className, maxRows = 1000 }: CsvViewerProps) {
       if (filter.trim()) {
         const idx = parseInt(colIdx);
         const filterLower = filter.toLowerCase();
-        rows = rows.filter(row =>
+        rows = rows.filter((row) =>
           row[idx]?.toLowerCase().includes(filterLower)
         );
       }
@@ -92,7 +94,7 @@ export function CsvViewer({ data, className, maxRows = 1000 }: CsvViewerProps) {
   };
 
   const handleColumnFilter = (columnIndex: number, value: string) => {
-    setColumnFilters(prev => ({
+    setColumnFilters((prev) => ({
       ...prev,
       [columnIndex]: value,
     }));
@@ -105,7 +107,8 @@ export function CsvViewer({ data, className, maxRows = 1000 }: CsvViewerProps) {
     setSortDirection(null);
   };
 
-  const hasActiveFilters = searchQuery.trim() || Object.values(columnFilters).some(f => f.trim());
+  const hasActiveFilters =
+    searchQuery.trim() || Object.values(columnFilters).some((f) => f.trim());
 
   return (
     <div className={`flex flex-col h-full ${className || ''}`}>
@@ -145,7 +148,10 @@ export function CsvViewer({ data, className, maxRows = 1000 }: CsvViewerProps) {
                 #
               </th>
               {data.headers.map((header, idx) => (
-                <th key={idx} className="px-4 py-2 text-left font-medium border-b border-r min-w-[120px]">
+                <th
+                  key={idx}
+                  className="px-4 py-2 text-left font-medium border-b border-r min-w-[120px]"
+                >
                   <div className="space-y-2">
                     <button
                       onClick={() => handleSort(idx)}
@@ -202,7 +208,8 @@ export function CsvViewer({ data, className, maxRows = 1000 }: CsvViewerProps) {
       {/* Footer */}
       {hasMoreRows && (
         <div className="shrink-0 p-2 text-center text-xs text-muted-foreground bg-muted border-t">
-          Showing {displayedRows.length.toLocaleString()} of {sortedRows.length.toLocaleString()} rows
+          Showing {displayedRows.length.toLocaleString()} of{' '}
+          {sortedRows.length.toLocaleString()} rows
         </div>
       )}
     </div>

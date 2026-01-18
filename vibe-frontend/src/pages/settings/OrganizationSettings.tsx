@@ -70,20 +70,29 @@ export function OrganizationSettings() {
   const [repoSearchQuery, setRepoSearchQuery] = useState('');
 
   // Sync configuration state
-  const [repoToConfigureSync, setRepoToConfigureSync] = useState<GitHubRepository | null>(null);
-  const [selectedTeamIdForSync, setSelectedTeamIdForSync] = useState<string | null>(null);
-  const [folderSyncConfigs, setFolderSyncConfigs] = useState<Array<{
-    folderId: string;
-    folderName: string;
-    selected: boolean;
-    githubPath: string;
-  }>>([]);
+  const [repoToConfigureSync, setRepoToConfigureSync] =
+    useState<GitHubRepository | null>(null);
+  const [selectedTeamIdForSync, setSelectedTeamIdForSync] = useState<
+    string | null
+  >(null);
+  const [folderSyncConfigs, setFolderSyncConfigs] = useState<
+    Array<{
+      folderId: string;
+      folderName: string;
+      selected: boolean;
+      githubPath: string;
+    }>
+  >([]);
   const [isLoadingSyncConfigs, setIsLoadingSyncConfigs] = useState(false);
   const [isConfiguringSync, setIsConfiguringSync] = useState(false);
 
   // Bidirectional sync state
   const [syncingRepoId, setSyncingRepoId] = useState<string | null>(null);
-  const [syncResult, setSyncResult] = useState<{ repoId: string; pulled: number; pushed: number } | null>(null);
+  const [syncResult, setSyncResult] = useState<{
+    repoId: string;
+    pulled: number;
+    pushed: number;
+  } | null>(null);
 
   // GitHub integration hooks
   const {
@@ -108,10 +117,17 @@ export function OrganizationSettings() {
   const { teams } = useTeams();
 
   // Documents for selected team (for sync config)
-  const { folders: teamFolders, isLoading: isLoadingTeamFolders } = useDocuments(selectedTeamIdForSync || '');
+  const { folders: teamFolders, isLoading: isLoadingTeamFolders } =
+    useDocuments(selectedTeamIdForSync || '');
 
   // GitHub handlers
-  const handleLinkRepo = async (repo: { name: string; full_name: string; html_url: string; default_branch: string | null; private: boolean }) => {
+  const handleLinkRepo = async (repo: {
+    name: string;
+    full_name: string;
+    html_url: string;
+    default_branch: string | null;
+    private: boolean;
+  }) => {
     try {
       // Parse owner from full_name (e.g., "owner/repo")
       const [owner] = repo.full_name.split('/');
@@ -127,7 +143,9 @@ export function OrganizationSettings() {
       setSuccess(`Repository ${repo.name} linked successfully`);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to link repository');
+      setError(
+        err instanceof Error ? err.message : 'Failed to link repository'
+      );
     }
   };
 
@@ -139,7 +157,9 @@ export function OrganizationSettings() {
       setSuccess('Repository unlinked successfully');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to unlink repository');
+      setError(
+        err instanceof Error ? err.message : 'Failed to unlink repository'
+      );
     }
   };
 
@@ -162,13 +182,18 @@ export function OrganizationSettings() {
       let syncSucceeded = false;
       for (const team of teams) {
         try {
-          const result = await syncRepository.mutateAsync({ teamId: team.id, repoId });
+          const result = await syncRepository.mutateAsync({
+            teamId: team.id,
+            repoId,
+          });
           setSyncResult({
             repoId,
             pulled: result.pulled.files_synced,
-            pushed: result.pushed.files_synced
+            pushed: result.pushed.files_synced,
           });
-          setSuccess(`Sync complete: ${result.pulled.files_synced} pulled, ${result.pushed.files_synced} pushed`);
+          setSuccess(
+            `Sync complete: ${result.pulled.files_synced} pulled, ${result.pushed.files_synced} pushed`
+          );
           setTimeout(() => {
             setSuccess(null);
             setSyncResult(null);
@@ -229,10 +254,15 @@ export function OrganizationSettings() {
       }
 
       try {
-        const existingConfigs = await teamsApi.getSyncConfigs(selectedTeamIdForSync, repoToConfigureSync.id);
+        const existingConfigs = await teamsApi.getSyncConfigs(
+          selectedTeamIdForSync,
+          repoToConfigureSync.id
+        );
 
-        const configs = teamFolders.map(folder => {
-          const existing = existingConfigs.find(c => c.folder_id === folder.id);
+        const configs = teamFolders.map((folder) => {
+          const existing = existingConfigs.find(
+            (c) => c.folder_id === folder.id
+          );
           return {
             folderId: folder.id,
             folderName: folder.name,
@@ -245,41 +275,54 @@ export function OrganizationSettings() {
       } catch (err) {
         console.error('Failed to initialize folder configs:', err);
         // On error, still show the folders but without existing sync config
-        setFolderSyncConfigs(teamFolders.map(folder => ({
-          folderId: folder.id,
-          folderName: folder.name,
-          selected: false,
-          githubPath: '',
-        })));
+        setFolderSyncConfigs(
+          teamFolders.map((folder) => ({
+            folderId: folder.id,
+            folderName: folder.name,
+            selected: false,
+            githubPath: '',
+          }))
+        );
       } finally {
         setIsLoadingSyncConfigs(false);
       }
     };
 
     initializeFolderConfigs();
-  }, [selectedTeamIdForSync, teamFolders, repoToConfigureSync, isLoadingTeamFolders]);
+  }, [
+    selectedTeamIdForSync,
+    teamFolders,
+    repoToConfigureSync,
+    isLoadingTeamFolders,
+  ]);
 
   const toggleFolderSelection = (folderId: string) => {
-    setFolderSyncConfigs(prev => prev.map(f =>
-      f.folderId === folderId ? { ...f, selected: !f.selected } : f
-    ));
+    setFolderSyncConfigs((prev) =>
+      prev.map((f) =>
+        f.folderId === folderId ? { ...f, selected: !f.selected } : f
+      )
+    );
   };
 
   const toggleAllFolders = () => {
-    const allSelected = folderSyncConfigs.every(f => f.selected);
-    setFolderSyncConfigs(prev => prev.map(f => ({ ...f, selected: !allSelected })));
+    const allSelected = folderSyncConfigs.every((f) => f.selected);
+    setFolderSyncConfigs((prev) =>
+      prev.map((f) => ({ ...f, selected: !allSelected }))
+    );
   };
 
   const updateFolderGitHubPath = (folderId: string, path: string) => {
-    setFolderSyncConfigs(prev => prev.map(f =>
-      f.folderId === folderId ? { ...f, githubPath: path } : f
-    ));
+    setFolderSyncConfigs((prev) =>
+      prev.map((f) =>
+        f.folderId === folderId ? { ...f, githubPath: path } : f
+      )
+    );
   };
 
   const handleSaveSync = async () => {
     if (!repoToConfigureSync || !selectedTeamIdForSync) return;
 
-    const selectedFolders = folderSyncConfigs.filter(f => f.selected);
+    const selectedFolders = folderSyncConfigs.filter((f) => f.selected);
     if (selectedFolders.length === 0) {
       setError('Please select at least one folder to sync');
       return;
@@ -287,14 +330,20 @@ export function OrganizationSettings() {
 
     setIsConfiguringSync(true);
     try {
-      const folderConfigs: CreateRepoSyncConfig[] = selectedFolders.map(folder => ({
-        folder_id: folder.folderId,
-        github_path: folder.githubPath.trim() || null,
-      }));
+      const folderConfigs: CreateRepoSyncConfig[] = selectedFolders.map(
+        (folder) => ({
+          folder_id: folder.folderId,
+          github_path: folder.githubPath.trim() || null,
+        })
+      );
 
-      await teamsApi.configureMultiFolderSync(selectedTeamIdForSync, repoToConfigureSync.id, {
-        folder_configs: folderConfigs,
-      });
+      await teamsApi.configureMultiFolderSync(
+        selectedTeamIdForSync,
+        repoToConfigureSync.id,
+        {
+          folder_configs: folderConfigs,
+        }
+      );
 
       setRepoToConfigureSync(null);
       setSelectedTeamIdForSync(null);
@@ -341,7 +390,8 @@ export function OrganizationSettings() {
                 <div>
                   <CardTitle>Linked Repositories</CardTitle>
                   <CardDescription>
-                    Manage repositories linked to your workspace for document sync
+                    Manage repositories linked to your workspace for document
+                    sync
                   </CardDescription>
                 </div>
               </div>
@@ -351,7 +401,9 @@ export function OrganizationSettings() {
                 onClick={() => refetchGitHubConnection()}
                 disabled={loadingGitHubConnection}
               >
-                <RefreshCw className={`h-4 w-4 ${loadingGitHubConnection ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 ${loadingGitHubConnection ? 'animate-spin' : ''}`}
+                />
               </Button>
             </div>
           </CardHeader>
@@ -431,11 +483,7 @@ export function OrganizationSettings() {
                           </>
                         )}
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        asChild
-                      >
+                      <Button variant="ghost" size="sm" asChild>
                         <a
                           href={repo.repo_url}
                           target="_blank"
@@ -460,17 +508,20 @@ export function OrganizationSettings() {
         </Card>
       )}
 
-
       {/* Link Repository Dialog */}
-      <Dialog open={showLinkRepoDialog} onOpenChange={(open) => {
-        setShowLinkRepoDialog(open);
-        if (!open) setRepoSearchQuery('');
-      }}>
+      <Dialog
+        open={showLinkRepoDialog}
+        onOpenChange={(open) => {
+          setShowLinkRepoDialog(open);
+          if (!open) setRepoSearchQuery('');
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Link Repository</DialogTitle>
             <DialogDescription>
-              Select a repository to link. Linked repositories can be used for document sync across all teams.
+              Select a repository to link. Linked repositories can be used for
+              document sync across all teams.
             </DialogDescription>
           </DialogHeader>
           {/* Search Input */}
@@ -505,8 +556,12 @@ export function OrganizationSettings() {
                   .filter(
                     (repo) =>
                       !repoSearchQuery ||
-                      repo.full_name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
-                      repo.description?.toLowerCase().includes(repoSearchQuery.toLowerCase())
+                      repo.full_name
+                        .toLowerCase()
+                        .includes(repoSearchQuery.toLowerCase()) ||
+                      repo.description
+                        ?.toLowerCase()
+                        .includes(repoSearchQuery.toLowerCase())
                   );
 
                 if (filteredRepos.length === 0) {
@@ -561,14 +616,12 @@ export function OrganizationSettings() {
           <DialogHeader>
             <DialogTitle>Unlink Repository</DialogTitle>
             <DialogDescription>
-              Are you sure you want to unlink this repository? Teams using this repository for sync will need to be reconfigured.
+              Are you sure you want to unlink this repository? Teams using this
+              repository for sync will need to be reconfigured.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setRepoToUnlink(null)}
-            >
+            <Button variant="outline" onClick={() => setRepoToUnlink(null)}>
               Cancel
             </Button>
             <Button
@@ -604,7 +657,9 @@ export function OrganizationSettings() {
             </DialogTitle>
             <DialogDescription>
               Select a team and configure which folders sync with{' '}
-              <span className="font-medium">{repoToConfigureSync?.repo_full_name}</span>
+              <span className="font-medium">
+                {repoToConfigureSync?.repo_full_name}
+              </span>
             </DialogDescription>
           </DialogHeader>
 
@@ -650,7 +705,7 @@ export function OrganizationSettings() {
                       onClick={toggleAllFolders}
                       className="text-xs"
                     >
-                      {folderSyncConfigs.every(f => f.selected) ? (
+                      {folderSyncConfigs.every((f) => f.selected) ? (
                         <>
                           <CheckSquare className="h-3 w-3 mr-1" />
                           Deselect All
@@ -673,7 +728,9 @@ export function OrganizationSettings() {
                   <div className="text-center py-6 text-muted-foreground">
                     <Folder className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">No folders in this team</p>
-                    <p className="text-xs">Create folders in the team's Documents section first</p>
+                    <p className="text-xs">
+                      Create folders in the team's Documents section first
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -685,7 +742,9 @@ export function OrganizationSettings() {
                         <Checkbox
                           id={`sync-folder-${config.folderId}`}
                           checked={config.selected}
-                          onCheckedChange={() => toggleFolderSelection(config.folderId)}
+                          onCheckedChange={() =>
+                            toggleFolderSelection(config.folderId)
+                          }
                           className="mt-1"
                         />
                         <div className="flex-1 space-y-1">
@@ -698,10 +757,17 @@ export function OrganizationSettings() {
                           </label>
                           {config.selected && (
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">→ GitHub path:</span>
+                              <span className="text-xs text-muted-foreground">
+                                → GitHub path:
+                              </span>
                               <Input
                                 value={config.githubPath}
-                                onChange={(e) => updateFolderGitHubPath(config.folderId, e.target.value)}
+                                onChange={(e) =>
+                                  updateFolderGitHubPath(
+                                    config.folderId,
+                                    e.target.value
+                                  )
+                                }
                                 placeholder={config.folderName}
                                 className="h-7 text-xs flex-1"
                               />
@@ -733,7 +799,11 @@ export function OrganizationSettings() {
             </Button>
             <Button
               onClick={handleSaveSync}
-              disabled={!selectedTeamIdForSync || !folderSyncConfigs.some(f => f.selected) || isConfiguringSync}
+              disabled={
+                !selectedTeamIdForSync ||
+                !folderSyncConfigs.some((f) => f.selected) ||
+                isConfiguringSync
+              }
             >
               {isConfiguringSync ? (
                 <>

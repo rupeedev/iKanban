@@ -49,7 +49,9 @@ function ProjectCard({ project, team, isFocused, setError, onEdit }: Props) {
 
   // Lazy-load repos only when dropdown is opened to prevent N+1 queries
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const { data: repos } = useProjectRepos(project.id, { enabled: dropdownOpen });
+  const { data: repos } = useProjectRepos(project.id, {
+    enabled: dropdownOpen,
+  });
   const isSingleRepoProject = repos?.length === 1;
 
   const { unlinkProject } = useProjectMutations({

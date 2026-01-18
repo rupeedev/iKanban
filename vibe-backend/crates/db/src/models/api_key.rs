@@ -150,9 +150,9 @@ impl ApiKey {
         let key_prefix = Self::get_prefix(&key);
         let key_hash = Self::hash_key(&key);
 
-        let expires_at = data.expires_in_days.map(|days| {
-            Utc::now() + chrono::Duration::days(days)
-        });
+        let expires_at = data
+            .expires_in_days
+            .map(|days| Utc::now() + chrono::Duration::days(days));
 
         let row = sqlx::query_as!(
             ApiKeyRow,
@@ -220,10 +220,10 @@ impl ApiKey {
     pub async fn validate(pool: &PgPool, key: &str) -> Result<Option<String>, sqlx::Error> {
         if let Some(api_key) = Self::find_by_key(pool, key).await? {
             // Check if expired
-            if let Some(expires_at) = api_key.expires_at {
-                if expires_at < Utc::now() {
-                    return Ok(None);
-                }
+            if let Some(expires_at) = api_key.expires_at
+                && expires_at < Utc::now()
+            {
+                return Ok(None);
             }
 
             // Update last_used_at
@@ -240,7 +240,10 @@ impl ApiKey {
     }
 
     /// List all API keys for a user
-    pub async fn find_by_user(pool: &PgPool, user_id: &str) -> Result<Vec<ApiKeyInfo>, sqlx::Error> {
+    pub async fn find_by_user(
+        pool: &PgPool,
+        user_id: &str,
+    ) -> Result<Vec<ApiKeyInfo>, sqlx::Error> {
         let rows = sqlx::query_as!(
             ApiKeyRow,
             r#"SELECT id as "id!: Uuid",

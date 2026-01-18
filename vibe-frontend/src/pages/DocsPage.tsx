@@ -44,8 +44,9 @@ export function DocsPage() {
             iKanban Documentation
           </h1>
           <p className="text-lg text-muted-foreground">
-            Task management designed for AI coding agents. Orchestrate Claude Code,
-            Gemini CLI, Codex, Cursor, and other AI assistants with a unified kanban board.
+            Task management designed for AI coding agents. Orchestrate Claude
+            Code, Gemini CLI, Codex, Cursor, and other AI assistants with a
+            unified kanban board.
           </p>
         </div>
       </section>
@@ -54,19 +55,34 @@ export function DocsPage() {
       <nav className="py-6 px-4 border-b bg-muted/30">
         <div className="container mx-auto max-w-4xl">
           <div className="flex flex-wrap gap-2">
-            <a href="#getting-started" className="text-sm px-3 py-1.5 rounded-full bg-card border hover:bg-accent transition-colors">
+            <a
+              href="#getting-started"
+              className="text-sm px-3 py-1.5 rounded-full bg-card border hover:bg-accent transition-colors"
+            >
               Getting Started
             </a>
-            <a href="#features" className="text-sm px-3 py-1.5 rounded-full bg-card border hover:bg-accent transition-colors">
+            <a
+              href="#features"
+              className="text-sm px-3 py-1.5 rounded-full bg-card border hover:bg-accent transition-colors"
+            >
               Features
             </a>
-            <a href="#keyboard-shortcuts" className="text-sm px-3 py-1.5 rounded-full bg-card border hover:bg-accent transition-colors">
+            <a
+              href="#keyboard-shortcuts"
+              className="text-sm px-3 py-1.5 rounded-full bg-card border hover:bg-accent transition-colors"
+            >
               Keyboard Shortcuts
             </a>
-            <a href="#mcp-integration" className="text-sm px-3 py-1.5 rounded-full bg-card border hover:bg-accent transition-colors">
+            <a
+              href="#mcp-integration"
+              className="text-sm px-3 py-1.5 rounded-full bg-card border hover:bg-accent transition-colors"
+            >
               MCP Integration
             </a>
-            <a href="#faq" className="text-sm px-3 py-1.5 rounded-full bg-card border hover:bg-accent transition-colors">
+            <a
+              href="#faq"
+              className="text-sm px-3 py-1.5 rounded-full bg-card border hover:bg-accent transition-colors"
+            >
               FAQ
             </a>
           </div>
@@ -89,7 +105,8 @@ export function DocsPage() {
                   <code>$ npx vibe-kanban</code>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  No installation required. This command starts a local server and opens iKanban in your browser.
+                  No installation required. This command starts a local server
+                  and opens iKanban in your browser.
                 </p>
               </div>
 
@@ -163,16 +180,32 @@ export function DocsPage() {
               <table className="w-full">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Shortcut</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Action</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
+                      Shortcut
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
+                      Action
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  <ShortcutRow shortcut="Cmd/Ctrl + K" action="Open command palette / search" />
-                  <ShortcutRow shortcut="Cmd/Ctrl + N" action="Create new task" />
-                  <ShortcutRow shortcut="Cmd/Ctrl + /" action="Toggle sidebar" />
+                  <ShortcutRow
+                    shortcut="Cmd/Ctrl + K"
+                    action="Open command palette / search"
+                  />
+                  <ShortcutRow
+                    shortcut="Cmd/Ctrl + N"
+                    action="Create new task"
+                  />
+                  <ShortcutRow
+                    shortcut="Cmd/Ctrl + /"
+                    action="Toggle sidebar"
+                  />
                   <ShortcutRow shortcut="Cmd/Ctrl + ," action="Open settings" />
-                  <ShortcutRow shortcut="Escape" action="Close dialog / deselect" />
+                  <ShortcutRow
+                    shortcut="Escape"
+                    action="Close dialog / deselect"
+                  />
                   <ShortcutRow shortcut="?" action="Show keyboard shortcuts" />
                   <ShortcutRow shortcut="G then P" action="Go to Projects" />
                   <ShortcutRow shortcut="G then I" action="Go to Inbox" />
@@ -190,34 +223,54 @@ export function DocsPage() {
             </h2>
             <div className="space-y-6">
               <p className="text-muted-foreground">
-                iKanban supports the Model Context Protocol (MCP) for seamless AI agent interaction.
-                Configure MCP servers to let AI assistants interact with your tasks programmatically.
+                iKanban supports the Model Context Protocol (MCP) for seamless
+                AI agent interaction. Configure MCP servers to let AI assistants
+                interact with your tasks programmatically.
               </p>
               <div className="bg-card border rounded-lg p-6 space-y-4">
                 <h3 className="font-semibold">Available MCP Tools</h3>
                 <ul className="space-y-2 text-sm">
                   <li className="flex items-start gap-2">
-                    <code className="bg-muted px-2 py-0.5 rounded text-xs">list_tasks</code>
-                    <span className="text-muted-foreground">Get all tasks from a project</span>
+                    <code className="bg-muted px-2 py-0.5 rounded text-xs">
+                      list_tasks
+                    </code>
+                    <span className="text-muted-foreground">
+                      Get all tasks from a project
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <code className="bg-muted px-2 py-0.5 rounded text-xs">create_task</code>
-                    <span className="text-muted-foreground">Create a new task with title and description</span>
+                    <code className="bg-muted px-2 py-0.5 rounded text-xs">
+                      create_task
+                    </code>
+                    <span className="text-muted-foreground">
+                      Create a new task with title and description
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <code className="bg-muted px-2 py-0.5 rounded text-xs">update_task</code>
-                    <span className="text-muted-foreground">Update task status, priority, or details</span>
+                    <code className="bg-muted px-2 py-0.5 rounded text-xs">
+                      update_task
+                    </code>
+                    <span className="text-muted-foreground">
+                      Update task status, priority, or details
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <code className="bg-muted px-2 py-0.5 rounded text-xs">add_comment</code>
-                    <span className="text-muted-foreground">Add a comment to a task</span>
+                    <code className="bg-muted px-2 py-0.5 rounded text-xs">
+                      add_comment
+                    </code>
+                    <span className="text-muted-foreground">
+                      Add a comment to a task
+                    </span>
                   </li>
                 </ul>
               </div>
               <div className="bg-muted rounded-lg p-4">
                 <p className="text-sm">
                   <strong>Configure MCP:</strong> Go to{' '}
-                  <Link to="/settings/mcp" className="text-primary hover:underline">
+                  <Link
+                    to="/settings/mcp"
+                    className="text-primary hover:underline"
+                  >
                     Settings → MCP
                   </Link>{' '}
                   to manage your MCP server configuration.
@@ -258,7 +311,9 @@ export function DocsPage() {
 
           {/* FAQ */}
           <section id="faq">
-            <h2 className="text-2xl font-bold mb-6">Frequently Asked Questions</h2>
+            <h2 className="text-2xl font-bold mb-6">
+              Frequently Asked Questions
+            </h2>
             <div className="space-y-4">
               <FaqItem
                 question="Can I self-host iKanban?"
@@ -356,11 +411,19 @@ function StepCard({
   );
 }
 
-function ShortcutRow({ shortcut, action }: { shortcut: string; action: string }) {
+function ShortcutRow({
+  shortcut,
+  action,
+}: {
+  shortcut: string;
+  action: string;
+}) {
   return (
     <tr className="hover:bg-muted/50">
       <td className="px-4 py-2">
-        <kbd className="bg-muted px-2 py-0.5 rounded text-xs font-mono">{shortcut}</kbd>
+        <kbd className="bg-muted px-2 py-0.5 rounded text-xs font-mono">
+          {shortcut}
+        </kbd>
       </td>
       <td className="px-4 py-2 text-sm text-muted-foreground">{action}</td>
     </tr>

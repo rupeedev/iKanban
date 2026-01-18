@@ -7,13 +7,18 @@ interface OnlineMembersListProps {
   className?: string;
 }
 
-export function OnlineMembersList({ members = [], className }: OnlineMembersListProps) {
+export function OnlineMembersList({
+  members = [],
+  className,
+}: OnlineMembersListProps) {
   const onlineMembers = members.filter((m) => m.isOnline);
 
   if (onlineMembers.length === 0) {
     return (
       <div className={cn('px-4 py-3 border-b', className)}>
-        <p className="text-xs font-medium text-muted-foreground mb-2">Online Now</p>
+        <p className="text-xs font-medium text-muted-foreground mb-2">
+          Online Now
+        </p>
         <p className="text-sm text-muted-foreground">No one else online</p>
       </div>
     );
@@ -45,7 +50,10 @@ function OnlineMemberAvatar({ member }: { member: OnlineMember }) {
     <div className="flex flex-col items-center gap-1 min-w-[48px]">
       <div className="relative">
         <Avatar className="h-10 w-10">
-          <AvatarImage src={member.avatarUrl || undefined} alt={member.displayName} />
+          <AvatarImage
+            src={member.avatarUrl || undefined}
+            alt={member.displayName}
+          />
           <AvatarFallback className="text-xs">{initials}</AvatarFallback>
         </Avatar>
         <span
@@ -53,7 +61,9 @@ function OnlineMemberAvatar({ member }: { member: OnlineMember }) {
           aria-hidden="true"
         />
       </div>
-      <span className="text-xs font-medium truncate max-w-[56px]">{member.displayName.split(' ')[0]}</span>
+      <span className="text-xs font-medium truncate max-w-[56px]">
+        {member.displayName.split(' ')[0]}
+      </span>
       {member.teamName && (
         <span className="text-[10px] text-muted-foreground truncate max-w-[56px]">
           {member.teamName}

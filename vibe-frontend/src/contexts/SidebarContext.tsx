@@ -46,10 +46,12 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
     return stored ? JSON.parse(stored) : defaultSections;
   });
 
-  const [expandedTeams, setExpandedTeams] = useState<Record<string, boolean>>(() => {
-    const stored = localStorage.getItem(SIDEBAR_EXPANDED_TEAMS_KEY);
-    return stored ? JSON.parse(stored) : {};
-  });
+  const [expandedTeams, setExpandedTeams] = useState<Record<string, boolean>>(
+    () => {
+      const stored = localStorage.getItem(SIDEBAR_EXPANDED_TEAMS_KEY);
+      return stored ? JSON.parse(stored) : {};
+    }
+  );
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, JSON.stringify(isCollapsed));
@@ -60,7 +62,10 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   }, [sections]);
 
   useEffect(() => {
-    localStorage.setItem(SIDEBAR_EXPANDED_TEAMS_KEY, JSON.stringify(expandedTeams));
+    localStorage.setItem(
+      SIDEBAR_EXPANDED_TEAMS_KEY,
+      JSON.stringify(expandedTeams)
+    );
   }, [expandedTeams]);
 
   const toggleCollapsed = useCallback(() => {

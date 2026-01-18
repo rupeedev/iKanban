@@ -39,7 +39,9 @@ function parseHeadings(content: string): HeadingNode[] {
     }
 
     // 2. Match numbered sections like "1. Title", "1.1 Title", "2.1.3 Title"
-    const numberedMatch = trimmed.match(/^(\d+(?:\.\d+)*)[.\s]+([A-Z].{2,60})$/);
+    const numberedMatch = trimmed.match(
+      /^(\d+(?:\.\d+)*)[.\s]+([A-Z].{2,60})$/
+    );
     if (numberedMatch) {
       const depth = numberedMatch[1].split('.').length;
       headings.push({
@@ -67,10 +69,16 @@ function parseHeadings(content: string): HeadingNode[] {
     }
 
     // 4. Match Chapter/Section patterns like "Chapter 1: Title" or "Section 2.1 Title"
-    const chapterMatch = trimmed.match(/^(Chapter|Section|Part)\s+[\d.]+[:\s]*(.*)$/i);
+    const chapterMatch = trimmed.match(
+      /^(Chapter|Section|Part)\s+[\d.]+[:\s]*(.*)$/i
+    );
     if (chapterMatch) {
-      const level = chapterMatch[1].toLowerCase() === 'chapter' ? 1 :
-                    chapterMatch[1].toLowerCase() === 'part' ? 1 : 2;
+      const level =
+        chapterMatch[1].toLowerCase() === 'chapter'
+          ? 1
+          : chapterMatch[1].toLowerCase() === 'part'
+            ? 1
+            : 2;
       headings.push({
         text: trimmed,
         level,
@@ -168,11 +176,7 @@ export function DocumentOutline({
       <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-2 py-2">
         Outline
       </div>
-      <TreeView
-        data={treeData}
-        expandAll
-        className="text-sm"
-      />
+      <TreeView data={treeData} expandAll className="text-sm" />
     </div>
   );
 }

@@ -50,9 +50,7 @@ impl EventService {
     + 'static {
         move |_conn: &mut sqlx::PgConnection| {
             // No-op for Postgres migration
-            Box::pin(async move {
-                Ok(())
-            })
+            Box::pin(async move { Ok(()) })
         }
     }
 

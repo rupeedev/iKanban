@@ -4,11 +4,7 @@ import { useSyncQueueSafe } from '@/contexts/SyncQueueContext';
 import { useConnectionSafe } from '@/contexts/ConnectionContext';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from './popover';
+import { Popover, PopoverContent, PopoverTrigger } from './popover';
 import { isOperationFailed } from '@/lib/syncQueue';
 
 interface SyncStatusIndicatorProps {
@@ -16,7 +12,14 @@ interface SyncStatusIndicatorProps {
 }
 
 export function SyncStatusIndicator({ className }: SyncStatusIndicatorProps) {
-  const { pendingOperations, pendingCount, failedCount, isSyncing, processQueue, clearFailed } = useSyncQueueSafe();
+  const {
+    pendingOperations,
+    pendingCount,
+    failedCount,
+    isSyncing,
+    processQueue,
+    clearFailed,
+  } = useSyncQueueSafe();
   const { state: connectionState } = useConnectionSafe();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -46,9 +49,7 @@ export function SyncStatusIndicator({ className }: SyncStatusIndicatorProps) {
           ) : (
             <CloudOff className="h-4 w-4" />
           )}
-          <span className="text-xs">
-            {pendingCount} pending
-          </span>
+          <span className="text-xs">{pendingCount} pending</span>
           {failedCount > 0 && (
             <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">
               {failedCount}
@@ -84,11 +85,17 @@ export function SyncStatusIndicator({ className }: SyncStatusIndicatorProps) {
                       <AlertCircle className="h-3 w-3 text-destructive flex-shrink-0 mt-0.5" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{operation.description}</p>
+                      <p className="font-medium truncate">
+                        {operation.description}
+                      </p>
                       <p className="text-muted-foreground">
-                        {operation.method} • {new Date(operation.timestamp).toLocaleTimeString()}
+                        {operation.method} •{' '}
+                        {new Date(operation.timestamp).toLocaleTimeString()}
                         {operation.retryCount > 0 && (
-                          <span className="ml-1">• Retry {operation.retryCount}/{operation.maxRetries}</span>
+                          <span className="ml-1">
+                            • Retry {operation.retryCount}/
+                            {operation.maxRetries}
+                          </span>
                         )}
                       </p>
                     </div>
@@ -105,9 +112,15 @@ export function SyncStatusIndicator({ className }: SyncStatusIndicatorProps) {
               size="sm"
               className="flex-1"
               onClick={() => processQueue()}
-              disabled={isSyncing || connectionState !== 'online' || retryableCount === 0}
+              disabled={
+                isSyncing ||
+                connectionState !== 'online' ||
+                retryableCount === 0
+              }
             >
-              <RefreshCw className={cn('h-3 w-3 mr-1', isSyncing && 'animate-spin')} />
+              <RefreshCw
+                className={cn('h-3 w-3 mr-1', isSyncing && 'animate-spin')}
+              />
               Sync Now
             </Button>
             {failedCount > 0 && (

@@ -27,14 +27,18 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
 
   const createProject = useMutation({
     mutationKey: ['createProject'],
-    mutationFn: (data: CreateProject) => projectsApi.create({
-      ...data,
-      // Automatically inject tenant_workspace_id so projects appear in workspace-scoped queries
-      tenant_workspace_id: currentWorkspaceId,
-    }),
+    mutationFn: (data: CreateProject) =>
+      projectsApi.create({
+        ...data,
+        // Automatically inject tenant_workspace_id so projects appear in workspace-scoped queries
+        tenant_workspace_id: currentWorkspaceId,
+      }),
     onSuccess: (project: Project) => {
       queryClient.setQueryData(['project', project.id], project);
-      queryClient.invalidateQueries({ queryKey: ['projects'], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['projects'],
+        refetchType: 'none',
+      });
       options?.onCreateSuccess?.(project);
     },
     onError: (err) => {
@@ -103,8 +107,14 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
       });
 
       // Invalidate to ensure fresh data from server - mark stale but don't refetch immediately
-      queryClient.invalidateQueries({ queryKey: ['project', project.id], refetchType: 'none' });
-      queryClient.invalidateQueries({ queryKey: ['projects'], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['project', project.id],
+        refetchType: 'none',
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['projects'],
+        refetchType: 'none',
+      });
 
       // Invalidate organization projects queries since linking affects remote projects
       queryClient.invalidateQueries({
@@ -145,8 +155,14 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
       });
 
       // Invalidate to ensure fresh data from server - mark stale but don't refetch immediately
-      queryClient.invalidateQueries({ queryKey: ['project', project.id], refetchType: 'none' });
-      queryClient.invalidateQueries({ queryKey: ['projects'], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['project', project.id],
+        refetchType: 'none',
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['projects'],
+        refetchType: 'none',
+      });
 
       // Invalidate organization projects queries since linking affects remote projects
       queryClient.invalidateQueries({
@@ -181,7 +197,10 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
       });
 
       // Invalidate to ensure fresh data from server - mark stale but don't refetch immediately
-      queryClient.invalidateQueries({ queryKey: ['projects'], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['projects'],
+        refetchType: 'none',
+      });
 
       // Invalidate organization projects queries since unlinking affects remote projects
       queryClient.invalidateQueries({

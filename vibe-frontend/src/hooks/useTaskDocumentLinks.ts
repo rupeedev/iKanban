@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { tasksApi } from "@/lib/api";
-import { LinkedDocument } from "shared/types";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { tasksApi } from '@/lib/api';
+import { LinkedDocument } from 'shared/types';
 
 // Helper to detect rate limit errors
 function isRateLimitError(error: unknown): boolean {
@@ -15,7 +15,7 @@ export function useTaskDocumentLinks(taskId: string | undefined) {
   const queryClient = useQueryClient();
 
   const linksQuery = useQuery({
-    queryKey: ["task-document-links", taskId],
+    queryKey: ['task-document-links', taskId],
     queryFn: async () => {
       if (!taskId) return [];
       return tasksApi.getLinks(taskId);
@@ -36,18 +36,29 @@ export function useTaskDocumentLinks(taskId: string | undefined) {
 
   const linkDocumentsMutation = useMutation({
     mutationFn: async (documentIds: string[]) => {
-      if (!taskId) throw new Error("Task ID required");
-      console.log('[linkDocuments] Linking documents to task:', taskId, documentIds);
-      const result = await tasksApi.linkDocuments(taskId, { document_ids: documentIds });
+      if (!taskId) throw new Error('Task ID required');
+      console.log(
+        '[linkDocuments] Linking documents to task:',
+        taskId,
+        documentIds
+      );
+      const result = await tasksApi.linkDocuments(taskId, {
+        document_ids: documentIds,
+      });
       console.log('[linkDocuments] API response:', result);
       return result;
     },
     onSuccess: (newLinks) => {
       console.log('[linkDocuments] onSuccess - new links:', newLinks);
       queryClient.setQueryData<LinkedDocument[]>(
-        ["task-document-links", taskId],
+        ['task-document-links', taskId],
         (old) => {
-          console.log('[linkDocuments] setQueryData - old:', old, 'new:', newLinks);
+          console.log(
+            '[linkDocuments] setQueryData - old:',
+            old,
+            'new:',
+            newLinks
+          );
           if (!old) return newLinks;
           // Merge new links avoiding duplicates
           const existingIds = new Set(old.map((l) => l.document_id));
@@ -60,7 +71,10 @@ export function useTaskDocumentLinks(taskId: string | undefined) {
         }
       );
       // Also invalidate to ensure fresh data - mark stale but don't refetch immediately
-      queryClient.invalidateQueries({ queryKey: ["task-document-links", taskId], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['task-document-links', taskId],
+        refetchType: 'none',
+      });
     },
     onError: (error) => {
       console.error('[linkDocuments] Mutation error:', error);
@@ -69,12 +83,12 @@ export function useTaskDocumentLinks(taskId: string | undefined) {
 
   const unlinkDocumentMutation = useMutation({
     mutationFn: async (documentId: string) => {
-      if (!taskId) throw new Error("Task ID required");
+      if (!taskId) throw new Error('Task ID required');
       return tasksApi.unlinkDocument(taskId, documentId);
     },
     onSuccess: (_, documentId) => {
       queryClient.setQueryData<LinkedDocument[]>(
-        ["task-document-links", taskId],
+        ['task-document-links', taskId],
         (old) => old?.filter((l) => l.document_id !== documentId) ?? []
       );
     },

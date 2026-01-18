@@ -73,7 +73,9 @@ export function AdminLayout() {
             </div>
             <div>
               <h1 className="text-2xl font-semibold">Admin Panel</h1>
-              <p className="text-sm text-muted-foreground">System control dashboard</p>
+              <p className="text-sm text-muted-foreground">
+                System control dashboard
+              </p>
             </div>
           </div>
           <Button
@@ -110,7 +112,9 @@ export function AdminLayout() {
                     <Icon className="h-4 w-4 mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium">{item.label}</div>
-                      <div className="text-xs opacity-70">{item.description}</div>
+                      <div className="text-xs opacity-70">
+                        {item.description}
+                      </div>
                     </div>
                   </NavLink>
                 );

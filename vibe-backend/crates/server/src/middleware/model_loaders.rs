@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::{
     extract::{Path, Request, State},
     http::StatusCode,
@@ -9,7 +11,6 @@ use db::models::{
     tag::Tag, task::Task, team::Team, workspace::Workspace,
 };
 use deployment::Deployment;
-use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::DeploymentImpl;

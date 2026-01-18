@@ -1,9 +1,14 @@
-import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { tasksApi } from "../lib/api";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from '@tanstack/react-query';
+import { tasksApi } from '../lib/api';
 import type {
   CreateTaskComment,
   UpdateTaskComment,
-} from "../../../shared/types";
+} from '../../../shared/types';
 
 // Helper to detect rate limit errors
 function isRateLimitError(error: unknown): boolean {
@@ -18,7 +23,7 @@ export function useTaskComments(taskId: string | null) {
   const queryClient = useQueryClient();
 
   const commentsQuery = useQuery({
-    queryKey: ["task-comments", taskId],
+    queryKey: ['task-comments', taskId],
     queryFn: async () => {
       if (!taskId) return [];
       return tasksApi.getComments(taskId);
@@ -41,12 +46,15 @@ export function useTaskComments(taskId: string | null) {
 
   const createCommentMutation = useMutation({
     mutationFn: async (payload: CreateTaskComment) => {
-      if (!taskId) throw new Error("Task ID is required");
+      if (!taskId) throw new Error('Task ID is required');
       return tasksApi.createComment(taskId, payload);
     },
     onSuccess: () => {
       // Use 'active' to refetch immediately since user expects to see their comment
-      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId], refetchType: 'active' });
+      queryClient.invalidateQueries({
+        queryKey: ['task-comments', taskId],
+        refetchType: 'active',
+      });
     },
   });
 
@@ -58,23 +66,29 @@ export function useTaskComments(taskId: string | null) {
       commentId: string;
       payload: UpdateTaskComment;
     }) => {
-      if (!taskId) throw new Error("Task ID is required");
+      if (!taskId) throw new Error('Task ID is required');
       return tasksApi.updateComment(taskId, commentId, payload);
     },
     onSuccess: () => {
       // Use 'active' to refetch immediately since user expects to see their edit
-      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId], refetchType: 'active' });
+      queryClient.invalidateQueries({
+        queryKey: ['task-comments', taskId],
+        refetchType: 'active',
+      });
     },
   });
 
   const deleteCommentMutation = useMutation({
     mutationFn: async (commentId: string) => {
-      if (!taskId) throw new Error("Task ID is required");
+      if (!taskId) throw new Error('Task ID is required');
       await tasksApi.deleteComment(taskId, commentId);
     },
     onSuccess: () => {
       // Use 'active' to refetch immediately since user expects to see comment removed
-      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId], refetchType: 'active' });
+      queryClient.invalidateQueries({
+        queryKey: ['task-comments', taskId],
+        refetchType: 'active',
+      });
     },
   });
 

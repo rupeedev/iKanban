@@ -124,7 +124,7 @@ impl AiProviderKey {
     /// Simple obfuscation for API key storage
     /// In production, use AES-GCM with proper key management
     fn obfuscate_key(key: &str) -> String {
-        use base64::{engine::general_purpose::STANDARD, Engine};
+        use base64::{Engine, engine::general_purpose::STANDARD};
 
         // Get encryption secret from env or use default (not secure for production!)
         let secret = std::env::var("ENCRYPTION_SECRET")
@@ -142,7 +142,7 @@ impl AiProviderKey {
 
     /// Deobfuscate an API key
     fn deobfuscate_key(encrypted: &str) -> Result<String, String> {
-        use base64::{engine::general_purpose::STANDARD, Engine};
+        use base64::{Engine, engine::general_purpose::STANDARD};
 
         let secret = std::env::var("ENCRYPTION_SECRET")
             .unwrap_or_else(|_| "default-secret-key-change-me!".to_string());
@@ -304,7 +304,10 @@ mod tests {
 
     #[test]
     fn test_get_prefix() {
-        assert_eq!(AiProviderKey::get_prefix("sk-ant-api03-test123"), "sk-ant-a");
+        assert_eq!(
+            AiProviderKey::get_prefix("sk-ant-api03-test123"),
+            "sk-ant-a"
+        );
         assert_eq!(AiProviderKey::get_prefix("AIza1234"), "AIza1234");
         assert_eq!(AiProviderKey::get_prefix("short"), "short");
     }
@@ -319,8 +322,14 @@ mod tests {
 
     #[test]
     fn test_ai_provider_from_str() {
-        assert_eq!("anthropic".parse::<AiProvider>().unwrap(), AiProvider::Anthropic);
-        assert_eq!("claude".parse::<AiProvider>().unwrap(), AiProvider::Anthropic);
+        assert_eq!(
+            "anthropic".parse::<AiProvider>().unwrap(),
+            AiProvider::Anthropic
+        );
+        assert_eq!(
+            "claude".parse::<AiProvider>().unwrap(),
+            AiProvider::Anthropic
+        );
         assert_eq!("google".parse::<AiProvider>().unwrap(), AiProvider::Google);
         assert_eq!("gemini".parse::<AiProvider>().unwrap(), AiProvider::Google);
         assert_eq!("openai".parse::<AiProvider>().unwrap(), AiProvider::Openai);

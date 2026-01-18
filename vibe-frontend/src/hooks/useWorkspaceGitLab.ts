@@ -40,7 +40,10 @@ export function useWorkspaceGitLabMutations() {
     mutationFn: (data: CreateGitLabConnection) =>
       teamsApi.createWorkspaceGitLabConnection(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEY, refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEY,
+        refetchType: 'none',
+      });
     },
   });
 
@@ -48,14 +51,20 @@ export function useWorkspaceGitLabMutations() {
     mutationFn: (data: UpdateGitLabConnection) =>
       teamsApi.updateWorkspaceGitLabConnection(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEY, refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEY,
+        refetchType: 'none',
+      });
     },
   });
 
   const deleteConnection = useMutation({
     mutationFn: () => teamsApi.deleteWorkspaceGitLabConnection(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEY, refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEY,
+        refetchType: 'none',
+      });
     },
   });
 
@@ -63,14 +72,21 @@ export function useWorkspaceGitLabMutations() {
     mutationFn: (data: LinkGitLabRepository) =>
       teamsApi.linkWorkspaceGitLabRepository(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEY, refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEY,
+        refetchType: 'none',
+      });
     },
   });
 
   const unlinkRepository = useMutation({
-    mutationFn: (repoId: string) => teamsApi.unlinkWorkspaceGitLabRepository(repoId),
+    mutationFn: (repoId: string) =>
+      teamsApi.unlinkWorkspaceGitLabRepository(repoId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEY, refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEY,
+        refetchType: 'none',
+      });
     },
   });
 

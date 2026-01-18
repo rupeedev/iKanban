@@ -42,8 +42,12 @@ const MigrateTasksDialogImpl = NiceModal.create<MigrateTasksDialogProps>(
     const { teams } = useTeams();
     const { projects } = useProjects();
 
-    const [selectedTeamId, setSelectedTeamId] = useState<string>(initialTeamId || '');
-    const [selectedProjectId, setSelectedProjectId] = useState<string>(initialProjectId || '');
+    const [selectedTeamId, setSelectedTeamId] = useState<string>(
+      initialTeamId || ''
+    );
+    const [selectedProjectId, setSelectedProjectId] = useState<string>(
+      initialProjectId || ''
+    );
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<MigrateTasksDialogResult | null>(null);
@@ -84,7 +88,9 @@ const MigrateTasksDialogImpl = NiceModal.create<MigrateTasksDialogProps>(
           taskIds: response.task_ids,
         });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to migrate tasks');
+        setError(
+          err instanceof Error ? err.message : 'Failed to migrate tasks'
+        );
       } finally {
         setIsSubmitting(false);
       }
@@ -127,7 +133,9 @@ const MigrateTasksDialogImpl = NiceModal.create<MigrateTasksDialogProps>(
                     {result.migratedCount}
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    {result.migratedCount === 1 ? 'task migrated' : 'tasks migrated'}
+                    {result.migratedCount === 1
+                      ? 'task migrated'
+                      : 'tasks migrated'}
                   </div>
                 </div>
 
@@ -151,7 +159,8 @@ const MigrateTasksDialogImpl = NiceModal.create<MigrateTasksDialogProps>(
               <DialogHeader>
                 <DialogTitle>Migrate Tasks to Team Issues</DialogTitle>
                 <DialogDescription>
-                  Convert project tasks into team issues. Tasks will be assigned sequential issue numbers and can be filtered by project.
+                  Convert project tasks into team issues. Tasks will be assigned
+                  sequential issue numbers and can be filtered by project.
                 </DialogDescription>
               </DialogHeader>
 
@@ -179,7 +188,8 @@ const MigrateTasksDialogImpl = NiceModal.create<MigrateTasksDialogProps>(
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Only tasks that aren&apos;t already team issues will be migrated
+                    Only tasks that aren&apos;t already team issues will be
+                    migrated
                   </p>
                 </div>
 
@@ -220,7 +230,9 @@ const MigrateTasksDialogImpl = NiceModal.create<MigrateTasksDialogProps>(
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Tasks will become issues with IDs like {selectedTeam?.identifier || 'TEAM'}-1, {selectedTeam?.identifier || 'TEAM'}-2, etc.
+                    Tasks will become issues with IDs like{' '}
+                    {selectedTeam?.identifier || 'TEAM'}-1,{' '}
+                    {selectedTeam?.identifier || 'TEAM'}-2, etc.
                   </p>
                 </div>
 
@@ -243,7 +255,9 @@ const MigrateTasksDialogImpl = NiceModal.create<MigrateTasksDialogProps>(
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSubmitting || !selectedTeamId || !selectedProjectId}
+                  disabled={
+                    isSubmitting || !selectedTeamId || !selectedProjectId
+                  }
                 >
                   {isSubmitting ? (
                     <>

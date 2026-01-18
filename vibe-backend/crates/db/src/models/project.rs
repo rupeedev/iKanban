@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, FromRow, Postgres, PgPool};
+use sqlx::{Executor, FromRow, PgPool, Postgres};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -18,21 +18,16 @@ pub enum ProjectError {
 }
 
 /// Project status options
-#[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ProjectStatus {
+    #[default]
     Backlog,
     Planned,
     InProgress,
     Paused,
     Completed,
     Cancelled,
-}
-
-impl Default for ProjectStatus {
-    fn default() -> Self {
-        Self::Backlog
-    }
 }
 
 impl std::fmt::Display for ProjectStatus {
@@ -394,8 +389,8 @@ impl Project {
         let default_agent_working_dir = payload.default_agent_working_dir.clone();
         let priority = payload.priority.or(existing.priority);
         let lead_id = payload.lead_id.or(existing.lead_id);
-        let start_date = payload.start_date.clone().or(existing.start_date);
-        let target_date = payload.target_date.clone().or(existing.target_date);
+        let start_date = payload.start_date.or(existing.start_date);
+        let target_date = payload.target_date.or(existing.target_date);
         let status = payload.status.clone().or(existing.status);
         let health = payload.health.or(existing.health);
         let description = payload.description.clone().or(existing.description);

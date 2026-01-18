@@ -61,11 +61,7 @@ export function ServiceUnavailable({
             </p>
           </CardContent>
           <CardFooter className="flex justify-center gap-2">
-            <Button
-              variant="outline"
-              onClick={resetCircuit}
-              className="gap-2"
-            >
+            <Button variant="outline" onClick={resetCircuit} className="gap-2">
               <RefreshCw className="h-4 w-4" />
               Retry Now
             </Button>

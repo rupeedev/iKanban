@@ -2,12 +2,19 @@ import { useState } from 'react';
 import { ChevronDown, CalendarDays } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Quick date helper for target date picker
-function getQuickDate(type: 'day' | 'month' | 'quarter' | 'half' | 'year', value: number): Date {
+function getQuickDate(
+  type: 'day' | 'month' | 'quarter' | 'half' | 'year',
+  value: number
+): Date {
   const date = new Date();
   switch (type) {
     case 'day':
@@ -65,14 +72,32 @@ export function TargetDateCell({ targetDate, onSelect }: TargetDateCellProps) {
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start" onClick={(e) => e.stopPropagation()}>
-        <Tabs value={tab} onValueChange={(v: string) => setTab(v as DateTab)} className="w-full">
+      <PopoverContent
+        className="w-auto p-0"
+        align="start"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Tabs
+          value={tab}
+          onValueChange={(v: string) => setTab(v as DateTab)}
+          className="w-full"
+        >
           <TabsList className="grid w-full grid-cols-5 h-8">
-            <TabsTrigger value="day" className="text-xs">Day</TabsTrigger>
-            <TabsTrigger value="month" className="text-xs">Month</TabsTrigger>
-            <TabsTrigger value="quarter" className="text-xs">Quarter</TabsTrigger>
-            <TabsTrigger value="half" className="text-xs">Half</TabsTrigger>
-            <TabsTrigger value="year" className="text-xs">Year</TabsTrigger>
+            <TabsTrigger value="day" className="text-xs">
+              Day
+            </TabsTrigger>
+            <TabsTrigger value="month" className="text-xs">
+              Month
+            </TabsTrigger>
+            <TabsTrigger value="quarter" className="text-xs">
+              Quarter
+            </TabsTrigger>
+            <TabsTrigger value="half" className="text-xs">
+              Half
+            </TabsTrigger>
+            <TabsTrigger value="year" className="text-xs">
+              Year
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="day" className="p-2 space-y-1">
             {[1, 3, 7, 14, 30].map((days) => (

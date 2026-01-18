@@ -17,11 +17,7 @@ import {
   Plus,
   LogIn,
 } from 'lucide-react';
-import {
-  SignedIn,
-  SignedOut,
-  UserButton,
-} from '@clerk/clerk-react';
+import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react';
 import { SearchBar } from '@/components/SearchBar';
 import { useTeams } from '@/hooks/useTeams';
 import { useSearch } from '@/contexts/SearchContext';
@@ -199,7 +195,11 @@ export function Navbar() {
                       </Button>
                     </Link>
                     <Link to="/sign-up">
-                      <Button variant="default" size="sm" className="h-8 text-xs">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="h-8 text-xs"
+                      >
                         Sign Up
                       </Button>
                     </Link>
@@ -210,13 +210,16 @@ export function Navbar() {
                     appearance={{
                       elements: {
                         avatarBox: 'h-8 w-8',
-                        userButtonPopoverCard: 'shadow-lg border border-border rounded-lg',
+                        userButtonPopoverCard:
+                          'shadow-lg border border-border rounded-lg',
                         userButtonPopoverMain: 'p-0',
                         userButtonPopoverActions: 'p-1',
                         userButtonPopoverActionButton: 'rounded-md text-sm',
                         userButtonPopoverActionButtonText: 'text-foreground',
-                        userButtonPopoverActionButtonIcon: 'text-muted-foreground',
-                        userButtonPopoverFooter: 'border-t border-border pt-2 pb-2 px-3',
+                        userButtonPopoverActionButtonIcon:
+                          'text-muted-foreground',
+                        userButtonPopoverFooter:
+                          'border-t border-border pt-2 pb-2 px-3',
                       },
                     }}
                   />

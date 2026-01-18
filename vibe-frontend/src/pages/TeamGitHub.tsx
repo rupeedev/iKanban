@@ -66,10 +66,8 @@ export default function TeamGitHub() {
   const actualTeamId = team?.id || '';
 
   // Use workspace-level GitHub connection
-  const {
-    data: workspaceConnection,
-    isLoading: isLoadingWorkspaceConnection,
-  } = useWorkspaceGitHubConnection();
+  const { data: workspaceConnection, isLoading: isLoadingWorkspaceConnection } =
+    useWorkspaceGitHubConnection();
 
   // Use team-level sync operations (these don't require team connection anymore)
   const {
@@ -85,14 +83,21 @@ export default function TeamGitHub() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Sync config state (multi-folder)
-  const [repoToConfigureSync, setRepoToConfigureSync] = useState<GitHubRepository | null>(null);
-  const [folderSyncConfigs, setFolderSyncConfigs] = useState<FolderSyncConfig[]>([]);
+  const [repoToConfigureSync, setRepoToConfigureSync] =
+    useState<GitHubRepository | null>(null);
+  const [folderSyncConfigs, setFolderSyncConfigs] = useState<
+    FolderSyncConfig[]
+  >([]);
   const [isConfiguringSync, setIsConfiguringSync] = useState(false);
   const [isLoadingSyncConfigs, setIsLoadingSyncConfigs] = useState(false);
 
   // Sync state
   const [syncingRepoId, setSyncingRepoId] = useState<string | null>(null);
-  const [syncResult, setSyncResult] = useState<{ message: string; pushedCount: number; pulledCount: number } | null>(null);
+  const [syncResult, setSyncResult] = useState<{
+    message: string;
+    pushedCount: number;
+    pulledCount: number;
+  } | null>(null);
 
   const handleOpenSyncConfig = async (repo: GitHubRepository) => {
     setRepoToConfigureSync(repo);
@@ -103,8 +108,8 @@ export default function TeamGitHub() {
       const existingConfigs = await getSyncConfigs(repo.id);
 
       // Initialize folder configs for all folders
-      const configs: FolderSyncConfig[] = folders.map(folder => {
-        const existing = existingConfigs.find(c => c.folder_id === folder.id);
+      const configs: FolderSyncConfig[] = folders.map((folder) => {
+        const existing = existingConfigs.find((c) => c.folder_id === folder.id);
         return {
           folderId: folder.id,
           folderName: folder.name,
@@ -117,12 +122,14 @@ export default function TeamGitHub() {
     } catch (err) {
       console.error('Failed to load sync configs:', err);
       // Initialize with empty configs
-      setFolderSyncConfigs(folders.map(folder => ({
-        folderId: folder.id,
-        folderName: folder.name,
-        selected: false,
-        githubPath: '',
-      })));
+      setFolderSyncConfigs(
+        folders.map((folder) => ({
+          folderId: folder.id,
+          folderName: folder.name,
+          selected: false,
+          githubPath: '',
+        }))
+      );
     } finally {
       setIsLoadingSyncConfigs(false);
     }
@@ -131,7 +138,7 @@ export default function TeamGitHub() {
   const handleConfigureSync = async () => {
     if (!repoToConfigureSync) return;
 
-    const selectedFolders = folderSyncConfigs.filter(f => f.selected);
+    const selectedFolders = folderSyncConfigs.filter((f) => f.selected);
     if (selectedFolders.length === 0) {
       setSubmitError('Please select at least one folder to sync');
       return;
@@ -140,12 +147,16 @@ export default function TeamGitHub() {
     setIsConfiguringSync(true);
     try {
       // Build folder configs - use folder name as github_path if not specified
-      const folderConfigs: CreateRepoSyncConfig[] = selectedFolders.map(folder => ({
-        folder_id: folder.folderId,
-        github_path: folder.githubPath.trim() || null, // If empty, backend will use folder name
-      }));
+      const folderConfigs: CreateRepoSyncConfig[] = selectedFolders.map(
+        (folder) => ({
+          folder_id: folder.folderId,
+          github_path: folder.githubPath.trim() || null, // If empty, backend will use folder name
+        })
+      );
 
-      await configureMultiFolderSync(repoToConfigureSync.id, { folder_configs: folderConfigs });
+      await configureMultiFolderSync(repoToConfigureSync.id, {
+        folder_configs: folderConfigs,
+      });
       setRepoToConfigureSync(null);
     } catch (err) {
       setSubmitError(
@@ -161,29 +172,37 @@ export default function TeamGitHub() {
       await clearMultiFolderSync(repoId);
     } catch (err) {
       setSubmitError(
-        err instanceof Error ? err.message : 'Failed to clear sync configuration'
+        err instanceof Error
+          ? err.message
+          : 'Failed to clear sync configuration'
       );
     }
   };
 
   // Helper to toggle folder selection
   const toggleFolderSelection = (folderId: string) => {
-    setFolderSyncConfigs(prev => prev.map(f =>
-      f.folderId === folderId ? { ...f, selected: !f.selected } : f
-    ));
+    setFolderSyncConfigs((prev) =>
+      prev.map((f) =>
+        f.folderId === folderId ? { ...f, selected: !f.selected } : f
+      )
+    );
   };
 
   // Helper to toggle all folders
   const toggleAllFolders = () => {
-    const allSelected = folderSyncConfigs.every(f => f.selected);
-    setFolderSyncConfigs(prev => prev.map(f => ({ ...f, selected: !allSelected })));
+    const allSelected = folderSyncConfigs.every((f) => f.selected);
+    setFolderSyncConfigs((prev) =>
+      prev.map((f) => ({ ...f, selected: !allSelected }))
+    );
   };
 
   // Helper to update folder's github path
   const updateFolderGitHubPath = (folderId: string, path: string) => {
-    setFolderSyncConfigs(prev => prev.map(f =>
-      f.folderId === folderId ? { ...f, githubPath: path } : f
-    ));
+    setFolderSyncConfigs((prev) =>
+      prev.map((f) =>
+        f.folderId === folderId ? { ...f, githubPath: path } : f
+      )
+    );
   };
 
   const handleSync = async (repoId: string) => {
@@ -235,7 +254,8 @@ export default function TeamGitHub() {
         <div>
           <h1 className="text-2xl font-semibold">GitHub Integration</h1>
           <p className="text-sm text-muted-foreground">
-            Sync documents from {team?.name || 'this team'} with GitHub repositories
+            Sync documents from {team?.name || 'this team'} with GitHub
+            repositories
           </p>
         </div>
       </div>
@@ -255,7 +275,8 @@ export default function TeamGitHub() {
             Workspace GitHub Connection
           </CardTitle>
           <CardDescription>
-            GitHub is connected at the workspace level and shared across all teams
+            GitHub is connected at the workspace level and shared across all
+            teams
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -270,11 +291,18 @@ export default function TeamGitHub() {
                     @{workspaceConnection.github_username || 'GitHub Connected'}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Connected {format(new Date(workspaceConnection.connected_at), 'MMM d, yyyy')}
+                    Connected{' '}
+                    {format(
+                      new Date(workspaceConnection.connected_at),
+                      'MMM d, yyyy'
+                    )}
                   </p>
                 </div>
               </div>
-              <Badge variant="secondary" className="bg-green-100 text-green-800">
+              <Badge
+                variant="secondary"
+                className="bg-green-100 text-green-800"
+              >
                 Connected
               </Badge>
             </div>
@@ -302,7 +330,8 @@ export default function TeamGitHub() {
         <Alert className="bg-green-50 border-green-200">
           <Check className="h-4 w-4 text-green-600" />
           <AlertDescription className="text-green-800">
-            {syncResult.message} - Pulled {syncResult.pulledCount} files, Pushed {syncResult.pushedCount} files
+            {syncResult.message} - Pulled {syncResult.pulledCount} files, Pushed{' '}
+            {syncResult.pushedCount} files
           </AlertDescription>
         </Alert>
       )}
@@ -317,7 +346,8 @@ export default function TeamGitHub() {
                 Document Sync
               </CardTitle>
               <CardDescription>
-                Configure which repositories sync with this team's document folders ({repositories.length} available)
+                Configure which repositories sync with this team's document
+                folders ({repositories.length} available)
               </CardDescription>
             </div>
           </CardHeader>
@@ -342,14 +372,18 @@ export default function TeamGitHub() {
                     <TableHeaderCell>Repository</TableHeaderCell>
                     <TableHeaderCell>Visibility</TableHeaderCell>
                     <TableHeaderCell>Sync Status</TableHeaderCell>
-                    <TableHeaderCell className="w-[200px]">Actions</TableHeaderCell>
+                    <TableHeaderCell className="w-[200px]">
+                      Actions
+                    </TableHeaderCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {repositories.map((repo) => {
                     const isSyncing = syncingRepoId === repo.id;
                     const hasSyncConfig = !!repo.sync_folder_id;
-                    const syncFolder = folders.find(f => f.id === repo.sync_folder_id);
+                    const syncFolder = folders.find(
+                      (f) => f.id === repo.sync_folder_id
+                    );
 
                     return (
                       <TableRow key={repo.id}>
@@ -388,14 +422,19 @@ export default function TeamGitHub() {
                         <TableCell>
                           {hasSyncConfig ? (
                             <div className="flex flex-col gap-1">
-                              <Badge variant="secondary" className="gap-1 bg-blue-100 text-blue-800">
+                              <Badge
+                                variant="secondary"
+                                className="gap-1 bg-blue-100 text-blue-800"
+                              >
                                 <FolderSync className="h-3 w-3" />
                                 Configured
                               </Badge>
                               <div className="text-xs text-muted-foreground flex items-center gap-1">
                                 <Folder className="h-3 w-3" />
                                 {syncFolder?.name || 'Unknown folder'}
-                                <span className="text-muted-foreground/60">→</span>
+                                <span className="text-muted-foreground/60">
+                                  →
+                                </span>
                                 /{repo.sync_path}
                               </div>
                             </div>
@@ -455,12 +494,16 @@ export default function TeamGitHub() {
       )}
 
       {/* Configure Sync Dialog - Multi-folder */}
-      <Dialog open={!!repoToConfigureSync} onOpenChange={() => setRepoToConfigureSync(null)}>
+      <Dialog
+        open={!!repoToConfigureSync}
+        onOpenChange={() => setRepoToConfigureSync(null)}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Configure Document Sync</DialogTitle>
             <DialogDescription>
-              Select folders to sync with the GitHub repository. Leave GitHub Path empty to use the folder name.
+              Select folders to sync with the GitHub repository. Leave GitHub
+              Path empty to use the folder name.
             </DialogDescription>
           </DialogHeader>
           {isLoadingSyncConfigs ? (
@@ -478,7 +521,7 @@ export default function TeamGitHub() {
                   onClick={toggleAllFolders}
                   className="text-xs"
                 >
-                  {folderSyncConfigs.every(f => f.selected) ? (
+                  {folderSyncConfigs.every((f) => f.selected) ? (
                     <>
                       <CheckSquare className="h-3 w-3 mr-1" />
                       Deselect All
@@ -498,15 +541,22 @@ export default function TeamGitHub() {
                   <div className="text-center py-4 text-muted-foreground">
                     <Folder className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">No folders available</p>
-                    <p className="text-xs">Create folders in the Documents section first</p>
+                    <p className="text-xs">
+                      Create folders in the Documents section first
+                    </p>
                   </div>
                 ) : (
                   folderSyncConfigs.map((config) => (
-                    <div key={config.folderId} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50">
+                    <div
+                      key={config.folderId}
+                      className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50"
+                    >
                       <Checkbox
                         id={`folder-${config.folderId}`}
                         checked={config.selected}
-                        onCheckedChange={() => toggleFolderSelection(config.folderId)}
+                        onCheckedChange={() =>
+                          toggleFolderSelection(config.folderId)
+                        }
                         className="mt-1"
                       />
                       <div className="flex-1 space-y-1">
@@ -519,10 +569,17 @@ export default function TeamGitHub() {
                         </label>
                         {config.selected && (
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">→</span>
+                            <span className="text-xs text-muted-foreground">
+                              →
+                            </span>
                             <Input
                               value={config.githubPath}
-                              onChange={(e) => updateFolderGitHubPath(config.folderId, e.target.value)}
+                              onChange={(e) =>
+                                updateFolderGitHubPath(
+                                  config.folderId,
+                                  e.target.value
+                                )
+                              }
                               placeholder={config.folderName}
                               className="h-7 text-xs"
                             />
@@ -535,12 +592,13 @@ export default function TeamGitHub() {
               </div>
 
               <p className="text-xs text-muted-foreground">
-                If GitHub Path is empty, the folder name will be used. Documents sync to: <code>repo/{'{path}'}</code>
+                If GitHub Path is empty, the folder name will be used. Documents
+                sync to: <code>repo/{'{path}'}</code>
               </p>
             </div>
           )}
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            {folderSyncConfigs.some(f => f.selected) && (
+            {folderSyncConfigs.some((f) => f.selected) && (
               <Button
                 variant="outline"
                 onClick={() => {
@@ -564,7 +622,10 @@ export default function TeamGitHub() {
               </Button>
               <Button
                 onClick={handleConfigureSync}
-                disabled={!folderSyncConfigs.some(f => f.selected) || isConfiguringSync}
+                disabled={
+                  !folderSyncConfigs.some((f) => f.selected) ||
+                  isConfiguringSync
+                }
               >
                 {isConfiguringSync ? (
                   <>

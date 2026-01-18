@@ -18,9 +18,15 @@ export function useTaskMutations(projectId?: string) {
   const navigate = useNavigateWithSearch();
 
   const invalidateQueries = (taskId?: string) => {
-    queryClient.invalidateQueries({ queryKey: taskKeys.all, refetchType: 'none' });
+    queryClient.invalidateQueries({
+      queryKey: taskKeys.all,
+      refetchType: 'none',
+    });
     if (taskId) {
-      queryClient.invalidateQueries({ queryKey: taskKeys.byId(taskId), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: taskKeys.byId(taskId),
+        refetchType: 'none',
+      });
     }
   };
 
@@ -87,7 +93,10 @@ export function useTaskMutations(projectId?: string) {
       // Remove single-task cache entry to avoid stale data flashes
       queryClient.removeQueries({ queryKey: ['task', taskId], exact: true });
       // Invalidate all task relationships caches (safe approach since we don't know parent)
-      queryClient.invalidateQueries({ queryKey: taskRelationshipsKeys.all, refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: taskRelationshipsKeys.all,
+        refetchType: 'none',
+      });
     },
     onError: (err) => {
       console.error('Failed to delete task:', err);

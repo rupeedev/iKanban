@@ -2,7 +2,7 @@
 use std::{str::FromStr, sync::Arc, time::Duration};
 
 use sqlx::{
-    Error, Pool, Postgres, PgPool,
+    Error, PgPool, Pool, Postgres,
     postgres::{PgConnectOptions, PgPoolOptions},
 };
 // use utils::assets::asset_dir; // No longer needed for Postgres
@@ -36,13 +36,13 @@ impl DBService {
 
         let options = PgConnectOptions::from_str(database_url)?;
         // .create_if_missing(true) is not available/needed for Postgres connection string usually
-        
+
         // Use a reasonable connection timeout
         let pool = PgPool::connect_with(options).await?;
-        
+
         // Disable sqlx migrations as we use Drizzle now
         // sqlx::migrate!("./migrations").run(&pool).await?;
-        
+
         Ok(DBService { pool })
     }
 
@@ -61,7 +61,10 @@ impl DBService {
         Ok(DBService { pool })
     }
 
-    async fn create_pool<F>(database_url: &str, after_connect: Option<Arc<F>>) -> Result<Pool<Postgres>, Error>
+    async fn create_pool<F>(
+        database_url: &str,
+        after_connect: Option<Arc<F>>,
+    ) -> Result<Pool<Postgres>, Error>
     where
         F: for<'a> Fn(
                 &'a mut sqlx::PgConnection,
