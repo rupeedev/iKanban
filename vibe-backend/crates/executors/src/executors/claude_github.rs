@@ -14,15 +14,9 @@ use crate::{
 /// Claude Code Action - marker executor for GitHub issue-based Claude integration (IKA-171).
 /// This is not a local executor - it's used to identify @claude mentions that should
 /// create GitHub issues and trigger Claude Code Action.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, Default)]
 pub struct Claude {
     // No configuration needed - this is just a marker
-}
-
-impl Default for Claude {
-    fn default() -> Self {
-        Self {}
-    }
 }
 
 #[async_trait]
