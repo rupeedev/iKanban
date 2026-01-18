@@ -320,7 +320,22 @@
         "noServersConfigured": "No MCP servers configured yet",
         "addServerHint": "Add servers using the JSON editor below or select from popular servers",
         "loading": "Loading...",
-        "refresh": "Refresh MCP configuration"
+        "refresh": "Refresh MCP configuration",
+        "apiKeys": "API Keys",
+        "keyLinked": "Linked"
+      },
+      "keyReference": {
+        "title": "API Key References",
+        "description": "Use secure key references instead of exposing API keys in your configuration.",
+        "syntaxTitle": "Reference Syntax",
+        "syntaxHelp": "Replace \"provider_name\" with: openai, anthropic, or google",
+        "exampleTitle": "Example Usage",
+        "availableKeys": "Available Keys",
+        "configured": "Configured",
+        "notConfigured": "Not configured",
+        "copied": "Copied!",
+        "copyReference": "Copy reference",
+        "manageKeys": "Manage API keys in AI Provider Keys"
       },
       "labels": {
         "agent": "Agent",
