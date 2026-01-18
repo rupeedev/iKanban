@@ -1,38 +1,35 @@
 import { useCallback, useMemo, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  AlertTriangle,
-  Plus,
-  RefreshCw,
-  SlidersHorizontal,
-  CircleDot,
-  PlayCircle,
-  Circle,
-  BarChart3,
-} from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
-import { tasksApi } from '@/lib/api';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { openIssueForm } from '@/lib/openIssueForm';
+import {
+  loadIssuePanelSize,
+  saveIssuePanelSize,
+  PANEL_DEFAULTS,
+} from '@/lib/panelStorage';
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable';
 
 import { useTeamDashboard } from '@/hooks/useTeamDashboard';
+import { useIssueUpdateHandlers } from '@/hooks/useIssueUpdateHandlers';
 
-import { TeamKanbanBoard } from '@/components/tasks/TeamKanbanBoard';
-import { InsightsPanel } from '@/components/tasks/InsightsPanel';
-import { IssueDetailPanel } from '@/components/tasks/IssueDetailPanel';
+import { TeamIssuesContent } from '@/components/tasks/TeamIssuesContent';
 import {
-  IssueFilterDropdown,
-  FilterState,
-} from '@/components/filters/IssueFilterDropdown';
+  TeamIssuesHeader,
+  ViewFilter,
+} from '@/components/tasks/TeamIssuesHeader';
+import { IssueDetailPanel } from '@/components/tasks/IssueDetailPanel';
+import { FilterState } from '@/components/filters/IssueFilterDropdown';
 import type { DragEndEvent } from '@dnd-kit/core';
 
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 import type { TeamMember } from '@/components/selectors';
-
-type ViewFilter = 'all' | 'active' | 'backlog';
 
 const TASK_STATUSES = [
   'todo',
@@ -63,6 +60,22 @@ export function TeamIssues() {
 
   const [showInsights, setShowInsights] = useState(false);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+  const [issuePanelSize, setIssuePanelSize] = useState<number>(
+    loadIssuePanelSize
+  );
+
+  // Handle panel resize - save to localStorage
+  const handlePanelResize = useCallback((sizes: number[]) => {
+    // sizes[1] is the issue detail panel size (when present)
+    if (
+      sizes.length === 2 &&
+      sizes[1] >= PANEL_DEFAULTS.ISSUE_PANEL_MIN &&
+      sizes[1] <= PANEL_DEFAULTS.ISSUE_PANEL_MAX
+    ) {
+      setIssuePanelSize(sizes[1]);
+      saveIssuePanelSize(sizes[1]);
+    }
+  }, []);
 
   // Filter state
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
@@ -87,6 +100,14 @@ export function TeamIssues() {
 
   // Team projects are already filtered by the backend - use directly
   const teamProjects = projects;
+
+  // Issue update handlers (assignee, priority, project, status)
+  const {
+    handleAssigneeChange,
+    handlePriorityChange,
+    handleProjectChange,
+    handleStatusChange,
+  } = useIssueUpdateHandlers({ issuesById, refresh });
 
   const handleCreateIssue = useCallback(() => {
     // Open Linear-style issue form dialog
@@ -187,27 +208,9 @@ export function TeamIssues() {
 
       const draggedIssueId = active.id as string;
       const newStatus = over.id as TaskStatus;
-      const issue = issuesById[draggedIssueId];
-      if (!issue || issue.status === newStatus) return;
-
-      try {
-        await tasksApi.update(draggedIssueId, {
-          title: issue.title,
-          description: issue.description,
-          status: newStatus,
-          parent_workspace_id: issue.parent_workspace_id,
-          image_ids: null,
-          priority: null,
-          due_date: null,
-          assignee_id: null,
-        });
-        // Refresh to get updated data
-        await refresh();
-      } catch (err) {
-        console.error('Failed to update issue status:', err);
-      }
+      await handleStatusChange(draggedIssueId, newStatus);
     },
-    [issuesById, refresh]
+    [handleStatusChange]
   );
 
   const handleViewIssueDetails = useCallback((issue: TaskWithAttemptStatus) => {
@@ -215,6 +218,12 @@ export function TeamIssues() {
     setSelectedIssueId(issue.id);
     // Close insights panel when opening issue detail
     setShowInsights(false);
+  }, []);
+
+  // Handler for clearing all filters
+  const handleClearFilters = useCallback(() => {
+    setViewFilter('all');
+    setFilters({ priority: null, assigneeId: null, projectId: null });
   }, []);
 
   // Get the selected issue from state
@@ -238,73 +247,6 @@ export function TeamIssues() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedIssueId]);
-
-  // Handler for assignee changes
-  const handleAssigneeChange = useCallback(
-    async (taskId: string, assigneeId: string | null) => {
-      const issue = issuesById[taskId];
-      if (!issue) return;
-
-      try {
-        await tasksApi.update(taskId, {
-          title: issue.title,
-          description: issue.description,
-          status: issue.status,
-          parent_workspace_id: issue.parent_workspace_id,
-          image_ids: null,
-          priority: issue.priority,
-          due_date: issue.due_date,
-          assignee_id: assigneeId,
-        });
-        await refresh();
-      } catch (err) {
-        console.error('Failed to update assignee:', err);
-      }
-    },
-    [issuesById, refresh]
-  );
-
-  // Handler for priority changes
-  const handlePriorityChange = useCallback(
-    async (taskId: string, priority: number) => {
-      const issue = issuesById[taskId];
-      if (!issue) return;
-
-      try {
-        await tasksApi.update(taskId, {
-          title: issue.title,
-          description: issue.description,
-          status: issue.status,
-          parent_workspace_id: issue.parent_workspace_id,
-          image_ids: null,
-          priority,
-          due_date: issue.due_date,
-          assignee_id: issue.assignee_id,
-        });
-        await refresh();
-      } catch (err) {
-        console.error('Failed to update priority:', err);
-      }
-    },
-    [issuesById, refresh]
-  );
-
-  // Handler for project changes - moves issue to a different project
-  const handleProjectChange = useCallback(
-    async (taskId: string, newProjectId: string) => {
-      const issue = issuesById[taskId];
-      if (!issue || issue.project_id === newProjectId) return;
-
-      try {
-        // Use the tasksApi to move the task to the new project
-        await tasksApi.move(taskId, newProjectId);
-        await refresh();
-      } catch (err) {
-        console.error('Failed to move issue to new project:', err);
-      }
-    },
-    [issuesById, refresh]
-  );
 
   // Convert team projects to format expected by dropdown
   const teamProjectsForDropdown = useMemo(() => {
@@ -354,174 +296,81 @@ export function TeamIssues() {
   const hasFilteredIssues = filteredIssues.length > 0;
   const hasActiveFilters =
     viewFilter !== 'all' ||
-    filters.priority?.length ||
-    filters.assigneeId?.length ||
-    filters.projectId;
+    (filters.priority?.length ?? 0) > 0 ||
+    (filters.assigneeId?.length ?? 0) > 0 ||
+    !!filters.projectId;
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="shrink-0 border-b px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">{team.icon || '👥'}</span>
-            <h1 className="text-lg font-semibold">{team.name}</h1>
-            <span className="text-muted-foreground">/ Issues</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => refresh()}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-            <Button size="sm" onClick={handleCreateIssue}>
-              <Plus className="h-4 w-4 mr-1" />
-              New Issue
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Sub-header: View tabs + Filter/Insight/Display */}
-      <div className="shrink-0 border-b px-4 py-2">
-        <div className="flex items-center justify-between">
-          {/* Left side: View tabs and Filter */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className={`gap-1.5 ${viewFilter === 'all' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-300' : 'bg-background border-border'}`}
-              onClick={() => setViewFilter('all')}
-            >
-              <CircleDot className="h-4 w-4" />
-              All issues
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className={`gap-1.5 ${viewFilter === 'active' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-300' : 'bg-background border-border'}`}
-              onClick={() => setViewFilter('active')}
-            >
-              <PlayCircle className="h-4 w-4" />
-              Active
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className={`gap-1.5 ${viewFilter === 'backlog' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-300' : 'bg-background border-border'}`}
-              onClick={() => setViewFilter('backlog')}
-            >
-              <Circle className="h-4 w-4 opacity-50" strokeDasharray="2 2" />
-              Backlog
-            </Button>
-            <div className="w-px h-5 bg-border mx-1" />
-            <IssueFilterDropdown
-              filters={filters}
-              onFiltersChange={setFilters}
-              teamMembers={teamMembers}
-              projects={teamProjectsForDropdown}
-              issues={issues}
-            />
-          </div>
-
-          {/* Right side: Insight and Display */}
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`h-8 w-8 ${showInsights ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950' : 'text-muted-foreground hover:text-foreground'}`}
-              onClick={() => setShowInsights(!showInsights)}
-            >
-              <BarChart3 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground gap-1.5"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Display
-            </Button>
-          </div>
-        </div>
-      </div>
+      <TeamIssuesHeader
+        team={team}
+        viewFilter={viewFilter}
+        filters={filters}
+        showInsights={showInsights}
+        teamMembers={teamMembers}
+        teamProjects={teamProjectsForDropdown}
+        issues={issues}
+        onViewFilterChange={setViewFilter}
+        onFiltersChange={setFilters}
+        onToggleInsights={() => setShowInsights(!showInsights)}
+        onCreateIssue={handleCreateIssue}
+        onRefresh={refresh}
+      />
 
       {/* Content */}
-      <div className="flex-1 min-h-0 flex">
-        {/* Main content area */}
-        <div className="flex-1 overflow-auto">
-          {!hasIssues ? (
-            <div className="max-w-7xl mx-auto mt-8 px-4">
-              <Card>
-                <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    No issues in this team yet
-                  </p>
-                  <Button className="mt-4" onClick={handleCreateIssue}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create First Issue
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          ) : !hasFilteredIssues && hasActiveFilters ? (
-            <div className="max-w-7xl mx-auto mt-8 px-4">
-              <Card>
-                <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    No issues match your filters
-                  </p>
-                  <Button
-                    variant="outline"
-                    className="mt-4"
-                    onClick={() => {
-                      setViewFilter('all');
-                      setFilters({
-                        priority: null,
-                        assigneeId: null,
-                        projectId: null,
-                      });
-                    }}
-                  >
-                    Clear all filters
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain p-4">
-              <TeamKanbanBoard
-                columns={kanbanColumns}
-                onDragEnd={handleDragEnd}
-                onViewTaskDetails={handleViewIssueDetails}
-                onCreateTask={handleCreateIssue}
-                selectedTaskId={undefined}
-                teamMembers={teamMembers}
-                teamProjects={teamProjectsForDropdown}
-                onAssigneeChange={handleAssigneeChange}
-                onPriorityChange={handlePriorityChange}
-                onProjectChange={handleProjectChange}
-              />
-            </div>
+      <div className="flex-1 min-h-0">
+        <ResizablePanelGroup
+          direction="horizontal"
+          className="h-full"
+          onLayout={handlePanelResize}
+        >
+          {/* Main content area */}
+          <ResizablePanel
+            defaultSize={selectedIssue ? 100 - issuePanelSize : 100}
+            minSize={40}
+            className="min-w-0"
+          >
+            <TeamIssuesContent
+              hasIssues={hasIssues}
+              hasFilteredIssues={hasFilteredIssues}
+              hasActiveFilters={hasActiveFilters}
+              showInsights={showInsights}
+              issues={issues}
+              kanbanColumns={kanbanColumns}
+              teamMembers={teamMembers}
+              teamProjects={teamProjectsForDropdown}
+              onCreateIssue={handleCreateIssue}
+              onDragEnd={handleDragEnd}
+              onViewIssueDetails={handleViewIssueDetails}
+              onAssigneeChange={handleAssigneeChange}
+              onPriorityChange={handlePriorityChange}
+              onProjectChange={handleProjectChange}
+              onClearFilters={handleClearFilters}
+              onCloseInsights={() => setShowInsights(false)}
+            />
+          </ResizablePanel>
+
+          {/* Issue Detail Panel with resize handle */}
+          {selectedIssue && (
+            <>
+              <ResizableHandle withHandle />
+              <ResizablePanel
+                defaultSize={issuePanelSize}
+                minSize={25}
+                maxSize={60}
+                className="min-w-0"
+              >
+                <IssueDetailPanel
+                  issue={selectedIssue}
+                  teamId={actualTeamId}
+                  issueKey={selectedIssueKey}
+                  onClose={() => setSelectedIssueId(null)}
+                  onUpdate={refresh}
+                />
+              </ResizablePanel>
+            </>
           )}
-        </div>
-
-        {/* Insights Panel */}
-        {showInsights && (
-          <InsightsPanel
-            issues={issues}
-            onClose={() => setShowInsights(false)}
-          />
-        )}
-
-        {/* Issue Detail Panel */}
-        {selectedIssue && (
-          <IssueDetailPanel
-            issue={selectedIssue}
-            teamId={actualTeamId}
-            issueKey={selectedIssueKey}
-            onClose={() => setSelectedIssueId(null)}
-            onUpdate={refresh}
-          />
-        )}
+        </ResizablePanelGroup>
       </div>
     </div>
   );

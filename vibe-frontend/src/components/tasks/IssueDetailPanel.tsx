@@ -177,7 +177,7 @@ export function IssueDetailPanel({
   const showCommentsLoading = commentsLoading && !hasComments;
 
   return (
-    <div className="w-[500px] border-l bg-background flex flex-col overflow-hidden shrink-0">
+    <div className="h-full w-full border-l bg-background flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
