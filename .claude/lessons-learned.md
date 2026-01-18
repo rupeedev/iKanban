@@ -325,6 +325,106 @@ gh workflow run quick-deploy-backend.yml --ref main -f image_tag=latest
 
 ---
 
+## Incident: IKA-148 Agent Settings Data Lost on Refresh (2026-01-18)
+
+### What Happened
+
+Users reported that Agent Settings configurations were lost after page refresh:
+1. User saves configuration → success message shows
+2. User refreshes page
+3. Saved data appears to be gone
+
+The data was actually being saved to the server, but the UI showed different data after refresh.
+
+### Root Cause
+
+**The mutation's `onSuccess` handler was optimistically updating the cache with what was SENT, not what the server SAVED.**
+
+```typescript
+// BROKEN CODE:
+const { mutateAsync: saveMutation } = useMutation({
+  mutationFn: (content: string) => profilesApi.save(content),
+  onSuccess: (_, content) => {
+    // content = what was SENT, not what server saved
+    queryClient.setQueryData(['profiles'], (old) => ({ ...old, content }));
+  },
+});
+```
+
+The backend only saves **overrides** (differences from defaults), not the full config:
+1. Frontend sends full config (defaults + user changes)
+2. Backend computes overrides (only parts different from defaults)
+3. Backend saves overrides to `profiles.json`
+4. Backend returns success message (NOT the saved content)
+5. Frontend optimistically sets cache to full config that was sent
+
+On page refresh:
+1. GET /api/profiles returns merged config (defaults + overrides from file)
+2. If overrides are empty (nothing changed from defaults), this looks different from what was sent
+
+### How It Was Fixed
+
+Changed the mutation to **invalidate and refetch** instead of optimistic update:
+
+```typescript
+// FIXED CODE:
+const { mutateAsync: saveMutation } = useMutation({
+  mutationFn: (content: string) => profilesApi.save(content),
+  onSuccess: async () => {
+    // Invalidate and refetch to get the server's merged view
+    await queryClient.invalidateQueries({ queryKey: ['profiles'] });
+  },
+});
+```
+
+This ensures the UI always shows what the server actually has (defaults + saved overrides).
+
+### Prevention Checklist
+
+When using TanStack Query mutations with server-computed responses:
+
+- [ ] **Don't use optimistic updates if server transforms data**
+- [ ] **Invalidate and refetch when server response differs from request**
+- [ ] **Only use optimistic updates when server echoes back exactly what was sent**
+- [ ] **Check what the backend actually saves** - it may compute/transform the input
+
+### When to Use Each Pattern
+
+| Pattern | Use When |
+|---------|----------|
+| **Optimistic Update** | Server saves exactly what you send (e.g., simple CRUD) |
+| **Invalidate + Refetch** | Server transforms/computes data (e.g., saves diffs, adds timestamps) |
+| **Return Updated Data** | Server returns the actual saved state (best of both worlds) |
+
+### Backend Save Flow for Profiles
+
+```
+Frontend sends: { executors: { CLAUDE_CODE: { DEFAULT: {...}, CUSTOM: {...} } } }
+                                    │
+                                    ▼
+                         Backend: compute_overrides()
+                                    │
+                    Compares against default_profiles.json
+                                    │
+                                    ▼
+              Only saves: { executors: { CLAUDE_CODE: { CUSTOM: {...} } } }
+              (DEFAULT wasn't different, so not saved)
+                                    │
+                                    ▼
+                         On reload/GET:
+              defaults + overrides = full merged config
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `vibe-frontend/src/hooks/useProfiles.ts` | Where the mutation was fixed |
+| `vibe-backend/crates/executors/src/profile.rs` | `compute_overrides()` - saves only diffs |
+| `vibe-backend/crates/server/src/routes/config.rs` | GET/PUT /api/profiles endpoints |
+
+---
+
 ## Template for Future Incidents
 
 ### Incident: [Title] (Date)
