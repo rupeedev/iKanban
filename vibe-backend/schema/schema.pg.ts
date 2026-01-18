@@ -686,6 +686,24 @@ export const aiProviderKeys = pgTable("ai_provider_keys", {
     uniqAiProviderKeysTenantProvider: uniqueIndex("uniq_ai_provider_keys_tenant_provider").on(table.tenantWorkspaceId, table.provider),
 }));
 
+// Agent Configs (dual storage for agent configurations: local files + database)
+export const agentConfigs = pgTable("agent_configs", {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    teamId: bigint("team_id", { mode: "number" }).notNull().references(() => teams.id, { onDelete: "cascade" }),
+    agentType: text("agent_type").notNull(), // 'CLAUDE_CODE', 'COPILOT', 'DROID', etc.
+    storageLocation: text("storage_location").notNull(), // 'local' or 'database'
+    localPath: text("local_path"), // e.g., '.claude/profiles.json', '.github/profiles.json'
+    configData: jsonb("config_data").default({}).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    syncedAt: timestamp("synced_at", { withTimezone: true }), // Last sync between local and database
+}, (table) => ({
+    idxAgentConfigsTeamId: index("idx_agent_configs_team_id").on(table.teamId),
+    idxAgentConfigsAgentType: index("idx_agent_configs_agent_type").on(table.agentType),
+    idxAgentConfigsStorageLocation: index("idx_agent_configs_storage_location").on(table.storageLocation),
+    uniqAgentConfigsTeamAgent: uniqueIndex("uniq_agent_configs_team_agent").on(table.teamId, table.agentType),
+}));
+
 // ============================================================================
 // Chat Tables (IKA-65: Team Chat with Privacy Controls)
 // ============================================================================

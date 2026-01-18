@@ -1,3 +1,4 @@
+pub mod agent_config;
 pub mod ai_provider_key;
 pub mod api_key;
 pub mod chat_message;
