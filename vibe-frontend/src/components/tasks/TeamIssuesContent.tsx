@@ -53,50 +53,59 @@ export function TeamIssuesContent({
   onCloseInsights,
 }: TeamIssuesContentProps) {
   return (
-    <div className="h-full overflow-auto">
-      {!hasIssues ? (
-        <div className="max-w-7xl mx-auto mt-8 px-4">
-          <Card>
-            <CardContent className="text-center py-8">
-              <p className="text-muted-foreground">No issues in this team yet</p>
-              <Button className="mt-4" onClick={onCreateIssue}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create First Issue
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      ) : !hasFilteredIssues && hasActiveFilters ? (
-        <div className="max-w-7xl mx-auto mt-8 px-4">
-          <Card>
-            <CardContent className="text-center py-8">
-              <p className="text-muted-foreground">
-                No issues match your filters
-              </p>
-              <Button variant="outline" className="mt-4" onClick={onClearFilters}>
-                Clear all filters
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      ) : (
-        <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain p-4">
-          <TeamKanbanBoard
-            columns={kanbanColumns}
-            onDragEnd={onDragEnd}
-            onViewTaskDetails={onViewIssueDetails}
-            onCreateTask={onCreateIssue}
-            selectedTaskId={undefined}
-            teamMembers={teamMembers}
-            teamProjects={teamProjects}
-            onAssigneeChange={onAssigneeChange}
-            onPriorityChange={onPriorityChange}
-            onProjectChange={onProjectChange}
-          />
-        </div>
-      )}
+    <div className="h-full flex">
+      {/* Main content area */}
+      <div className="flex-1 min-w-0 overflow-auto">
+        {!hasIssues ? (
+          <div className="max-w-7xl mx-auto mt-8 px-4">
+            <Card>
+              <CardContent className="text-center py-8">
+                <p className="text-muted-foreground">
+                  No issues in this team yet
+                </p>
+                <Button className="mt-4" onClick={onCreateIssue}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Issue
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        ) : !hasFilteredIssues && hasActiveFilters ? (
+          <div className="max-w-7xl mx-auto mt-8 px-4">
+            <Card>
+              <CardContent className="text-center py-8">
+                <p className="text-muted-foreground">
+                  No issues match your filters
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={onClearFilters}
+                >
+                  Clear all filters
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain p-4">
+            <TeamKanbanBoard
+              columns={kanbanColumns}
+              onDragEnd={onDragEnd}
+              onViewTaskDetails={onViewIssueDetails}
+              onCreateTask={onCreateIssue}
+              selectedTaskId={undefined}
+              teamMembers={teamMembers}
+              teamProjects={teamProjects}
+              onAssigneeChange={onAssigneeChange}
+              onPriorityChange={onPriorityChange}
+              onProjectChange={onProjectChange}
+            />
+          </div>
+        )}
+      </div>
 
-      {/* Insights Panel */}
+      {/* Insights Panel - renders as side panel */}
       {showInsights && (
         <InsightsPanel issues={issues} onClose={onCloseInsights} />
       )}
