@@ -1416,6 +1416,88 @@ export const profilesApi = {
   },
 };
 
+// Agent Configs API (Dual Storage Support)
+export const agentConfigsApi = {
+  // Get all agent configs or a specific one
+  getConfigs: async (
+    agentType?: string
+  ): Promise<
+    Array<{
+      id: number;
+      team_id: number;
+      agent_type: string;
+      storage_location: 'local' | 'database';
+      local_path?: string;
+      config_data: unknown;
+      created_at: string;
+      updated_at: string;
+      synced_at?: string;
+    }>
+  > => {
+    const url = agentType
+      ? `/api/agent-configs?agent_type=${encodeURIComponent(agentType)}`
+      : '/api/agent-configs';
+    const response = await makeRequest(url);
+    return handleApiResponse(response);
+  },
+
+  // Create or update an agent config
+  upsertConfig: async (data: {
+    agent_type: string;
+    storage_location: 'local' | 'database';
+    local_path?: string;
+    config_data?: unknown;
+  }): Promise<{
+    id: number;
+    team_id: number;
+    agent_type: string;
+    storage_location: 'local' | 'database';
+    local_path?: string;
+    config_data: unknown;
+    created_at: string;
+    updated_at: string;
+    synced_at?: string;
+  }> => {
+    const response = await makeRequest('/api/agent-configs', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return handleApiResponse(response);
+  },
+
+  // Sync configs between local and database
+  syncConfigs: async (
+    agentType: string,
+    direction: 'local_to_db' | 'db_to_local'
+  ): Promise<string> => {
+    const response = await makeRequest('/api/agent-configs/sync', {
+      method: 'POST',
+      body: JSON.stringify({ agent_type: agentType, direction }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return handleApiResponse<string>(response);
+  },
+
+  // Get storage recommendation for an agent type
+  getStorageRecommendation: async (
+    agentType: string
+  ): Promise<{
+    agent_type: string;
+    recommended_location: 'local' | 'database';
+    local_path?: string;
+  }> => {
+    const response = await makeRequest(
+      `/api/agent-configs/storage-recommendation?agent_type=${encodeURIComponent(agentType)}`
+    );
+    return handleApiResponse(response);
+  },
+};
+
 // Images API
 export const imagesApi = {
   upload: async (file: File): Promise<ImageResponse> => {

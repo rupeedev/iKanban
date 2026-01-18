@@ -27,7 +27,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from '@/components/ui/table/table';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Eye, EyeOff, RefreshCw, Database, FileText } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 
 import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
@@ -35,6 +35,7 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteConfigurationDialog';
+import { agentConfigsApi } from '@/lib/api';
 import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
@@ -153,6 +154,7 @@ export function AgentSettings() {
   // Use profiles hook for server state
   const {
     profilesContent: serverProfilesContent,
+    profilesPath,
     isLoading: profilesLoading,
     isSaving: profilesSaving,
     error: profilesError,
@@ -176,6 +178,11 @@ export function AgentSettings() {
     useState<ExecutorConfigs | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [showHiddenAgents, setShowHiddenAgents] = useState(false);
+
+  // Sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncSuccess, setSyncSuccess] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // Sync server state to local state when not dirty
   useEffect(() => {
@@ -560,6 +567,42 @@ export function AgentSettings() {
     }
   };
 
+  // Handle syncing configs between local and database
+  const handleSyncConfigs = async (
+    direction: 'local_to_db' | 'db_to_local'
+  ) => {
+    setSyncError(null);
+    setSyncSuccess(false);
+    setIsSyncing(true);
+
+    try {
+      const message = await agentConfigsApi.syncConfigs(
+        selectedExecutorType,
+        direction
+      );
+      setSyncSuccess(true);
+      setTimeout(() => setSyncSuccess(false), 3000);
+
+      // Reload profiles if syncing from database to local
+      if (direction === 'db_to_local') {
+        reloadSystem();
+      }
+
+      console.log('Sync completed:', message);
+    } catch (err: unknown) {
+      console.error('Failed to sync configs:', err);
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : t('settings.agents.sync.error', {
+              defaultValue: 'Failed to sync configurations',
+            });
+      setSyncError(errorMessage);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   if (profilesLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -593,6 +636,138 @@ export function AgentSettings() {
         <Alert variant="destructive">
           <AlertDescription>{saveError}</AlertDescription>
         </Alert>
+      )}
+
+      {syncSuccess && (
+        <Alert variant="success">
+          <AlertDescription className="font-medium">
+            {t('settings.agents.sync.success', {
+              defaultValue: 'Sync completed successfully',
+            })}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {syncError && (
+        <Alert variant="destructive">
+          <AlertDescription>{syncError}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Storage Location Management */}
+      {useFormEditor && localParsedProfiles?.executors && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {t('settings.agents.storage.title', {
+                defaultValue: 'Storage Location',
+              })}
+            </CardTitle>
+            <CardDescription>
+              {t('settings.agents.storage.description', {
+                defaultValue:
+                  'Configure where agent configurations are stored. Local agents use project files, while remote agents use database storage.',
+              })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                <p className="font-medium mb-2">
+                  {t('settings.agents.storage.currentLocation', {
+                    defaultValue: 'Current Storage:',
+                  })}
+                </p>
+                <p className="font-mono text-xs bg-muted p-2 rounded">
+                  {profilesPath || 'Loading...'}
+                </p>
+              </div>
+              
+              {/* Sync Controls */}
+              <div className="border-t pt-4">
+                <p className="text-sm font-medium mb-3">
+                  {t('settings.agents.storage.sync', {
+                    defaultValue: 'Sync Configurations:',
+                  })}
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSyncConfigs('local_to_db')}
+                    disabled={isSyncing || !selectedExecutorType}
+                  >
+                    {isSyncing ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileText className="mr-2 h-4 w-4" />
+                    )}
+                    {t('settings.agents.storage.syncToDb', {
+                      defaultValue: 'Local → Database',
+                    })}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSyncConfigs('db_to_local')}
+                    disabled={isSyncing || !selectedExecutorType}
+                  >
+                    {isSyncing ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Database className="mr-2 h-4 w-4" />
+                    )}
+                    {t('settings.agents.storage.syncFromDb', {
+                      defaultValue: 'Database → Local',
+                    })}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={reloadSystem}
+                    disabled={isSyncing}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    {t('settings.agents.storage.reload', {
+                      defaultValue: 'Reload',
+                    })}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <p className="text-sm font-medium mb-2">
+                  {t('settings.agents.storage.recommendations', {
+                    defaultValue: 'Recommended Storage by Agent Type:',
+                  })}
+                </p>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <span className="font-mono text-xs bg-blue-50 dark:bg-blue-950 px-2 py-1 rounded">
+                      CLAUDE_CODE
+                    </span>
+                    <span>→</span>
+                    <span className="font-mono text-xs">.claude/profiles.json</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="font-mono text-xs bg-blue-50 dark:bg-blue-950 px-2 py-1 rounded">
+                      COPILOT
+                    </span>
+                    <span>→</span>
+                    <span className="font-mono text-xs">.github/profiles.json</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="font-mono text-xs bg-green-50 dark:bg-green-950 px-2 py-1 rounded">
+                      DROID, AMP, etc.
+                    </span>
+                    <span>→</span>
+                    <span className="font-mono text-xs">Database</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Agent Visibility Management */}
