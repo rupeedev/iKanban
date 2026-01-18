@@ -37,3 +37,8 @@ temp_deploy/
 
 # MCP Config (contains sensitive IDs)
 mcp/teams-config.json
+
+# Playwright test artifacts
+**/test-results/
+**/playwright-report/
+**/playwright/.cache/
