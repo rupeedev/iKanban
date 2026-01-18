@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Card,
@@ -15,147 +15,67 @@ import {
   TableHeaderCell,
   TableRow,
 } from '@/components/ui/table/table';
-import { Loader2 } from 'lucide-react';
-import type { BaseCodingAgent, ExecutorConfig, McpConfig } from 'shared/types';
-import { mcpServersApi } from '@/lib/api';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Server } from 'lucide-react';
+import type { McpConfig } from 'shared/types';
 
-interface McpSummaryRow {
-  agent: string;
-  serverCount: number;
-  serverTypes: string;
-  isLoading: boolean;
-  error: string | null;
+interface McpServerRow {
+  name: string;
+  type: string;
+  status: 'configured' | 'preconfigured';
 }
 
 interface McpConfigSummaryProps {
-  profiles: Record<string, ExecutorConfig> | null | undefined;
+  mcpConfig: McpConfig | null;
+  isLoading?: boolean;
 }
 
-function extractServerTypes(mcpConfig: McpConfig): string[] {
-  const types = new Set<string>();
-
-  if (mcpConfig.servers && typeof mcpConfig.servers === 'object') {
-    for (const serverConfig of Object.values(mcpConfig.servers)) {
-      if (
-        serverConfig &&
-        typeof serverConfig === 'object' &&
-        'type' in serverConfig
-      ) {
-        const serverType = (serverConfig as { type?: string }).type;
-        if (serverType) {
-          types.add(serverType);
-        }
-      } else if (
-        serverConfig &&
-        typeof serverConfig === 'object' &&
-        'command' in serverConfig
-      ) {
-        types.add('stdio');
-      } else if (
-        serverConfig &&
-        typeof serverConfig === 'object' &&
-        'url' in serverConfig
-      ) {
-        types.add('http');
-      }
-    }
+function getServerType(serverConfig: unknown): string {
+  if (!serverConfig || typeof serverConfig !== 'object') {
+    return 'unknown';
   }
 
-  return Array.from(types).sort();
+  const config = serverConfig as Record<string, unknown>;
+
+  if ('type' in config && typeof config.type === 'string') {
+    return config.type;
+  }
+  if ('command' in config) {
+    return 'stdio';
+  }
+  if ('url' in config) {
+    return 'http';
+  }
+  return 'unknown';
 }
 
-export function McpConfigSummary({ profiles }: McpConfigSummaryProps) {
+export function McpConfigSummary({
+  mcpConfig,
+  isLoading = false,
+}: McpConfigSummaryProps) {
   const { t } = useTranslation('settings');
-  const [summaryRows, setSummaryRows] = useState<McpSummaryRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const loadAllMcpConfigs = async () => {
-      if (!profiles) {
-        setIsLoading(false);
-        return;
-      }
+  const serverRows = useMemo<McpServerRow[]>(() => {
+    if (!mcpConfig) return [];
 
-      const profileKeys = Object.keys(profiles);
+    const rows: McpServerRow[] = [];
 
-      const initialRows: McpSummaryRow[] = profileKeys.map((key) => ({
-        agent: key,
-        serverCount: 0,
-        serverTypes: '...',
-        isLoading: true,
-        error: null,
-      }));
-      setSummaryRows(initialRows);
-      setIsLoading(false);
-
-      const results = await Promise.allSettled(
-        profileKeys.map(async (profileKey) => {
-          try {
-            const result = await mcpServersApi.load({
-              executor: profileKey as BaseCodingAgent,
-            });
-            return {
-              profileKey,
-              mcpConfig: result.mcp_config,
-              error: null,
-            };
-          } catch (err) {
-            return {
-              profileKey,
-              mcpConfig: null,
-              error: err instanceof Error ? err.message : 'Failed to load',
-            };
-          }
-        })
-      );
-
-      const updatedRows: McpSummaryRow[] = profileKeys.map((profileKey) => {
-        const resultIndex = profileKeys.indexOf(profileKey);
-        const result = results[resultIndex];
-
-        if (result.status === 'fulfilled' && result.value.mcpConfig) {
-          const serverCount = Object.keys(
-            result.value.mcpConfig.servers || {}
-          ).length;
-          const serverTypes = extractServerTypes(result.value.mcpConfig);
-
-          return {
-            agent: profileKey,
-            serverCount,
-            serverTypes: serverTypes.length > 0 ? serverTypes.join(', ') : '-',
-            isLoading: false,
-            error: null,
-          };
-        } else if (
-          result.status === 'fulfilled' &&
-          result.value.error?.includes('does not support MCP')
-        ) {
-          return {
-            agent: profileKey,
-            serverCount: 0,
-            serverTypes: '-',
-            isLoading: false,
-            error: 'MCP not supported',
-          };
-        } else {
-          return {
-            agent: profileKey,
-            serverCount: 0,
-            serverTypes: '-',
-            isLoading: false,
-            error:
-              result.status === 'rejected'
-                ? 'Failed to load'
-                : result.value.error || null,
-          };
+    // Add configured servers
+    if (mcpConfig.servers && typeof mcpConfig.servers === 'object') {
+      for (const [name, config] of Object.entries(mcpConfig.servers)) {
+        if (config) {
+          rows.push({
+            name,
+            type: getServerType(config),
+            status: 'configured',
+          });
         }
-      });
+      }
+    }
 
-      setSummaryRows(updatedRows);
-    };
-
-    loadAllMcpConfigs();
-  }, [profiles]);
+    // Sort by name
+    return rows.sort((a, b) => a.name.localeCompare(b.name));
+  }, [mcpConfig]);
 
   if (isLoading) {
     return (
@@ -175,61 +95,68 @@ export function McpConfigSummary({ profiles }: McpConfigSummaryProps) {
     );
   }
 
-  if (!profiles || summaryRows.length === 0) {
-    return null;
-  }
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>{t('settings.mcp.summary.title')}</CardTitle>
         <CardDescription>
-          {t('settings.mcp.summary.description')}
+          {t('settings.mcp.summary.descriptionServers')}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableHeaderCell>
-                {t('settings.mcp.summary.agent')}
-              </TableHeaderCell>
-              <TableHeaderCell>
-                {t('settings.mcp.summary.servers')}
-              </TableHeaderCell>
-              <TableHeaderCell>
-                {t('settings.mcp.summary.types')}
-              </TableHeaderCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {summaryRows.map((row) => (
-              <TableRow key={row.agent}>
-                <TableCell className="font-medium">{row.agent}</TableCell>
-                <TableCell>
-                  {row.isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : row.error ? (
-                    <span className="text-muted-foreground text-sm">
-                      {row.error}
-                    </span>
-                  ) : row.serverCount > 0 ? (
-                    row.serverCount
-                  ) : (
-                    t('settings.mcp.summary.noServers')
-                  )}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {row.isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    row.serverTypes
-                  )}
-                </TableCell>
+        {serverRows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <Server className="h-12 w-12 text-muted-foreground/50 mb-3" />
+            <p className="text-sm text-muted-foreground">
+              {t('settings.mcp.summary.noServersConfigured')}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {t('settings.mcp.summary.addServerHint')}
+            </p>
+          </div>
+        ) : (
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell>
+                  {t('settings.mcp.summary.serverName')}
+                </TableHeaderCell>
+                <TableHeaderCell>
+                  {t('settings.mcp.summary.serverType')}
+                </TableHeaderCell>
+                <TableHeaderCell>
+                  {t('settings.mcp.summary.status')}
+                </TableHeaderCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {serverRows.map((row) => (
+                <TableRow key={row.name}>
+                  <TableCell className="font-medium font-mono text-sm">
+                    {row.name}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="font-mono text-xs">
+                      {row.type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        row.status === 'configured' ? 'default' : 'secondary'
+                      }
+                      className="text-xs"
+                    >
+                      {row.status === 'configured'
+                        ? t('settings.mcp.summary.statusConfigured')
+                        : t('settings.mcp.summary.statusPreconfigured')}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   );

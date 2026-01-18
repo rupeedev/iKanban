@@ -307,10 +307,18 @@
       "summary": {
         "title": "MCP Configuration Summary",
         "description": "Overview of MCP server configurations per agent.",
+        "descriptionServers": "MCP servers configured for the current agent.",
         "agent": "Agent",
         "servers": "Servers",
         "types": "Server Types",
+        "serverName": "Server Name",
+        "serverType": "Type",
+        "status": "Status",
+        "statusConfigured": "Configured",
+        "statusPreconfigured": "Available",
         "noServers": "No servers configured",
+        "noServersConfigured": "No MCP servers configured yet",
+        "addServerHint": "Add servers using the JSON editor below or select from popular servers",
         "loading": "Loading..."
       },
       "labels": {

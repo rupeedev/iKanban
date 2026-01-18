@@ -21,7 +21,7 @@ import { McpPreconfiguredServers } from '@/components/settings/McpPreconfiguredS
 
 export function McpSettings() {
   const { t } = useTranslation('settings');
-  const { config, profiles } = useUserSystem();
+  const { config } = useUserSystem();
   const [mcpServers, setMcpServers] = useState('{}');
   const [mcpConfig, setMcpConfig] = useState<McpConfig | null>(null);
   const [mcpError, setMcpError] = useState<string | null>(null);
@@ -189,8 +189,8 @@ export function McpSettings() {
         </Alert>
       )}
 
-      {/* Configuration Summary Table */}
-      <McpConfigSummary profiles={profiles} />
+      {/* Configuration Summary Table - Shows configured MCP servers */}
+      <McpConfigSummary mcpConfig={mcpConfig} isLoading={mcpLoading} />
 
       <Card>
         <CardHeader>
