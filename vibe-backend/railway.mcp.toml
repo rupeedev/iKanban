@@ -1,0 +1,9 @@
+# Note: Build is handled by GitHub Actions -> Docker Hub
+# Railway pulls from Docker Image source (rupeedev/ikanban-mcp)
+# Do NOT add [build] section here - it conflicts with Docker Image mode
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

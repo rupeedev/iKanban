@@ -1,0 +1,84 @@
+name: Deploy MCP Server
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "vibe-backend/crates/server/src/bin/mcp_task_server.rs"
+      - "vibe-backend/crates/server/src/mcp/**"
+      - "vibe-backend/Dockerfile.mcp"
+      - ".github/workflows/deploy-mcp.yml"
+  workflow_dispatch:
+
+env:
+  DOCKER_IMAGE: ${{ secrets.DOCKER_USER }}/ikanban-mcp
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-push:
+    name: Build & Push MCP Docker Image
+    environment: dve
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            libssl-dev \
+            libsqlite3-dev \
+            libclang-dev \
+            clang
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "vibe-backend -> target"
+          prefix-key: "ikanban-mcp-v1"
+          cache-on-failure: true
+          cache-all-crates: true
+
+      - name: Build MCP server binary
+        working-directory: vibe-backend
+        env:
+          SQLX_OFFLINE: "true"
+        run: cargo build --release --bin mcp_task_server
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PAT }}
+
+      - name: Prepare Docker context
+        working-directory: vibe-backend
+        run: |
+          mkdir -p docker-build-mcp
+          cp target/release/mcp_task_server docker-build-mcp/
+          cp Dockerfile.mcp docker-build-mcp/Dockerfile
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./vibe-backend/docker-build-mcp
+          push: true
+          tags: |
+            ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+            ${{ env.DOCKER_IMAGE }}:latest
+
+  # Note: Railway deployment is manual for MCP server
+  # Configure a new Railway service pointing to rupeedev/ikanban-mcp:latest
+  # Set environment variables:
+  #   - MCP_TRANSPORT=sse
+  #   - VIBE_BACKEND_URL=https://your-backend.railway.app
