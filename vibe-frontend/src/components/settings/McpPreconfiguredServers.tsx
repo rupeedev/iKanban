@@ -75,6 +75,14 @@ export function McpPreconfiguredServers({
   const { t } = useTranslation('settings');
   const [expandedServer, setExpandedServer] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [failedIcons, setFailedIcons] = useState<Set<string>>(new Set());
+
+  const handleIconError = useCallback(
+    (key: string) => () => {
+      setFailedIcons((prev) => new Set(prev).add(key));
+    },
+    []
+  );
 
   const preconfiguredObj = useMemo(
     () => (mcpConfig.preconfigured ?? {}) as Record<string, unknown>,
@@ -185,11 +193,12 @@ export function McpPreconfiguredServers({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg border bg-muted grid place-items-center overflow-hidden flex-shrink-0">
-                            {icon ? (
+                            {icon && !failedIcons.has(key) ? (
                               <img
                                 src={icon}
                                 alt=""
                                 className="w-full h-full object-cover"
+                                onError={handleIconError(key)}
                               />
                             ) : (
                               <span className="font-semibold text-sm">

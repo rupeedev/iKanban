@@ -16,11 +16,12 @@ import { McpConfig } from 'shared/types';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { mcpServersApi } from '@/lib/api';
 import { McpConfigStrategyGeneral } from '@/lib/mcpStrategies';
+import { McpConfigSummary } from '@/components/settings/McpConfigSummary';
 import { McpPreconfiguredServers } from '@/components/settings/McpPreconfiguredServers';
 
 export function McpSettings() {
   const { t } = useTranslation('settings');
-  const { config } = useUserSystem();
+  const { config, profiles } = useUserSystem();
   const [mcpServers, setMcpServers] = useState('{}');
   const [mcpConfig, setMcpConfig] = useState<McpConfig | null>(null);
   const [mcpError, setMcpError] = useState<string | null>(null);
@@ -187,6 +188,9 @@ export function McpSettings() {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Configuration Summary Table */}
+      <McpConfigSummary profiles={profiles} />
 
       <Card>
         <CardHeader>
