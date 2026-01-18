@@ -29,6 +29,7 @@ interface McpSummaryRow {
 
 interface McpConfigSummaryProps {
   profiles: Record<string, ExecutorConfig> | null | undefined;
+  refreshKey?: number;
 }
 
 // Extract server types from MCP configuration
@@ -67,7 +68,10 @@ function extractServerTypes(mcpConfig: McpConfig): string[] {
   return Array.from(types).sort();
 }
 
-export function McpConfigSummary({ profiles }: McpConfigSummaryProps) {
+export function McpConfigSummary({
+  profiles,
+  refreshKey = 0,
+}: McpConfigSummaryProps) {
   const { t } = useTranslation('settings');
   const [summaryRows, setSummaryRows] = useState<McpSummaryRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -162,7 +166,7 @@ export function McpConfigSummary({ profiles }: McpConfigSummaryProps) {
     };
 
     loadAllMcpConfigs();
-  }, [profiles]);
+  }, [profiles, refreshKey]);
 
   if (isLoading) {
     return (

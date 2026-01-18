@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Card,
@@ -39,6 +39,11 @@ export function McpSettings() {
   );
   const [mcpApplying, setMcpApplying] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [summaryRefreshKey, setSummaryRefreshKey] = useState(0);
+
+  const refreshSummary = useCallback(() => {
+    setSummaryRefreshKey((prev) => prev + 1);
+  }, []);
 
   // Initialize selected profile when config loads
   useEffect(() => {
@@ -161,8 +166,9 @@ export function McpSettings() {
             { servers: mcpServersConfig }
           );
 
-          // Show success feedback
+          // Show success feedback and refresh summary table
           setSuccess(true);
+          refreshSummary();
           setTimeout(() => setSuccess(false), 3000);
         } catch (mcpErr) {
           if (mcpErr instanceof SyntaxError) {
@@ -219,7 +225,7 @@ export function McpSettings() {
   return (
     <div className="space-y-6">
       {/* MCP Configuration Summary - at the top */}
-      <McpConfigSummary profiles={profiles} />
+      <McpConfigSummary profiles={profiles} refreshKey={summaryRefreshKey} />
 
       {mcpError && (
         <Alert variant="destructive">
