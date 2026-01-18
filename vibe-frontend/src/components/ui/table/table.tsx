@@ -55,8 +55,7 @@ const TableHeaderCell = React.forwardRef<
 ));
 TableHeaderCell.displayName = 'TableHeaderCell';
 
-interface ResizableTableHeaderCellProps
-  extends React.ThHTMLAttributes<HTMLTableCellElement> {
+interface ResizableTableHeaderCellProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   width: number;
   minWidth?: number;
   onResize: (width: number) => void;

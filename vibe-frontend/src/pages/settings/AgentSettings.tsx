@@ -73,10 +73,13 @@ function buildConfigSummary(executors: ExecutorsMap): ConfigSummaryRow[] {
     let isFirstVariant = true;
     for (const [variantName, configWrapper] of Object.entries(variants)) {
       // configWrapper is like { "COPILOT": { ...settings... } }
-      const innerConfig = configWrapper[agentName] as Record<string, unknown> | undefined;
+      const innerConfig = configWrapper[agentName] as
+        | Record<string, unknown>
+        | undefined;
       if (!innerConfig) continue;
 
-      const model = typeof innerConfig.model === 'string' ? innerConfig.model : '(default)';
+      const model =
+        typeof innerConfig.model === 'string' ? innerConfig.model : '(default)';
       const keySettings = extractKeySettings(innerConfig);
 
       rows.push({
@@ -291,7 +294,9 @@ export function AgentSettings() {
         console.error('Failed to save deletion to backend:', saveError);
         // Show actual API error message if available
         const errorMessage =
-          saveError instanceof Error ? saveError.message : t('settings.agents.errors.deleteFailed');
+          saveError instanceof Error
+            ? saveError.message
+            : t('settings.agents.errors.deleteFailed');
         setSaveError(errorMessage);
       }
     } catch (error) {
@@ -341,7 +346,9 @@ export function AgentSettings() {
       console.error('Failed to save profiles:', err);
       // Show actual API error message if available
       const errorMessage =
-        err instanceof Error ? err.message : t('settings.agents.errors.saveFailed');
+        err instanceof Error
+          ? err.message
+          : t('settings.agents.errors.saveFailed');
       setSaveError(errorMessage);
     }
   };
@@ -413,7 +420,9 @@ export function AgentSettings() {
       console.error('Failed to save profiles:', err);
       // Show actual API error message if available
       const errorMessage =
-        err instanceof Error ? err.message : t('settings.agents.errors.saveConfigFailed');
+        err instanceof Error
+          ? err.message
+          : t('settings.agents.errors.saveConfigFailed');
       setSaveError(errorMessage);
     }
   };
@@ -468,9 +477,15 @@ export function AgentSettings() {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableHeaderCell>{t('settings.agents.summary.agent')}</TableHeaderCell>
-                    <TableHeaderCell>{t('settings.agents.summary.variant')}</TableHeaderCell>
-                    <TableHeaderCell>{t('settings.agents.summary.model')}</TableHeaderCell>
+                    <TableHeaderCell>
+                      {t('settings.agents.summary.agent')}
+                    </TableHeaderCell>
+                    <TableHeaderCell>
+                      {t('settings.agents.summary.variant')}
+                    </TableHeaderCell>
+                    <TableHeaderCell>
+                      {t('settings.agents.summary.model')}
+                    </TableHeaderCell>
                     <TableHeaderCell>
                       {t('settings.agents.summary.keySettings')}
                     </TableHeaderCell>

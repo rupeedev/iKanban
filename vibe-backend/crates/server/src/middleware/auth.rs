@@ -1,19 +1,20 @@
-use axum::{
-    extract::{FromRequestParts, Request, State},
-    http::{header::AUTHORIZATION, request::Parts, StatusCode},
-    middleware::Next,
-    response::{IntoResponse, Response},
-    Json,
-};
-use db::models::api_key::ApiKey;
-use jsonwebtoken::{decode, decode_header, jwk::JwkSet, Algorithm, DecodingKey, Validation};
-use reqwest::Client;
-use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
+
+use axum::{
+    Json,
+    extract::{FromRequestParts, Request, State},
+    http::{StatusCode, header::AUTHORIZATION, request::Parts},
+    middleware::Next,
+    response::{IntoResponse, Response},
+};
+use db::models::api_key::ApiKey;
+use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header, jwk::JwkSet};
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use tokio::sync::RwLock;
 use utils::response::ApiResponse;
 
@@ -32,7 +33,7 @@ pub struct ClerkUser {
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)] // Fields required for JWT deserialization but not all read directly
 struct ClerkClaims {
-    sub: String, // user_id
+    sub: String,         // user_id
     sid: Option<String>, // session_id
     email: Option<String>,
     azp: Option<String>, // authorized party (client ID)
@@ -62,8 +63,8 @@ impl AuthState {
     pub fn new() -> Self {
         // Clerk issuer format: https://<clerk-subdomain>.clerk.accounts.dev
         // We'll extract this from the token itself or use env var
-        let clerk_domain = std::env::var("CLERK_DOMAIN")
-            .unwrap_or_else(|_| "clerk.accounts.dev".to_string());
+        let clerk_domain =
+            std::env::var("CLERK_DOMAIN").unwrap_or_else(|_| "clerk.accounts.dev".to_string());
 
         Self {
             http_client: Client::new(),
@@ -225,10 +226,19 @@ impl IntoResponse for AuthError {
         let (status, message) = match self {
             AuthError::MissingToken => (StatusCode::UNAUTHORIZED, "Missing authorization token"),
             AuthError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid authorization token"),
-            AuthError::JwksFetchFailed => (StatusCode::INTERNAL_SERVER_ERROR, "Authentication service unavailable"),
-            AuthError::JwksParseFailed => (StatusCode::INTERNAL_SERVER_ERROR, "Authentication configuration error"),
+            AuthError::JwksFetchFailed => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Authentication service unavailable",
+            ),
+            AuthError::JwksParseFailed => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Authentication configuration error",
+            ),
             AuthError::KeyNotFound => (StatusCode::UNAUTHORIZED, "Token signing key not found"),
-            AuthError::InvalidKey => (StatusCode::INTERNAL_SERVER_ERROR, "Invalid signing key configuration"),
+            AuthError::InvalidKey => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Invalid signing key configuration",
+            ),
             AuthError::Expired => (StatusCode::UNAUTHORIZED, "Token has expired"),
         };
 
@@ -239,7 +249,9 @@ impl IntoResponse for AuthError {
 
 /// Extract bearer token from Authorization header
 fn extract_bearer_token(auth_header: &str) -> Option<&str> {
-    auth_header.strip_prefix("Bearer ").or_else(|| auth_header.strip_prefix("bearer "))
+    auth_header
+        .strip_prefix("Bearer ")
+        .or_else(|| auth_header.strip_prefix("bearer "))
 }
 
 /// Auth middleware that validates JWT or API key and injects ClerkUser
@@ -249,8 +261,14 @@ pub async fn auth_middleware(
     next: Next,
 ) -> Result<Response, AuthError> {
     // Extract token from Authorization header or query parameter
-    let token = match request.headers().get(AUTHORIZATION).and_then(|h| h.to_str().ok()) {
-        Some(header) => extract_bearer_token(header).ok_or(AuthError::InvalidToken)?.to_string(),
+    let token = match request
+        .headers()
+        .get(AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+    {
+        Some(header) => extract_bearer_token(header)
+            .ok_or(AuthError::InvalidToken)?
+            .to_string(),
         None => {
             let query = request.uri().query().unwrap_or("");
             url::form_urlencoded::parse(query.as_bytes())
@@ -275,7 +293,11 @@ pub async fn optional_auth_middleware(
     mut request: Request,
     next: Next,
 ) -> Response {
-    if let Some(auth_header) = request.headers().get(AUTHORIZATION).and_then(|h| h.to_str().ok()) {
+    if let Some(auth_header) = request
+        .headers()
+        .get(AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+    {
         if let Some(token) = extract_bearer_token(auth_header) {
             // Use authenticate which supports both JWT and API keys
             if let Ok(user) = auth_state.authenticate(token).await {

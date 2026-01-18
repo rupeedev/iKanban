@@ -73,10 +73,7 @@ impl From<TaskCommentRow> for TaskComment {
 
 impl TaskComment {
     /// Find all comments for a task, ordered by creation time (oldest first)
-    pub async fn find_by_task_id(
-        pool: &PgPool,
-        task_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn find_by_task_id(pool: &PgPool, task_id: Uuid) -> Result<Vec<Self>, sqlx::Error> {
         let rows = sqlx::query_as!(
             TaskCommentRow,
             r#"SELECT id as "id!: Uuid",
@@ -100,10 +97,7 @@ impl TaskComment {
     }
 
     /// Find a single comment by ID
-    pub async fn find_by_id(
-        pool: &PgPool,
-        id: Uuid,
-    ) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         let row = sqlx::query_as!(
             TaskCommentRow,
             r#"SELECT id as "id!: Uuid",
@@ -208,9 +202,12 @@ impl TaskComment {
 
     /// Delete all comments for a task
     pub async fn delete_by_task_id(pool: &PgPool, task_id: Uuid) -> Result<u64, sqlx::Error> {
-        let result = sqlx::query!("DELETE FROM task_comments WHERE task_id = $1::uuid", task_id)
-            .execute(pool)
-            .await?;
+        let result = sqlx::query!(
+            "DELETE FROM task_comments WHERE task_id = $1::uuid",
+            task_id
+        )
+        .execute(pool)
+        .await?;
 
         Ok(result.rows_affected())
     }

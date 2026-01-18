@@ -2,8 +2,9 @@
 //!
 //! Implements OAuth 2.0 flow and file operations for Google Drive.
 
-use super::{CloudStorageError, ConnectionStatus, DownloadLinkResult, UploadResult};
 use serde::{Deserialize, Serialize};
+
+use super::{CloudStorageError, ConnectionStatus, DownloadLinkResult, UploadResult};
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
@@ -67,14 +68,19 @@ impl GoogleDriveClient {
             .map_err(|_| CloudStorageError::Config("GOOGLE_CLIENT_ID not set".to_string()))?;
         let client_secret = std::env::var("GOOGLE_CLIENT_SECRET")
             .map_err(|_| CloudStorageError::Config("GOOGLE_CLIENT_SECRET not set".to_string()))?;
-        let redirect_uri = std::env::var("GOOGLE_REDIRECT_URI")
-            .unwrap_or_else(|_| "http://localhost:3001/api/storage/google-drive/callback".to_string());
+        let redirect_uri = std::env::var("GOOGLE_REDIRECT_URI").unwrap_or_else(|_| {
+            "http://localhost:3001/api/storage/google-drive/callback".to_string()
+        });
 
         Self::new(&client_id, &client_secret, &redirect_uri)
     }
 
     /// Create a new Google Drive client
-    pub fn new(client_id: &str, client_secret: &str, redirect_uri: &str) -> Result<Self, CloudStorageError> {
+    pub fn new(
+        client_id: &str,
+        client_secret: &str,
+        redirect_uri: &str,
+    ) -> Result<Self, CloudStorageError> {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(60))
             .build()
@@ -121,7 +127,10 @@ impl GoogleDriveClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            return Err(CloudStorageError::OAuth(format!("Token exchange failed: {}", error_body)));
+            return Err(CloudStorageError::OAuth(format!(
+                "Token exchange failed: {}",
+                error_body
+            )));
         }
 
         response
@@ -131,7 +140,10 @@ impl GoogleDriveClient {
     }
 
     /// Refresh an access token
-    pub async fn refresh_token(&self, refresh_token: &str) -> Result<TokenResponse, CloudStorageError> {
+    pub async fn refresh_token(
+        &self,
+        refresh_token: &str,
+    ) -> Result<TokenResponse, CloudStorageError> {
         let params = [
             ("refresh_token", refresh_token),
             ("client_id", &self.client_id),
@@ -149,7 +161,10 @@ impl GoogleDriveClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            return Err(CloudStorageError::OAuth(format!("Token refresh failed: {}", error_body)));
+            return Err(CloudStorageError::OAuth(format!(
+                "Token refresh failed: {}",
+                error_body
+            )));
         }
 
         response
@@ -170,7 +185,10 @@ impl GoogleDriveClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            return Err(CloudStorageError::Api(format!("Failed to get user info: {}", error_body)));
+            return Err(CloudStorageError::Api(format!(
+                "Failed to get user info: {}",
+                error_body
+            )));
         }
 
         response
@@ -197,7 +215,7 @@ impl GoogleDriveClient {
 
         let response = self
             .client
-            .post(&format!("{}/files", GOOGLE_DRIVE_API_URL))
+            .post(format!("{}/files", GOOGLE_DRIVE_API_URL))
             .bearer_auth(access_token)
             .json(&metadata)
             .send()
@@ -206,7 +224,10 @@ impl GoogleDriveClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            return Err(CloudStorageError::Api(format!("Failed to create folder: {}", error_body)));
+            return Err(CloudStorageError::Api(format!(
+                "Failed to create folder: {}",
+                error_body
+            )));
         }
 
         response
@@ -248,7 +269,7 @@ impl GoogleDriveClient {
 
         let response = self
             .client
-            .post(&format!("{}/files?uploadType=multipart&fields=id,name,mimeType,size,webViewLink,webContentLink", GOOGLE_UPLOAD_URL))
+            .post(format!("{}/files?uploadType=multipart&fields=id,name,mimeType,size,webViewLink,webContentLink", GOOGLE_UPLOAD_URL))
             .bearer_auth(access_token)
             .multipart(form)
             .send()
@@ -257,13 +278,15 @@ impl GoogleDriveClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            return Err(CloudStorageError::UploadFailed(format!("Upload failed: {}", error_body)));
+            return Err(CloudStorageError::UploadFailed(format!(
+                "Upload failed: {}",
+                error_body
+            )));
         }
 
-        let file: DriveFile = response
-            .json()
-            .await
-            .map_err(|e| CloudStorageError::Api(format!("Failed to parse upload response: {}", e)))?;
+        let file: DriveFile = response.json().await.map_err(|e| {
+            CloudStorageError::Api(format!("Failed to parse upload response: {}", e))
+        })?;
 
         Ok(UploadResult {
             file_id: file.id,
@@ -283,7 +306,10 @@ impl GoogleDriveClient {
         // Get file metadata with download link
         let response = self
             .client
-            .get(&format!("{}/files/{}?fields=webContentLink", GOOGLE_DRIVE_API_URL, file_id))
+            .get(format!(
+                "{}/files/{}?fields=webContentLink",
+                GOOGLE_DRIVE_API_URL, file_id
+            ))
             .bearer_auth(access_token)
             .send()
             .await
@@ -295,7 +321,10 @@ impl GoogleDriveClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            return Err(CloudStorageError::Api(format!("Failed to get file: {}", error_body)));
+            return Err(CloudStorageError::Api(format!(
+                "Failed to get file: {}",
+                error_body
+            )));
         }
 
         let file: DriveFile = response
@@ -315,10 +344,14 @@ impl GoogleDriveClient {
     }
 
     /// Delete a file from Google Drive
-    pub async fn delete_file(&self, access_token: &str, file_id: &str) -> Result<(), CloudStorageError> {
+    pub async fn delete_file(
+        &self,
+        access_token: &str,
+        file_id: &str,
+    ) -> Result<(), CloudStorageError> {
         let response = self
             .client
-            .delete(&format!("{}/files/{}", GOOGLE_DRIVE_API_URL, file_id))
+            .delete(format!("{}/files/{}", GOOGLE_DRIVE_API_URL, file_id))
             .bearer_auth(access_token)
             .send()
             .await
@@ -331,14 +364,20 @@ impl GoogleDriveClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            return Err(CloudStorageError::Api(format!("Failed to delete file: {}", error_body)));
+            return Err(CloudStorageError::Api(format!(
+                "Failed to delete file: {}",
+                error_body
+            )));
         }
 
         Ok(())
     }
 
     /// Get connection status
-    pub async fn get_status(&self, access_token: &str) -> Result<ConnectionStatus, CloudStorageError> {
+    pub async fn get_status(
+        &self,
+        access_token: &str,
+    ) -> Result<ConnectionStatus, CloudStorageError> {
         match self.get_user_info(access_token).await {
             Ok(user) => Ok(ConnectionStatus {
                 connected: true,

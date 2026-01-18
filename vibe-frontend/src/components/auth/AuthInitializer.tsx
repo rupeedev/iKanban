@@ -23,7 +23,9 @@ export function AuthInitializer() {
         try {
           const token = await getToken();
           if (!token) {
-            console.warn('Clerk getToken() returned null - user may need to re-authenticate');
+            console.warn(
+              'Clerk getToken() returned null - user may need to re-authenticate'
+            );
           }
           return token;
         } catch (e) {

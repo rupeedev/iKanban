@@ -35,9 +35,9 @@ export function useEnhancedAgentAvailability(
   agent: BaseCodingAgent | null | undefined
 ): EnhancedAvailabilityInfo | null {
   const [cliStatus, setCliStatus] = useState<CliStatus | null>(null);
-  const [lastAuthTimestamp, setLastAuthTimestamp] = useState<number | undefined>(
-    undefined
-  );
+  const [lastAuthTimestamp, setLastAuthTimestamp] = useState<
+    number | undefined
+  >(undefined);
   const [providerKeys, setProviderKeys] = useState<AiProviderKeyInfo[]>([]);
   const [isLoadingCli, setIsLoadingCli] = useState(false);
   const [isLoadingApi, setIsLoadingApi] = useState(false);
@@ -134,7 +134,14 @@ export function useEnhancedAgentAvailability(
       lastAuthTimestamp,
       isLoading: isLoadingCli || isLoadingApi,
     };
-  }, [agent, cliStatus, providerKeys, lastAuthTimestamp, isLoadingCli, isLoadingApi]);
+  }, [
+    agent,
+    cliStatus,
+    providerKeys,
+    lastAuthTimestamp,
+    isLoadingCli,
+    isLoadingApi,
+  ]);
 
   return enhancedInfo;
 }

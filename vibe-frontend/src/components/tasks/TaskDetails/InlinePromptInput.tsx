@@ -5,7 +5,11 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAttemptCreation } from '@/hooks/useAttemptCreation';
-import { useAgentMentions, isCopilotMention, type AgentMention } from '@/hooks/useAgentMentions';
+import {
+  useAgentMentions,
+  isCopilotMention,
+  type AgentMention,
+} from '@/hooks/useAgentMentions';
 import { useAssignToCopilot } from '@/hooks/useCopilotAssignment';
 import { useRepoBranchSelection } from '@/hooks/useRepoBranchSelection';
 import { useProjectRepos, useNavigateWithSearch } from '@/hooks';
@@ -53,7 +57,8 @@ export function InlinePromptInput({
       return { id: null, name: 'Unknown', email: '' };
     }
     const userEmail = user.primaryEmailAddress?.emailAddress || '';
-    const userName = user.fullName || user.firstName || userEmail.split('@')[0] || 'Unknown';
+    const userName =
+      user.fullName || user.firstName || userEmail.split('@')[0] || 'Unknown';
     const matchingMember = members?.find((m) => m.email === userEmail);
     return {
       id: matchingMember?.id ?? null,
@@ -63,7 +68,8 @@ export function InlinePromptInput({
   }, [user, members]);
 
   // Comment creation hook
-  const { createComment, isCreating: isCreatingComment } = useTaskComments(taskId);
+  const { createComment, isCreating: isCreatingComment } =
+    useTaskComments(taskId);
 
   // Hooks
   const {
@@ -91,20 +97,21 @@ export function InlinePromptInput({
   });
 
   // Copilot assignment hook (IKA-93: GitHub Copilot Integration)
-  const { mutateAsync: assignToCopilot, isPending: isAssigningCopilot } = useAssignToCopilot({
-    onSuccess: () => {
-      toast.success('Task assigned to Copilot', {
-        description: 'GitHub issue will be created and processed.',
-      });
-      onCommentCreated?.();
-    },
-    onError: (error) => {
-      console.error('Failed to assign to Copilot:', error);
-      toast.error('Failed to assign to Copilot', {
-        description: error.message || 'Please check GitHub connection.',
-      });
-    },
-  });
+  const { mutateAsync: assignToCopilot, isPending: isAssigningCopilot } =
+    useAssignToCopilot({
+      onSuccess: () => {
+        toast.success('Task assigned to Copilot', {
+          description: 'GitHub issue will be created and processed.',
+        });
+        onCommentCreated?.();
+      },
+      onError: (error) => {
+        console.error('Failed to assign to Copilot:', error);
+        toast.error('Failed to assign to Copilot', {
+          description: error.message || 'Please check GitHub connection.',
+        });
+      },
+    });
 
   // Get current mention state
   const mentionState = getMentionPosition(promptText, cursorPosition);
@@ -175,7 +182,13 @@ export function InlinePromptInput({
 
   // Handle form submission - supports simple comments, AI agent prompts, and @copilot
   const handleSubmit = useCallback(async () => {
-    if (!promptText.trim() || isCreating || isCreatingComment || isAssigningCopilot) return;
+    if (
+      !promptText.trim() ||
+      isCreating ||
+      isCreatingComment ||
+      isAssigningCopilot
+    )
+      return;
 
     // Use memoized parse result (IKA-145: agent + location parsing)
     const { agent, location, cleanPrompt } = parseAllMentions(promptText);
@@ -255,7 +268,8 @@ export function InlinePromptInput({
     // Then try to create AI attempt
     if (projectRepos.length === 0) {
       toast.info('Comment saved', {
-        description: 'AI agent requires a project with repositories configured.',
+        description:
+          'AI agent requires a project with repositories configured.',
       });
       setPromptText('');
       onCommentCreated?.();
@@ -310,7 +324,9 @@ export function InlinePromptInput({
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       // If suggestions are shown, let AgentMentionSuggestions handle navigation
       if (showSuggestions) {
-        if (['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
+        if (
+          ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)
+        ) {
           return; // Let the suggestions component handle these
         }
       }
@@ -337,7 +353,10 @@ export function InlinePromptInput({
   // Can submit if there's text and not currently loading
   // No longer requires projectRepos for simple comments (only needed for AI)
   const canSubmit =
-    promptText.trim().length > 0 && !isCreating && !isCreatingComment && !isAssigningCopilot;
+    promptText.trim().length > 0 &&
+    !isCreating &&
+    !isCreatingComment &&
+    !isAssigningCopilot;
 
   return (
     <div className={cn('relative', className)}>
@@ -398,7 +417,7 @@ export function InlinePromptInput({
           className="h-10 w-10 flex-shrink-0"
           data-testid="inline-prompt-submit"
         >
-          {(isCreating || isCreatingComment || isAssigningCopilot) ? (
+          {isCreating || isCreatingComment || isAssigningCopilot ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <SendHorizonal className="h-4 w-4" />

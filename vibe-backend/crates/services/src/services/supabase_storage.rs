@@ -60,16 +60,15 @@ pub struct SignedUrlResult {
 /// Format:
 /// - Root level: `{team_id}/root/{uuid}_{filename}`
 /// - In folder: `{team_id}/folders/{folder_id}/{uuid}_{filename}`
-pub fn generate_storage_key(
-    team_id: Uuid,
-    folder_id: Option<Uuid>,
-    filename: &str,
-) -> String {
+pub fn generate_storage_key(team_id: Uuid, folder_id: Option<Uuid>, filename: &str) -> String {
     let file_uuid = Uuid::new_v4();
     let sanitized_filename = sanitize_filename(filename);
 
     match folder_id {
-        Some(fid) => format!("{}/folders/{}/{}_{}", team_id, fid, file_uuid, sanitized_filename),
+        Some(fid) => format!(
+            "{}/folders/{}/{}_{}",
+            team_id, fid, file_uuid, sanitized_filename
+        ),
         None => format!("{}/root/{}_{}", team_id, file_uuid, sanitized_filename),
     }
 }
@@ -137,13 +136,19 @@ impl SupabaseStorageClient {
     /// Create a new Supabase Storage client
     pub fn new(url: &str, service_key: &str, bucket: &str) -> Result<Self, SupabaseStorageError> {
         if url.is_empty() {
-            return Err(SupabaseStorageError::Config("Supabase URL is required".to_string()));
+            return Err(SupabaseStorageError::Config(
+                "Supabase URL is required".to_string(),
+            ));
         }
         if service_key.is_empty() {
-            return Err(SupabaseStorageError::Config("Service key is required".to_string()));
+            return Err(SupabaseStorageError::Config(
+                "Service key is required".to_string(),
+            ));
         }
         if bucket.is_empty() {
-            return Err(SupabaseStorageError::Config("Bucket name is required".to_string()));
+            return Err(SupabaseStorageError::Config(
+                "Bucket name is required".to_string(),
+            ));
         }
 
         let client = reqwest::Client::builder()
@@ -163,8 +168,9 @@ impl SupabaseStorageClient {
     pub fn from_env() -> Result<Self, SupabaseStorageError> {
         let url = std::env::var("SUPABASE_URL")
             .map_err(|_| SupabaseStorageError::Config("SUPABASE_URL not set".to_string()))?;
-        let service_key = std::env::var("SUPABASE_SERVICE_ROLE_KEY")
-            .map_err(|_| SupabaseStorageError::Config("SUPABASE_SERVICE_ROLE_KEY not set".to_string()))?;
+        let service_key = std::env::var("SUPABASE_SERVICE_ROLE_KEY").map_err(|_| {
+            SupabaseStorageError::Config("SUPABASE_SERVICE_ROLE_KEY not set".to_string())
+        })?;
         let bucket = std::env::var("SUPABASE_STORAGE_BUCKET")
             .unwrap_or_else(|_| "ikanban-bucket".to_string());
 
@@ -193,7 +199,8 @@ impl SupabaseStorageClient {
             storage_key
         );
 
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.service_key))
             .header("Content-Type", mime_type)
@@ -230,7 +237,8 @@ impl SupabaseStorageClient {
             storage_key
         );
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .header("Authorization", format!("Bearer {}", self.service_key))
             .send()
@@ -266,7 +274,8 @@ impl SupabaseStorageClient {
             storage_key
         );
 
-        let response = self.client
+        let response = self
+            .client
             .delete(&url)
             .header("Authorization", format!("Bearer {}", self.service_key))
             .send()
@@ -307,7 +316,8 @@ impl SupabaseStorageClient {
             "expiresIn": expires_in_seconds
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.service_key))
             .header("Content-Type", "application/json")
@@ -361,7 +371,8 @@ impl SupabaseStorageClient {
             storage_key
         );
 
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.service_key))
             .send()
@@ -392,7 +403,7 @@ impl SupabaseStorageClient {
         let full_url = if result.url.starts_with("http") {
             result.url
         } else {
-             format!("{}{}", self.storage_url(), result.url)
+            format!("{}{}", self.storage_url(), result.url)
         };
 
         Ok(SignedUrlResult {
@@ -520,29 +531,27 @@ mod tests {
         let result = SupabaseStorageClient::new(
             "https://example.supabase.co",
             "service-role-key",
-            "ikanban-bucket"
+            "ikanban-bucket",
         );
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_storage_url_format() {
-        let client = SupabaseStorageClient::new(
-            "https://example.supabase.co",
-            "key",
-            "bucket"
-        ).unwrap();
+        let client =
+            SupabaseStorageClient::new("https://example.supabase.co", "key", "bucket").unwrap();
 
-        assert_eq!(client.storage_url(), "https://example.supabase.co/storage/v1");
+        assert_eq!(
+            client.storage_url(),
+            "https://example.supabase.co/storage/v1"
+        );
     }
 
     #[test]
     fn test_public_url_format() {
-        let client = SupabaseStorageClient::new(
-            "https://example.supabase.co",
-            "key",
-            "ikanban-bucket"
-        ).unwrap();
+        let client =
+            SupabaseStorageClient::new("https://example.supabase.co", "key", "ikanban-bucket")
+                .unwrap();
 
         let url = client.get_public_url("team123/root/abc_test.pdf");
         assert_eq!(

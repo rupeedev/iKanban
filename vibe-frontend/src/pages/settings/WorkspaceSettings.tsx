@@ -43,9 +43,15 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { useTenantWorkspace, useTenantWorkspaces } from '@/hooks/useTenantWorkspaces';
+import {
+  useTenantWorkspace,
+  useTenantWorkspaces,
+} from '@/hooks/useTenantWorkspaces';
 import { useWorkspaceMembers } from '@/hooks/useWorkspaceMembers';
-import type { TenantWorkspaceMember, WorkspaceMemberRole } from '@/types/workspace';
+import type {
+  TenantWorkspaceMember,
+  WorkspaceMemberRole,
+} from '@/types/workspace';
 
 // Available colors for workspace
 const WORKSPACE_COLORS = [
@@ -65,7 +71,16 @@ const WORKSPACE_COLORS = [
 ];
 
 // Available icons for workspace
-const WORKSPACE_ICONS = ['building', 'rocket', 'briefcase', 'zap', 'wrench', 'star', 'heart', 'globe'];
+const WORKSPACE_ICONS = [
+  'building',
+  'rocket',
+  'briefcase',
+  'zap',
+  'wrench',
+  'star',
+  'heart',
+  'globe',
+];
 
 function getRoleIcon(role: WorkspaceMemberRole) {
   switch (role) {
@@ -78,7 +93,9 @@ function getRoleIcon(role: WorkspaceMemberRole) {
   }
 }
 
-function getRoleBadgeVariant(role: WorkspaceMemberRole): 'default' | 'secondary' | 'outline' {
+function getRoleBadgeVariant(
+  role: WorkspaceMemberRole
+): 'default' | 'secondary' | 'outline' {
   switch (role) {
     case 'owner':
       return 'default';
@@ -93,8 +110,10 @@ export function WorkspaceSettings() {
   const navigate = useNavigate();
   const { user } = useUser();
   const { currentWorkspaceId } = useWorkspace();
-  const { data: workspace, isLoading: loadingWorkspace } = useTenantWorkspace(currentWorkspaceId);
-  const { updateWorkspace, deleteWorkspace, isUpdating, isDeleting } = useTenantWorkspaces();
+  const { data: workspace, isLoading: loadingWorkspace } =
+    useTenantWorkspace(currentWorkspaceId);
+  const { updateWorkspace, deleteWorkspace, isUpdating, isDeleting } =
+    useTenantWorkspaces();
   const {
     members,
     isLoading: loadingMembers,
@@ -111,7 +130,8 @@ export function WorkspaceSettings() {
   const [hasChanges, setHasChanges] = useState(false);
 
   // Dialog state
-  const [memberToRemove, setMemberToRemove] = useState<TenantWorkspaceMember | null>(null);
+  const [memberToRemove, setMemberToRemove] =
+    useState<TenantWorkspaceMember | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
@@ -140,7 +160,9 @@ export function WorkspaceSettings() {
   useEffect(() => {
     if (workspace) {
       const changed =
-        name !== workspace.name || icon !== workspace.icon || color !== workspace.color;
+        name !== workspace.name ||
+        icon !== workspace.icon ||
+        color !== workspace.color;
       setHasChanges(changed);
     }
   }, [name, icon, color, workspace]);
@@ -159,7 +181,10 @@ export function WorkspaceSettings() {
     }
   };
 
-  const handleUpdateRole = async (memberId: string, newRole: WorkspaceMemberRole) => {
+  const handleUpdateRole = async (
+    memberId: string,
+    newRole: WorkspaceMemberRole
+  ) => {
     const member = members.find((m) => m.id === memberId);
     if (!member) return;
 
@@ -195,7 +220,9 @@ export function WorkspaceSettings() {
       await removeMember(user.id);
       navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to leave workspace');
+      setError(
+        err instanceof Error ? err.message : 'Failed to leave workspace'
+      );
     }
   };
 
@@ -207,7 +234,9 @@ export function WorkspaceSettings() {
       await deleteWorkspace(currentWorkspaceId);
       navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete workspace');
+      setError(
+        err instanceof Error ? err.message : 'Failed to delete workspace'
+      );
     }
   };
 
@@ -271,7 +300,9 @@ export function WorkspaceSettings() {
           <Card>
             <CardHeader>
               <CardTitle>Workspace Settings</CardTitle>
-              <CardDescription>Customize your workspace appearance and settings</CardDescription>
+              <CardDescription>
+                Customize your workspace appearance and settings
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
@@ -300,7 +331,9 @@ export function WorkspaceSettings() {
                       onClick={() => isAdmin && setColor(c)}
                       disabled={!isAdmin}
                       className={`w-8 h-8 rounded-full border-2 transition-all ${
-                        color === c ? 'border-foreground scale-110' : 'border-transparent'
+                        color === c
+                          ? 'border-foreground scale-110'
+                          : 'border-transparent'
                       } ${!isAdmin ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
                       style={{ backgroundColor: c }}
                     />
@@ -338,8 +371,13 @@ export function WorkspaceSettings() {
 
               {isAdmin && (
                 <div className="flex justify-end">
-                  <Button onClick={handleSaveGeneral} disabled={!hasChanges || isUpdating}>
-                    {isUpdating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  <Button
+                    onClick={handleSaveGeneral}
+                    disabled={!hasChanges || isUpdating}
+                  >
+                    {isUpdating && (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    )}
                     Save Changes
                   </Button>
                 </div>
@@ -363,7 +401,9 @@ export function WorkspaceSettings() {
                   <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
               ) : members.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">No members found</p>
+                <p className="text-center text-muted-foreground py-8">
+                  No members found
+                </p>
               ) : (
                 <div className="space-y-3">
                   {members.map((member) => (
@@ -375,7 +415,8 @@ export function WorkspaceSettings() {
                         <Avatar className="h-10 w-10">
                           <AvatarImage src={member.avatar_url || undefined} />
                           <AvatarFallback>
-                            {member.display_name?.[0] || member.email[0].toUpperCase()}
+                            {member.display_name?.[0] ||
+                              member.email[0].toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
@@ -389,7 +430,9 @@ export function WorkspaceSettings() {
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground">{member.email}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {member.email}
+                          </p>
                         </div>
                       </div>
 
@@ -398,7 +441,10 @@ export function WorkspaceSettings() {
                           <Select
                             value={member.role}
                             onValueChange={(value) =>
-                              handleUpdateRole(member.id, value as WorkspaceMemberRole)
+                              handleUpdateRole(
+                                member.id,
+                                value as WorkspaceMemberRole
+                              )
                             }
                             disabled={isUpdatingRole}
                           >
@@ -424,7 +470,8 @@ export function WorkspaceSettings() {
                           <Badge variant={getRoleBadgeVariant(member.role)}>
                             <span className="flex items-center gap-1">
                               {getRoleIcon(member.role)}
-                              {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                              {member.role.charAt(0).toUpperCase() +
+                                member.role.slice(1)}
                             </span>
                           </Badge>
                         )}
@@ -457,14 +504,20 @@ export function WorkspaceSettings() {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <LogOut className="h-5 w-5 text-destructive" />
-                  <CardTitle className="text-destructive">Leave Workspace</CardTitle>
+                  <CardTitle className="text-destructive">
+                    Leave Workspace
+                  </CardTitle>
                 </div>
                 <CardDescription>
-                  Leave this workspace. You will lose access to all teams and projects.
+                  Leave this workspace. You will lose access to all teams and
+                  projects.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button variant="destructive" onClick={() => setShowLeaveDialog(true)}>
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowLeaveDialog(true)}
+                >
                   Leave Workspace
                 </Button>
               </CardContent>
@@ -477,14 +530,20 @@ export function WorkspaceSettings() {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Trash2 className="h-5 w-5 text-destructive" />
-                  <CardTitle className="text-destructive">Delete Workspace</CardTitle>
+                  <CardTitle className="text-destructive">
+                    Delete Workspace
+                  </CardTitle>
                 </div>
                 <CardDescription>
-                  Permanently delete this workspace and all its data. This action cannot be undone.
+                  Permanently delete this workspace and all its data. This
+                  action cannot be undone.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteDialog(true)}
+                >
                   Delete Workspace
                 </Button>
               </CardContent>
@@ -494,19 +553,27 @@ export function WorkspaceSettings() {
       </Tabs>
 
       {/* Remove Member Dialog */}
-      <Dialog open={!!memberToRemove} onOpenChange={() => setMemberToRemove(null)}>
+      <Dialog
+        open={!!memberToRemove}
+        onOpenChange={() => setMemberToRemove(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Remove Member</DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove {memberToRemove?.email} from this workspace?
+              Are you sure you want to remove {memberToRemove?.email} from this
+              workspace?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setMemberToRemove(null)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleRemoveMember} disabled={isRemoving}>
+            <Button
+              variant="destructive"
+              onClick={handleRemoveMember}
+              disabled={isRemoving}
+            >
               {isRemoving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Remove
             </Button>
@@ -520,15 +587,19 @@ export function WorkspaceSettings() {
           <DialogHeader>
             <DialogTitle>Leave Workspace</DialogTitle>
             <DialogDescription>
-              Are you sure you want to leave "{workspace.name}"? You will lose access to all teams
-              and projects in this workspace.
+              Are you sure you want to leave "{workspace.name}"? You will lose
+              access to all teams and projects in this workspace.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowLeaveDialog(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleLeaveWorkspace} disabled={isRemoving}>
+            <Button
+              variant="destructive"
+              onClick={handleLeaveWorkspace}
+              disabled={isRemoving}
+            >
               {isRemoving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Leave Workspace
             </Button>
@@ -542,8 +613,8 @@ export function WorkspaceSettings() {
           <DialogHeader>
             <DialogTitle>Delete Workspace</DialogTitle>
             <DialogDescription>
-              This action cannot be undone. This will permanently delete the workspace "
-              {workspace.name}" and all of its data.
+              This action cannot be undone. This will permanently delete the
+              workspace "{workspace.name}" and all of its data.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

@@ -26,7 +26,12 @@ export function useAttemptCreation({
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async ({ profile, repos, prompt, executionLocation = 'remote' }: CreateAttemptArgs) => {
+    mutationFn: async ({
+      profile,
+      repos,
+      prompt,
+      executionLocation = 'remote',
+    }: CreateAttemptArgs) => {
       // IKA-145: Log execution location for hybrid agent system
       // TODO: Pass executionLocation to API when backend supports it
       console.debug('[useAttemptCreation] Creating attempt', {

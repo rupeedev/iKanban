@@ -85,9 +85,12 @@ impl MemberProjectAccess {
         let mut tx = pool.begin().await?;
 
         // Delete all existing access for this member
-        sqlx::query!("DELETE FROM member_project_access WHERE member_id = $1::uuid", member_id)
-            .execute(&mut *tx)
-            .await?;
+        sqlx::query!(
+            "DELETE FROM member_project_access WHERE member_id = $1::uuid",
+            member_id
+        )
+        .execute(&mut *tx)
+        .await?;
 
         // Insert new access entries
         for project_id in project_ids {

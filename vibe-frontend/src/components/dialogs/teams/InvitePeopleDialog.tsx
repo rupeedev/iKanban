@@ -31,11 +31,31 @@ export interface InvitePeopleDialogProps {
 
 export type InvitePeopleDialogResult = 'invited' | 'canceled';
 
-const ROLE_OPTIONS: { value: TeamMemberRole; label: string; description: string }[] = [
-  { value: 'viewer', label: 'Viewer', description: 'Can view issues and documents' },
-  { value: 'contributor', label: 'Contributor', description: 'Can create/edit issues and update status' },
-  { value: 'maintainer', label: 'Maintainer', description: 'Can manage issues, documents, and assign tasks' },
-  { value: 'owner', label: 'Owner', description: 'Full control including team settings and members' },
+const ROLE_OPTIONS: {
+  value: TeamMemberRole;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: 'viewer',
+    label: 'Viewer',
+    description: 'Can view issues and documents',
+  },
+  {
+    value: 'contributor',
+    label: 'Contributor',
+    description: 'Can create/edit issues and update status',
+  },
+  {
+    value: 'maintainer',
+    label: 'Maintainer',
+    description: 'Can manage issues, documents, and assign tasks',
+  },
+  {
+    value: 'owner',
+    label: 'Owner',
+    description: 'Full control including team settings and members',
+  },
 ];
 
 const InvitePeopleDialogImpl = NiceModal.create<InvitePeopleDialogProps>(
@@ -72,7 +92,9 @@ const InvitePeopleDialogImpl = NiceModal.create<InvitePeopleDialogProps>(
         modal.resolve('invited' as InvitePeopleDialogResult);
         modal.hide();
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to send invitation');
+        setError(
+          err instanceof Error ? err.message : 'Failed to send invitation'
+        );
       } finally {
         setIsSubmitting(false);
       }
@@ -97,8 +119,8 @@ const InvitePeopleDialogImpl = NiceModal.create<InvitePeopleDialogProps>(
               Invite people to {teamName}
             </DialogTitle>
             <DialogDescription>
-              Send an invitation to join this team. They will receive a notification
-              and can accept or decline.
+              Send an invitation to join this team. They will receive a
+              notification and can accept or decline.
             </DialogDescription>
           </DialogHeader>
 
@@ -128,7 +150,10 @@ const InvitePeopleDialogImpl = NiceModal.create<InvitePeopleDialogProps>(
 
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
-              <Select value={role} onValueChange={(v) => setRole(v as TeamMemberRole)}>
+              <Select
+                value={role}
+                onValueChange={(v) => setRole(v as TeamMemberRole)}
+              >
                 <SelectTrigger id="role">
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
@@ -149,10 +174,17 @@ const InvitePeopleDialogImpl = NiceModal.create<InvitePeopleDialogProps>(
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting || !email.trim()}>
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || !email.trim()}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -23,12 +23,10 @@ export function SetupComplete({ workspaceName, onFinish }: SetupCompleteProps) {
 
       {/* Success message */}
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold">
-          Welcome to {workspaceName}!
-        </h2>
+        <h2 className="text-2xl font-bold">Welcome to {workspaceName}!</h2>
         <p className="text-muted-foreground max-w-md mx-auto">
-          Your workspace is ready. You can start creating tasks, organizing projects,
-          and collaborating with your team.
+          Your workspace is ready. You can start creating tasks, organizing
+          projects, and collaborating with your team.
         </p>
       </div>
 

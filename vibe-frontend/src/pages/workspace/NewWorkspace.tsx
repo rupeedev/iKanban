@@ -45,12 +45,15 @@ export function NewWorkspace() {
   const isLastStep = state.step === WIZARD_STEPS.length - 1;
 
   // Update workspace details
-  const updateWorkspaceDetails = useCallback((data: Partial<CreateTenantWorkspace>) => {
-    setState((prev) => ({
-      ...prev,
-      workspace: { ...prev.workspace, ...data },
-    }));
-  }, []);
+  const updateWorkspaceDetails = useCallback(
+    (data: Partial<CreateTenantWorkspace>) => {
+      setState((prev) => ({
+        ...prev,
+        workspace: { ...prev.workspace, ...data },
+      }));
+    },
+    []
+  );
 
   // Update teams
   const updateTeams = useCallback((teams: TeamSetupData[]) => {
@@ -120,7 +123,9 @@ export function NewWorkspace() {
         // 3. Create projects (if any)
         // Note: Projects will be scoped to workspace in Phase 3
         for (const projectData of state.projects) {
-          const teamId = projectData.teamId ? teamIdMap.get(projectData.teamId) : null;
+          const teamId = projectData.teamId
+            ? teamIdMap.get(projectData.teamId)
+            : null;
           await projectsApi.create({
             name: projectData.name,
             repositories: [],
@@ -148,14 +153,23 @@ export function NewWorkspace() {
           createdWorkspaceId: workspace.id,
         }));
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to create workspace');
+        setError(
+          err instanceof Error ? err.message : 'Failed to create workspace'
+        );
       } finally {
         setIsSubmitting(false);
       }
     } else if (state.step < WIZARD_STEPS.length - 1) {
       goToStep(state.step + 1);
     }
-  }, [state.step, state.workspace, state.teams, state.projects, createWorkspace, goToStep]);
+  }, [
+    state.step,
+    state.workspace,
+    state.teams,
+    state.projects,
+    createWorkspace,
+    goToStep,
+  ]);
 
   // Validate current step
   const isCurrentStepValid = useCallback(() => {
@@ -193,12 +207,7 @@ export function NewWorkspace() {
           />
         );
       case 'teams':
-        return (
-          <SetupTeams
-            teams={state.teams}
-            onChange={updateTeams}
-          />
-        );
+        return <SetupTeams teams={state.teams} onChange={updateTeams} />;
       case 'projects':
         return (
           <SetupProjects
@@ -208,12 +217,7 @@ export function NewWorkspace() {
           />
         );
       case 'invite':
-        return (
-          <SetupInvite
-            invites={state.invites}
-            onChange={updateInvites}
-          />
-        );
+        return <SetupInvite invites={state.invites} onChange={updateInvites} />;
       case 'complete':
         return (
           <SetupComplete
@@ -243,7 +247,9 @@ export function NewWorkspace() {
             </div>
             <div>
               <h1 className="text-lg font-semibold">Create Workspace</h1>
-              <p className="text-sm text-muted-foreground">{currentStep.description}</p>
+              <p className="text-sm text-muted-foreground">
+                {currentStep.description}
+              </p>
             </div>
           </div>
         </div>
@@ -260,16 +266,19 @@ export function NewWorkspace() {
                 disabled={index > state.step || isLastStep}
                 className={cn(
                   'flex items-center gap-2 text-sm transition-colors',
-                  index < state.step && 'text-primary cursor-pointer hover:underline',
+                  index < state.step &&
+                    'text-primary cursor-pointer hover:underline',
                   index === state.step && 'text-foreground font-medium',
-                  index > state.step && 'text-muted-foreground cursor-not-allowed'
+                  index > state.step &&
+                    'text-muted-foreground cursor-not-allowed'
                 )}
               >
                 <div
                   className={cn(
                     'flex items-center justify-center w-6 h-6 rounded-full text-xs',
                     index < state.step && 'bg-primary text-primary-foreground',
-                    index === state.step && 'bg-primary text-primary-foreground',
+                    index === state.step &&
+                      'bg-primary text-primary-foreground',
                     index > state.step && 'bg-muted text-muted-foreground'
                   )}
                 >
@@ -301,11 +310,7 @@ export function NewWorkspace() {
       {!isLastStep && (
         <footer className="border-t bg-card">
           <div className="container max-w-3xl mx-auto py-4 px-4 flex justify-between">
-            <Button
-              variant="ghost"
-              onClick={goBack}
-              disabled={isSubmitting}
-            >
+            <Button variant="ghost" onClick={goBack} disabled={isSubmitting}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               {isFirstStep ? 'Cancel' : 'Back'}
             </Button>

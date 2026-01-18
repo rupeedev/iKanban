@@ -18,7 +18,11 @@ interface SetupProjectsProps {
   onChange: (projects: ProjectSetupData[]) => void;
 }
 
-export function SetupProjects({ projects, teams, onChange }: SetupProjectsProps) {
+export function SetupProjects({
+  projects,
+  teams,
+  onChange,
+}: SetupProjectsProps) {
   const [newProjectName, setNewProjectName] = useState('');
 
   const addProject = useCallback(() => {
@@ -44,11 +48,7 @@ export function SetupProjects({ projects, teams, onChange }: SetupProjectsProps)
 
   const updateProject = useCallback(
     (id: string, updates: Partial<ProjectSetupData>) => {
-      onChange(
-        projects.map((p) =>
-          p.id === id ? { ...p, ...updates } : p
-        )
-      );
+      onChange(projects.map((p) => (p.id === id ? { ...p, ...updates } : p)));
     },
     [projects, onChange]
   );
@@ -101,7 +101,9 @@ export function SetupProjects({ projects, teams, onChange }: SetupProjectsProps)
               <div className="flex-1 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-muted-foreground">Name</Label>
+                    <Label className="text-xs text-muted-foreground">
+                      Name
+                    </Label>
                     <Input
                       value={project.name}
                       onChange={(e) =>
@@ -111,7 +113,9 @@ export function SetupProjects({ projects, teams, onChange }: SetupProjectsProps)
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Team</Label>
+                    <Label className="text-xs text-muted-foreground">
+                      Team
+                    </Label>
                     <Select
                       value={project.teamId || 'none'}
                       onValueChange={(value) =>

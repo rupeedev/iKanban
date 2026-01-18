@@ -17,7 +17,11 @@ interface MarkdownViewerProps {
   showOutline?: boolean;
 }
 
-export function MarkdownViewer({ content, className, showOutline = true }: MarkdownViewerProps) {
+export function MarkdownViewer({
+  content,
+  className,
+  showOutline = true,
+}: MarkdownViewerProps) {
   // Extract headings for TOC
   const headings = useMemo(() => {
     const items: HeadingItem[] = [];
@@ -50,50 +54,142 @@ export function MarkdownViewer({ content, className, showOutline = true }: Markd
     // Reset heading index for new render
     headingIndex.current = 0;
     return {
-      h1: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => {
+      h1: ({
+        children,
+        ...props
+      }: React.HTMLAttributes<HTMLHeadingElement>) => {
         const heading = headings[headingIndex.current++];
-        return <h1 id={heading?.id} className="text-3xl font-bold mt-8 mb-4 pb-2 border-b" {...props}>{children}</h1>;
+        return (
+          <h1
+            id={heading?.id}
+            className="text-3xl font-bold mt-8 mb-4 pb-2 border-b"
+            {...props}
+          >
+            {children}
+          </h1>
+        );
       },
-      h2: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => {
+      h2: ({
+        children,
+        ...props
+      }: React.HTMLAttributes<HTMLHeadingElement>) => {
         const heading = headings[headingIndex.current++];
-        return <h2 id={heading?.id} className="text-2xl font-semibold mt-6 mb-3 pb-1 border-b" {...props}>{children}</h2>;
+        return (
+          <h2
+            id={heading?.id}
+            className="text-2xl font-semibold mt-6 mb-3 pb-1 border-b"
+            {...props}
+          >
+            {children}
+          </h2>
+        );
       },
-      h3: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => {
+      h3: ({
+        children,
+        ...props
+      }: React.HTMLAttributes<HTMLHeadingElement>) => {
         const heading = headings[headingIndex.current++];
-        return <h3 id={heading?.id} className="text-xl font-semibold mt-5 mb-2" {...props}>{children}</h3>;
+        return (
+          <h3
+            id={heading?.id}
+            className="text-xl font-semibold mt-5 mb-2"
+            {...props}
+          >
+            {children}
+          </h3>
+        );
       },
-      h4: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => {
+      h4: ({
+        children,
+        ...props
+      }: React.HTMLAttributes<HTMLHeadingElement>) => {
         const heading = headings[headingIndex.current++];
-        return <h4 id={heading?.id} className="text-lg font-medium mt-4 mb-2" {...props}>{children}</h4>;
+        return (
+          <h4
+            id={heading?.id}
+            className="text-lg font-medium mt-4 mb-2"
+            {...props}
+          >
+            {children}
+          </h4>
+        );
       },
-      h5: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => {
+      h5: ({
+        children,
+        ...props
+      }: React.HTMLAttributes<HTMLHeadingElement>) => {
         const heading = headings[headingIndex.current++];
-        return <h5 id={heading?.id} className="text-base font-medium mt-3 mb-1" {...props}>{children}</h5>;
+        return (
+          <h5
+            id={heading?.id}
+            className="text-base font-medium mt-3 mb-1"
+            {...props}
+          >
+            {children}
+          </h5>
+        );
       },
-      h6: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => {
+      h6: ({
+        children,
+        ...props
+      }: React.HTMLAttributes<HTMLHeadingElement>) => {
         const heading = headings[headingIndex.current++];
-        return <h6 id={heading?.id} className="text-sm font-medium mt-3 mb-1 text-muted-foreground" {...props}>{children}</h6>;
+        return (
+          <h6
+            id={heading?.id}
+            className="text-sm font-medium mt-3 mb-1 text-muted-foreground"
+            {...props}
+          >
+            {children}
+          </h6>
+        );
       },
-      p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
-        <p className="my-3 leading-7" {...props}>{children}</p>
+      p: ({
+        children,
+        ...props
+      }: React.HTMLAttributes<HTMLParagraphElement>) => (
+        <p className="my-3 leading-7" {...props}>
+          {children}
+        </p>
       ),
       ul: ({ children, ...props }: React.HTMLAttributes<HTMLUListElement>) => (
-        <ul className="my-3 ml-6 list-disc space-y-1" {...props}>{children}</ul>
+        <ul className="my-3 ml-6 list-disc space-y-1" {...props}>
+          {children}
+        </ul>
       ),
       ol: ({ children, ...props }: React.HTMLAttributes<HTMLOListElement>) => (
-        <ol className="my-3 ml-6 list-decimal space-y-1" {...props}>{children}</ol>
+        <ol className="my-3 ml-6 list-decimal space-y-1" {...props}>
+          {children}
+        </ol>
       ),
       li: ({ children, ...props }: React.HTMLAttributes<HTMLLIElement>) => (
-        <li className="leading-7" {...props}>{children}</li>
+        <li className="leading-7" {...props}>
+          {children}
+        </li>
       ),
-      blockquote: ({ children, ...props }: React.HTMLAttributes<HTMLQuoteElement>) => (
-        <blockquote className="my-4 pl-4 border-l-4 border-muted-foreground/30 italic text-muted-foreground" {...props}>{children}</blockquote>
+      blockquote: ({
+        children,
+        ...props
+      }: React.HTMLAttributes<HTMLQuoteElement>) => (
+        <blockquote
+          className="my-4 pl-4 border-l-4 border-muted-foreground/30 italic text-muted-foreground"
+          {...props}
+        >
+          {children}
+        </blockquote>
       ),
-      code: ({ className, children, ...props }: React.HTMLAttributes<HTMLElement>) => {
+      code: ({
+        className,
+        children,
+        ...props
+      }: React.HTMLAttributes<HTMLElement>) => {
         const isInline = !className;
         if (isInline) {
           return (
-            <code className="px-1.5 py-0.5 rounded bg-muted font-mono text-sm" {...props}>
+            <code
+              className="px-1.5 py-0.5 rounded bg-muted font-mono text-sm"
+              {...props}
+            >
               {children}
             </code>
           );
@@ -105,34 +201,98 @@ export function MarkdownViewer({ content, className, showOutline = true }: Markd
         );
       },
       pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => (
-        <pre className="my-4 p-4 rounded-lg bg-muted overflow-x-auto" {...props}>{children}</pre>
+        <pre
+          className="my-4 p-4 rounded-lg bg-muted overflow-x-auto"
+          {...props}
+        >
+          {children}
+        </pre>
       ),
-      table: ({ children, ...props }: React.HTMLAttributes<HTMLTableElement>) => (
+      table: ({
+        children,
+        ...props
+      }: React.HTMLAttributes<HTMLTableElement>) => (
         <div className="my-4 overflow-x-auto">
-          <table className="w-full border-collapse border border-border" {...props}>{children}</table>
+          <table
+            className="w-full border-collapse border border-border"
+            {...props}
+          >
+            {children}
+          </table>
         </div>
       ),
-      thead: ({ children, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) => (
-        <thead className="bg-muted" {...props}>{children}</thead>
+      thead: ({
+        children,
+        ...props
+      }: React.HTMLAttributes<HTMLTableSectionElement>) => (
+        <thead className="bg-muted" {...props}>
+          {children}
+        </thead>
       ),
-      th: ({ children, ...props }: React.HTMLAttributes<HTMLTableCellElement>) => (
-        <th className="px-4 py-2 text-left font-semibold border border-border" {...props}>{children}</th>
+      th: ({
+        children,
+        ...props
+      }: React.HTMLAttributes<HTMLTableCellElement>) => (
+        <th
+          className="px-4 py-2 text-left font-semibold border border-border"
+          {...props}
+        >
+          {children}
+        </th>
       ),
-      td: ({ children, ...props }: React.HTMLAttributes<HTMLTableCellElement>) => (
-        <td className="px-4 py-2 border border-border" {...props}>{children}</td>
+      td: ({
+        children,
+        ...props
+      }: React.HTMLAttributes<HTMLTableCellElement>) => (
+        <td className="px-4 py-2 border border-border" {...props}>
+          {children}
+        </td>
       ),
-      a: ({ children, href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-        <a href={href} className="text-primary underline hover:no-underline" target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
+      a: ({
+        children,
+        href,
+        ...props
+      }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+        <a
+          href={href}
+          className="text-primary underline hover:no-underline"
+          target="_blank"
+          rel="noopener noreferrer"
+          {...props}
+        >
+          {children}
+        </a>
       ),
-      img: ({ src, alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => (
-        <img src={src} alt={alt} className="my-4 max-w-full rounded-lg shadow-md" {...props} />
+      img: ({
+        src,
+        alt,
+        ...props
+      }: React.ImgHTMLAttributes<HTMLImageElement>) => (
+        <img
+          src={src}
+          alt={alt}
+          className="my-4 max-w-full rounded-lg shadow-md"
+          {...props}
+        />
       ),
       hr: (props: React.HTMLAttributes<HTMLHRElement>) => (
         <hr className="my-6 border-border" {...props} />
       ),
-      input: ({ type, checked, ...props }: React.InputHTMLAttributes<HTMLInputElement>) => {
+      input: ({
+        type,
+        checked,
+        ...props
+      }: React.InputHTMLAttributes<HTMLInputElement>) => {
         if (type === 'checkbox') {
-          return <input type="checkbox" checked={checked} disabled className="mr-2" {...props} />;
+          return (
+            <input
+              type="checkbox"
+              checked={checked}
+              disabled
+              className="mr-2"
+              {...props}
+            />
+          );
         }
         return <input type={type} {...props} />;
       },
@@ -154,10 +314,13 @@ export function MarkdownViewer({ content, className, showOutline = true }: Markd
                   key={heading.id}
                   onClick={() => scrollToHeading(heading.id)}
                   className={`block w-full text-left text-sm py-1 hover:text-primary transition-colors truncate ${
-                    heading.level === 1 ? 'font-medium' :
-                    heading.level === 2 ? 'pl-3' :
-                    heading.level === 3 ? 'pl-6 text-muted-foreground' :
-                    'pl-9 text-muted-foreground text-xs'
+                    heading.level === 1
+                      ? 'font-medium'
+                      : heading.level === 2
+                        ? 'pl-3'
+                        : heading.level === 3
+                          ? 'pl-6 text-muted-foreground'
+                          : 'pl-9 text-muted-foreground text-xs'
                   }`}
                 >
                   {heading.text}

@@ -36,7 +36,10 @@ export function usePush(
     },
     onSuccess: () => {
       // A push only affects remote status; invalidate the same branchStatus
-      queryClient.invalidateQueries({ queryKey: ['branchStatus', attemptId], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['branchStatus', attemptId],
+        refetchType: 'none',
+      });
       onSuccess?.();
     },
     onError: (err, variables) => {

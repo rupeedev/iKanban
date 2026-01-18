@@ -2,7 +2,14 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { userInvitationsApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -16,7 +23,14 @@ import {
 import type { InvitationByTokenResponse, TeamMember } from 'shared/types';
 import { formatDistanceToNow } from 'date-fns';
 
-type PageState = 'loading' | 'valid' | 'invalid' | 'expired' | 'already_used' | 'accepted' | 'declined';
+type PageState =
+  | 'loading'
+  | 'valid'
+  | 'invalid'
+  | 'expired'
+  | 'already_used'
+  | 'accepted'
+  | 'declined';
 
 export function JoinTeam() {
   const [searchParams] = useSearchParams();
@@ -24,7 +38,8 @@ export function JoinTeam() {
   const token = searchParams.get('token');
 
   const [state, setState] = useState<PageState>('loading');
-  const [invitation, setInvitation] = useState<InvitationByTokenResponse | null>(null);
+  const [invitation, setInvitation] =
+    useState<InvitationByTokenResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [createdMember, setCreatedMember] = useState<TeamMember | null>(null);
@@ -72,7 +87,9 @@ export function JoinTeam() {
       setCreatedMember(member);
       setState('accepted');
     } catch (err) {
-      setError('Failed to accept invitation. It may have expired or already been used.');
+      setError(
+        'Failed to accept invitation. It may have expired or already been used.'
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -149,14 +166,23 @@ export function JoinTeam() {
             </div>
             <CardTitle>Invitation Expired</CardTitle>
             <CardDescription>
-              This invitation has expired. Please ask the team admin to send you a new invite.
+              This invitation has expired. Please ask the team admin to send you
+              a new invite.
             </CardDescription>
           </CardHeader>
           {invitation && (
             <CardContent>
               <div className="text-center text-sm text-muted-foreground">
-                <p>Team: <span className="font-medium">{invitation.team_name}</span></p>
-                <p>Email: <span className="font-medium">{invitation.invitation.email}</span></p>
+                <p>
+                  Team:{' '}
+                  <span className="font-medium">{invitation.team_name}</span>
+                </p>
+                <p>
+                  Email:{' '}
+                  <span className="font-medium">
+                    {invitation.invitation.email}
+                  </span>
+                </p>
               </div>
             </CardContent>
           )}
@@ -205,7 +231,8 @@ export function JoinTeam() {
             </div>
             <CardTitle>Welcome to the Team!</CardTitle>
             <CardDescription>
-              You've successfully joined <span className="font-medium">{invitation?.team_name}</span>.
+              You've successfully joined{' '}
+              <span className="font-medium">{invitation?.team_name}</span>.
             </CardDescription>
           </CardHeader>
           <CardFooter className="justify-center">
@@ -271,7 +298,9 @@ export function JoinTeam() {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Your email</span>
-              <span className="font-medium">{invitation?.invitation.email}</span>
+              <span className="font-medium">
+                {invitation?.invitation.email}
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Role</span>
@@ -282,7 +311,11 @@ export function JoinTeam() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Expires</span>
               <span className="text-sm">
-                {invitation && formatDistanceToNow(new Date(invitation.invitation.expires_at), { addSuffix: true })}
+                {invitation &&
+                  formatDistanceToNow(
+                    new Date(invitation.invitation.expires_at),
+                    { addSuffix: true }
+                  )}
               </span>
             </div>
           </div>

@@ -6,8 +6,9 @@
 //! - Images (base64 encoding)
 //! - Binary files (metadata only)
 
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use std::path::Path;
+
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use thiserror::Error;
 use tokio::fs;
 
@@ -84,9 +85,7 @@ pub async fn read_file_content(file_path: &str) -> Result<FileContent, FileReade
         "pdf" => read_pdf_file(file_path).await,
 
         // Image files - return as base64
-        "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg" => {
-            read_image_file(file_path).await
-        }
+        "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg" => read_image_file(file_path).await,
 
         // Binary/Office files - return metadata
         "doc" | "docx" | "xls" | "xlsx" | "ppt" | "pptx" => {
@@ -94,12 +93,10 @@ pub async fn read_file_content(file_path: &str) -> Result<FileContent, FileReade
         }
 
         // Unknown type - try to read as text, fallback to binary
-        _ => {
-            match read_text_file(file_path).await {
-                Ok(content) => Ok(content),
-                Err(_) => read_binary_file(file_path, &extension).await,
-            }
-        }
+        _ => match read_text_file(file_path).await {
+            Ok(content) => Ok(content),
+            Err(_) => read_binary_file(file_path, &extension).await,
+        },
     }
 }
 
@@ -158,11 +155,9 @@ async fn read_pdf_file(file_path: &str) -> Result<FileContent, FileReaderError> 
     let file_path = file_path.to_string();
 
     // PDF extraction is CPU-bound, run in blocking task
-    let content = tokio::task::spawn_blocking(move || {
-        extract_pdf_text(&file_path)
-    })
-    .await
-    .map_err(|e| FileReaderError::PdfError(e.to_string()))??;
+    let content = tokio::task::spawn_blocking(move || extract_pdf_text(&file_path))
+        .await
+        .map_err(|e| FileReaderError::PdfError(e.to_string()))??;
 
     Ok(FileContent {
         content_type: ContentType::PdfText,
@@ -184,7 +179,10 @@ fn extract_pdf_text(file_path: &str) -> Result<String, FileReaderError> {
                 .join("\n");
 
             if cleaned.is_empty() {
-                Ok("[PDF contains no extractable text - may be image-based or scanned]".to_string())
+                Ok(
+                    "[PDF contains no extractable text - may be image-based or scanned]"
+                        .to_string(),
+                )
             } else {
                 Ok(cleaned)
             }
@@ -229,7 +227,10 @@ async fn read_image_file(file_path: &str) -> Result<FileContent, FileReaderError
 }
 
 /// Read a binary file and return metadata
-async fn read_binary_file(file_path: &str, extension: &str) -> Result<FileContent, FileReaderError> {
+async fn read_binary_file(
+    file_path: &str,
+    extension: &str,
+) -> Result<FileContent, FileReaderError> {
     let metadata = fs::metadata(file_path).await?;
     let size_kb = metadata.len() / 1024;
 
@@ -245,8 +246,7 @@ async fn read_binary_file(file_path: &str, extension: &str) -> Result<FileConten
 
     let content = format!(
         "[{} - {} KB]\n\nThis file type cannot be displayed directly in the browser.\nUse the file path to open with an appropriate application.",
-        file_type_description,
-        size_kb
+        file_type_description, size_kb
     );
 
     Ok(FileContent {
@@ -258,16 +258,20 @@ async fn read_binary_file(file_path: &str, extension: &str) -> Result<FileConten
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::io::Write;
+
     use tempfile::NamedTempFile;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_read_text_file() {
         let mut file = NamedTempFile::with_suffix(".txt").unwrap();
         writeln!(file, "Hello, World!").unwrap();
 
-        let result = read_file_content(file.path().to_str().unwrap()).await.unwrap();
+        let result = read_file_content(file.path().to_str().unwrap())
+            .await
+            .unwrap();
         assert_eq!(result.content_type, ContentType::Text);
         assert!(result.content.contains("Hello, World!"));
     }
@@ -279,7 +283,9 @@ mod tests {
         writeln!(file, "Alice,30,NYC").unwrap();
         writeln!(file, "Bob,25,LA").unwrap();
 
-        let result = read_file_content(file.path().to_str().unwrap()).await.unwrap();
+        let result = read_file_content(file.path().to_str().unwrap())
+            .await
+            .unwrap();
         assert_eq!(result.content_type, ContentType::Csv);
 
         let csv_data = result.structured_data.unwrap();

@@ -247,6 +247,4 @@ impl Scratch {
         .await?;
         Ok(result.rows_affected())
     }
-
-
 }

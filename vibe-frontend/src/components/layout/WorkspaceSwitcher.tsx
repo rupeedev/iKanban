@@ -103,9 +103,18 @@ export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
       // Mark queries as stale but don't trigger immediate refetch
       // This prevents cascading API calls that cause 429 rate limiting
       // Data will be refetched when components actually need it (lazy/on-demand)
-      queryClient.invalidateQueries({ queryKey: ['teams'], refetchType: 'none' });
-      queryClient.invalidateQueries({ queryKey: ['projects'], refetchType: 'none' });
-      queryClient.invalidateQueries({ queryKey: ['issues'], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['teams'],
+        refetchType: 'none',
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['projects'],
+        refetchType: 'none',
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['issues'],
+        refetchType: 'none',
+      });
 
       // Navigate to workspace home to update URL
       navigate('/projects');
@@ -132,9 +141,7 @@ export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
               )}
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">
-            {displayName}
-          </TooltipContent>
+          <TooltipContent side="right">{displayName}</TooltipContent>
         </Tooltip>
       </TooltipProvider>
     );
@@ -155,7 +162,9 @@ export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
             <div
               className="flex items-center justify-center w-6 h-6 rounded shrink-0"
               style={{
-                backgroundColor: displayColor ? `${displayColor}20` : 'hsl(var(--primary) / 0.1)',
+                backgroundColor: displayColor
+                  ? `${displayColor}20`
+                  : 'hsl(var(--primary) / 0.1)',
                 color: displayColor || 'hsl(var(--primary))',
               }}
             >
@@ -165,17 +174,11 @@ export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
                 <Building2 className="h-3.5 w-3.5" />
               )}
             </div>
-            <span className="truncate flex-1 text-left">
-              {displayName}
-            </span>
+            <span className="truncate flex-1 text-left">{displayName}</span>
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="start"
-          className="w-64"
-          sideOffset={8}
-        >
+        <DropdownMenuContent align="start" className="w-64" sideOffset={8}>
           <div className="px-2 py-1.5">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -203,7 +206,9 @@ export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
               <div
                 className="flex items-center justify-center w-5 h-5 rounded"
                 style={{
-                  backgroundColor: workspace.color ? `${workspace.color}20` : 'hsl(var(--primary) / 0.1)',
+                  backgroundColor: workspace.color
+                    ? `${workspace.color}20`
+                    : 'hsl(var(--primary) / 0.1)',
                   color: workspace.color || 'hsl(var(--primary))',
                 }}
               >
@@ -246,9 +251,7 @@ export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
                 </Button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
-              Quick create
-            </TooltipContent>
+            <TooltipContent side="bottom">Quick create</TooltipContent>
           </Tooltip>
         </TooltipProvider>
         <DropdownMenuContent align="end" sideOffset={8}>

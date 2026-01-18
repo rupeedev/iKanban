@@ -78,8 +78,7 @@ pub async fn create_registration(
     payload.clerk_user_id = user.user_id.clone();
 
     // Check if user already has a registration
-    let existing =
-        UserRegistration::find_by_clerk_id(&deployment.db().pool, &user.user_id).await?;
+    let existing = UserRegistration::find_by_clerk_id(&deployment.db().pool, &user.user_id).await?;
     if existing.is_some() {
         return Err(ApiError::BadRequest(
             "User already has a registration".to_string(),

@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, FromRow, Postgres, PgPool, Type};
+use sqlx::{Executor, FromRow, PgPool, Postgres, Type};
 use strum_macros::{Display, EnumString};
 use ts_rs::TS;
 use uuid::Uuid;
@@ -470,6 +470,7 @@ ORDER BY t.issue_number ASC"#,
         .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn update(
         pool: &PgPool,
         id: Uuid,

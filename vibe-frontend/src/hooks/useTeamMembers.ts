@@ -18,8 +18,10 @@ const syncedTeams = new Set<string>();
 // Query key factory for consistent caching
 export const teamMembersKeys = {
   all: ['teams'] as const,
-  members: (teamId: string) => [...teamMembersKeys.all, teamId, 'members'] as const,
-  invitations: (teamId: string) => [...teamMembersKeys.all, teamId, 'invitations'] as const,
+  members: (teamId: string) =>
+    [...teamMembersKeys.all, teamId, 'members'] as const,
+  invitations: (teamId: string) =>
+    [...teamMembersKeys.all, teamId, 'invitations'] as const,
 };
 
 // Helper to check if error is a rate limit (429)
@@ -40,10 +42,16 @@ export interface UseTeamMembersResult {
   refresh: () => Promise<void>;
   syncClerkMember: () => Promise<TeamMember | null>;
   addMember: (data: CreateTeamMember) => Promise<TeamMember>;
-  updateMemberRole: (memberId: string, role: TeamMemberRole) => Promise<TeamMember>;
+  updateMemberRole: (
+    memberId: string,
+    role: TeamMemberRole
+  ) => Promise<TeamMember>;
   removeMember: (memberId: string) => Promise<void>;
   createInvitation: (data: CreateTeamInvitation) => Promise<TeamInvitation>;
-  updateInvitationRole: (invitationId: string, role: TeamMemberRole) => Promise<TeamInvitation>;
+  updateInvitationRole: (
+    invitationId: string,
+    role: TeamMemberRole
+  ) => Promise<TeamInvitation>;
   cancelInvitation: (invitationId: string) => Promise<void>;
 }
 
@@ -54,7 +62,9 @@ export interface UseTeamMembersResult {
  * Multiple components using this hook with the same teamId will share the cache
  * and NOT make duplicate API requests.
  */
-export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult {
+export function useTeamMembers(
+  teamId: string | undefined
+): UseTeamMembersResult {
   const { user, isLoaded: isClerkLoaded } = useClerkUser();
   const queryClient = useQueryClient();
 
@@ -92,10 +102,7 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
     retryDelay: 60000, // 60 seconds - respect rate limit window
   });
 
-  const members = useMemo(
-    () => membersQuery.data ?? [],
-    [membersQuery.data]
-  );
+  const members = useMemo(() => membersQuery.data ?? [], [membersQuery.data]);
   const invitations = useMemo(
     () => invitationsQuery.data ?? [],
     [invitationsQuery.data]
@@ -129,14 +136,17 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
       const member = await teamsApi.syncClerkMember(teamId, syncData);
 
       // Update cache with synced member
-      queryClient.setQueryData(teamMembersKeys.members(teamId), (old: TeamMember[] | undefined) => {
-        if (!old) return [member];
-        const exists = old.some((m) => m.id === member.id);
-        if (exists) {
-          return old.map((m) => (m.id === member.id ? member : m));
+      queryClient.setQueryData(
+        teamMembersKeys.members(teamId),
+        (old: TeamMember[] | undefined) => {
+          if (!old) return [member];
+          const exists = old.some((m) => m.id === member.id);
+          if (exists) {
+            return old.map((m) => (m.id === member.id ? member : m));
+          }
+          return [...old, member];
         }
-        return [...old, member];
-      });
+      );
 
       return member;
     } catch (err) {
@@ -148,7 +158,13 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
 
   // Auto-sync on first load (only once per team per session)
   useEffect(() => {
-    if (isClerkLoaded && user && teamId && !syncedTeams.has(teamId) && membersQuery.isSuccess) {
+    if (
+      isClerkLoaded &&
+      user &&
+      teamId &&
+      !syncedTeams.has(teamId) &&
+      membersQuery.isSuccess
+    ) {
       syncClerkMember();
     }
   }, [isClerkLoaded, user, teamId, membersQuery.isSuccess, syncClerkMember]);
@@ -157,8 +173,14 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
     if (!teamId) return;
     // Invalidate both queries - mark stale but don't trigger immediate refetch
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: teamMembersKeys.members(teamId), refetchType: 'none' }),
-      queryClient.invalidateQueries({ queryKey: teamMembersKeys.invitations(teamId), refetchType: 'none' }),
+      queryClient.invalidateQueries({
+        queryKey: teamMembersKeys.members(teamId),
+        refetchType: 'none',
+      }),
+      queryClient.invalidateQueries({
+        queryKey: teamMembersKeys.invitations(teamId),
+        refetchType: 'none',
+      }),
     ]);
   }, [teamId, queryClient]);
 
@@ -167,9 +189,12 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
       if (!teamId) throw new Error('No team selected');
       const newMember = await teamsApi.addMember(teamId, data);
       // Update cache optimistically
-      queryClient.setQueryData(teamMembersKeys.members(teamId), (old: TeamMember[] | undefined) => {
-        return old ? [...old, newMember] : [newMember];
-      });
+      queryClient.setQueryData(
+        teamMembersKeys.members(teamId),
+        (old: TeamMember[] | undefined) => {
+          return old ? [...old, newMember] : [newMember];
+        }
+      );
       return newMember;
     },
     [teamId, queryClient]
@@ -178,10 +203,15 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
   const updateMemberRole = useCallback(
     async (memberId: string, role: TeamMemberRole) => {
       if (!teamId) throw new Error('No team selected');
-      const updatedMember = await teamsApi.updateMemberRole(teamId, memberId, { role });
-      queryClient.setQueryData(teamMembersKeys.members(teamId), (old: TeamMember[] | undefined) => {
-        return old?.map((m) => (m.id === memberId ? updatedMember : m)) ?? [];
+      const updatedMember = await teamsApi.updateMemberRole(teamId, memberId, {
+        role,
       });
+      queryClient.setQueryData(
+        teamMembersKeys.members(teamId),
+        (old: TeamMember[] | undefined) => {
+          return old?.map((m) => (m.id === memberId ? updatedMember : m)) ?? [];
+        }
+      );
       return updatedMember;
     },
     [teamId, queryClient]
@@ -191,9 +221,12 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
     async (memberId: string) => {
       if (!teamId) throw new Error('No team selected');
       await teamsApi.removeMember(teamId, memberId);
-      queryClient.setQueryData(teamMembersKeys.members(teamId), (old: TeamMember[] | undefined) => {
-        return old?.filter((m) => m.id !== memberId) ?? [];
-      });
+      queryClient.setQueryData(
+        teamMembersKeys.members(teamId),
+        (old: TeamMember[] | undefined) => {
+          return old?.filter((m) => m.id !== memberId) ?? [];
+        }
+      );
     },
     [teamId, queryClient]
   );
@@ -202,9 +235,12 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
     async (data: CreateTeamInvitation) => {
       if (!teamId) throw new Error('No team selected');
       const newInvitation = await teamsApi.createInvitation(teamId, data);
-      queryClient.setQueryData(teamMembersKeys.invitations(teamId), (old: TeamInvitation[] | undefined) => {
-        return old ? [...old, newInvitation] : [newInvitation];
-      });
+      queryClient.setQueryData(
+        teamMembersKeys.invitations(teamId),
+        (old: TeamInvitation[] | undefined) => {
+          return old ? [...old, newInvitation] : [newInvitation];
+        }
+      );
       return newInvitation;
     },
     [teamId, queryClient]
@@ -213,10 +249,17 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
   const updateInvitationRole = useCallback(
     async (invitationId: string, role: TeamMemberRole) => {
       if (!teamId) throw new Error('No team selected');
-      const updated = await teamsApi.updateInvitationRole(teamId, invitationId, { role });
-      queryClient.setQueryData(teamMembersKeys.invitations(teamId), (old: TeamInvitation[] | undefined) => {
-        return old?.map((i) => (i.id === invitationId ? updated : i)) ?? [];
-      });
+      const updated = await teamsApi.updateInvitationRole(
+        teamId,
+        invitationId,
+        { role }
+      );
+      queryClient.setQueryData(
+        teamMembersKeys.invitations(teamId),
+        (old: TeamInvitation[] | undefined) => {
+          return old?.map((i) => (i.id === invitationId ? updated : i)) ?? [];
+        }
+      );
       return updated;
     },
     [teamId, queryClient]
@@ -226,9 +269,12 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
     async (invitationId: string) => {
       if (!teamId) throw new Error('No team selected');
       await teamsApi.cancelInvitation(teamId, invitationId);
-      queryClient.setQueryData(teamMembersKeys.invitations(teamId), (old: TeamInvitation[] | undefined) => {
-        return old?.filter((i) => i.id !== invitationId) ?? [];
-      });
+      queryClient.setQueryData(
+        teamMembersKeys.invitations(teamId),
+        (old: TeamInvitation[] | undefined) => {
+          return old?.filter((i) => i.id !== invitationId) ?? [];
+        }
+      );
     },
     [teamId, queryClient]
   );
@@ -242,7 +288,11 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
     invitations,
     currentMember,
     isLoading,
-    error: error ? (error instanceof Error ? error : new Error('Failed to fetch team data')) : null,
+    error: error
+      ? error instanceof Error
+        ? error
+        : new Error('Failed to fetch team data')
+      : null,
     refresh,
     syncClerkMember,
     addMember,
@@ -286,15 +336,21 @@ export function useMyInvitations(): UseMyInvitationsResult {
   const invitations = query.data ?? [];
 
   const refresh = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['user', 'invitations'], refetchType: 'none' });
+    await queryClient.invalidateQueries({
+      queryKey: ['user', 'invitations'],
+      refetchType: 'none',
+    });
   }, [queryClient]);
 
   const acceptInvitation = useCallback(
     async (invitationId: string) => {
       const member = await userInvitationsApi.acceptInvitation(invitationId);
-      queryClient.setQueryData(['user', 'invitations'], (old: TeamInvitationWithTeam[] | undefined) => {
-        return old?.filter((i) => i.id !== invitationId) ?? [];
-      });
+      queryClient.setQueryData(
+        ['user', 'invitations'],
+        (old: TeamInvitationWithTeam[] | undefined) => {
+          return old?.filter((i) => i.id !== invitationId) ?? [];
+        }
+      );
       return member;
     },
     [queryClient]
@@ -303,9 +359,12 @@ export function useMyInvitations(): UseMyInvitationsResult {
   const declineInvitation = useCallback(
     async (invitationId: string) => {
       await userInvitationsApi.declineInvitation(invitationId);
-      queryClient.setQueryData(['user', 'invitations'], (old: TeamInvitationWithTeam[] | undefined) => {
-        return old?.filter((i) => i.id !== invitationId) ?? [];
-      });
+      queryClient.setQueryData(
+        ['user', 'invitations'],
+        (old: TeamInvitationWithTeam[] | undefined) => {
+          return old?.filter((i) => i.id !== invitationId) ?? [];
+        }
+      );
     },
     [queryClient]
   );
@@ -313,7 +372,11 @@ export function useMyInvitations(): UseMyInvitationsResult {
   return {
     invitations,
     isLoading: query.isLoading,
-    error: query.error ? (query.error instanceof Error ? query.error : new Error('Failed to fetch invitations')) : null,
+    error: query.error
+      ? query.error instanceof Error
+        ? query.error
+        : new Error('Failed to fetch invitations')
+      : null,
     refresh,
     acceptInvitation,
     declineInvitation,

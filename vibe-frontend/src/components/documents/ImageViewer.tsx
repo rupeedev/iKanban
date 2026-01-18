@@ -1,5 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { ZoomIn, ZoomOut, RotateCw, Maximize, Move, RefreshCw } from 'lucide-react';
+import {
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  Maximize,
+  Move,
+  RefreshCw,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ImageViewerProps {
@@ -8,7 +15,11 @@ interface ImageViewerProps {
   className?: string;
 }
 
-export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps) {
+export function ImageViewer({
+  src,
+  alt = 'Image',
+  className,
+}: ImageViewerProps) {
   const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -26,15 +37,15 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
   }, [zoom]);
 
   const handleZoomIn = useCallback(() => {
-    setZoom(prev => Math.min(prev + 25, 400));
+    setZoom((prev) => Math.min(prev + 25, 400));
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    setZoom(prev => Math.max(prev - 25, 25));
+    setZoom((prev) => Math.max(prev - 25, 25));
   }, []);
 
   const handleRotate = useCallback(() => {
-    setRotation(prev => (prev + 90) % 360);
+    setRotation((prev) => (prev + 90) % 360);
   }, []);
 
   const handleReset = useCallback(() => {
@@ -58,21 +69,27 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
     setPosition({ x: 0, y: 0 });
   }, [imageSize]);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (zoom > 100) {
-      setIsDragging(true);
-      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
-    }
-  }, [zoom, position]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (zoom > 100) {
+        setIsDragging(true);
+        setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+      }
+    },
+    [zoom, position]
+  );
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isDragging) {
-      setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y,
-      });
-    }
-  }, [isDragging, dragStart]);
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (isDragging) {
+        setPosition({
+          x: e.clientX - dragStart.x,
+          y: e.clientY - dragStart.y,
+        });
+      }
+    },
+    [isDragging, dragStart]
+  );
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -81,16 +98,19 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     if (e.deltaY < 0) {
-      setZoom(prev => Math.min(prev + 10, 400));
+      setZoom((prev) => Math.min(prev + 10, 400));
     } else {
-      setZoom(prev => Math.max(prev - 10, 25));
+      setZoom((prev) => Math.max(prev - 10, 25));
     }
   }, []);
 
-  const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    setImageSize({ width: img.naturalWidth, height: img.naturalHeight });
-  }, []);
+  const handleImageLoad = useCallback(
+    (e: React.SyntheticEvent<HTMLImageElement>) => {
+      const img = e.currentTarget;
+      setImageSize({ width: img.naturalWidth, height: img.naturalHeight });
+    },
+    []
+  );
 
   return (
     <div className={`flex flex-col h-full ${className || ''}`}>
@@ -185,7 +205,9 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
-        style={{ cursor: zoom > 100 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+        style={{
+          cursor: zoom > 100 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+        }}
       >
         <img
           ref={imageRef}

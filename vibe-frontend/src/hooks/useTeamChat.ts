@@ -9,9 +9,12 @@ import type {
 // Query keys
 export const chatKeys = {
   all: ['chat'] as const,
-  conversations: (teamId: string) => [...chatKeys.all, 'conversations', teamId] as const,
-  conversation: (conversationId: string) => [...chatKeys.all, 'conversation', conversationId] as const,
-  messages: (conversationId: string) => [...chatKeys.all, 'messages', conversationId] as const,
+  conversations: (teamId: string) =>
+    [...chatKeys.all, 'conversations', teamId] as const,
+  conversation: (conversationId: string) =>
+    [...chatKeys.all, 'conversation', conversationId] as const,
+  messages: (conversationId: string) =>
+    [...chatKeys.all, 'messages', conversationId] as const,
 };
 
 /**
@@ -58,11 +61,19 @@ export function useCreateDirectConversation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ teamId, data }: { teamId: string; data: CreateDirectConversation }) =>
-      chatApi.createDirectConversation(teamId, data),
+    mutationFn: ({
+      teamId,
+      data,
+    }: {
+      teamId: string;
+      data: CreateDirectConversation;
+    }) => chatApi.createDirectConversation(teamId, data),
     onSuccess: (_, { teamId }) => {
       // Invalidate conversations list - mark stale but don't refetch immediately
-      queryClient.invalidateQueries({ queryKey: chatKeys.conversations(teamId), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.conversations(teamId),
+        refetchType: 'none',
+      });
     },
   });
 }
@@ -74,10 +85,18 @@ export function useCreateGroupConversation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ teamId, data }: { teamId: string; data: CreateGroupConversation }) =>
-      chatApi.createGroupConversation(teamId, data),
+    mutationFn: ({
+      teamId,
+      data,
+    }: {
+      teamId: string;
+      data: CreateGroupConversation;
+    }) => chatApi.createGroupConversation(teamId, data),
     onSuccess: (_, { teamId }) => {
-      queryClient.invalidateQueries({ queryKey: chatKeys.conversations(teamId), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.conversations(teamId),
+        refetchType: 'none',
+      });
     },
   });
 }
@@ -89,8 +108,13 @@ export function useSendMessage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ conversationId, content }: { conversationId: string; content: string }) =>
-      chatApi.sendMessage(conversationId, { content }),
+    mutationFn: ({
+      conversationId,
+      content,
+    }: {
+      conversationId: string;
+      content: string;
+    }) => chatApi.sendMessage(conversationId, { content }),
     onSuccess: (newMessage, { conversationId }) => {
       // Optimistically add the message to the cache
       queryClient.setQueryData<MessagesResponse>(
@@ -104,7 +128,10 @@ export function useSendMessage() {
         }
       );
       // Also invalidate to ensure consistency - mark stale but don't refetch immediately
-      queryClient.invalidateQueries({ queryKey: chatKeys.messages(conversationId), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.messages(conversationId),
+        refetchType: 'none',
+      });
     },
   });
 }
@@ -164,7 +191,13 @@ export function useDeleteMessage() {
           return {
             ...old,
             messages: old.messages.map((m) =>
-              m.id === messageId ? { ...m, is_deleted: true, content: 'This message was deleted' } : m
+              m.id === messageId
+                ? {
+                    ...m,
+                    is_deleted: true,
+                    content: 'This message was deleted',
+                  }
+                : m
             ),
           };
         }
@@ -182,7 +215,10 @@ export function useMarkAsRead() {
   return useMutation({
     mutationFn: (conversationId: string) => chatApi.markAsRead(conversationId),
     onSuccess: (_, conversationId) => {
-      queryClient.invalidateQueries({ queryKey: chatKeys.conversation(conversationId), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.conversation(conversationId),
+        refetchType: 'none',
+      });
     },
   });
 }
@@ -194,10 +230,14 @@ export function useLeaveConversation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (conversationId: string) => chatApi.leaveConversation(conversationId),
+    mutationFn: (conversationId: string) =>
+      chatApi.leaveConversation(conversationId),
     onSuccess: () => {
       // Invalidate all conversations as we don't know the team ID - mark stale but don't refetch immediately
-      queryClient.invalidateQueries({ queryKey: chatKeys.all, refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.all,
+        refetchType: 'none',
+      });
     },
   });
 }

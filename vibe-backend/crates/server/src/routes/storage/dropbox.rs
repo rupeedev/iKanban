@@ -3,10 +3,10 @@
 //! API endpoints for Dropbox OAuth and file operations.
 
 use axum::{
+    Json,
     extract::{Query, State},
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
-    Json,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -123,7 +123,11 @@ pub async fn oauth_callback(
     // Parse team_id from state
     let team_id = state.strip_prefix("dropbox_").unwrap_or(&state);
 
-    tracing::info!("Dropbox OAuth callback for team: {}, code length: {}", team_id, code.len());
+    tracing::info!(
+        "Dropbox OAuth callback for team: {}, code length: {}",
+        team_id,
+        code.len()
+    );
 
     // TODO: Exchange code for tokens using DropboxClient
     // TODO: Get account info

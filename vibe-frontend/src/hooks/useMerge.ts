@@ -22,10 +22,16 @@ export function useMerge(
     },
     onSuccess: () => {
       // Refresh attempt-specific branch information - mark stale but don't refetch immediately
-      queryClient.invalidateQueries({ queryKey: ['branchStatus', attemptId], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['branchStatus', attemptId],
+        refetchType: 'none',
+      });
 
       // Invalidate all repo branches queries
-      queryClient.invalidateQueries({ queryKey: repoBranchKeys.all, refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: repoBranchKeys.all,
+        refetchType: 'none',
+      });
 
       onSuccess?.();
     },

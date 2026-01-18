@@ -40,7 +40,10 @@ interface State {
  * </FeatureErrorBoundary>
  * ```
  */
-export class FeatureErrorBoundary extends Component<FeatureErrorBoundaryProps, State> {
+export class FeatureErrorBoundary extends Component<
+  FeatureErrorBoundaryProps,
+  State
+> {
   constructor(props: FeatureErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -81,7 +84,13 @@ export class FeatureErrorBoundary extends Component<FeatureErrorBoundaryProps, S
 
   render(): ReactNode {
     const { hasError, error } = this.state;
-    const { children, featureName, fallback, className, 'data-testid': testId } = this.props;
+    const {
+      children,
+      featureName,
+      fallback,
+      className,
+      'data-testid': testId,
+    } = this.props;
 
     if (hasError) {
       // Use custom fallback if provided
@@ -92,8 +101,13 @@ export class FeatureErrorBoundary extends Component<FeatureErrorBoundaryProps, S
       // Default error UI
       return (
         <Card
-          className={cn('border-destructive/50 bg-destructive/5 m-2', className)}
-          data-testid={testId || `${featureName.toLowerCase().replace(/\s+/g, '-')}-error`}
+          className={cn(
+            'border-destructive/50 bg-destructive/5 m-2',
+            className
+          )}
+          data-testid={
+            testId || `${featureName.toLowerCase().replace(/\s+/g, '-')}-error`
+          }
         >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-destructive flex items-center gap-2">
@@ -102,7 +116,8 @@ export class FeatureErrorBoundary extends Component<FeatureErrorBoundaryProps, S
           </CardHeader>
           <CardContent className="pt-0">
             <p className="text-xs text-muted-foreground mb-3">
-              This section encountered an error. Other parts of the app should still work.
+              This section encountered an error. Other parts of the app should
+              still work.
             </p>
             {error?.message && (
               <p className="text-xs text-destructive/80 mb-3 font-mono bg-destructive/10 p-2 rounded">

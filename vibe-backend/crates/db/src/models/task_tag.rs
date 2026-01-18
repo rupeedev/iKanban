@@ -152,12 +152,9 @@ impl TaskTag {
 
     /// Delete all tags for a task
     pub async fn delete_by_task_id(pool: &PgPool, task_id: Uuid) -> Result<u64, sqlx::Error> {
-        let result = sqlx::query!(
-            "DELETE FROM task_tags WHERE task_id = $1",
-            task_id
-        )
-        .execute(pool)
-        .await?;
+        let result = sqlx::query!("DELETE FROM task_tags WHERE task_id = $1", task_id)
+            .execute(pool)
+            .await?;
 
         Ok(result.rows_affected())
     }

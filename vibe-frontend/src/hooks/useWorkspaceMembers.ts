@@ -48,10 +48,21 @@ export function useWorkspaceMembers(workspaceId: string | null | undefined) {
 
   // Update member role
   const updateRoleMutation = useMutation({
-    mutationFn: ({ userId: targetUserId, data }: { userId: string; data: UpdateWorkspaceMemberRole }) => {
+    mutationFn: ({
+      userId: targetUserId,
+      data,
+    }: {
+      userId: string;
+      data: UpdateWorkspaceMemberRole;
+    }) => {
       if (!workspaceId) throw new Error('Workspace ID required');
       if (!userId) throw new Error('User ID required');
-      return tenantWorkspacesApi.updateMemberRole(workspaceId, targetUserId, data, userId);
+      return tenantWorkspacesApi.updateMemberRole(
+        workspaceId,
+        targetUserId,
+        data,
+        userId
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -66,7 +77,11 @@ export function useWorkspaceMembers(workspaceId: string | null | undefined) {
     mutationFn: (targetUserId: string) => {
       if (!workspaceId) throw new Error('Workspace ID required');
       if (!userId) throw new Error('User ID required');
-      return tenantWorkspacesApi.removeMember(workspaceId, targetUserId, userId);
+      return tenantWorkspacesApi.removeMember(
+        workspaceId,
+        targetUserId,
+        userId
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

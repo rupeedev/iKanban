@@ -562,11 +562,7 @@ impl CopilotAssignment {
     }
 
     /// Update just the status field (convenience method)
-    pub async fn update_status(
-        pool: &PgPool,
-        id: Uuid,
-        status: &str,
-    ) -> Result<Self, sqlx::Error> {
+    pub async fn update_status(pool: &PgPool, id: Uuid, status: &str) -> Result<Self, sqlx::Error> {
         Self::update(
             pool,
             id,

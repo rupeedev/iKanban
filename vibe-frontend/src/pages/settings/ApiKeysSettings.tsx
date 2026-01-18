@@ -19,7 +19,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Copy, Key, Loader2, Plus, Trash2, AlertTriangle, Check, Eye, EyeOff } from 'lucide-react';
+import {
+  Copy,
+  Key,
+  Loader2,
+  Plus,
+  Trash2,
+  AlertTriangle,
+  Check,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { apiKeysApi, ApiKeyInfo, ApiKeyWithSecret } from '@/lib/api';
 
 export function ApiKeysSettings() {
@@ -35,7 +45,8 @@ export function ApiKeysSettings() {
   const [creating, setCreating] = useState(false);
 
   // Newly created key dialog state
-  const [newlyCreatedKey, setNewlyCreatedKey] = useState<ApiKeyWithSecret | null>(null);
+  const [newlyCreatedKey, setNewlyCreatedKey] =
+    useState<ApiKeyWithSecret | null>(null);
   const [copied, setCopied] = useState(false);
   const [showKey, setShowKey] = useState(true);
 
@@ -151,7 +162,9 @@ export function ApiKeysSettings() {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-muted-foreground">{t('settings.apiKeys.loading')}</span>
+        <span className="ml-2 text-muted-foreground">
+          {t('settings.apiKeys.loading')}
+        </span>
       </div>
     );
   }
@@ -203,7 +216,9 @@ export function ApiKeysSettings() {
               <div className="grid grid-cols-[1fr,auto,auto,auto,auto] gap-4 px-4 py-2 text-sm font-medium text-muted-foreground border-b">
                 <div>{t('settings.apiKeys.table.name')}</div>
                 <div className="w-28">{t('settings.apiKeys.table.prefix')}</div>
-                <div className="w-24">{t('settings.apiKeys.table.lastUsed')}</div>
+                <div className="w-24">
+                  {t('settings.apiKeys.table.lastUsed')}
+                </div>
                 <div className="w-20">{t('settings.apiKeys.table.status')}</div>
                 <div className="w-10"></div>
               </div>
@@ -218,7 +233,8 @@ export function ApiKeysSettings() {
                   <div>
                     <div className="font-medium">{key.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {t('settings.apiKeys.table.created')}: {formatDate(key.created_at)}
+                      {t('settings.apiKeys.table.created')}:{' '}
+                      {formatDate(key.created_at)}
                     </div>
                   </div>
                   <div className="w-28">
@@ -234,7 +250,8 @@ export function ApiKeysSettings() {
                       <span className="text-destructive text-sm">
                         {t('settings.apiKeys.status.revoked')}
                       </span>
-                    ) : key.expires_at && new Date(key.expires_at) < new Date() ? (
+                    ) : key.expires_at &&
+                      new Date(key.expires_at) < new Date() ? (
                       <span className="text-destructive text-sm">
                         {t('settings.apiKeys.status.expired')}
                       </span>
@@ -264,14 +281,18 @@ export function ApiKeysSettings() {
       {/* Info Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{t('settings.apiKeys.usage.title')}</CardTitle>
+          <CardTitle className="text-base">
+            {t('settings.apiKeys.usage.title')}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
             {t('settings.apiKeys.usage.description')}
           </p>
           <div className="bg-muted rounded-lg p-4">
-            <p className="text-sm font-medium mb-2">{t('settings.apiKeys.usage.example')}</p>
+            <p className="text-sm font-medium mb-2">
+              {t('settings.apiKeys.usage.example')}
+            </p>
             <code className="text-xs block bg-background p-3 rounded border">
               Authorization: Bearer vk_your_api_key_here
             </code>
@@ -286,14 +307,18 @@ export function ApiKeysSettings() {
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('settings.apiKeys.createDialog.title')}</DialogTitle>
+            <DialogTitle>
+              {t('settings.apiKeys.createDialog.title')}
+            </DialogTitle>
             <DialogDescription>
               {t('settings.apiKeys.createDialog.description')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="key-name">{t('settings.apiKeys.createDialog.nameLabel')}</Label>
+              <Label htmlFor="key-name">
+                {t('settings.apiKeys.createDialog.nameLabel')}
+              </Label>
               <Input
                 id="key-name"
                 placeholder={t('settings.apiKeys.createDialog.namePlaceholder')}
@@ -311,10 +336,16 @@ export function ApiKeysSettings() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateDialog(false)}
+            >
               {t('settings.apiKeys.createDialog.cancel')}
             </Button>
-            <Button onClick={handleCreateKey} disabled={!newKeyName.trim() || creating}>
+            <Button
+              onClick={handleCreateKey}
+              disabled={!newKeyName.trim() || creating}
+            >
               {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {t('settings.apiKeys.createDialog.create')}
             </Button>
@@ -323,7 +354,10 @@ export function ApiKeysSettings() {
       </Dialog>
 
       {/* Newly Created Key Dialog */}
-      <Dialog open={!!newlyCreatedKey} onOpenChange={() => setNewlyCreatedKey(null)}>
+      <Dialog
+        open={!!newlyCreatedKey}
+        onOpenChange={() => setNewlyCreatedKey(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -349,7 +383,11 @@ export function ApiKeysSettings() {
                 <div className="flex-1 relative">
                   <Input
                     readOnly
-                    value={showKey ? newlyCreatedKey?.key : '••••••••••••••••••••••••••••••••••••'}
+                    value={
+                      showKey
+                        ? newlyCreatedKey?.key
+                        : '••••••••••••••••••••••••••••••••••••'
+                    }
                     className="font-mono pr-10"
                   />
                   <Button
@@ -358,15 +396,25 @@ export function ApiKeysSettings() {
                     className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
                     onClick={() => setShowKey(!showKey)}
                   >
-                    {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showKey ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => newlyCreatedKey && copyToClipboard(newlyCreatedKey.key)}
+                  onClick={() =>
+                    newlyCreatedKey && copyToClipboard(newlyCreatedKey.key)
+                  }
                 >
-                  {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                  {copied ? (
+                    <Check className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
@@ -383,9 +431,13 @@ export function ApiKeysSettings() {
       <Dialog open={!!keyToDelete} onOpenChange={() => setKeyToDelete(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('settings.apiKeys.deleteDialog.title')}</DialogTitle>
+            <DialogTitle>
+              {t('settings.apiKeys.deleteDialog.title')}
+            </DialogTitle>
             <DialogDescription>
-              {t('settings.apiKeys.deleteDialog.description', { name: keyToDelete?.name })}
+              {t('settings.apiKeys.deleteDialog.description', {
+                name: keyToDelete?.name,
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">

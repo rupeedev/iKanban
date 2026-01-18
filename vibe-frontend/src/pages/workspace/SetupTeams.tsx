@@ -15,10 +15,12 @@ export function SetupTeams({ teams, onChange }: SetupTeamsProps) {
 
   // Generate identifier from name
   const generateIdentifier = (name: string): string => {
-    return name
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, '')
-      .substring(0, 3) || 'TEM';
+    return (
+      name
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+        .substring(0, 3) || 'TEM'
+    );
   };
 
   const addTeam = useCallback(() => {
@@ -44,11 +46,7 @@ export function SetupTeams({ teams, onChange }: SetupTeamsProps) {
 
   const updateTeam = useCallback(
     (id: string, updates: Partial<TeamSetupData>) => {
-      onChange(
-        teams.map((t) =>
-          t.id === id ? { ...t, ...updates } : t
-        )
-      );
+      onChange(teams.map((t) => (t.id === id ? { ...t, ...updates } : t)));
     },
     [teams, onChange]
   );
@@ -117,7 +115,9 @@ export function SetupTeams({ teams, onChange }: SetupTeamsProps) {
                     value={team.identifier}
                     onChange={(e) =>
                       updateTeam(team.id, {
-                        identifier: e.target.value.toUpperCase().substring(0, 3),
+                        identifier: e.target.value
+                          .toUpperCase()
+                          .substring(0, 3),
                       })
                     }
                     maxLength={3}

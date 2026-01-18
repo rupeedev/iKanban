@@ -37,7 +37,10 @@ export function ErrorCard({
   if (variant === 'minimal') {
     return (
       <div
-        className={cn('flex items-center gap-2 text-sm text-destructive', className)}
+        className={cn(
+          'flex items-center gap-2 text-sm text-destructive',
+          className
+        )}
         data-testid={testId}
       >
         <AlertCircle className="h-4 w-4 shrink-0" />
@@ -66,7 +69,9 @@ export function ErrorCard({
         data-testid={testId}
       >
         <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
-        <span className="flex-1 text-sm text-destructive">{message || title}</span>
+        <span className="flex-1 text-sm text-destructive">
+          {message || title}
+        </span>
         {onRetry && (
           <Button
             size="sm"

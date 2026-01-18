@@ -1,8 +1,8 @@
 use axum::{
+    Json, Router,
     extract::{Path, State},
     response::Json as ResponseJson,
     routing::{delete, get, post, put},
-    Json, Router,
 };
 use db::models::gitlab_connection::{
     CreateGitLabConnection, GitLabConnection, GitLabConnectionWithRepos, GitLabRepository,
@@ -14,7 +14,7 @@ use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{error::ApiError, DeploymentImpl};
+use crate::{DeploymentImpl, error::ApiError};
 
 /// A GitLab project from the API (not yet linked)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -99,10 +99,7 @@ pub async fn create_workspace_gitlab_connection(
         GitLabConnection::create_workspace_connection(&deployment.db().pool, &payload).await?;
 
     deployment
-        .track_if_analytics_allowed(
-            "workspace_gitlab_connection_created",
-            serde_json::json!({}),
-        )
+        .track_if_analytics_allowed("workspace_gitlab_connection_created", serde_json::json!({}))
         .await;
 
     Ok(ResponseJson(ApiResponse::success(connection)))
@@ -120,10 +117,7 @@ pub async fn update_workspace_gitlab_connection(
     let updated = GitLabConnection::update(&deployment.db().pool, existing.id, &payload).await?;
 
     deployment
-        .track_if_analytics_allowed(
-            "workspace_gitlab_connection_updated",
-            serde_json::json!({}),
-        )
+        .track_if_analytics_allowed("workspace_gitlab_connection_updated", serde_json::json!({}))
         .await;
 
     Ok(ResponseJson(ApiResponse::success(updated)))
@@ -142,10 +136,7 @@ pub async fn delete_workspace_gitlab_connection(
     }
 
     deployment
-        .track_if_analytics_allowed(
-            "workspace_gitlab_connection_deleted",
-            serde_json::json!({}),
-        )
+        .track_if_analytics_allowed("workspace_gitlab_connection_deleted", serde_json::json!({}))
         .await;
 
     Ok(ResponseJson(ApiResponse::success(())))
@@ -239,7 +230,9 @@ pub async fn unlink_workspace_repository(
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let rows_affected = GitLabRepository::unlink(&deployment.db().pool, repo_id).await?;
     if rows_affected == 0 {
-        return Err(ApiError::NotFound("GitLab repository not found".to_string()));
+        return Err(ApiError::NotFound(
+            "GitLab repository not found".to_string(),
+        ));
     }
 
     deployment

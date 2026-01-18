@@ -60,27 +60,41 @@ export function CommentEditor({
     setSelectedSuggestionIndex(0);
   }, [mentionState, filteredSuggestions.length]);
 
-  const insertFormatting = useCallback((prefix: string, suffix: string = prefix) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
+  const insertFormatting = useCallback(
+    (prefix: string, suffix: string = prefix) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
 
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = content.substring(start, end);
-    const newText = content.substring(0, start) + prefix + selectedText + suffix + content.substring(end);
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selectedText = content.substring(start, end);
+      const newText =
+        content.substring(0, start) +
+        prefix +
+        selectedText +
+        suffix +
+        content.substring(end);
 
-    setContent(newText);
+      setContent(newText);
 
-    // Restore focus and selection
-    setTimeout(() => {
-      textarea.focus();
-      if (selectedText) {
-        textarea.setSelectionRange(start + prefix.length, end + prefix.length);
-      } else {
-        textarea.setSelectionRange(start + prefix.length, start + prefix.length);
-      }
-    }, 0);
-  }, [content]);
+      // Restore focus and selection
+      setTimeout(() => {
+        textarea.focus();
+        if (selectedText) {
+          textarea.setSelectionRange(
+            start + prefix.length,
+            end + prefix.length
+          );
+        } else {
+          textarea.setSelectionRange(
+            start + prefix.length,
+            start + prefix.length
+          );
+        }
+      }, 0);
+    },
+    [content]
+  );
 
   const handleBold = () => insertFormatting('**');
   const handleItalic = () => insertFormatting('*');
@@ -89,7 +103,11 @@ export function CommentEditor({
   const handleLink = () => insertFormatting('[', '](url)');
   const handleBulletList = () => insertFormatting('- ');
   const handleNumberedList = () => insertFormatting('1. ');
-  const handleTable = () => insertFormatting('\n| Header | Header |\n|--------|--------|\n| Cell   | Cell   |\n', '');
+  const handleTable = () =>
+    insertFormatting(
+      '\n| Header | Header |\n|--------|--------|\n| Cell   | Cell   |\n',
+      ''
+    );
   const handlePanel = () => insertFormatting('\n> **Note:** ', '\n');
 
   // Handle text change with cursor tracking
@@ -151,7 +169,10 @@ export function CommentEditor({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       // If suggestions are shown, let AgentMentionSuggestions handle navigation keys
-      if (showSuggestions && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
+      if (
+        showSuggestions &&
+        ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)
+      ) {
         return;
       }
     },
@@ -175,7 +196,11 @@ export function CommentEditor({
   const toolbarButtons = [
     { icon: Bold, onClick: handleBold, title: 'Bold' },
     { icon: Italic, onClick: handleItalic, title: 'Italic' },
-    { icon: Strikethrough, onClick: handleStrikethrough, title: 'Strikethrough' },
+    {
+      icon: Strikethrough,
+      onClick: handleStrikethrough,
+      title: 'Strikethrough',
+    },
     { icon: Code, onClick: handleCode, title: 'Code' },
     { icon: Link, onClick: handleLink, title: 'Link' },
     { type: 'divider' as const },
@@ -183,7 +208,12 @@ export function CommentEditor({
     { icon: ListOrdered, onClick: handleNumberedList, title: 'Numbered list' },
     { icon: Table, onClick: handleTable, title: 'Table' },
     { type: 'divider' as const },
-    { icon: Paperclip, onClick: () => {}, title: 'Attach file', disabled: true },
+    {
+      icon: Paperclip,
+      onClick: () => {},
+      title: 'Attach file',
+      disabled: true,
+    },
     { icon: LayoutPanelTop, onClick: handlePanel, title: 'Info panel' },
   ];
 
@@ -245,8 +275,10 @@ export function CommentEditor({
           <Label
             htmlFor="internal-note"
             className={cn(
-              "text-sm cursor-pointer select-none",
-              isInternal ? "text-yellow-600 dark:text-yellow-400 font-medium" : "text-muted-foreground"
+              'text-sm cursor-pointer select-none',
+              isInternal
+                ? 'text-yellow-600 dark:text-yellow-400 font-medium'
+                : 'text-muted-foreground'
             )}
           >
             Make this an internal note

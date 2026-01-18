@@ -1,1 +1,4 @@
-export { useConnection, useConnectionSafe } from '../contexts/ConnectionContext';
+export {
+  useConnection,
+  useConnectionSafe,
+} from '../contexts/ConnectionContext';

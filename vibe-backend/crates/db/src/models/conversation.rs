@@ -1,24 +1,20 @@
+use std::str::FromStr;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
-use std::str::FromStr;
 use ts_rs::TS;
 use uuid::Uuid;
 
 /// Type of conversation
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ConversationType {
     /// Direct message between two users
+    #[default]
     Direct,
     /// Group chat with 3+ users
     Group,
-}
-
-impl Default for ConversationType {
-    fn default() -> Self {
-        Self::Direct
-    }
 }
 
 impl std::fmt::Display for ConversationType {

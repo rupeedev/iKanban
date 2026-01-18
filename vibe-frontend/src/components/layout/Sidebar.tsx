@@ -475,7 +475,9 @@ export function Sidebar() {
                     to={`/projects/${getProjectSlug(project)}/tasks`}
                     isActive={isProjectActive(project)}
                     isCollapsed={isCollapsed}
-                    teamIndicator={teamInfo?.teamIdentifier || teamInfo?.teamName}
+                    teamIndicator={
+                      teamInfo?.teamIdentifier || teamInfo?.teamName
+                    }
                     teamIcon={teamInfo?.teamIcon || undefined}
                   />
                 );

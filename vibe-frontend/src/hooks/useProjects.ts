@@ -30,7 +30,10 @@ const isCloudMode = !!API_BASE_URL;
 // Helper to check if error is a rate limit (429)
 function isRateLimitError(error: unknown): boolean {
   if (error instanceof Error) {
-    return error.message.includes('429') || error.message.includes('Too Many Requests');
+    return (
+      error.message.includes('429') ||
+      error.message.includes('Too Many Requests')
+    );
   }
   return false;
 }
@@ -63,11 +66,15 @@ function removeOptimisticProject(projectId: string) {
 // Query key factory for workspace-scoped projects
 export const projectsKeys = {
   all: ['projects'] as const,
-  list: (workspaceId?: string | null) => [...projectsKeys.all, 'list', workspaceId ?? 'all'] as const,
+  list: (workspaceId?: string | null) =>
+    [...projectsKeys.all, 'list', workspaceId ?? 'all'] as const,
 };
 
 // Fetch function for TanStack Query (cloud mode)
-async function fetchProjects(token: string | null, workspaceId?: string | null): Promise<Record<string, Project>> {
+async function fetchProjects(
+  token: string | null,
+  workspaceId?: string | null
+): Promise<Record<string, Project>> {
   if (!token) return {};
 
   const params = new URLSearchParams();
@@ -130,7 +137,11 @@ export function useProjects(): UseProjectsResult {
   const initialData = useCallback((): ProjectsState => ({ projects: {} }), []);
 
   // In cloud mode, disable WebSocket and use TanStack Query instead
-  const { data: wsData, isConnected, error: wsError } = useJsonPatchWsStream<ProjectsState>(
+  const {
+    data: wsData,
+    isConnected,
+    error: wsError,
+  } = useJsonPatchWsStream<ProjectsState>(
     endpoint,
     !isCloudMode && isSignedIn && !!token, // Disable WebSocket in cloud mode or when not signed in
     initialData,
@@ -141,7 +152,7 @@ export function useProjects(): UseProjectsResult {
   const {
     data: restProjects = {},
     isLoading: restLoading,
-    error: restError
+    error: restError,
   } = useQuery({
     queryKey,
     queryFn: () => fetchProjects(token, currentWorkspaceId),
@@ -165,15 +176,21 @@ export function useProjects(): UseProjectsResult {
     [restProjects, wsData]
   );
   const error = isCloudMode
-    ? (restError instanceof Error ? restError.message : restError ? String(restError) : null)
+    ? restError instanceof Error
+      ? restError.message
+      : restError
+        ? String(restError)
+        : null
     : wsError;
 
   // Clean up optimistic entries when data arrives (in useEffect, not useMemo)
   useEffect(() => {
     const fetchedProjects = data?.projects ?? {};
-    const idsToClean = Object.keys(optimisticProjects).filter(id => fetchedProjects[id]);
+    const idsToClean = Object.keys(optimisticProjects).filter(
+      (id) => fetchedProjects[id]
+    );
     if (idsToClean.length > 0) {
-      idsToClean.forEach(id => {
+      idsToClean.forEach((id) => {
         delete optimisticProjects[id];
       });
       // No need to notify - the data change will trigger re-render
@@ -201,45 +218,64 @@ export function useProjects(): UseProjectsResult {
   const errorObj = useMemo(() => (error ? new Error(error) : null), [error]);
 
   const resolveProject = useMemo(
-    () => (param: string) => resolveProjectFromParam(param, projects, projectsById),
+    () => (param: string) =>
+      resolveProjectFromParam(param, projects, projectsById),
     [projects, projectsById]
   );
 
-  const addProject = useCallback((project: Project) => {
-    addOptimisticProject(project);
-    // Also update TanStack Query cache for immediate UI update
-    if (isCloudMode) {
-      queryClient.setQueryData(queryKey, (old: Record<string, Project> | undefined) => {
-        return { ...old, [project.id]: project };
-      });
-    }
-  }, [queryClient, queryKey]);
+  const addProject = useCallback(
+    (project: Project) => {
+      addOptimisticProject(project);
+      // Also update TanStack Query cache for immediate UI update
+      if (isCloudMode) {
+        queryClient.setQueryData(
+          queryKey,
+          (old: Record<string, Project> | undefined) => {
+            return { ...old, [project.id]: project };
+          }
+        );
+      }
+    },
+    [queryClient, queryKey]
+  );
 
-  const updateProject = useCallback((project: Project) => {
-    updateOptimisticProject(project);
-    if (isCloudMode) {
-      queryClient.setQueryData(queryKey, (old: Record<string, Project> | undefined) => {
-        return { ...old, [project.id]: project };
-      });
-    }
-  }, [queryClient, queryKey]);
+  const updateProject = useCallback(
+    (project: Project) => {
+      updateOptimisticProject(project);
+      if (isCloudMode) {
+        queryClient.setQueryData(
+          queryKey,
+          (old: Record<string, Project> | undefined) => {
+            return { ...old, [project.id]: project };
+          }
+        );
+      }
+    },
+    [queryClient, queryKey]
+  );
 
-  const removeProject = useCallback((projectId: string) => {
-    removeOptimisticProject(projectId);
-    if (isCloudMode) {
-      queryClient.setQueryData(queryKey, (old: Record<string, Project> | undefined) => {
-        if (!old) return {};
-        const { [projectId]: _removed, ...rest } = old;
-        void _removed;
-        return rest;
-      });
-    }
-  }, [queryClient, queryKey]);
+  const removeProject = useCallback(
+    (projectId: string) => {
+      removeOptimisticProject(projectId);
+      if (isCloudMode) {
+        queryClient.setQueryData(
+          queryKey,
+          (old: Record<string, Project> | undefined) => {
+            if (!old) return {};
+            const { [projectId]: _removed, ...rest } = old;
+            void _removed;
+            return rest;
+          }
+        );
+      }
+    },
+    [queryClient, queryKey]
+  );
 
   return {
     projects: projectsData ?? [],
     projectsById,
-    isLoading: isCloudMode ? restLoading : (!wsData && !wsError),
+    isLoading: isCloudMode ? restLoading : !wsData && !wsError,
     isConnected: isCloudMode ? !restError : isConnected,
     error: errorObj,
     resolveProject,

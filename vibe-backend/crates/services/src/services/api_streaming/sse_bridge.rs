@@ -165,20 +165,22 @@ impl SseBridge {
         let data: serde_json::Value = serde_json::from_str(&event.data)?;
 
         // Check for prompt feedback (usually an error or safety issue)
-        if let Some(feedback) = data.get("promptFeedback") {
-            if let Some(block_reason) = feedback.get("blockReason").and_then(|r| r.as_str()) {
-                return Ok(Some(LogMsg::Stderr(format!(
-                    "Gemini blocked: {}",
-                    block_reason
-                ))));
-            }
+        if let Some(feedback) = data.get("promptFeedback")
+            && let Some(block_reason) = feedback.get("blockReason").and_then(|r| r.as_str())
+        {
+            return Ok(Some(LogMsg::Stderr(format!(
+                "Gemini blocked: {}",
+                block_reason
+            ))));
         }
 
         // Extract text from candidates
         if let Some(candidates) = data.get("candidates").and_then(|c| c.as_array()) {
             for candidate in candidates {
                 // Check for finish reason
-                if let Some(finish_reason) = candidate.get("finishReason").and_then(|r| r.as_str())
+                if let Some(finish_reason) = candidate
+                    .get("finishReason")
+                    .and_then(|r| r.as_str())
                 {
                     if finish_reason == "STOP" || finish_reason == "END_TURN" {
                         return Ok(Some(LogMsg::Finished));
@@ -239,10 +241,12 @@ impl SseBridge {
         if let Some(choices) = parsed.get("choices").and_then(|c| c.as_array()) {
             for choice in choices {
                 // Check for finish reason
-                if let Some(finish_reason) = choice.get("finish_reason").and_then(|r| r.as_str()) {
-                    if finish_reason == "stop" || finish_reason == "length" {
-                        return Ok(Some(LogMsg::Finished));
-                    }
+                if let Some(finish_reason) = choice
+                    .get("finish_reason")
+                    .and_then(|r| r.as_str())
+                    && (finish_reason == "stop" || finish_reason == "length")
+                {
+                    return Ok(Some(LogMsg::Finished));
                 }
 
                 // Extract delta content
@@ -250,10 +254,9 @@ impl SseBridge {
                     .get("delta")
                     .and_then(|d| d.get("content"))
                     .and_then(|c| c.as_str())
+                    && !content.is_empty()
                 {
-                    if !content.is_empty() {
-                        return Ok(Some(LogMsg::Stdout(content.to_string())));
-                    }
+                    return Ok(Some(LogMsg::Stdout(content.to_string())));
                 }
             }
         }

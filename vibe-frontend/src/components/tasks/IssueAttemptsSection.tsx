@@ -26,7 +26,9 @@ function formatTimeAgo(iso: string): string {
       : null;
 
   const to = (value: number, unit: Intl.RelativeTimeFormatUnit) =>
-    rtf ? rtf.format(-value, unit) : `${value} ${unit}${value !== 1 ? 's' : ''} ago`;
+    rtf
+      ? rtf.format(-value, unit)
+      : `${value} ${unit}${value !== 1 ? 's' : ''} ago`;
 
   if (absSec < 60) return to(Math.round(absSec), 'second');
   const mins = Math.round(absSec / 60);
@@ -62,7 +64,11 @@ const attemptColumns: ColumnDef<WorkspaceWithSession>[] = [
   },
 ];
 
-export function IssueAttemptsSection({ issueId, projectId, teamId }: IssueAttemptsSectionProps) {
+export function IssueAttemptsSection({
+  issueId,
+  projectId,
+  teamId,
+}: IssueAttemptsSectionProps) {
   const navigate = useNavigateWithSearch();
 
   const {
@@ -74,7 +80,8 @@ export function IssueAttemptsSection({ issueId, projectId, teamId }: IssueAttemp
   const displayedAttempts = useMemo(
     () =>
       [...attempts].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       ),
     [attempts]
   );
@@ -129,7 +136,11 @@ export function IssueAttemptsSection({ issueId, projectId, teamId }: IssueAttemp
       </div>
 
       {/* Inline Prompt Input - handles both comments and AI prompts */}
-      <InlinePromptInput taskId={issueId} teamId={teamId} data-testid="issue-inline-prompt" />
+      <InlinePromptInput
+        taskId={issueId}
+        teamId={teamId}
+        data-testid="issue-inline-prompt"
+      />
     </div>
   );
 }

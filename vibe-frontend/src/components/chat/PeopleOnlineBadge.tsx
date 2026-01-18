@@ -8,14 +8,24 @@ interface PeopleOnlineBadgeProps {
   teamName?: string;
 }
 
-export function PeopleOnlineBadge({ className, onlineCount = 0, teamName }: PeopleOnlineBadgeProps) {
+export function PeopleOnlineBadge({
+  className,
+  onlineCount = 0,
+  teamName,
+}: PeopleOnlineBadgeProps) {
   const { toggle } = useChatPanelStore();
 
   const hasOnline = onlineCount > 0;
-  const statusText = hasOnline ? `${onlineCount.toLocaleString()} online` : 'Connect';
+  const statusText = hasOnline
+    ? `${onlineCount.toLocaleString()} online`
+    : 'Connect';
   const ariaLabel = teamName
-    ? (hasOnline ? `${teamName}. ${onlineCount} people online. Open team chat.` : `${teamName}. Open team chat to connect`)
-    : (hasOnline ? `${onlineCount} people online. Open team chat.` : 'Open team chat to connect');
+    ? hasOnline
+      ? `${teamName}. ${onlineCount} people online. Open team chat.`
+      : `${teamName}. Open team chat to connect`
+    : hasOnline
+      ? `${onlineCount} people online. Open team chat.`
+      : 'Open team chat to connect';
 
   return (
     <button

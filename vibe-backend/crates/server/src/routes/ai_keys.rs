@@ -3,21 +3,19 @@
 //! Routes for managing AI provider API keys (Anthropic, Google, OpenAI)
 
 use axum::{
+    Json, Router,
     extract::{Path, State},
     response::Json as ResponseJson,
     routing::{delete, get, post},
-    Json, Router,
 };
-use db::models::ai_provider_key::{AiProviderKey, AiProviderKeyInfo, UpsertAiProviderKey};
-use db::models::tenant_workspace::TenantWorkspace;
-use utils::response::ApiResponse;
-
-use crate::{
-    error::ApiError,
-    middleware::auth::ClerkUser,
-    DeploymentImpl,
+use db::models::{
+    ai_provider_key::{AiProviderKey, AiProviderKeyInfo, UpsertAiProviderKey},
+    tenant_workspace::TenantWorkspace,
 };
 use deployment::Deployment;
+use utils::response::ApiResponse;
+
+use crate::{DeploymentImpl, error::ApiError, middleware::auth::ClerkUser};
 
 /// Get the tenant workspace ID for the current user
 /// Auto-provisions user to default workspace if no membership exists
@@ -62,7 +60,11 @@ async fn get_user_tenant_workspace(
             ApiError::BadRequest(format!("Failed to add user to workspace: {}", e))
         })?;
 
-    tracing::info!("User {} added to workspace {}", user_id, default_workspace.id);
+    tracing::info!(
+        "User {} added to workspace {}",
+        user_id,
+        default_workspace.id
+    );
     Ok(default_workspace.id)
 }
 
@@ -71,11 +73,9 @@ pub async fn list_ai_keys(
     user: ClerkUser,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<AiProviderKeyInfo>>>, ApiError> {
-    let tenant_workspace_id = get_user_tenant_workspace(
-        &deployment.db().pool,
-        &user.user_id,
-        user.email.as_deref(),
-    ).await?;
+    let tenant_workspace_id =
+        get_user_tenant_workspace(&deployment.db().pool, &user.user_id, user.email.as_deref())
+            .await?;
     let keys = AiProviderKey::list(&deployment.db().pool, tenant_workspace_id).await?;
     Ok(ResponseJson(ApiResponse::success(keys)))
 }
@@ -110,11 +110,9 @@ pub async fn upsert_ai_key(
         )));
     }
 
-    let tenant_workspace_id = get_user_tenant_workspace(
-        &deployment.db().pool,
-        &user.user_id,
-        user.email.as_deref(),
-    ).await?;
+    let tenant_workspace_id =
+        get_user_tenant_workspace(&deployment.db().pool, &user.user_id, user.email.as_deref())
+            .await?;
     let key = AiProviderKey::upsert(&deployment.db().pool, tenant_workspace_id, &request).await?;
     Ok(ResponseJson(ApiResponse::success(key)))
 }
@@ -125,12 +123,11 @@ pub async fn delete_ai_key(
     State(deployment): State<DeploymentImpl>,
     Path(provider): Path<String>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let tenant_workspace_id = get_user_tenant_workspace(
-        &deployment.db().pool,
-        &user.user_id,
-        user.email.as_deref(),
-    ).await?;
-    let deleted = AiProviderKey::delete(&deployment.db().pool, tenant_workspace_id, &provider).await?;
+    let tenant_workspace_id =
+        get_user_tenant_workspace(&deployment.db().pool, &user.user_id, user.email.as_deref())
+            .await?;
+    let deleted =
+        AiProviderKey::delete(&deployment.db().pool, tenant_workspace_id, &provider).await?;
 
     if deleted {
         Ok(ResponseJson(ApiResponse::success(())))
@@ -148,11 +145,9 @@ pub async fn test_ai_key(
     State(deployment): State<DeploymentImpl>,
     Path(provider): Path<String>,
 ) -> Result<ResponseJson<ApiResponse<bool>>, ApiError> {
-    let tenant_workspace_id = get_user_tenant_workspace(
-        &deployment.db().pool,
-        &user.user_id,
-        user.email.as_deref(),
-    ).await?;
+    let tenant_workspace_id =
+        get_user_tenant_workspace(&deployment.db().pool, &user.user_id, user.email.as_deref())
+            .await?;
 
     let api_key = AiProviderKey::get_key(&deployment.db().pool, tenant_workspace_id, &provider)
         .await?
@@ -162,8 +157,13 @@ pub async fn test_ai_key(
     let is_valid = test_provider_key(&provider, &api_key).await;
 
     // Update validation status in database
-    AiProviderKey::update_validation(&deployment.db().pool, tenant_workspace_id, &provider, is_valid)
-        .await?;
+    AiProviderKey::update_validation(
+        &deployment.db().pool,
+        tenant_workspace_id,
+        &provider,
+        is_valid,
+    )
+    .await?;
 
     Ok(ResponseJson(ApiResponse::success(is_valid)))
 }

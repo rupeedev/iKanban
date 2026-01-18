@@ -1,30 +1,38 @@
+use std::collections::HashSet;
+
 use axum::{
     Extension, Json, Router,
     body::Body,
     extract::{Multipart, Path, Query, State},
-    http::{header, StatusCode},
+    http::{StatusCode, header},
     middleware::from_fn_with_state,
     response::{Json as ResponseJson, Response},
     routing::{get, post},
 };
 use base64::Engine;
-use db::models::document::{
-    CreateDocument, CreateDocumentFolder, Document, DocumentFolder, UpdateDocument,
-    UpdateDocumentFolder,
+use db::models::{
+    document::{
+        CreateDocument, CreateDocumentFolder, Document, DocumentFolder, UpdateDocument,
+        UpdateDocumentFolder,
+    },
+    team::Team,
 };
-use db::models::team::Team;
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
-use services::services::document_storage::DocumentStorageService;
-use services::services::supabase_storage::{SupabaseStorageClient, generate_storage_key};
+use services::services::{
+    document_storage::DocumentStorageService,
+    supabase_storage::{SupabaseStorageClient, generate_storage_key},
+};
 use ts_rs::TS;
-use utils::assets::asset_dir;
-use utils::response::ApiResponse;
+use utils::{assets::asset_dir, response::ApiResponse};
 use uuid::Uuid;
-use std::collections::HashSet;
 
-use crate::{DeploymentImpl, error::ApiError, middleware::load_team_middleware};
-use crate::file_reader::{read_file_content, ContentType};
+use crate::{
+    DeploymentImpl,
+    error::ApiError,
+    file_reader::{ContentType, read_file_content},
+    middleware::load_team_middleware,
+};
 
 /// Get the document storage service
 fn get_document_storage() -> DocumentStorageService {
@@ -41,7 +49,6 @@ fn get_supabase_storage() -> Option<SupabaseStorageClient> {
         }
     }
 }
-
 
 /// Query parameters for listing documents
 #[derive(Debug, Deserialize, TS)]
@@ -286,13 +293,16 @@ pub async fn get_document(
 pub async fn get_document_by_slug(
     Extension(team): Extension<Team>,
     State(deployment): State<DeploymentImpl>,
-    Path((_, slug)): Path<(Uuid, String)>,  // team_id extracted by middleware, just need slug
+    Path((_, slug)): Path<(Uuid, String)>, // team_id extracted by middleware, just need slug
 ) -> Result<ResponseJson<ApiResponse<Document>>, ApiError> {
     let storage = get_document_storage();
 
     let mut document = Document::find_by_slug(&deployment.db().pool, team.id, &slug)
         .await?
-        .ok_or(ApiError::NotFound(format!("Document with slug '{}' not found", slug)))?;
+        .ok_or(ApiError::NotFound(format!(
+            "Document with slug '{}' not found",
+            slug
+        )))?;
 
     // Load content from filesystem if we have a file_path
     if let Some(ref file_path) = document.file_path {
@@ -323,7 +333,10 @@ pub async fn create_document(
     // Extract content for filesystem storage (track if content was explicitly provided)
     let content_was_provided = payload.content.is_some();
     let content = payload.content.take().unwrap_or_default();
-    let file_type = payload.file_type.clone().unwrap_or_else(|| "markdown".to_string());
+    let file_type = payload
+        .file_type
+        .clone()
+        .unwrap_or_else(|| "markdown".to_string());
     let title = payload.title.clone();
 
     // Get folder name if document is in a folder (for subfolder path)
@@ -335,90 +348,99 @@ pub async fn create_document(
         None
     };
 
-    		// Create document record in DB (without content)
-		let document = Document::create(&deployment.db().pool, &payload).await?;
+    // Create document record in DB (without content)
+    let document = Document::create(&deployment.db().pool, &payload).await?;
 
-        // Only write to local storage if content is explicitly provided
-        // or if we are creating a new empty document (no file path provided)
-        // If file_path is provided, we assume it's an external file (e.g. Supabase upload)
-        let should_write_storage = content_was_provided || payload.file_path.is_none();
+    // Only write to local storage if content is explicitly provided
+    // or if we are creating a new empty document (no file path provided)
+    // If file_path is provided, we assume it's an external file (e.g. Supabase upload)
+    let should_write_storage = content_was_provided || payload.file_path.is_none();
 
-		if should_write_storage {
-            // Write content to filesystem using human-readable title as filename
-            let file_info = storage
-                .write_document_with_title(
-                    team.id,
-                    &title,
-                    &content,
-                    &file_type,
-                    team.document_storage_path.as_deref(),
-                    subfolder.as_deref(), // Use folder name as subfolder
-                )
-                .await
-                .map_err(|e| ApiError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
-
-            // Update document with file metadata
-            let document = Document::update_file_metadata(
-                &deployment.db().pool,
-                document.id,
-                &file_info.file_path,
-                file_info.file_size,
-                &file_info.mime_type,
+    if should_write_storage {
+        // Write content to filesystem using human-readable title as filename
+        let file_info = storage
+            .write_document_with_title(
+                team.id,
+                &title,
+                &content,
                 &file_type,
+                team.document_storage_path.as_deref(),
+                subfolder.as_deref(), // Use folder name as subfolder
             )
-            .await?;
-            
-            // Return document with content included
-            let mut response_doc = document;
-            // Since we just wrote it (or it was empty), we can return the content we had
-            // If content was None but we wrote default empty string, return empty string?
-            // Actually, if we wrote something, we should return it.
-            // If content was None, `unwrap_or_default` was "", ensuring empty doc has empty content.
-            // Wait, if content was None, `content` variable is None.
-            // We should reconstruct it.
-            // But strict ownership of `content` (Option<String>) suggests we can just use the reference passed to write?
-            // `write_document_with_title` constructs it.
-             
-             // Simplest is to reload or just set it.
-             // If we wrote default "", then content is "".
-             response_doc.content = Some(if should_write_storage && !content_was_provided { String::new() } else { content.clone() });
-             
-            deployment
-                .track_if_analytics_allowed(
-                    "document_created",
-                    serde_json::json!({
-                        "team_id": team.id.to_string(),
-                        "document_id": response_doc.id.to_string(),
-                        "document_title": response_doc.title,
-                        "file_type": response_doc.file_type,
-                        "file_size": file_info.file_size,
-                    }),
-                )
-                .await;
+            .await
+            .map_err(|e| {
+                ApiError::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    e.to_string(),
+                ))
+            })?;
 
-            return Ok(ResponseJson(ApiResponse::success(response_doc)));
-        }
-        
-        // If we didn't write storage (external file), return the document as created
-        // It should have the metadata from payload via Document::create
-		let mut response_doc = document;
-        // Content is None for external files usually
-		response_doc.content = None; 
+        // Update document with file metadata
+        let document = Document::update_file_metadata(
+            &deployment.db().pool,
+            document.id,
+            &file_info.file_path,
+            file_info.file_size,
+            &file_info.mime_type,
+            &file_type,
+        )
+        .await?;
 
-		deployment
-			.track_if_analytics_allowed(
-				"document_created",
-				serde_json::json!({
-					"team_id": team.id.to_string(),
-					"document_id": response_doc.id.to_string(),
-					"document_title": response_doc.title,
-					"file_type": response_doc.file_type,
-					"file_size": response_doc.file_size,
-				}),
-			)
-			.await;
+        // Return document with content included
+        let mut response_doc = document;
+        // Since we just wrote it (or it was empty), we can return the content we had
+        // If content was None but we wrote default empty string, return empty string?
+        // Actually, if we wrote something, we should return it.
+        // If content was None, `unwrap_or_default` was "", ensuring empty doc has empty content.
+        // Wait, if content was None, `content` variable is None.
+        // We should reconstruct it.
+        // But strict ownership of `content` (Option<String>) suggests we can just use the reference passed to write?
+        // `write_document_with_title` constructs it.
 
-		Ok(ResponseJson(ApiResponse::success(response_doc)))
+        // Simplest is to reload or just set it.
+        // If we wrote default "", then content is "".
+        response_doc.content = Some(if should_write_storage && !content_was_provided {
+            String::new()
+        } else {
+            content.clone()
+        });
+
+        deployment
+            .track_if_analytics_allowed(
+                "document_created",
+                serde_json::json!({
+                    "team_id": team.id.to_string(),
+                    "document_id": response_doc.id.to_string(),
+                    "document_title": response_doc.title,
+                    "file_type": response_doc.file_type,
+                    "file_size": file_info.file_size,
+                }),
+            )
+            .await;
+
+        return Ok(ResponseJson(ApiResponse::success(response_doc)));
+    }
+
+    // If we didn't write storage (external file), return the document as created
+    // It should have the metadata from payload via Document::create
+    let mut response_doc = document;
+    // Content is None for external files usually
+    response_doc.content = None;
+
+    deployment
+        .track_if_analytics_allowed(
+            "document_created",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "document_id": response_doc.id.to_string(),
+                "document_title": response_doc.title,
+                "file_type": response_doc.file_type,
+                "file_size": response_doc.file_size,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(response_doc)))
 }
 
 /// Update a document
@@ -472,7 +494,12 @@ pub async fn update_document(
                     None,
                 )
                 .await
-                .map_err(|e| ApiError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?
+                .map_err(|e| {
+                    ApiError::Io(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        e.to_string(),
+                    ))
+                })?
         };
 
         // Update file metadata
@@ -582,26 +609,22 @@ pub async fn get_document_content(
 
     // Handle Supabase-stored files
     if document.storage_provider == "supabase" {
-        let storage_key = document.storage_key.as_ref().ok_or_else(|| {
-            ApiError::NotFound("Document has no storage key".to_string())
-        })?;
+        let storage_key = document
+            .storage_key
+            .as_ref()
+            .ok_or_else(|| ApiError::NotFound("Document has no storage key".to_string()))?;
 
         let client = get_supabase_storage().ok_or_else(|| {
             ApiError::BadRequest("Supabase Storage is not configured".to_string())
         })?;
 
         // Download content from Supabase
-        let bytes = client
-            .download(storage_key)
-            .await
-            .map_err(|e| ApiError::BadRequest(format!("Failed to download from Supabase: {}", e)))?;
+        let bytes = client.download(storage_key).await.map_err(|e| {
+            ApiError::BadRequest(format!("Failed to download from Supabase: {}", e))
+        })?;
 
         // Determine content type from file extension or mime_type
-        let extension = storage_key
-            .split('.')
-            .last()
-            .unwrap_or("")
-            .to_lowercase();
+        let extension = storage_key.split('.').last().unwrap_or("").to_lowercase();
 
         let (content, content_type_str) = match extension.as_str() {
             "md" | "markdown" | "txt" | "json" | "xml" | "html" | "htm" => {
@@ -622,7 +645,10 @@ pub async fn get_document_content(
                 // Try to read as text, fallback to binary description
                 match String::from_utf8(bytes.clone()) {
                     Ok(text) => (text, "text".to_string()),
-                    Err(_) => (format!("Binary file ({} bytes)", bytes.len()), "binary".to_string()),
+                    Err(_) => (
+                        format!("Binary file ({} bytes)", bytes.len()),
+                        "binary".to_string(),
+                    ),
                 }
             }
         };
@@ -651,7 +677,8 @@ pub async fn get_document_content(
                 "md" | "markdown" | "txt" | "json" | "xml" | "html" | "htm" => "text",
                 "csv" => "csv",
                 _ => "text",
-            }.to_string();
+            }
+            .to_string();
 
             let response = DocumentContentResponse {
                 document_id,
@@ -677,7 +704,8 @@ pub async fn get_document_content(
                     ContentType::PdfText => "pdf_text",
                     ContentType::ImageBase64 => "image_base64",
                     ContentType::Binary => "binary",
-                }.to_string();
+                }
+                .to_string();
 
                 // Convert CSV data if present
                 let csv_data = file_content.structured_data.map(|data| CsvDataResponse {
@@ -744,9 +772,10 @@ pub async fn get_document_file(
     }
 
     // Get file path
-    let file_path = document.file_path.as_ref().ok_or_else(|| {
-        ApiError::NotFound("Document has no file path".to_string())
-    })?;
+    let file_path = document
+        .file_path
+        .as_ref()
+        .ok_or_else(|| ApiError::NotFound("Document has no file path".to_string()))?;
 
     // Read file bytes
     let file_bytes = tokio::fs::read(file_path)
@@ -775,7 +804,12 @@ pub async fn get_document_file(
             ),
         )
         .body(Body::from(file_bytes))
-        .map_err(|e| ApiError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+        .map_err(|e| {
+            ApiError::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            ))
+        })?;
 
     Ok(response)
 }
@@ -809,9 +843,10 @@ pub async fn get_document_signed_url(
     // Check if document is stored in Supabase
     if document.storage_provider == "supabase" {
         // Get storage key
-        let storage_key = document.storage_key.as_ref().ok_or_else(|| {
-            ApiError::NotFound("Document has no storage key".to_string())
-        })?;
+        let storage_key = document
+            .storage_key
+            .as_ref()
+            .ok_or_else(|| ApiError::NotFound("Document has no storage key".to_string()))?;
 
         // Get Supabase client
         let client = get_supabase_storage().ok_or_else(|| {
@@ -862,16 +897,11 @@ pub async fn get_document_upload_url(
     Json(payload): Json<UploadUrlRequest>,
 ) -> Result<ResponseJson<ApiResponse<SignedUrlResponse>>, ApiError> {
     // Check if Supabase is configured
-    let client = get_supabase_storage().ok_or_else(|| {
-        ApiError::BadRequest("Supabase Storage is not configured".to_string())
-    })?;
+    let client = get_supabase_storage()
+        .ok_or_else(|| ApiError::BadRequest("Supabase Storage is not configured".to_string()))?;
 
     // Generate storage key
-    let storage_key = generate_storage_key(
-        team.id,
-        payload.folder_id,
-        &payload.filename,
-    );
+    let storage_key = generate_storage_key(team.id, payload.folder_id, &payload.filename);
 
     // Generate signed upload URL
     let signed_result = client
@@ -1037,15 +1067,19 @@ pub async fn discover_folders(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<DiscoverFoldersResponse>>, ApiError> {
     // Get team's document_storage_path
-    let base_path = team.document_storage_path.as_ref()
-        .ok_or_else(|| ApiError::BadRequest("Team has no document storage path configured. Set it in Team Settings.".to_string()))?;
+    let base_path = team.document_storage_path.as_ref().ok_or_else(|| {
+        ApiError::BadRequest(
+            "Team has no document storage path configured. Set it in Team Settings.".to_string(),
+        )
+    })?;
 
     // Read directories from filesystem
     let mut fs_folders: Vec<String> = Vec::new();
     let path = std::path::Path::new(base_path);
 
     if path.exists() {
-        let mut entries = tokio::fs::read_dir(path).await
+        let mut entries = tokio::fs::read_dir(path)
+            .await
             .map_err(|e| ApiError::Io(e))?;
 
         while let Some(entry) = entries.next_entry().await.map_err(|e| ApiError::Io(e))? {
@@ -1068,14 +1102,18 @@ pub async fn discover_folders(
     let mut folders_created = Vec::new();
     for folder_name in &fs_folders {
         if !existing_names.contains(folder_name) {
-            DocumentFolder::create(&deployment.db().pool, &CreateDocumentFolder {
-                team_id: team.id,
-                parent_id: None,
-                name: folder_name.clone(),
-                icon: None,
-                color: None,
-                local_path: None,
-            }).await?;
+            DocumentFolder::create(
+                &deployment.db().pool,
+                &CreateDocumentFolder {
+                    team_id: team.id,
+                    parent_id: None,
+                    name: folder_name.clone(),
+                    icon: None,
+                    color: None,
+                    local_path: None,
+                },
+            )
+            .await?;
             folders_created.push(folder_name.clone());
         }
     }
@@ -1083,20 +1121,39 @@ pub async fn discover_folders(
     let folders_existing: Vec<String> = existing_names.into_iter().collect();
     let total_folders = fs_folders.len();
 
-    Ok(ResponseJson(ApiResponse::success(DiscoverFoldersResponse {
-        folders_created,
-        folders_existing,
-        total_folders,
-    })))
+    Ok(ResponseJson(ApiResponse::success(
+        DiscoverFoldersResponse {
+            folders_created,
+            folders_existing,
+            total_folders,
+        },
+    )))
 }
 
 /// Supported document extensions for scanning
 fn is_supported_document(extension: &str) -> bool {
     matches!(
         extension.to_lowercase().as_str(),
-        "md" | "markdown" | "txt" | "pdf" | "doc" | "docx" | "xls" | "xlsx" | "csv"
-        | "json" | "xml" | "html" | "htm" | "ppt" | "pptx" | "png" | "jpg" | "jpeg"
-        | "gif" | "svg" | "webp"
+        "md" | "markdown"
+            | "txt"
+            | "pdf"
+            | "doc"
+            | "docx"
+            | "xls"
+            | "xlsx"
+            | "csv"
+            | "json"
+            | "xml"
+            | "html"
+            | "htm"
+            | "ppt"
+            | "pptx"
+            | "png"
+            | "jpg"
+            | "jpeg"
+            | "gif"
+            | "svg"
+            | "webp"
     )
 }
 
@@ -1117,14 +1174,18 @@ pub async fn scan_filesystem(
     }
 
     // Use team's document_storage_path if set
-    let base_path = team.document_storage_path.as_ref()
-        .ok_or_else(|| ApiError::BadRequest("Team has no document storage path configured. Set it in Team Settings.".to_string()))?;
+    let base_path = team.document_storage_path.as_ref().ok_or_else(|| {
+        ApiError::BadRequest(
+            "Team has no document storage path configured. Set it in Team Settings.".to_string(),
+        )
+    })?;
 
     // Scan path is base_path + folder name
     let scan_path = std::path::PathBuf::from(base_path).join(&folder.name);
 
     // Get all existing documents for this folder to avoid duplicates
-    let existing_docs = Document::find_by_folder(&deployment.db().pool, team.id, Some(folder_id)).await?;
+    let existing_docs =
+        Document::find_by_folder(&deployment.db().pool, team.id, Some(folder_id)).await?;
     let existing_paths: HashSet<String> = existing_docs
         .iter()
         .filter_map(|d| d.file_path.clone())
@@ -1143,7 +1204,8 @@ pub async fn scan_filesystem(
 
     // Scan the directory for supported document files
     if scan_path.exists() {
-        let mut entries = tokio::fs::read_dir(&scan_path).await
+        let mut entries = tokio::fs::read_dir(&scan_path)
+            .await
             .map_err(|e| ApiError::Io(e))?;
 
         while let Some(entry) = entries.next_entry().await.map_err(|e| ApiError::Io(e))? {
@@ -1155,9 +1217,7 @@ pub async fn scan_filesystem(
             }
 
             // Get extension and check if supported
-            let extension = path.extension()
-                .and_then(|e| e.to_str())
-                .unwrap_or("");
+            let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
             if !is_supported_document(extension) {
                 continue;
@@ -1195,8 +1255,13 @@ pub async fn scan_filesystem(
             // Check if document already exists by path
             if existing_paths.contains(&path_str) {
                 // Path matches - for text files, update content; for others, just update metadata
-                if let Some(existing_doc) = existing_docs.iter().find(|d| d.file_path.as_ref() == Some(&path_str)) {
-                    let metadata = tokio::fs::metadata(&path).await.map_err(|e| ApiError::Io(e))?;
+                if let Some(existing_doc) = existing_docs
+                    .iter()
+                    .find(|d| d.file_path.as_ref() == Some(&path_str))
+                {
+                    let metadata = tokio::fs::metadata(&path)
+                        .await
+                        .map_err(|e| ApiError::Io(e))?;
                     let file_size = metadata.len() as i64;
 
                     if is_text {
@@ -1212,7 +1277,12 @@ pub async fn scan_filesystem(
                                 is_archived: None,
                                 position: None,
                             };
-                            Document::update(&deployment.db().pool, existing_doc.id, &update_payload).await?;
+                            Document::update(
+                                &deployment.db().pool,
+                                existing_doc.id,
+                                &update_payload,
+                            )
+                            .await?;
                         }
                     }
 
@@ -1224,7 +1294,8 @@ pub async fn scan_filesystem(
                         file_size,
                         mime_type,
                         &file_type,
-                    ).await?;
+                    )
+                    .await?;
 
                     documents_updated += 1;
                 }
@@ -1234,10 +1305,12 @@ pub async fn scan_filesystem(
             // Check if document exists by normalized title
             if existing_titles.contains(&normalized_title) {
                 // Title matches, update the existing document with new file path
-                if let Some(existing_doc) = existing_docs.iter().find(|d|
+                if let Some(existing_doc) = existing_docs.iter().find(|d| {
                     d.title.to_lowercase().replace(' ', "-").replace(' ', "_") == normalized_title
-                ) {
-                    let metadata = tokio::fs::metadata(&path).await.map_err(|e| ApiError::Io(e))?;
+                }) {
+                    let metadata = tokio::fs::metadata(&path)
+                        .await
+                        .map_err(|e| ApiError::Io(e))?;
                     let file_size = metadata.len() as i64;
 
                     if is_text {
@@ -1253,7 +1326,12 @@ pub async fn scan_filesystem(
                                 is_archived: None,
                                 position: None,
                             };
-                            Document::update(&deployment.db().pool, existing_doc.id, &update_payload).await?;
+                            Document::update(
+                                &deployment.db().pool,
+                                existing_doc.id,
+                                &update_payload,
+                            )
+                            .await?;
                         }
                     }
 
@@ -1265,7 +1343,8 @@ pub async fn scan_filesystem(
                         file_size,
                         mime_type,
                         &file_type,
-                    ).await?;
+                    )
+                    .await?;
 
                     documents_updated += 1;
                 }
@@ -1280,7 +1359,9 @@ pub async fn scan_filesystem(
             };
 
             // Get file metadata
-            let metadata = tokio::fs::metadata(&path).await.map_err(|e| ApiError::Io(e))?;
+            let metadata = tokio::fs::metadata(&path)
+                .await
+                .map_err(|e| ApiError::Io(e))?;
             let file_size = metadata.len() as i64;
 
             // Create document record (metadata only for non-text files)
@@ -1349,8 +1430,11 @@ pub async fn scan_all_filesystem(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ScanAllResponse>>, ApiError> {
     // Get team's document_storage_path
-    let base_path = team.document_storage_path.as_ref()
-        .ok_or_else(|| ApiError::BadRequest("Team has no document storage path configured. Set it in Team Settings.".to_string()))?;
+    let base_path = team.document_storage_path.as_ref().ok_or_else(|| {
+        ApiError::BadRequest(
+            "Team has no document storage path configured. Set it in Team Settings.".to_string(),
+        )
+    })?;
 
     let base_path = std::path::PathBuf::from(base_path);
     if !base_path.exists() {
@@ -1408,13 +1492,17 @@ pub async fn scan_all_filesystem(
                     team.id,
                     parent_folder_id,
                     &name,
-                ).await?;
+                )
+                .await?;
 
                 // Check if this folder was just created (crude check: if it's new, we add to count)
                 // We track by checking if we already had this folder
                 let _was_created = {
-                    let existing = DocumentFolder::find_all_by_team(&deployment.db().pool, team.id).await?;
-                    !existing.iter().any(|f| f.id == folder.id && f.created_at < folder.created_at)
+                    let existing =
+                        DocumentFolder::find_all_by_team(&deployment.db().pool, team.id).await?;
+                    !existing
+                        .iter()
+                        .any(|f| f.id == folder.id && f.created_at < folder.created_at)
                 };
 
                 // Actually, let's just count all folders we process and trust the find_or_create
@@ -1427,9 +1515,7 @@ pub async fn scan_all_filesystem(
                 dir_stack.push((path, Some(folder.id)));
             } else {
                 // It's a file - check if supported
-                let extension = path.extension()
-                    .and_then(|e| e.to_str())
-                    .unwrap_or("");
+                let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
                 if !is_supported_document(extension) {
                     continue;
@@ -1461,7 +1547,9 @@ pub async fn scan_all_filesystem(
                     .join(" ");
 
                 // Get file metadata
-                let metadata = tokio::fs::metadata(&path).await.map_err(|e| ApiError::Io(e))?;
+                let metadata = tokio::fs::metadata(&path)
+                    .await
+                    .map_err(|e| ApiError::Io(e))?;
                 let file_size = metadata.len() as i64;
                 let mime_type = get_mime_type(extension);
                 let file_type = extension.to_lowercase();
@@ -1499,7 +1587,8 @@ pub async fn scan_all_filesystem(
                     file_size,
                     mime_type,
                     &file_type,
-                ).await?;
+                )
+                .await?;
 
                 documents_created += 1;
                 document_names.push(title);
@@ -1568,9 +1657,11 @@ pub async fn upload_documents(
         .collect();
 
     // Process multipart fields
-    while let Some(field) = multipart.next_field().await.map_err(|e| {
-        ApiError::BadRequest(format!("Failed to read multipart field: {}", e))
-    })? {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Failed to read multipart field: {}", e)))?
+    {
         let field_name = field.name().unwrap_or("").to_string();
 
         // Handle folder_id field
@@ -1696,18 +1787,11 @@ pub async fn upload_documents(
                                 );
                             }
                             Err(e) => {
-                                tracing::error!(
-                                    "Failed to upload {} to Supabase: {}",
-                                    filename,
-                                    e
-                                );
-                                errors.push(format!(
-                                    "{}: Supabase upload failed - {}",
-                                    filename, e
-                                ));
+                                tracing::error!("Failed to upload {} to Supabase: {}", filename, e);
+                                errors
+                                    .push(format!("{}: Supabase upload failed - {}", filename, e));
                                 // Clean up the document record since upload failed
-                                let _ =
-                                    Document::delete(&deployment.db().pool, document.id).await;
+                                let _ = Document::delete(&deployment.db().pool, document.id).await;
                                 continue;
                             }
                         }
@@ -1718,8 +1802,7 @@ pub async fn upload_documents(
                             tracing::warn!("Failed to create uploads directory: {}", e);
                         }
 
-                        let file_path =
-                            upload_dir.join(format!("{}.{}", document.id, extension));
+                        let file_path = upload_dir.join(format!("{}.{}", document.id, extension));
 
                         if let Err(e) = tokio::fs::write(&file_path, &bytes).await {
                             errors.push(format!("{}: failed to save - {}", filename, e));
@@ -1800,7 +1883,9 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let document_item_router = Router::new()
         .route(
             "/",
-            get(get_document).put(update_document).delete(delete_document),
+            get(get_document)
+                .put(update_document)
+                .delete(delete_document),
         )
         .route("/content", get(get_document_content))
         .route("/file", get(get_document_file))

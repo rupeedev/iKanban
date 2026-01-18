@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from 'react';
 import {
   QueuedOperation,
   OperationType,
@@ -48,9 +54,15 @@ interface SyncQueueProviderProps {
 }
 
 export function SyncQueueProvider({ children }: SyncQueueProviderProps) {
-  const [pendingOperations, setPendingOperations] = useState<QueuedOperation[]>([]);
+  const [pendingOperations, setPendingOperations] = useState<QueuedOperation[]>(
+    []
+  );
   const [isSyncing, setIsSyncing] = useState(false);
-  const { state: connectionState, reportSuccess, reportFailure } = useConnectionSafe();
+  const {
+    state: connectionState,
+    reportSuccess,
+    reportFailure,
+  } = useConnectionSafe();
 
   // Load queue from IndexedDB on mount
   useEffect(() => {
@@ -64,26 +76,29 @@ export function SyncQueueProvider({ children }: SyncQueueProviderProps) {
   const failedCount = pendingOperations.filter(isOperationFailed).length;
 
   // Queue an operation
-  const queueOperation = useCallback(async (params: {
-    type: OperationType;
-    endpoint: string;
-    method: HttpMethod;
-    body?: unknown;
-    description: string;
-    maxRetries?: number;
-  }): Promise<QueuedOperation> => {
-    const operation = await enqueueOperation({
-      type: params.type,
-      endpoint: params.endpoint,
-      method: params.method,
-      body: params.body,
-      description: params.description,
-      maxRetries: params.maxRetries ?? 3,
-    });
+  const queueOperation = useCallback(
+    async (params: {
+      type: OperationType;
+      endpoint: string;
+      method: HttpMethod;
+      body?: unknown;
+      description: string;
+      maxRetries?: number;
+    }): Promise<QueuedOperation> => {
+      const operation = await enqueueOperation({
+        type: params.type,
+        endpoint: params.endpoint,
+        method: params.method,
+        body: params.body,
+        description: params.description,
+        maxRetries: params.maxRetries ?? 3,
+      });
 
-    setPendingOperations((prev) => [...prev, operation]);
-    return operation;
-  }, []);
+      setPendingOperations((prev) => [...prev, operation]);
+      return operation;
+    },
+    []
+  );
 
   // Process the queue
   const processQueue = useCallback(async () => {
@@ -119,7 +134,9 @@ export function SyncQueueProvider({ children }: SyncQueueProviderProps) {
 
         if (response.ok) {
           await dequeueOperation(operation.id);
-          setPendingOperations((prev) => prev.filter((op) => op.id !== operation.id));
+          setPendingOperations((prev) =>
+            prev.filter((op) => op.id !== operation.id)
+          );
           reportSuccess();
         } else if (response.status >= 500) {
           // Server error - increment retry count
@@ -149,7 +166,9 @@ export function SyncQueueProvider({ children }: SyncQueueProviderProps) {
             prev.map((op) => (op.id === operation.id ? updated : op))
           );
         }
-        reportFailure(error instanceof Error ? error : new Error('Network error'));
+        reportFailure(
+          error instanceof Error ? error : new Error('Network error')
+        );
       }
     }
 

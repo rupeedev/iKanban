@@ -100,7 +100,9 @@ impl Default for Config {
     fn default() -> Self {
         // For cloud deployments, skip disclaimer/onboarding dialogs since they're
         // designed for local desktop app usage (warning about running AI agents locally)
-        let is_cloud = std::env::var("CLOUD_DEPLOYMENT").map(|v| v == "true").unwrap_or(false);
+        let is_cloud = std::env::var("CLOUD_DEPLOYMENT")
+            .map(|v| v == "true")
+            .unwrap_or(false);
 
         Self {
             config_version: "v8".to_string(),

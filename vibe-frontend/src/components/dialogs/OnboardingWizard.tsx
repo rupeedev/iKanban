@@ -18,7 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AlertCircle, Loader2, Building2, Users, FolderKanban } from 'lucide-react';
+import {
+  AlertCircle,
+  Loader2,
+  Building2,
+  Users,
+  FolderKanban,
+} from 'lucide-react';
 import { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useUserRegistration } from '@/hooks/useUserRegistration';
@@ -66,7 +72,9 @@ function OnboardingWizardImpl(props: OnboardingWizardProps) {
       modal.hide();
     } catch (err) {
       console.error('Failed to submit registration:', err);
-      setError(err instanceof Error ? err.message : 'Failed to submit registration');
+      setError(
+        err instanceof Error ? err.message : 'Failed to submit registration'
+      );
     }
   };
 
@@ -76,7 +84,10 @@ function OnboardingWizardImpl(props: OnboardingWizardProps) {
   };
 
   return (
-    <Dialog open={modal.visible} onOpenChange={(open) => !open && handleCancel()}>
+    <Dialog
+      open={modal.visible}
+      onOpenChange={(open) => !open && handleCancel()}
+    >
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -84,7 +95,8 @@ function OnboardingWizardImpl(props: OnboardingWizardProps) {
             Welcome to iKanban
           </DialogTitle>
           <DialogDescription>
-            Let's set up your workspace. Tell us a bit about how you plan to use iKanban.
+            Let's set up your workspace. Tell us a bit about how you plan to use
+            iKanban.
           </DialogDescription>
         </DialogHeader>
 
@@ -115,7 +127,10 @@ function OnboardingWizardImpl(props: OnboardingWizardProps) {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="planned-teams" className="flex items-center gap-2">
+              <Label
+                htmlFor="planned-teams"
+                className="flex items-center gap-2"
+              >
                 <Users className="h-4 w-4" />
                 Expected Teams
               </Label>
@@ -134,11 +149,17 @@ function OnboardingWizardImpl(props: OnboardingWizardProps) {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="planned-projects" className="flex items-center gap-2">
+              <Label
+                htmlFor="planned-projects"
+                className="flex items-center gap-2"
+              >
                 <FolderKanban className="h-4 w-4" />
                 Expected Projects
               </Label>
-              <Select value={plannedProjects} onValueChange={setPlannedProjects}>
+              <Select
+                value={plannedProjects}
+                onValueChange={setPlannedProjects}
+              >
                 <SelectTrigger id="planned-projects">
                   <SelectValue placeholder="Select..." />
                 </SelectTrigger>
@@ -155,17 +176,24 @@ function OnboardingWizardImpl(props: OnboardingWizardProps) {
 
           <Alert>
             <AlertDescription className="text-sm">
-              After submitting, your registration will be reviewed by an administrator.
-              You'll receive access once approved.
+              After submitting, your registration will be reviewed by an
+              administrator. You'll receive access once approved.
             </AlertDescription>
           </Alert>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={isCreating}>
+          <Button
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isCreating}
+          >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isCreating || !workspaceName.trim()}>
+          <Button
+            onClick={handleSubmit}
+            disabled={isCreating || !workspaceName.trim()}
+          >
             {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Submit Registration
           </Button>
@@ -176,6 +204,7 @@ function OnboardingWizardImpl(props: OnboardingWizardProps) {
 }
 
 // Export with NiceModal registration
-export const OnboardingWizard = defineModal<OnboardingWizardProps, OnboardingWizardResult>(
-  OnboardingWizardImpl
-);
+export const OnboardingWizard = defineModal<
+  OnboardingWizardProps,
+  OnboardingWizardResult
+>(OnboardingWizardImpl);

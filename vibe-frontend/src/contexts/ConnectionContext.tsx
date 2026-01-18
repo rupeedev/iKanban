@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from 'react';
 import { circuitBreaker, type CircuitState } from '@/lib/circuitBreaker';
 
 export type ConnectionState = 'online' | 'degraded' | 'offline';

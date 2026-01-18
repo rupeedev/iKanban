@@ -6,7 +6,10 @@ import type { InboxItem, CreateInboxItem, InboxSummary } from 'shared/types';
 // Helper to check if error is a rate limit (429)
 function isRateLimitError(error: unknown): boolean {
   if (error instanceof Error) {
-    return error.message.includes('429') || error.message.includes('Too Many Requests');
+    return (
+      error.message.includes('429') ||
+      error.message.includes('Too Many Requests')
+    );
   }
   return false;
 }
@@ -72,11 +75,17 @@ export function useInbox(): UseInboxResult {
   });
 
   const refresh = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: inboxKeys.items(), refetchType: 'none' });
+    await queryClient.invalidateQueries({
+      queryKey: inboxKeys.items(),
+      refetchType: 'none',
+    });
   }, [queryClient]);
 
   const refreshSummary = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: inboxKeys.summary(), refetchType: 'none' });
+    await queryClient.invalidateQueries({
+      queryKey: inboxKeys.summary(),
+      refetchType: 'none',
+    });
   }, [queryClient]);
 
   // Mutations
@@ -86,37 +95,55 @@ export function useInbox(): UseInboxResult {
       queryClient.setQueryData<InboxItem[]>(inboxKeys.items(), (old) =>
         old ? [newItem, ...old] : [newItem]
       );
-      queryClient.invalidateQueries({ queryKey: inboxKeys.summary(), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: inboxKeys.summary(),
+        refetchType: 'none',
+      });
     },
   });
 
   const markAsReadMutation = useMutation({
     mutationFn: (itemId: string) => inboxApi.markAsRead(itemId),
     onSuccess: (updatedItem) => {
-      queryClient.setQueryData<InboxItem[]>(inboxKeys.items(), (old) =>
-        old?.map((item) => (item.id === updatedItem.id ? updatedItem : item)) ?? []
+      queryClient.setQueryData<InboxItem[]>(
+        inboxKeys.items(),
+        (old) =>
+          old?.map((item) =>
+            item.id === updatedItem.id ? updatedItem : item
+          ) ?? []
       );
-      queryClient.invalidateQueries({ queryKey: inboxKeys.summary(), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: inboxKeys.summary(),
+        refetchType: 'none',
+      });
     },
   });
 
   const markAllAsReadMutation = useMutation({
     mutationFn: () => inboxApi.markAllAsRead(),
     onSuccess: () => {
-      queryClient.setQueryData<InboxItem[]>(inboxKeys.items(), (old) =>
-        old?.map((item) => ({ ...item, is_read: true })) ?? []
+      queryClient.setQueryData<InboxItem[]>(
+        inboxKeys.items(),
+        (old) => old?.map((item) => ({ ...item, is_read: true })) ?? []
       );
-      queryClient.invalidateQueries({ queryKey: inboxKeys.summary(), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: inboxKeys.summary(),
+        refetchType: 'none',
+      });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (itemId: string) => inboxApi.delete(itemId),
     onSuccess: (_, itemId) => {
-      queryClient.setQueryData<InboxItem[]>(inboxKeys.items(), (old) =>
-        old?.filter((item) => item.id !== itemId) ?? []
+      queryClient.setQueryData<InboxItem[]>(
+        inboxKeys.items(),
+        (old) => old?.filter((item) => item.id !== itemId) ?? []
       );
-      queryClient.invalidateQueries({ queryKey: inboxKeys.summary(), refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: inboxKeys.summary(),
+        refetchType: 'none',
+      });
     },
   });
 
@@ -130,13 +157,14 @@ export function useInbox(): UseInboxResult {
     [markAsReadMutation]
   );
 
-  const markAllAsRead = useCallback(
-    async () => { await markAllAsReadMutation.mutateAsync(); },
-    [markAllAsReadMutation]
-  );
+  const markAllAsRead = useCallback(async () => {
+    await markAllAsReadMutation.mutateAsync();
+  }, [markAllAsReadMutation]);
 
   const deleteItem = useCallback(
-    async (itemId: string) => { await deleteMutation.mutateAsync(itemId); },
+    async (itemId: string) => {
+      await deleteMutation.mutateAsync(itemId);
+    },
     [deleteMutation]
   );
 
@@ -144,7 +172,11 @@ export function useInbox(): UseInboxResult {
     items,
     summary,
     isLoading,
-    error: itemsError ? (itemsError instanceof Error ? itemsError : new Error('Failed to fetch inbox')) : null,
+    error: itemsError
+      ? itemsError instanceof Error
+        ? itemsError
+        : new Error('Failed to fetch inbox')
+      : null,
     refresh,
     refreshSummary,
     createItem,

@@ -1,26 +1,22 @@
+use std::str::FromStr;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
-use std::str::FromStr;
 use ts_rs::TS;
 use uuid::Uuid;
 
 /// Registration status for new users
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum RegistrationStatus {
     /// Waiting for owner approval
+    #[default]
     Pending,
     /// Approved - user can access the platform
     Approved,
     /// Rejected - user access denied
     Rejected,
-}
-
-impl Default for RegistrationStatus {
-    fn default() -> Self {
-        Self::Pending
-    }
 }
 
 impl std::fmt::Display for RegistrationStatus {
@@ -368,11 +364,7 @@ impl UserRegistration {
     }
 
     /// Approve a registration
-    pub async fn approve(
-        pool: &PgPool,
-        id: Uuid,
-        reviewed_by: Uuid,
-    ) -> Result<Self, sqlx::Error> {
+    pub async fn approve(pool: &PgPool, id: Uuid, reviewed_by: Uuid) -> Result<Self, sqlx::Error> {
         let status = RegistrationStatus::Approved.to_string();
 
         let row = sqlx::query_as!(

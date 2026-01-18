@@ -83,7 +83,10 @@ export function useGoogleDriveAuth(teamId: string) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['google-drive-status', teamId], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['google-drive-status', teamId],
+        refetchType: 'none',
+      });
     },
   });
 
@@ -129,7 +132,10 @@ export function useS3Storage(teamId: string) {
         }
       );
       if (!response.ok) throw new Error('Failed to validate');
-      return response.json() as Promise<{ valid: boolean; error: string | null }>;
+      return response.json() as Promise<{
+        valid: boolean;
+        error: string | null;
+      }>;
     },
   });
 
@@ -148,7 +154,10 @@ export function useS3Storage(teamId: string) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['s3-status', teamId], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['s3-status', teamId],
+        refetchType: 'none',
+      });
     },
   });
 
@@ -167,7 +176,10 @@ export function useS3Storage(teamId: string) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['s3-status', teamId], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['s3-status', teamId],
+        refetchType: 'none',
+      });
     },
   });
 
@@ -237,7 +249,10 @@ export function useDropboxAuth(teamId: string) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dropbox-status', teamId], refetchType: 'none' });
+      queryClient.invalidateQueries({
+        queryKey: ['dropbox-status', teamId],
+        refetchType: 'none',
+      });
     },
   });
 

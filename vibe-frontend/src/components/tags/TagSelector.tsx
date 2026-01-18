@@ -76,9 +76,7 @@ export function TagSelector({
 
   const showCreateOption =
     search.trim() &&
-    !tags.some(
-      (t) => t.tag_name.toLowerCase() === search.trim().toLowerCase()
-    );
+    !tags.some((t) => t.tag_name.toLowerCase() === search.trim().toLowerCase());
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

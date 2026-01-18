@@ -1,7 +1,11 @@
 import { useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { teamsApi } from '@/lib/api';
-import type { TeamDashboard, TaskWithAttemptStatus, TaskStatus } from 'shared/types';
+import type {
+  TeamDashboard,
+  TaskWithAttemptStatus,
+  TaskStatus,
+} from 'shared/types';
 
 // Query key factory for consistent caching
 export const teamDashboardKeys = {
@@ -31,10 +35,16 @@ export interface UseTeamDashboardResult {
  * Replaces 5+ separate hooks (useTeams, useProjects, useTeamMembers, useTeamProjects, useTeamIssues)
  * to prevent 429 rate limiting errors.
  */
-export function useTeamDashboard(teamId: string | undefined): UseTeamDashboardResult {
+export function useTeamDashboard(
+  teamId: string | undefined
+): UseTeamDashboardResult {
   const queryClient = useQueryClient();
 
-  const { data: dashboard, isLoading, error } = useQuery<TeamDashboard>({
+  const {
+    data: dashboard,
+    isLoading,
+    error,
+  } = useQuery<TeamDashboard>({
     queryKey: teamDashboardKeys.team(teamId!),
     queryFn: () => teamsApi.getDashboard(teamId!),
     enabled: !!teamId,
@@ -56,8 +66,14 @@ export function useTeamDashboard(teamId: string | undefined): UseTeamDashboardRe
   // Extract data with defaults - using useMemo for arrays to prevent dependency warnings
   const team = dashboard?.team;
   const members = useMemo(() => dashboard?.members ?? [], [dashboard?.members]);
-  const projectIds = useMemo(() => dashboard?.project_ids ?? [], [dashboard?.project_ids]);
-  const projects = useMemo(() => dashboard?.projects ?? [], [dashboard?.projects]);
+  const projectIds = useMemo(
+    () => dashboard?.project_ids ?? [],
+    [dashboard?.project_ids]
+  );
+  const projects = useMemo(
+    () => dashboard?.projects ?? [],
+    [dashboard?.projects]
+  );
   const issues = useMemo(() => dashboard?.issues ?? [], [dashboard?.issues]);
 
   // Derived: issues indexed by ID
@@ -106,7 +122,11 @@ export function useTeamDashboard(teamId: string | undefined): UseTeamDashboardRe
     issuesById,
     issuesByStatus,
     isLoading,
-    error: error ? (error instanceof Error ? error : new Error('Failed to fetch team dashboard')) : null,
+    error: error
+      ? error instanceof Error
+        ? error
+        : new Error('Failed to fetch team dashboard')
+      : null,
     refresh,
   };
 }

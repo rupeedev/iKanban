@@ -2,9 +2,11 @@
 //!
 //! Implements file operations for AWS S3 using presigned URLs.
 
-use super::{CloudStorageError, ConnectionStatus, DownloadLinkResult, UploadResult};
-use serde::{Deserialize, Serialize};
 use std::time::Duration;
+
+use serde::{Deserialize, Serialize};
+
+use super::{CloudStorageError, ConnectionStatus, DownloadLinkResult, UploadResult};
 
 /// S3 configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,16 +30,24 @@ impl S3Client {
     /// Create a new S3 client
     pub fn new(config: S3Config) -> Result<Self, CloudStorageError> {
         if config.bucket.is_empty() {
-            return Err(CloudStorageError::Config("S3 bucket name is required".to_string()));
+            return Err(CloudStorageError::Config(
+                "S3 bucket name is required".to_string(),
+            ));
         }
         if config.region.is_empty() {
-            return Err(CloudStorageError::Config("S3 region is required".to_string()));
+            return Err(CloudStorageError::Config(
+                "S3 region is required".to_string(),
+            ));
         }
         if config.access_key_id.is_empty() {
-            return Err(CloudStorageError::Config("S3 access key ID is required".to_string()));
+            return Err(CloudStorageError::Config(
+                "S3 access key ID is required".to_string(),
+            ));
         }
         if config.secret_access_key.is_empty() {
-            return Err(CloudStorageError::Config("S3 secret access key is required".to_string()));
+            return Err(CloudStorageError::Config(
+                "S3 secret access key is required".to_string(),
+            ));
         }
 
         let client = reqwest::Client::builder()
@@ -50,9 +60,10 @@ impl S3Client {
 
     /// Get the S3 endpoint URL
     fn endpoint_url(&self) -> String {
-        self.config.endpoint.clone().unwrap_or_else(|| {
-            format!("https://s3.{}.amazonaws.com", self.config.region)
-        })
+        self.config
+            .endpoint
+            .clone()
+            .unwrap_or_else(|| format!("https://s3.{}.amazonaws.com", self.config.region))
     }
 
     /// Get the full key with prefix
@@ -82,15 +93,16 @@ impl S3Client {
 
         match response.status() {
             status if status.is_success() => Ok(true),
-            reqwest::StatusCode::FORBIDDEN => {
-                Err(CloudStorageError::Api("Access denied - check IAM permissions".to_string()))
-            }
+            reqwest::StatusCode::FORBIDDEN => Err(CloudStorageError::Api(
+                "Access denied - check IAM permissions".to_string(),
+            )),
             reqwest::StatusCode::NOT_FOUND => {
                 Err(CloudStorageError::Api("Bucket not found".to_string()))
             }
-            status => {
-                Err(CloudStorageError::Api(format!("Unexpected status: {}", status)))
-            }
+            status => Err(CloudStorageError::Api(format!(
+                "Unexpected status: {}",
+                status
+            ))),
         }
     }
 
@@ -118,7 +130,9 @@ impl S3Client {
 
         tracing::info!(
             "Generated presigned upload URL for key: {}, expires_in: {:?}, content_type: {}",
-            full_key, expires_in, content_type
+            full_key,
+            expires_in,
+            content_type
         );
 
         Ok(url)
@@ -142,7 +156,8 @@ impl S3Client {
 
         tracing::info!(
             "Generated presigned download URL for key: {}, expires_in: {:?}",
-            full_key, expires_in
+            full_key,
+            expires_in
         );
 
         Ok(DownloadLinkResult {
@@ -187,7 +202,7 @@ impl S3Client {
         }
 
         // Extract filename from key
-        let filename = key.split('/').last().unwrap_or(key).to_string();
+        let filename = key.rsplit('/').next().unwrap_or(key).to_string();
 
         Ok(UploadResult {
             file_id: full_key,
@@ -248,26 +263,45 @@ impl S3Client {
 /// Validate S3 configuration without creating a full client
 pub fn validate_config(config: &S3Config) -> Result<(), CloudStorageError> {
     if config.bucket.is_empty() {
-        return Err(CloudStorageError::Config("Bucket name is required".to_string()));
+        return Err(CloudStorageError::Config(
+            "Bucket name is required".to_string(),
+        ));
     }
     if config.region.is_empty() {
         return Err(CloudStorageError::Config("Region is required".to_string()));
     }
     if config.access_key_id.is_empty() {
-        return Err(CloudStorageError::Config("Access Key ID is required".to_string()));
+        return Err(CloudStorageError::Config(
+            "Access Key ID is required".to_string(),
+        ));
     }
     if config.secret_access_key.is_empty() {
-        return Err(CloudStorageError::Config("Secret Access Key is required".to_string()));
+        return Err(CloudStorageError::Config(
+            "Secret Access Key is required".to_string(),
+        ));
     }
 
     // Validate region format
     let valid_regions = [
-        "us-east-1", "us-east-2", "us-west-1", "us-west-2",
-        "eu-west-1", "eu-west-2", "eu-west-3", "eu-central-1", "eu-north-1",
-        "ap-northeast-1", "ap-northeast-2", "ap-northeast-3",
-        "ap-southeast-1", "ap-southeast-2",
-        "ap-south-1", "sa-east-1", "ca-central-1",
-        "me-south-1", "af-south-1",
+        "us-east-1",
+        "us-east-2",
+        "us-west-1",
+        "us-west-2",
+        "eu-west-1",
+        "eu-west-2",
+        "eu-west-3",
+        "eu-central-1",
+        "eu-north-1",
+        "ap-northeast-1",
+        "ap-northeast-2",
+        "ap-northeast-3",
+        "ap-southeast-1",
+        "ap-southeast-2",
+        "ap-south-1",
+        "sa-east-1",
+        "ca-central-1",
+        "me-south-1",
+        "af-south-1",
     ];
 
     if !valid_regions.contains(&config.region.as_str()) {
@@ -321,7 +355,10 @@ mod tests {
         };
 
         let client = S3Client::new(config).unwrap();
-        assert_eq!(client.full_key("teams/123/file.pdf"), "ikanban/teams/123/file.pdf");
+        assert_eq!(
+            client.full_key("teams/123/file.pdf"),
+            "ikanban/teams/123/file.pdf"
+        );
     }
 
     #[test]

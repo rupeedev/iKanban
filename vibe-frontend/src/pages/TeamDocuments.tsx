@@ -50,7 +50,12 @@ import { useDocuments } from '@/hooks/useDocuments';
 import { useTeams } from '@/hooks/useTeams';
 import { documentsApi } from '@/lib/api';
 
-import type { Document, DocumentFolder, DocumentContentResponse, UploadResult } from 'shared/types';
+import type {
+  Document,
+  DocumentFolder,
+  DocumentContentResponse,
+  UploadResult,
+} from 'shared/types';
 
 // File type icons
 const FILE_TYPE_ICONS: Record<string, string> = {
@@ -90,14 +95,20 @@ export function TeamDocuments() {
   const [isCreateDocOpen, setIsCreateDocOpen] = useState(false);
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [editingDoc, setEditingDoc] = useState<Document | null>(null);
-  const [docContent, setDocContent] = useState<DocumentContentResponse | null>(null);
+  const [docContent, setDocContent] = useState<DocumentContentResponse | null>(
+    null
+  );
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showOutline, setShowOutline] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
-  const [scanResult, setScanResult] = useState<{ added: number; scanned: number; foldersCreated?: number } | null>(null);
+  const [scanResult, setScanResult] = useState<{
+    added: number;
+    scanned: number;
+    foldersCreated?: number;
+  } | null>(null);
   const [isMarkdownEditMode, setIsMarkdownEditMode] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
@@ -122,7 +133,10 @@ export function TeamDocuments() {
   useEffect(() => {
     if (docIdFromUrl && teamId && !editingDoc && !isLoading) {
       // Detect if param is UUID or slug (UUID has format xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(docIdFromUrl);
+      const isUUID =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          docIdFromUrl
+        );
 
       // Fetch document by ID or slug
       const fetchPromise = isUUID
@@ -144,8 +158,13 @@ export function TeamDocuments() {
           try {
             const content = await documentsApi.getContent(teamId, doc.id);
             setDocContent(content);
-            if (content.content_type === 'text' || content.content_type === 'pdf_text') {
-              setEditingDoc(prev => prev ? { ...prev, content: content.content } : null);
+            if (
+              content.content_type === 'text' ||
+              content.content_type === 'pdf_text'
+            ) {
+              setEditingDoc((prev) =>
+                prev ? { ...prev, content: content.content } : null
+              );
             }
           } catch (err) {
             console.error('Failed to load document content:', err);
@@ -169,7 +188,16 @@ export function TeamDocuments() {
           setSearchParams(searchParams, { replace: true });
         });
     }
-  }, [docIdFromUrl, teamId, isLoading, editingDoc, currentFolderId, setCurrentFolderId, searchParams, setSearchParams]);
+  }, [
+    docIdFromUrl,
+    teamId,
+    isLoading,
+    editingDoc,
+    currentFolderId,
+    setCurrentFolderId,
+    searchParams,
+    setSearchParams,
+  ]);
 
   // Build breadcrumb path
   const breadcrumbs = useMemo(() => {
@@ -258,7 +286,9 @@ export function TeamDocuments() {
             const pathParts = url.pathname.split('/object/public/');
             if (pathParts.length === 2) {
               const [bucketAndPath] = pathParts[1].split('/', 1);
-              const storagePath = pathParts[1].substring(bucketAndPath.length + 1);
+              const storagePath = pathParts[1].substring(
+                bucketAndPath.length + 1
+              );
               const { supabase } = await import('@/lib/supabase');
               await supabase.storage
                 .from('ikanban-bucket')
@@ -299,35 +329,23 @@ export function TeamDocuments() {
   );
 
   // Handle document download
-  const handleDownloadDocument = useCallback(async (doc: Document) => {
-    try {
-      // If file has a storage URL (Supabase), download from there
-      if (doc.file_path) {
-        // Check if it's a full URL (Supabase) or local path
-        if (doc.file_path.startsWith('http')) {
-          // Direct download from Supabase URL
-          window.open(doc.file_path, '_blank');
-        } else {
-          // Download from backend file endpoint
-          const fileUrl = documentsApi.getFileUrl(teamId!, doc.id);
-          window.open(fileUrl, '_blank');
-        }
-      } else if (doc.content) {
-        // For text content stored in database, create a downloadable blob
-        const blob = new Blob([doc.content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${doc.title}.${doc.file_type || 'txt'}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } else {
-        // Fallback: try to get content from API
-        const content = await documentsApi.getContent(teamId!, doc.id);
-        if (content.content) {
-          const blob = new Blob([content.content], { type: content.mime_type || 'text/plain' });
+  const handleDownloadDocument = useCallback(
+    async (doc: Document) => {
+      try {
+        // If file has a storage URL (Supabase), download from there
+        if (doc.file_path) {
+          // Check if it's a full URL (Supabase) or local path
+          if (doc.file_path.startsWith('http')) {
+            // Direct download from Supabase URL
+            window.open(doc.file_path, '_blank');
+          } else {
+            // Download from backend file endpoint
+            const fileUrl = documentsApi.getFileUrl(teamId!, doc.id);
+            window.open(fileUrl, '_blank');
+          }
+        } else if (doc.content) {
+          // For text content stored in database, create a downloadable blob
+          const blob = new Blob([doc.content], { type: 'text/plain' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
@@ -336,58 +354,78 @@ export function TeamDocuments() {
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
+        } else {
+          // Fallback: try to get content from API
+          const content = await documentsApi.getContent(teamId!, doc.id);
+          if (content.content) {
+            const blob = new Blob([content.content], {
+              type: content.mime_type || 'text/plain',
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${doc.title}.${doc.file_type || 'txt'}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }
         }
+      } catch (err) {
+        console.error('Failed to download document:', err);
       }
-    } catch (err) {
-      console.error('Failed to download document:', err);
-    }
-  }, [teamId]);
+    },
+    [teamId]
+  );
 
   // Handle file upload from browser file picker
-  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0 || !teamId) return;
+  const handleFileUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files || files.length === 0 || !teamId) return;
 
-    setIsUploading(true);
-    setUploadResult(null);
-    setScanResult(null);
+      setIsUploading(true);
+      setUploadResult(null);
+      setScanResult(null);
 
-    try {
-      const formData = new FormData();
+      try {
+        const formData = new FormData();
 
-      // Add folder_id if we're in a folder
-      if (currentFolderId) {
-        formData.append('folder_id', currentFolderId);
+        // Add folder_id if we're in a folder
+        if (currentFolderId) {
+          formData.append('folder_id', currentFolderId);
+        }
+
+        // Add all files
+        for (const file of files) {
+          formData.append('files[]', file);
+        }
+
+        const result = await documentsApi.upload(teamId, formData);
+        setUploadResult(result);
+
+        // Refresh document list after successful upload
+        if (result.uploaded > 0) {
+          refresh();
+        }
+      } catch (err) {
+        console.error('Failed to upload files:', err);
+        setUploadResult({
+          uploaded: 0,
+          skipped: 0,
+          errors: ['Upload failed. Please try again.'],
+          uploaded_titles: [],
+        });
+      } finally {
+        setIsUploading(false);
+        // Clear the input so the same file can be selected again
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
-
-      // Add all files
-      for (const file of files) {
-        formData.append('files[]', file);
-      }
-
-      const result = await documentsApi.upload(teamId, formData);
-      setUploadResult(result);
-
-      // Refresh document list after successful upload
-      if (result.uploaded > 0) {
-        refresh();
-      }
-    } catch (err) {
-      console.error('Failed to upload files:', err);
-      setUploadResult({
-        uploaded: 0,
-        skipped: 0,
-        errors: ['Upload failed. Please try again.'],
-        uploaded_titles: [],
-      });
-    } finally {
-      setIsUploading(false);
-      // Clear the input so the same file can be selected again
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  }, [teamId, currentFolderId, refresh]);
+    },
+    [teamId, currentFolderId, refresh]
+  );
 
   // Drag-and-drop handlers for file uploads
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -413,78 +451,89 @@ export function TeamDocuments() {
     }
   }, []);
 
-  const handleDropFiles = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
+  const handleDropFiles = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
 
-    const files = e.dataTransfer.files;
-    if (files.length === 0 || !teamId) return;
+      const files = e.dataTransfer.files;
+      if (files.length === 0 || !teamId) return;
 
-    // Reuse existing upload logic
-    setIsUploading(true);
-    setUploadResult(null);
-    setScanResult(null);
+      // Reuse existing upload logic
+      setIsUploading(true);
+      setUploadResult(null);
+      setScanResult(null);
 
-    try {
-      const formData = new FormData();
-      if (currentFolderId) {
-        formData.append('folder_id', currentFolderId);
+      try {
+        const formData = new FormData();
+        if (currentFolderId) {
+          formData.append('folder_id', currentFolderId);
+        }
+        for (const file of files) {
+          formData.append('files[]', file);
+        }
+        const result = await documentsApi.upload(teamId, formData);
+        setUploadResult(result);
+        if (result.uploaded > 0) {
+          refresh();
+        }
+      } catch (err) {
+        console.error('Failed to upload files:', err);
+        setUploadResult({
+          uploaded: 0,
+          skipped: 0,
+          errors: ['Upload failed. Please try again.'],
+          uploaded_titles: [],
+        });
+      } finally {
+        setIsUploading(false);
       }
-      for (const file of files) {
-        formData.append('files[]', file);
-      }
-      const result = await documentsApi.upload(teamId, formData);
-      setUploadResult(result);
-      if (result.uploaded > 0) {
-        refresh();
-      }
-    } catch (err) {
-      console.error('Failed to upload files:', err);
-      setUploadResult({
-        uploaded: 0,
-        skipped: 0,
-        errors: ['Upload failed. Please try again.'],
-        uploaded_titles: [],
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  }, [teamId, currentFolderId, refresh]);
+    },
+    [teamId, currentFolderId, refresh]
+  );
 
-  const handleOpenDocument = useCallback(async (doc: Document) => {
-    setEditingDoc(doc);
-    setDocContent(null);
-    setIsLoadingContent(true);
-    setIsMarkdownEditMode(false); // Reset to view mode when opening a new document
+  const handleOpenDocument = useCallback(
+    async (doc: Document) => {
+      setEditingDoc(doc);
+      setDocContent(null);
+      setIsLoadingContent(true);
+      setIsMarkdownEditMode(false); // Reset to view mode when opening a new document
 
-    // Update URL with document slug (or ID fallback) for direct linking
-    setSearchParams({ doc: doc.slug || doc.id }, { replace: true });
+      // Update URL with document slug (or ID fallback) for direct linking
+      setSearchParams({ doc: doc.slug || doc.id }, { replace: true });
 
-    try {
-      // Fetch content using the new API that handles different file types
-      const content = await documentsApi.getContent(teamId!, doc.id);
-      setDocContent(content);
-      // For text/pdf content, also update the editingDoc.content for editing
-      if (content.content_type === 'text' || content.content_type === 'pdf_text') {
-        setEditingDoc(prev => prev ? { ...prev, content: content.content } : null);
+      try {
+        // Fetch content using the new API that handles different file types
+        const content = await documentsApi.getContent(teamId!, doc.id);
+        setDocContent(content);
+        // For text/pdf content, also update the editingDoc.content for editing
+        if (
+          content.content_type === 'text' ||
+          content.content_type === 'pdf_text'
+        ) {
+          setEditingDoc((prev) =>
+            prev ? { ...prev, content: content.content } : null
+          );
+        }
+      } catch (err) {
+        console.error('Failed to load document content:', err);
+        // Fallback to existing content if API fails
+        setDocContent({
+          document_id: doc.id,
+          content_type: 'text',
+          content: doc.content || '',
+          csv_data: null,
+          file_path: doc.file_path,
+          file_type: doc.file_type,
+          mime_type: doc.mime_type,
+        });
+      } finally {
+        setIsLoadingContent(false);
       }
-    } catch (err) {
-      console.error('Failed to load document content:', err);
-      // Fallback to existing content if API fails
-      setDocContent({
-        document_id: doc.id,
-        content_type: 'text',
-        content: doc.content || '',
-        csv_data: null,
-        file_path: doc.file_path,
-        file_type: doc.file_type,
-        mime_type: doc.mime_type,
-      });
-    } finally {
-      setIsLoadingContent(false);
-    }
-  }, [teamId, setSearchParams]);
+    },
+    [teamId, setSearchParams]
+  );
 
   // Drag and drop handlers
   const handleDragStart = useCallback((e: React.DragEvent, docId: string) => {
@@ -592,10 +641,16 @@ export function TeamDocuments() {
         !line.match(/[.!,;:]$/) && // Doesn't end with sentence punctuation
         !line.match(/^[-*]\s/); // Not a list item
       const followedByParagraph =
-        nextLine === '' || (nextLine.length > line.length && !nextLine.match(/^[-*#]/));
+        nextLine === '' ||
+        (nextLine.length > line.length && !nextLine.match(/^[-*#]/));
       const afterBlankOrStart = prevLine === '' || formattedLines.length === 0;
 
-      if (isShortLine && looksLikeHeading && followedByParagraph && afterBlankOrStart) {
+      if (
+        isShortLine &&
+        looksLikeHeading &&
+        followedByParagraph &&
+        afterBlankOrStart
+      ) {
         // Convert to heading - use ## for most, # for very short/title-like
         const headingLevel = line.length < 30 && i === 0 ? '#' : '##';
         formattedLines.push(`${headingLevel} ${line}`);
@@ -634,26 +689,29 @@ export function TeamDocuments() {
   }, [editingDoc]);
 
   // Scroll to a specific line in the textarea
-  const handleHeadingClick = useCallback((line: number) => {
-    if (!textareaRef.current || !editingDoc?.content) return;
+  const handleHeadingClick = useCallback(
+    (line: number) => {
+      if (!textareaRef.current || !editingDoc?.content) return;
 
-    const lines = editingDoc.content.split('\n');
-    let charIndex = 0;
+      const lines = editingDoc.content.split('\n');
+      let charIndex = 0;
 
-    // Calculate character position of the target line
-    for (let i = 0; i < line - 1 && i < lines.length; i++) {
-      charIndex += lines[i].length + 1; // +1 for newline
-    }
+      // Calculate character position of the target line
+      for (let i = 0; i < line - 1 && i < lines.length; i++) {
+        charIndex += lines[i].length + 1; // +1 for newline
+      }
 
-    // Focus and scroll to position
-    textareaRef.current.focus();
-    textareaRef.current.setSelectionRange(charIndex, charIndex);
+      // Focus and scroll to position
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(charIndex, charIndex);
 
-    // Calculate approximate scroll position
-    const lineHeight = 20; // approximate line height in pixels
-    const scrollTop = (line - 1) * lineHeight;
-    textareaRef.current.scrollTop = Math.max(0, scrollTop - 100);
-  }, [editingDoc?.content]);
+      // Calculate approximate scroll position
+      const lineHeight = 20; // approximate line height in pixels
+      const scrollTop = (line - 1) * lineHeight;
+      textareaRef.current.scrollTop = Math.max(0, scrollTop - 100);
+    },
+    [editingDoc?.content]
+  );
 
   // Loading state
   if (error) {
@@ -703,15 +761,23 @@ export function TeamDocuments() {
     const isDocx = fileType === 'docx';
     const isCsv = contentType === 'csv';
     const isImage = contentType === 'image_base64';
-    const isPlainText = !isPdf && !isMarkdown && !isDocx && !isCsv && !isImage &&
+    const isPlainText =
+      !isPdf &&
+      !isMarkdown &&
+      !isDocx &&
+      !isCsv &&
+      !isImage &&
       (contentType === 'text' || contentType === 'pdf_text');
     const isBinary = !isPdf && !isDocx && contentType === 'binary';
 
     // Get file URL for viewers that need it
-    const fileUrl = teamId ? documentsApi.getFileUrl(teamId, editingDoc.id) : null;
+    const fileUrl = teamId
+      ? documentsApi.getFileUrl(teamId, editingDoc.id)
+      : null;
 
     // Editable types (plain text, txt files)
-    const isEditable = isPlainText && !['json', 'xml', 'html', 'htm'].includes(fileType);
+    const isEditable =
+      isPlainText && !['json', 'xml', 'html', 'htm'].includes(fileType);
 
     return (
       <div className="h-full flex flex-col">
@@ -806,7 +872,11 @@ export function TeamDocuments() {
                     variant={isMarkdownEditMode ? 'secondary' : 'outline'}
                     size="sm"
                     onClick={() => setIsMarkdownEditMode(!isMarkdownEditMode)}
-                    title={isMarkdownEditMode ? 'Switch to view mode' : 'Switch to edit mode'}
+                    title={
+                      isMarkdownEditMode
+                        ? 'Switch to view mode'
+                        : 'Switch to edit mode'
+                    }
                   >
                     {isMarkdownEditMode ? (
                       <>
@@ -841,8 +911,10 @@ export function TeamDocuments() {
           )}
 
           {/* Markdown Viewer / Editor */}
-          {!isLoadingContent && isMarkdown && docContent && (
-            isMarkdownEditMode ? (
+          {!isLoadingContent &&
+            isMarkdown &&
+            docContent &&
+            (isMarkdownEditMode ? (
               <>
                 {showOutline && (
                   <div className="w-64 shrink-0 border-r bg-muted/30 overflow-auto">
@@ -870,8 +942,7 @@ export function TeamDocuments() {
                 showOutline={showOutline}
                 className="flex-1 min-w-0"
               />
-            )
-          )}
+            ))}
 
           {/* PDF Viewer */}
           {!isLoadingContent && isPdf && fileUrl && (
@@ -891,10 +962,7 @@ export function TeamDocuments() {
 
           {/* CSV Viewer */}
           {!isLoadingContent && isCsv && docContent?.csv_data && (
-            <CsvViewer
-              data={docContent.csv_data}
-              className="flex-1 min-w-0"
-            />
+            <CsvViewer data={docContent.csv_data} className="flex-1 min-w-0" />
           )}
 
           {/* Image Viewer */}
@@ -1016,22 +1084,37 @@ export function TeamDocuments() {
         {scanResult && (
           <div className="mt-2 text-sm text-muted-foreground">
             Scanned {scanResult.scanned} items
-            {scanResult.foldersCreated !== undefined && `, ${scanResult.foldersCreated} folders`}
+            {scanResult.foldersCreated !== undefined &&
+              `, ${scanResult.foldersCreated} folders`}
             , added {scanResult.added} new documents
           </div>
         )}
 
         {/* Upload Result */}
         {uploadResult && (
-          <div className={`mt-2 text-sm ${uploadResult.errors.length > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+          <div
+            className={`mt-2 text-sm ${uploadResult.errors.length > 0 ? 'text-destructive' : 'text-muted-foreground'}`}
+          >
             {uploadResult.uploaded > 0 && (
-              <span>Uploaded {uploadResult.uploaded} file{uploadResult.uploaded !== 1 ? 's' : ''}</span>
+              <span>
+                Uploaded {uploadResult.uploaded} file
+                {uploadResult.uploaded !== 1 ? 's' : ''}
+              </span>
             )}
             {uploadResult.skipped > 0 && (
-              <span>{uploadResult.uploaded > 0 ? ', ' : ''}Skipped {uploadResult.skipped} duplicate{uploadResult.skipped !== 1 ? 's' : ''}</span>
+              <span>
+                {uploadResult.uploaded > 0 ? ', ' : ''}Skipped{' '}
+                {uploadResult.skipped} duplicate
+                {uploadResult.skipped !== 1 ? 's' : ''}
+              </span>
             )}
             {uploadResult.errors.length > 0 && (
-              <span>{(uploadResult.uploaded > 0 || uploadResult.skipped > 0) ? '. ' : ''}Errors: {uploadResult.errors.join(', ')}</span>
+              <span>
+                {uploadResult.uploaded > 0 || uploadResult.skipped > 0
+                  ? '. '
+                  : ''}
+                Errors: {uploadResult.errors.join(', ')}
+              </span>
             )}
           </div>
         )}
@@ -1095,7 +1178,10 @@ export function TeamDocuments() {
       <div
         className="flex-1 min-h-0 overflow-auto p-4 relative"
         onDragEnter={handleDragEnter}
-        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
         onDragLeave={handleDragLeaveContent}
         onDrop={handleDropFiles}
       >
@@ -1135,15 +1221,22 @@ export function TeamDocuments() {
             </CardContent>
           </Card>
         ) : (
-          <div className={viewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4' : 'space-y-2'}>
+          <div
+            className={
+              viewMode === 'grid'
+                ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'
+                : 'space-y-2'
+            }
+          >
             {/* Folders */}
             {currentFolders.map((folder) => (
               <div
                 key={folder.id}
-                className={`${viewMode === 'grid'
-                  ? 'flex flex-col items-center p-4 rounded-lg border hover:bg-accent cursor-pointer group text-center'
-                  : 'flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer group'
-                  } ${dragOverFolderId === folder.id ? 'ring-2 ring-primary bg-primary/10' : ''}`}
+                className={`${
+                  viewMode === 'grid'
+                    ? 'flex flex-col items-center p-4 rounded-lg border hover:bg-accent cursor-pointer group text-center'
+                    : 'flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer group'
+                } ${dragOverFolderId === folder.id ? 'ring-2 ring-primary bg-primary/10' : ''}`}
                 onClick={() => handleNavigateToFolder(folder.id)}
                 onDragOver={(e) => handleDragOver(e, folder.id)}
                 onDragLeave={handleDragLeave}
@@ -1152,7 +1245,9 @@ export function TeamDocuments() {
                 {viewMode === 'grid' ? (
                   <>
                     <Folder className="h-12 w-12 text-blue-500 mb-2" />
-                    <span className="font-medium text-sm truncate w-full">{folder.name}</span>
+                    <span className="font-medium text-sm truncate w-full">
+                      {folder.name}
+                    </span>
                     <span className="text-xs text-muted-foreground mt-1">
                       {new Date(folder.updated_at).toLocaleDateString()}
                     </span>
@@ -1192,10 +1287,11 @@ export function TeamDocuments() {
                 draggable
                 onDragStart={(e) => handleDragStart(e, doc.id)}
                 onDragEnd={handleDragEnd}
-                className={`${viewMode === 'grid'
-                  ? 'flex flex-col items-center p-4 rounded-lg border hover:bg-accent cursor-pointer group text-center'
-                  : 'flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer group'
-                  } ${draggedDocId === doc.id ? 'opacity-50' : ''}`}
+                className={`${
+                  viewMode === 'grid'
+                    ? 'flex flex-col items-center p-4 rounded-lg border hover:bg-accent cursor-pointer group text-center'
+                    : 'flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer group'
+                } ${draggedDocId === doc.id ? 'opacity-50' : ''}`}
                 onClick={() => handleOpenDocument(doc)}
               >
                 {viewMode === 'grid' ? (
@@ -1206,7 +1302,9 @@ export function TeamDocuments() {
                         <Pin className="h-3 w-3 text-amber-500 absolute -top-1 -right-1" />
                       )}
                     </div>
-                    <span className="font-medium text-sm truncate w-full">{doc.title}</span>
+                    <span className="font-medium text-sm truncate w-full">
+                      {doc.title}
+                    </span>
                     <span className="text-xs text-muted-foreground uppercase mt-1">
                       {FILE_TYPE_ICONS[doc.file_type] || doc.file_type}
                     </span>
@@ -1230,7 +1328,8 @@ export function TeamDocuments() {
                           </span>
                         </div>
                         <span className="text-xs text-muted-foreground">
-                          Updated {new Date(doc.updated_at).toLocaleDateString()}
+                          Updated{' '}
+                          {new Date(doc.updated_at).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
@@ -1308,7 +1407,10 @@ export function TeamDocuments() {
             <Button variant="outline" onClick={() => setIsCreateDocOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateDocument} disabled={!newDocTitle.trim()}>
+            <Button
+              onClick={handleCreateDocument}
+              disabled={!newDocTitle.trim()}
+            >
               Create
             </Button>
           </DialogFooter>
@@ -1349,7 +1451,6 @@ export function TeamDocuments() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }

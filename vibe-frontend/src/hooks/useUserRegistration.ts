@@ -15,7 +15,9 @@ export interface UseUserRegistrationResult {
   isRejected: boolean;
   hasRegistration: boolean;
   refresh: () => Promise<void>;
-  createRegistration: (data: CreateUserRegistration) => Promise<UserRegistration>;
+  createRegistration: (
+    data: CreateUserRegistration
+  ) => Promise<UserRegistration>;
   isCreating: boolean;
 }
 
@@ -36,7 +38,10 @@ export function useUserRegistration(): UseUserRegistrationResult {
   });
 
   const refresh = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: REGISTRATION_QUERY_KEY, refetchType: 'none' });
+    await queryClient.invalidateQueries({
+      queryKey: REGISTRATION_QUERY_KEY,
+      refetchType: 'none',
+    });
   }, [queryClient]);
 
   const createMutation = useMutation({

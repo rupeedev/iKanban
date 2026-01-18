@@ -171,10 +171,7 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
             )}
 
             {/* Inline prompt input for quick agent interaction */}
-            <InlinePromptInput
-              taskId={task.id}
-              className="mt-4"
-            />
+            <InlinePromptInput taskId={task.id} className="mt-4" />
           </div>
         </div>
       </NewCardContent>

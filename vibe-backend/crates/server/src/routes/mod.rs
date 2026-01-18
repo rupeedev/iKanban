@@ -2,18 +2,23 @@ use std::sync::Arc;
 
 use axum::{
     Router,
+    http::{
+        HeaderValue, Method,
+        header::{ACCEPT, AUTHORIZATION, CONNECTION, CONTENT_TYPE, ORIGIN, UPGRADE},
+    },
     middleware,
     routing::{IntoMakeService, get},
-    http::{Method, HeaderValue, header::{AUTHORIZATION, CONTENT_TYPE, ACCEPT, ORIGIN, UPGRADE, CONNECTION}},
-};
-use tower_http::cors::CorsLayer;
-
-use crate::DeploymentImpl;
-use crate::middleware::{
-    auth::{auth_middleware, AuthState},
-    rate_limit::{create_rate_limit_layer, rate_limit_middleware, RateLimitConfig},
 };
 use deployment::Deployment;
+use tower_http::cors::CorsLayer;
+
+use crate::{
+    DeploymentImpl,
+    middleware::{
+        auth::{AuthState, auth_middleware},
+        rate_limit::{RateLimitConfig, create_rate_limit_layer, rate_limit_middleware},
+    },
+};
 
 pub mod admin;
 pub mod ai_keys;
@@ -23,11 +28,11 @@ pub mod chat;
 pub mod config;
 pub mod containers;
 pub mod documents;
+pub mod events;
+pub mod execution_processes;
 pub mod filesystem;
 pub mod github;
 pub mod gitlab;
-pub mod events;
-pub mod execution_processes;
 // pub mod frontend;
 pub mod health;
 pub mod images;
@@ -55,9 +60,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .unwrap_or(false);
 
     // Create auth state with database pool for API key support
-    let auth_state = Arc::new(
-        AuthState::new().with_db_pool(deployment.db().pool.clone())
-    );
+    let auth_state = Arc::new(AuthState::new().with_db_pool(deployment.db().pool.clone()));
 
     // Create rate limiter (default 1000 requests per minute per IP, configurable)
     let requests_per_minute = std::env::var("API_RATE_LIMIT_REQUESTS")
@@ -110,8 +113,10 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     // Apply auth middleware only if enabled
     let protected_routes = if auth_enabled {
         tracing::info!("API authentication is ENABLED");
-        protected_routes
-            .layer(middleware::from_fn_with_state(auth_state.clone(), auth_middleware))
+        protected_routes.layer(middleware::from_fn_with_state(
+            auth_state.clone(),
+            auth_middleware,
+        ))
     } else {
         tracing::warn!("API authentication is DISABLED - set ENABLE_API_AUTH=true to enable");
         protected_routes
@@ -132,7 +137,9 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .allow_origin([
             // Production custom domains
             "https://app.scho1ar.com".parse::<HeaderValue>().unwrap(),
-            "https://www.app.scho1ar.com".parse::<HeaderValue>().unwrap(),
+            "https://www.app.scho1ar.com"
+                .parse::<HeaderValue>()
+                .unwrap(),
             "https://api.scho1ar.com".parse::<HeaderValue>().unwrap(),
             "https://scho1ar.com".parse::<HeaderValue>().unwrap(),
             "https://www.scho1ar.com".parse::<HeaderValue>().unwrap(),
@@ -140,14 +147,25 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
             "http://localhost:3000".parse::<HeaderValue>().unwrap(),
             "http://localhost:3003".parse::<HeaderValue>().unwrap(),
             // Railway deployment domains
-            "https://vibe-kanban-frontend-production.up.railway.app".parse::<HeaderValue>().unwrap(),
-            "https://vibe-kanban-api-production.up.railway.app".parse::<HeaderValue>().unwrap(),
+            "https://vibe-kanban-frontend-production.up.railway.app"
+                .parse::<HeaderValue>()
+                .unwrap(),
+            "https://vibe-kanban-api-production.up.railway.app"
+                .parse::<HeaderValue>()
+                .unwrap(),
             // Legacy Fly.io domains
             "https://scho1ar.fly.dev".parse::<HeaderValue>().unwrap(),
-            "https://vibe-kanban.fly.dev".parse::<HeaderValue>().unwrap(),
+            "https://vibe-kanban.fly.dev"
+                .parse::<HeaderValue>()
+                .unwrap(),
         ])
         .allow_methods([
-            Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::PATCH, Method::OPTIONS,
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::DELETE,
+            Method::PATCH,
+            Method::OPTIONS,
         ])
         .allow_credentials(true)
         .allow_headers([
@@ -158,22 +176,38 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
             UPGRADE,
             CONNECTION,
         ]);
-    
+
     // Allow dynamic origins from env var (comma separated)
     let cors = if let Ok(extra_origins) = std::env::var("CORS_ALLOWED_ORIGINS") {
         let mut origins = Vec::new();
         // Add hardcoded defaults
-         origins.push("https://app.scho1ar.com".parse::<HeaderValue>().unwrap());
-         origins.push("https://www.app.scho1ar.com".parse::<HeaderValue>().unwrap());
-         origins.push("https://api.scho1ar.com".parse::<HeaderValue>().unwrap());
-         origins.push("https://scho1ar.com".parse::<HeaderValue>().unwrap());
-         origins.push("https://www.scho1ar.com".parse::<HeaderValue>().unwrap());
-         origins.push("http://localhost:3000".parse::<HeaderValue>().unwrap());
-         origins.push("http://localhost:3003".parse::<HeaderValue>().unwrap());
-         origins.push("https://vibe-kanban-frontend-production.up.railway.app".parse::<HeaderValue>().unwrap());
-         origins.push("https://vibe-kanban-api-production.up.railway.app".parse::<HeaderValue>().unwrap());
-         origins.push("https://scho1ar.fly.dev".parse::<HeaderValue>().unwrap());
-         origins.push("https://vibe-kanban.fly.dev".parse::<HeaderValue>().unwrap());
+        origins.push("https://app.scho1ar.com".parse::<HeaderValue>().unwrap());
+        origins.push(
+            "https://www.app.scho1ar.com"
+                .parse::<HeaderValue>()
+                .unwrap(),
+        );
+        origins.push("https://api.scho1ar.com".parse::<HeaderValue>().unwrap());
+        origins.push("https://scho1ar.com".parse::<HeaderValue>().unwrap());
+        origins.push("https://www.scho1ar.com".parse::<HeaderValue>().unwrap());
+        origins.push("http://localhost:3000".parse::<HeaderValue>().unwrap());
+        origins.push("http://localhost:3003".parse::<HeaderValue>().unwrap());
+        origins.push(
+            "https://vibe-kanban-frontend-production.up.railway.app"
+                .parse::<HeaderValue>()
+                .unwrap(),
+        );
+        origins.push(
+            "https://vibe-kanban-api-production.up.railway.app"
+                .parse::<HeaderValue>()
+                .unwrap(),
+        );
+        origins.push("https://scho1ar.fly.dev".parse::<HeaderValue>().unwrap());
+        origins.push(
+            "https://vibe-kanban.fly.dev"
+                .parse::<HeaderValue>()
+                .unwrap(),
+        );
 
         for origin in extra_origins.split(',') {
             if let Ok(val) = origin.trim().parse::<HeaderValue>() {
@@ -183,7 +217,12 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         CorsLayer::new()
             .allow_origin(origins)
             .allow_methods([
-                Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::PATCH, Method::OPTIONS,
+                Method::GET,
+                Method::POST,
+                Method::PUT,
+                Method::DELETE,
+                Method::PATCH,
+                Method::OPTIONS,
             ])
             .allow_credentials(true)
             .allow_headers([
@@ -197,7 +236,6 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     } else {
         cors
     };
-
 
     Router::new()
         // .route("/", get(frontend::serve_frontend_root))

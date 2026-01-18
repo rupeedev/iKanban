@@ -18,7 +18,11 @@ import {
   useSendMessage,
   useMarkAsRead,
 } from '@/hooks/useTeamChat';
-import type { OnlineMember, ChatMessage, ChatMessageFromApi } from '@/types/chat';
+import type {
+  OnlineMember,
+  ChatMessage,
+  ChatMessageFromApi,
+} from '@/types/chat';
 
 interface TeamInfo {
   id: string;
@@ -49,16 +53,20 @@ export function TeamChatPanel({
   teams = [],
   members = [],
 }: TeamChatPanelProps) {
-  const { isOpen, close, activeTeamId, activeConversationId, setActiveTeamId } = useChatPanelStore();
+  const { isOpen, close, activeTeamId, activeConversationId, setActiveTeamId } =
+    useChatPanelStore();
 
   // Fetch conversations for the active team
-  const { data: conversations, isLoading: conversationsLoading } = useConversations(activeTeamId || undefined);
+  const { data: conversations, isLoading: conversationsLoading } =
+    useConversations(activeTeamId || undefined);
 
   // Get the active conversation or the first one
   const currentConversationId = activeConversationId || conversations?.[0]?.id;
 
   // Fetch messages for the current conversation
-  const { data: messagesData, isLoading: messagesLoading } = useMessages(currentConversationId);
+  const { data: messagesData, isLoading: messagesLoading } = useMessages(
+    currentConversationId
+  );
 
   // Send message mutation
   const sendMessage = useSendMessage();
@@ -132,7 +140,11 @@ export function TeamChatPanel({
                       >
                         {team.name}
                       </Button>
-                      {idx < teams.length - 1 && <span className="mx-0.5 text-muted-foreground">&bull;</span>}
+                      {idx < teams.length - 1 && (
+                        <span className="mx-0.5 text-muted-foreground">
+                          &bull;
+                        </span>
+                      )}
                     </span>
                   ))}
                 </div>
@@ -150,10 +162,7 @@ export function TeamChatPanel({
 
         <OnlineMembersList members={members} />
 
-        <ChatMessageList
-          messages={displayMessages}
-          isLoading={isLoading}
-        />
+        <ChatMessageList messages={displayMessages} isLoading={isLoading} />
 
         <ChatInput
           disabled={!hasConversation || sendMessage.isPending}

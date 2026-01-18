@@ -28,7 +28,7 @@ pub struct LinkDocumentsRequest {
 pub struct LinkedDocument {
     pub id: Uuid,
     pub document_id: Uuid,
-    pub document_title: String,  // Will default to "Untitled" if null
+    pub document_title: String, // Will default to "Untitled" if null
     pub folder_name: Option<String>,
     #[ts(type = "Date")]
     pub linked_at: DateTime<Utc>,

@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+
 use thiserror::Error;
 use tokio::fs;
 use uuid::Uuid;
@@ -36,9 +37,7 @@ impl DocumentStorageService {
         if let Some(path) = custom_path {
             PathBuf::from(path)
         } else {
-            self.base_path
-                .join("documents")
-                .join(team_id.to_string())
+            self.base_path.join("documents").join(team_id.to_string())
         }
     }
 
@@ -178,10 +177,10 @@ impl DocumentStorageService {
         let mut base_dir = self.team_documents_dir(team_id, custom_path);
 
         // If a subfolder is specified, append it to the path
-        if let Some(folder) = subfolder {
-            if !folder.is_empty() {
-                base_dir = base_dir.join(folder);
-            }
+        if let Some(folder) = subfolder
+            && !folder.is_empty()
+        {
+            base_dir = base_dir.join(folder);
         }
 
         // Try the base filename first
@@ -198,7 +197,12 @@ impl DocumentStorageService {
             // Safety limit to prevent infinite loop
             if counter > 1000 {
                 // Fall back to UUID if too many conflicts
-                file_path = base_dir.join(format!("{}-{}.{}", sanitized_title, Uuid::new_v4(), extension));
+                file_path = base_dir.join(format!(
+                    "{}-{}.{}",
+                    sanitized_title,
+                    Uuid::new_v4(),
+                    extension
+                ));
                 break;
             }
         }
@@ -235,10 +239,10 @@ impl DocumentStorageService {
         let mut target_dir = self.team_documents_dir(team_id, custom_path);
 
         // If subfolder specified, create it
-        if let Some(folder) = subfolder {
-            if !folder.is_empty() {
-                target_dir = target_dir.join(folder);
-            }
+        if let Some(folder) = subfolder
+            && !folder.is_empty()
+        {
+            target_dir = target_dir.join(folder);
         }
 
         if !target_dir.exists() {
@@ -372,8 +376,9 @@ pub struct DocumentFileInfo {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::TempDir;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_write_and_read_document() {

@@ -343,9 +343,9 @@ impl From<ProjectServiceError> for ApiError {
             ProjectServiceError::DuplicateRepositoryName => ApiError::Conflict(
                 "A repository with this name already exists in the project".to_string(),
             ),
-            ProjectServiceError::DuplicateProjectName => ApiError::Conflict(
-                "A project with this name already exists".to_string(),
-            ),
+            ProjectServiceError::DuplicateProjectName => {
+                ApiError::Conflict("A project with this name already exists".to_string())
+            }
             ProjectServiceError::RepositoryNotFound => {
                 ApiError::BadRequest("Repository not found".to_string())
             }

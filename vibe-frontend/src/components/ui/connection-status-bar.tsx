@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { WifiOff, AlertTriangle, X, RefreshCw } from 'lucide-react';
-import { useConnectionSafe, ConnectionState } from '@/contexts/ConnectionContext';
+import {
+  useConnectionSafe,
+  ConnectionState,
+} from '@/contexts/ConnectionContext';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
 
@@ -8,13 +11,16 @@ interface ConnectionStatusBarProps {
   className?: string;
 }
 
-const statusConfig: Record<ConnectionState, {
-  show: boolean;
-  icon: typeof WifiOff;
-  message: string;
-  bgClass: string;
-  textClass: string;
-}> = {
+const statusConfig: Record<
+  ConnectionState,
+  {
+    show: boolean;
+    icon: typeof WifiOff;
+    message: string;
+    bgClass: string;
+    textClass: string;
+  }
+> = {
   online: {
     show: false,
     icon: WifiOff,
@@ -25,7 +31,8 @@ const statusConfig: Record<ConnectionState, {
   degraded: {
     show: true,
     icon: AlertTriangle,
-    message: 'Connection issues detected. Some features may be limited. Data shown may be outdated.',
+    message:
+      'Connection issues detected. Some features may be limited. Data shown may be outdated.',
     bgClass: 'bg-yellow-500/90 dark:bg-yellow-600/90',
     textClass: 'text-yellow-950 dark:text-yellow-50',
   },
@@ -118,24 +125,18 @@ export function ConnectionStatusBar({ className }: ConnectionStatusBarProps) {
           size="sm"
           onClick={handleRetry}
           disabled={isRefreshing}
-          className={cn(
-            'h-7 px-2',
-            config.textClass,
-            'hover:bg-white/20'
-          )}
+          className={cn('h-7 px-2', config.textClass, 'hover:bg-white/20')}
         >
-          <RefreshCw className={cn('h-3.5 w-3.5 mr-1', isRefreshing && 'animate-spin')} />
+          <RefreshCw
+            className={cn('h-3.5 w-3.5 mr-1', isRefreshing && 'animate-spin')}
+          />
           Retry
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setDismissed(true)}
-          className={cn(
-            'h-7 w-7 p-0',
-            config.textClass,
-            'hover:bg-white/20'
-          )}
+          className={cn('h-7 w-7 p-0', config.textClass, 'hover:bg-white/20')}
           aria-label="Dismiss notification"
         >
           <X className="h-4 w-4" />

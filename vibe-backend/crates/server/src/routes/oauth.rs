@@ -5,8 +5,10 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, post},
 };
-use db::models::github_connection::{CreateGitHubConnection, GitHubConnection, UpdateGitHubConnection};
 use chrono::{DateTime, Utc};
+use db::models::github_connection::{
+    CreateGitHubConnection, GitHubConnection, UpdateGitHubConnection,
+};
 use deployment::Deployment;
 use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
@@ -269,7 +271,9 @@ async fn get_token(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<TokenResponse>>, ApiError> {
     // Return Unauthorized if remote client is not configured (no credentials stored)
-    let remote_client = deployment.remote_client().map_err(|_| ApiError::Unauthorized)?;
+    let remote_client = deployment
+        .remote_client()
+        .map_err(|_| ApiError::Unauthorized)?;
 
     // This will auto-refresh the token if expired
     let access_token = remote_client
@@ -290,7 +294,9 @@ async fn get_current_user(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<CurrentUserResponse>>, ApiError> {
     // Return Unauthorized if remote client is not configured (no credentials stored)
-    let remote_client = deployment.remote_client().map_err(|_| ApiError::Unauthorized)?;
+    let remote_client = deployment
+        .remote_client()
+        .map_err(|_| ApiError::Unauthorized)?;
 
     // Get the access token from remote client
     let access_token = remote_client
@@ -403,7 +409,10 @@ async fn github_authorize(
     });
 
     // Generate state with optional team_id encoded
-    let team_id_str = query.team_id.map(|id| id.to_string()).unwrap_or_else(|| "workspace".to_string());
+    let team_id_str = query
+        .team_id
+        .map(|id| id.to_string())
+        .unwrap_or_else(|| "workspace".to_string());
     let state = format!("{}:{}", team_id_str, generate_secret());
 
     // Store the state for verification
@@ -496,7 +505,10 @@ async fn github_callback(
     // Fetch GitHub username
     let user_response = client
         .get("https://api.github.com/user")
-        .header("Authorization", format!("Bearer {}", token_data.access_token))
+        .header(
+            "Authorization",
+            format!("Bearer {}", token_data.access_token),
+        )
         .header("User-Agent", "vibe-kanban")
         .send()
         .await

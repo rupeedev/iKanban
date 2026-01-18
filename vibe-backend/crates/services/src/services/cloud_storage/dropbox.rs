@@ -2,8 +2,9 @@
 //!
 //! Implements OAuth 2.0 flow and file operations for Dropbox.
 
-use super::{CloudStorageError, ConnectionStatus, DownloadLinkResult, UploadResult};
 use serde::{Deserialize, Serialize};
+
+use super::{CloudStorageError, ConnectionStatus, DownloadLinkResult, UploadResult};
 
 const DROPBOX_AUTH_URL: &str = "https://www.dropbox.com/oauth2/authorize";
 const DROPBOX_TOKEN_URL: &str = "https://api.dropbox.com/oauth2/token";
@@ -80,7 +81,11 @@ impl DropboxClient {
     }
 
     /// Create a new Dropbox client
-    pub fn new(client_id: &str, client_secret: &str, redirect_uri: &str) -> Result<Self, CloudStorageError> {
+    pub fn new(
+        client_id: &str,
+        client_secret: &str,
+        redirect_uri: &str,
+    ) -> Result<Self, CloudStorageError> {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(60))
             .build()
@@ -125,7 +130,10 @@ impl DropboxClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            return Err(CloudStorageError::OAuth(format!("Token exchange failed: {}", error_body)));
+            return Err(CloudStorageError::OAuth(format!(
+                "Token exchange failed: {}",
+                error_body
+            )));
         }
 
         response
@@ -135,7 +143,10 @@ impl DropboxClient {
     }
 
     /// Refresh an access token
-    pub async fn refresh_token(&self, refresh_token: &str) -> Result<TokenResponse, CloudStorageError> {
+    pub async fn refresh_token(
+        &self,
+        refresh_token: &str,
+    ) -> Result<TokenResponse, CloudStorageError> {
         let params = [
             ("refresh_token", refresh_token),
             ("client_id", &self.client_id),
@@ -153,7 +164,10 @@ impl DropboxClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            return Err(CloudStorageError::OAuth(format!("Token refresh failed: {}", error_body)));
+            return Err(CloudStorageError::OAuth(format!(
+                "Token refresh failed: {}",
+                error_body
+            )));
         }
 
         response
@@ -166,7 +180,7 @@ impl DropboxClient {
     pub async fn revoke_token(&self, access_token: &str) -> Result<(), CloudStorageError> {
         let response = self
             .client
-            .post(&format!("{}/auth/token/revoke", DROPBOX_API_URL))
+            .post(format!("{}/auth/token/revoke", DROPBOX_API_URL))
             .bearer_auth(access_token)
             .send()
             .await
@@ -174,17 +188,23 @@ impl DropboxClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            return Err(CloudStorageError::Api(format!("Token revoke failed: {}", error_body)));
+            return Err(CloudStorageError::Api(format!(
+                "Token revoke failed: {}",
+                error_body
+            )));
         }
 
         Ok(())
     }
 
     /// Get current account info
-    pub async fn get_current_account(&self, access_token: &str) -> Result<AccountInfo, CloudStorageError> {
+    pub async fn get_current_account(
+        &self,
+        access_token: &str,
+    ) -> Result<AccountInfo, CloudStorageError> {
         let response = self
             .client
-            .post(&format!("{}/users/get_current_account", DROPBOX_API_URL))
+            .post(format!("{}/users/get_current_account", DROPBOX_API_URL))
             .bearer_auth(access_token)
             .header("Content-Type", "application/json")
             .body("null")
@@ -194,7 +214,10 @@ impl DropboxClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            return Err(CloudStorageError::Api(format!("Failed to get account info: {}", error_body)));
+            return Err(CloudStorageError::Api(format!(
+                "Failed to get account info: {}",
+                error_body
+            )));
         }
 
         response
@@ -216,7 +239,7 @@ impl DropboxClient {
 
         let response = self
             .client
-            .post(&format!("{}/files/create_folder_v2", DROPBOX_API_URL))
+            .post(format!("{}/files/create_folder_v2", DROPBOX_API_URL))
             .bearer_auth(access_token)
             .header("Content-Type", "application/json")
             .json(&body)
@@ -230,7 +253,7 @@ impl DropboxClient {
             return Ok(DropboxFile {
                 tag: "folder".to_string(),
                 id: None,
-                name: path.split('/').last().unwrap_or(path).to_string(),
+                name: path.rsplit('/').next().unwrap_or(path).to_string(),
                 path_lower: Some(path.to_lowercase()),
                 path_display: Some(path.to_string()),
                 size: None,
@@ -239,7 +262,10 @@ impl DropboxClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            return Err(CloudStorageError::Api(format!("Failed to create folder: {}", error_body)));
+            return Err(CloudStorageError::Api(format!(
+                "Failed to create folder: {}",
+                error_body
+            )));
         }
 
         #[derive(Deserialize)]
@@ -247,10 +273,9 @@ impl DropboxClient {
             metadata: DropboxFile,
         }
 
-        let result: FolderResponse = response
-            .json()
-            .await
-            .map_err(|e| CloudStorageError::Api(format!("Failed to parse folder response: {}", e)))?;
+        let result: FolderResponse = response.json().await.map_err(|e| {
+            CloudStorageError::Api(format!("Failed to parse folder response: {}", e))
+        })?;
 
         Ok(result.metadata)
     }
@@ -271,7 +296,7 @@ impl DropboxClient {
 
         let response = self
             .client
-            .post(&format!("{}/files/upload", DROPBOX_CONTENT_URL))
+            .post(format!("{}/files/upload", DROPBOX_CONTENT_URL))
             .bearer_auth(access_token)
             .header("Content-Type", "application/octet-stream")
             .header("Dropbox-API-Arg", api_arg.to_string())
@@ -282,13 +307,15 @@ impl DropboxClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            return Err(CloudStorageError::UploadFailed(format!("Upload failed: {}", error_body)));
+            return Err(CloudStorageError::UploadFailed(format!(
+                "Upload failed: {}",
+                error_body
+            )));
         }
 
-        let file: DropboxFile = response
-            .json()
-            .await
-            .map_err(|e| CloudStorageError::Api(format!("Failed to parse upload response: {}", e)))?;
+        let file: DropboxFile = response.json().await.map_err(|e| {
+            CloudStorageError::Api(format!("Failed to parse upload response: {}", e))
+        })?;
 
         Ok(UploadResult {
             file_id: file.id.unwrap_or_else(|| path.to_string()),
@@ -311,7 +338,7 @@ impl DropboxClient {
 
         let response = self
             .client
-            .post(&format!("{}/files/get_temporary_link", DROPBOX_API_URL))
+            .post(format!("{}/files/get_temporary_link", DROPBOX_API_URL))
             .bearer_auth(access_token)
             .header("Content-Type", "application/json")
             .json(&body)
@@ -326,7 +353,10 @@ impl DropboxClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            return Err(CloudStorageError::Api(format!("Failed to get download link: {}", error_body)));
+            return Err(CloudStorageError::Api(format!(
+                "Failed to get download link: {}",
+                error_body
+            )));
         }
 
         let result: TempLinkResponse = response
@@ -341,14 +371,18 @@ impl DropboxClient {
     }
 
     /// Delete a file from Dropbox
-    pub async fn delete_file(&self, access_token: &str, path: &str) -> Result<(), CloudStorageError> {
+    pub async fn delete_file(
+        &self,
+        access_token: &str,
+        path: &str,
+    ) -> Result<(), CloudStorageError> {
         let body = serde_json::json!({
             "path": path
         });
 
         let response = self
             .client
-            .post(&format!("{}/files/delete_v2", DROPBOX_API_URL))
+            .post(format!("{}/files/delete_v2", DROPBOX_API_URL))
             .bearer_auth(access_token)
             .header("Content-Type", "application/json")
             .json(&body)
@@ -363,14 +397,20 @@ impl DropboxClient {
 
         if !response.status().is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            return Err(CloudStorageError::Api(format!("Failed to delete file: {}", error_body)));
+            return Err(CloudStorageError::Api(format!(
+                "Failed to delete file: {}",
+                error_body
+            )));
         }
 
         Ok(())
     }
 
     /// Get connection status
-    pub async fn get_status(&self, access_token: &str) -> Result<ConnectionStatus, CloudStorageError> {
+    pub async fn get_status(
+        &self,
+        access_token: &str,
+    ) -> Result<ConnectionStatus, CloudStorageError> {
         match self.get_current_account(access_token).await {
             Ok(account) => Ok(ConnectionStatus {
                 connected: true,

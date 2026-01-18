@@ -192,9 +192,7 @@ function groupTasksByTag(
       if (!a.due_date && !b.due_date) return 0;
       if (!a.due_date) return 1;
       if (!b.due_date) return -1;
-      return (
-        parseISO(a.due_date).getTime() - parseISO(b.due_date).getTime()
-      );
+      return parseISO(a.due_date).getTime() - parseISO(b.due_date).getTime();
     });
   });
 
@@ -256,7 +254,10 @@ function TaskRow({
         <PriorityIcon
           className={cn('h-3.5 w-3.5 flex-shrink-0', priorityConfig.color)}
         />
-        <StatusIcon status={task.status} className="h-3.5 w-3.5 flex-shrink-0" />
+        <StatusIcon
+          status={task.status}
+          className="h-3.5 w-3.5 flex-shrink-0"
+        />
         {issueKey && (
           <span className="text-xs text-muted-foreground font-mono w-14 flex-shrink-0">
             {issueKey}
@@ -275,7 +276,11 @@ function TaskRow({
             <AvatarImage src={assignee.avatar} alt={assignee.name} />
           ) : null}
           <AvatarFallback className="text-[9px] bg-muted">
-            {assignee ? getInitials(assignee.name) : <User className="h-3 w-3" />}
+            {assignee ? (
+              getInitials(assignee.name)
+            ) : (
+              <User className="h-3 w-3" />
+            )}
           </AvatarFallback>
         </Avatar>
       </div>

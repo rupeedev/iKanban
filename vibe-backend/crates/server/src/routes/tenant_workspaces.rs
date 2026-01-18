@@ -1,20 +1,20 @@
 use axum::{
+    Router,
     extract::{Path, State},
     http::StatusCode,
     response::Json as ResponseJson,
     routing::{get, put},
-    Router,
 };
 use db::models::tenant_workspace::{
-    AddWorkspaceMember, CreateTenantWorkspace, TenantWorkspace, TenantWorkspaceMember,
-    TenantWorkspaceError, UpdateTenantWorkspace, UpdateWorkspaceMemberRole, WorkspaceMemberRole,
+    AddWorkspaceMember, CreateTenantWorkspace, TenantWorkspace, TenantWorkspaceError,
+    TenantWorkspaceMember, UpdateTenantWorkspace, UpdateWorkspaceMemberRole, WorkspaceMemberRole,
 };
 use deployment::Deployment;
 use serde::Deserialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{error::ApiError, DeploymentImpl};
+use crate::{DeploymentImpl, error::ApiError};
 
 /// Query params for listing workspaces
 #[derive(Debug, Deserialize)]
@@ -98,7 +98,10 @@ pub async fn create_workspace(
         )
         .await;
 
-    Ok((StatusCode::CREATED, ResponseJson(ApiResponse::success(workspace))))
+    Ok((
+        StatusCode::CREATED,
+        ResponseJson(ApiResponse::success(workspace)),
+    ))
 }
 
 #[derive(Debug, Deserialize)]
@@ -151,7 +154,7 @@ pub async fn update_workspace(
         _ => {
             return Err(ApiError::Forbidden(
                 "Only owners and admins can update workspaces".to_string(),
-            ))
+            ));
         }
     }
 
@@ -240,7 +243,7 @@ pub async fn add_member(
         _ => {
             return Err(ApiError::Forbidden(
                 "Only owners and admins can add members".to_string(),
-            ))
+            ));
         }
     }
 
@@ -256,7 +259,10 @@ pub async fn add_member(
         )
         .await;
 
-    Ok((StatusCode::CREATED, ResponseJson(ApiResponse::success(member))))
+    Ok((
+        StatusCode::CREATED,
+        ResponseJson(ApiResponse::success(member)),
+    ))
 }
 
 /// Update a member's role

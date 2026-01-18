@@ -3,10 +3,10 @@
 //! API endpoints for Google Drive OAuth and file operations.
 
 use axum::{
+    Json,
     extract::{Query, State},
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
-    Json,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -80,7 +80,8 @@ pub async fn get_auth_url(
         .unwrap_or_else(|_| "http://localhost:3001/api/storage/google-drive/callback".to_string());
 
     // Build OAuth URL
-    let scope = "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email";
+    let scope =
+        "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email";
     let url = format!(
         "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope={}&access_type=offline&prompt=consent&state={}",
         urlencoding::encode(&client_id.unwrap()),
@@ -123,7 +124,11 @@ pub async fn oauth_callback(
     // Parse team_id from state
     let team_id = state.strip_prefix("gdrive_").unwrap_or(&state);
 
-    tracing::info!("Google Drive OAuth callback for team: {}, code length: {}", team_id, code.len());
+    tracing::info!(
+        "Google Drive OAuth callback for team: {}, code length: {}",
+        team_id,
+        code.len()
+    );
 
     // TODO: Exchange code for tokens using GoogleDriveClient
     // TODO: Get user info

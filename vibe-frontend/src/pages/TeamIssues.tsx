@@ -3,7 +3,16 @@ import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, Plus, RefreshCw, SlidersHorizontal, CircleDot, PlayCircle, Circle, BarChart3 } from 'lucide-react';
+import {
+  AlertTriangle,
+  Plus,
+  RefreshCw,
+  SlidersHorizontal,
+  CircleDot,
+  PlayCircle,
+  Circle,
+  BarChart3,
+} from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi } from '@/lib/api';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -14,7 +23,10 @@ import { useTeamDashboard } from '@/hooks/useTeamDashboard';
 import { TeamKanbanBoard } from '@/components/tasks/TeamKanbanBoard';
 import { InsightsPanel } from '@/components/tasks/InsightsPanel';
 import { IssueDetailPanel } from '@/components/tasks/IssueDetailPanel';
-import { IssueFilterDropdown, FilterState } from '@/components/filters/IssueFilterDropdown';
+import {
+  IssueFilterDropdown,
+  FilterState,
+} from '@/components/filters/IssueFilterDropdown';
 import type { DragEndEvent } from '@dnd-kit/core';
 
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
@@ -130,7 +142,10 @@ export function TeamIssues() {
   }, [issues, viewFilter, filters]);
 
   const kanbanColumns = useMemo(() => {
-    const columns: Record<TaskStatus, { task: TaskWithAttemptStatus; issueKey?: string; projectName?: string }[]> = {
+    const columns: Record<
+      TaskStatus,
+      { task: TaskWithAttemptStatus; issueKey?: string; projectName?: string }[]
+    > = {
       todo: [],
       inprogress: [],
       inreview: [],
@@ -195,22 +210,20 @@ export function TeamIssues() {
     [issuesById, refresh]
   );
 
-  const handleViewIssueDetails = useCallback(
-    (issue: TaskWithAttemptStatus) => {
-      // Open inline side panel instead of modal
-      setSelectedIssueId(issue.id);
-      // Close insights panel when opening issue detail
-      setShowInsights(false);
-    },
-    []
-  );
+  const handleViewIssueDetails = useCallback((issue: TaskWithAttemptStatus) => {
+    // Open inline side panel instead of modal
+    setSelectedIssueId(issue.id);
+    // Close insights panel when opening issue detail
+    setShowInsights(false);
+  }, []);
 
   // Get the selected issue from state
   const selectedIssue = selectedIssueId ? issuesById[selectedIssueId] : null;
 
   // Generate issue key for selected issue
   const selectedIssueKey = useMemo(() => {
-    if (!selectedIssue || !team || selectedIssue.issue_number == null) return undefined;
+    if (!selectedIssue || !team || selectedIssue.issue_number == null)
+      return undefined;
     const prefix = team.identifier || team.name.slice(0, 3).toUpperCase();
     return `${prefix}-${selectedIssue.issue_number}`;
   }, [selectedIssue, team]);
@@ -339,7 +352,11 @@ export function TeamIssues() {
 
   const hasIssues = issues.length > 0;
   const hasFilteredIssues = filteredIssues.length > 0;
-  const hasActiveFilters = viewFilter !== 'all' || filters.priority?.length || filters.assigneeId?.length || filters.projectId;
+  const hasActiveFilters =
+    viewFilter !== 'all' ||
+    filters.priority?.length ||
+    filters.assigneeId?.length ||
+    filters.projectId;
 
   return (
     <div className="h-full flex flex-col">
@@ -361,7 +378,6 @@ export function TeamIssues() {
             </Button>
           </div>
         </div>
-
       </div>
 
       {/* Sub-header: View tabs + Filter/Insight/Display */}
@@ -416,7 +432,11 @@ export function TeamIssues() {
             >
               <BarChart3 className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground gap-1.5"
+            >
               <SlidersHorizontal className="h-4 w-4" />
               Display
             </Button>
@@ -432,7 +452,9 @@ export function TeamIssues() {
             <div className="max-w-7xl mx-auto mt-8 px-4">
               <Card>
                 <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">No issues in this team yet</p>
+                  <p className="text-muted-foreground">
+                    No issues in this team yet
+                  </p>
                   <Button className="mt-4" onClick={handleCreateIssue}>
                     <Plus className="h-4 w-4 mr-2" />
                     Create First Issue
@@ -444,13 +466,19 @@ export function TeamIssues() {
             <div className="max-w-7xl mx-auto mt-8 px-4">
               <Card>
                 <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">No issues match your filters</p>
+                  <p className="text-muted-foreground">
+                    No issues match your filters
+                  </p>
                   <Button
                     variant="outline"
                     className="mt-4"
                     onClick={() => {
                       setViewFilter('all');
-                      setFilters({ priority: null, assigneeId: null, projectId: null });
+                      setFilters({
+                        priority: null,
+                        assigneeId: null,
+                        projectId: null,
+                      });
                     }}
                   >
                     Clear all filters

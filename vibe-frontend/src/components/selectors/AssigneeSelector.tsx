@@ -70,10 +70,13 @@ export function AssigneeSelector({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, enableKeyboardShortcuts, onChange, teamMembers]);
 
-  const handleSelect = useCallback((memberId: string | null) => {
-    onChange(memberId);
-    setOpen(false);
-  }, [onChange]);
+  const handleSelect = useCallback(
+    (memberId: string | null) => {
+      onChange(memberId);
+      setOpen(false);
+    },
+    [onChange]
+  );
 
   const getInitials = (name: string) => {
     return name
@@ -87,11 +90,13 @@ export function AssigneeSelector({
   const renderAvatar = (member?: TeamMember, className?: string) => {
     if (!member) {
       return (
-        <div className={cn(
-          'flex items-center justify-center rounded-full border border-dashed border-muted-foreground/40',
-          'text-muted-foreground',
-          className || 'h-6 w-6'
-        )}>
+        <div
+          className={cn(
+            'flex items-center justify-center rounded-full border border-dashed border-muted-foreground/40',
+            'text-muted-foreground',
+            className || 'h-6 w-6'
+          )}
+        >
           <User className="h-3.5 w-3.5" />
         </div>
       );
@@ -108,10 +113,12 @@ export function AssigneeSelector({
     }
 
     return (
-      <div className={cn(
-        'flex items-center justify-center rounded-full bg-primary/10 text-primary font-medium',
-        className || 'h-6 w-6 text-xs'
-      )}>
+      <div
+        className={cn(
+          'flex items-center justify-center rounded-full bg-primary/10 text-primary font-medium',
+          className || 'h-6 w-6 text-xs'
+        )}
+      >
         {getInitials(member.name)}
       </div>
     );
@@ -204,7 +211,9 @@ export function AssigneeSelector({
               <div className="flex flex-col flex-1 min-w-0">
                 <span className="truncate">{member.name}</span>
                 {member.email && (
-                  <span className="text-xs text-muted-foreground truncate">{member.email}</span>
+                  <span className="text-xs text-muted-foreground truncate">
+                    {member.email}
+                  </span>
                 )}
               </div>
             </DropdownMenuItem>
@@ -216,13 +225,19 @@ export function AssigneeSelector({
           <>
             <DropdownMenuSeparator />
             {onNewUser && (
-              <DropdownMenuItem onClick={onNewUser} className="cursor-pointer gap-2">
+              <DropdownMenuItem
+                onClick={onNewUser}
+                className="cursor-pointer gap-2"
+              >
                 <UserPlus className="h-4 w-4 text-muted-foreground" />
                 <span>New user</span>
               </DropdownMenuItem>
             )}
             {onInvite && (
-              <DropdownMenuItem onClick={onInvite} className="cursor-pointer gap-2">
+              <DropdownMenuItem
+                onClick={onInvite}
+                className="cursor-pointer gap-2"
+              >
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 <span>Invite and assign</span>
               </DropdownMenuItem>
@@ -245,9 +260,16 @@ export function useAssigneeKeyboardShortcut(
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only trigger on 'A' key when not in an input/textarea
       const target = e.target as HTMLElement;
-      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+      const isInput =
+        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
-      if (!isInput && e.key.toLowerCase() === 'a' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (
+        !isInput &&
+        e.key.toLowerCase() === 'a' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey
+      ) {
         e.preventDefault();
         onOpen();
       }

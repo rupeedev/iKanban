@@ -53,10 +53,30 @@ export interface StorageProviderConfigProps {
 }
 
 const STORAGE_PROVIDERS = [
-  { value: 'local', label: 'Local Path', icon: HardDrive, description: 'Store documents in a local directory' },
-  { value: 's3', label: 'Amazon S3', icon: Cloud, description: 'Store documents in an S3 bucket' },
-  { value: 'google_drive', label: 'Google Drive', icon: Cloud, description: 'Store documents in Google Drive' },
-  { value: 'dropbox', label: 'Dropbox', icon: Cloud, description: 'Store documents in Dropbox' },
+  {
+    value: 'local',
+    label: 'Local Path',
+    icon: HardDrive,
+    description: 'Store documents in a local directory',
+  },
+  {
+    value: 's3',
+    label: 'Amazon S3',
+    icon: Cloud,
+    description: 'Store documents in an S3 bucket',
+  },
+  {
+    value: 'google_drive',
+    label: 'Google Drive',
+    icon: Cloud,
+    description: 'Store documents in Google Drive',
+  },
+  {
+    value: 'dropbox',
+    label: 'Dropbox',
+    icon: Cloud,
+    description: 'Store documents in Dropbox',
+  },
 ] as const;
 
 const S3_REGIONS = [
@@ -97,7 +117,10 @@ export function StorageProviderConfig({
       if (result.valid) {
         setPathValidation({ status: 'valid' });
       } else {
-        setPathValidation({ status: 'invalid', error: result.error || 'Invalid path' });
+        setPathValidation({
+          status: 'invalid',
+          error: result.error || 'Invalid path',
+        });
       }
     } catch (err) {
       setPathValidation({
@@ -135,7 +158,8 @@ export function StorageProviderConfig({
           </div>
         </Label>
         <p className="text-xs text-muted-foreground">
-          Choose where to store team documents. Leave as default to use application storage.
+          Choose where to store team documents. Leave as default to use
+          application storage.
         </p>
       </div>
 
@@ -214,7 +238,10 @@ interface LocalPathConfigProps {
   path: string;
   onPathChange: (path: string) => void;
   onValidate: (path: string) => void;
-  validation: { status: 'idle' | 'validating' | 'valid' | 'invalid'; error?: string };
+  validation: {
+    status: 'idle' | 'validating' | 'valid' | 'invalid';
+    error?: string;
+  };
   disabled: boolean;
 }
 
@@ -245,7 +272,9 @@ function LocalPathConfig({
           variant="outline"
           size="sm"
           onClick={() => onValidate(path)}
-          disabled={disabled || validation.status === 'validating' || !path.trim()}
+          disabled={
+            disabled || validation.status === 'validating' || !path.trim()
+          }
           className="h-10"
         >
           {validation.status === 'validating' ? (
@@ -347,7 +376,9 @@ function S3Config({ config, onConfigChange, disabled }: S3ConfigProps) {
           id="s3-secret-key"
           type="password"
           value={config.s3_secret_access_key || ''}
-          onChange={(e) => onConfigChange({ s3_secret_access_key: e.target.value })}
+          onChange={(e) =>
+            onConfigChange({ s3_secret_access_key: e.target.value })
+          }
           placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
           disabled={disabled}
           className="h-10 font-mono text-sm"
@@ -357,7 +388,8 @@ function S3Config({ config, onConfigChange, disabled }: S3ConfigProps) {
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          Credentials are stored securely. Ensure the IAM user has s3:GetObject, s3:PutObject, and s3:ListBucket permissions.
+          Credentials are stored securely. Ensure the IAM user has s3:GetObject,
+          s3:PutObject, and s3:ListBucket permissions.
         </AlertDescription>
       </Alert>
     </div>
@@ -372,7 +404,12 @@ interface GoogleDriveConfigProps {
   teamId?: string;
 }
 
-function GoogleDriveConfig({ config, onConfigChange, disabled, teamId }: GoogleDriveConfigProps) {
+function GoogleDriveConfig({
+  config,
+  onConfigChange,
+  disabled,
+  teamId,
+}: GoogleDriveConfigProps) {
   const handleConnect = async () => {
     if (!teamId) {
       alert('Please save the team first before connecting cloud storage.');
@@ -446,7 +483,9 @@ function GoogleDriveConfig({ config, onConfigChange, disabled, teamId }: GoogleD
             <Input
               id="gdrive-folder"
               value={config.google_drive_folder_id || ''}
-              onChange={(e) => onConfigChange({ google_drive_folder_id: e.target.value })}
+              onChange={(e) =>
+                onConfigChange({ google_drive_folder_id: e.target.value })
+              }
               placeholder="Leave empty for root folder"
               disabled={disabled}
               className="h-10 font-mono text-sm"
@@ -469,7 +508,12 @@ interface DropboxConfigProps {
   teamId?: string;
 }
 
-function DropboxConfig({ config, onConfigChange, disabled, teamId }: DropboxConfigProps) {
+function DropboxConfig({
+  config,
+  onConfigChange,
+  disabled,
+  teamId,
+}: DropboxConfigProps) {
   const handleConnect = async () => {
     if (!teamId) {
       alert('Please save the team first before connecting cloud storage.');
@@ -543,7 +587,9 @@ function DropboxConfig({ config, onConfigChange, disabled, teamId }: DropboxConf
             <Input
               id="dropbox-folder"
               value={config.dropbox_folder_path || ''}
-              onChange={(e) => onConfigChange({ dropbox_folder_path: e.target.value })}
+              onChange={(e) =>
+                onConfigChange({ dropbox_folder_path: e.target.value })
+              }
               placeholder="/Team Documents"
               disabled={disabled}
               className="h-10 font-mono text-sm"

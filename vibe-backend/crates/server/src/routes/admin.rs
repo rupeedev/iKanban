@@ -1,9 +1,9 @@
 use axum::{
+    Router,
     extract::{Path, State},
     http::StatusCode,
     response::Json as ResponseJson,
     routing::{delete, get, post, put},
-    Router,
 };
 use db::models::{
     team_member::{CreateTeamInvitation, TeamInvitation, TeamMemberRole},
@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{error::ApiError, middleware::auth::ClerkUser, DeploymentImpl};
+use crate::{DeploymentImpl, error::ApiError, middleware::auth::ClerkUser};
 
 // ============================================================================
 // Request/Response Types
@@ -160,9 +160,7 @@ async fn verify_admin_access(
     let role = TenantWorkspaceMember::get_role(pool, workspace_id, user_id).await?;
     match role {
         Some(WorkspaceMemberRole::Owner) | Some(WorkspaceMemberRole::Admin) => Ok(()),
-        _ => Err(ApiError::Forbidden(
-            "Admin access required".to_string(),
-        )),
+        _ => Err(ApiError::Forbidden("Admin access required".to_string())),
     }
 }
 
@@ -173,9 +171,7 @@ async fn verify_owner_access(
 ) -> Result<(), ApiError> {
     let role = TenantWorkspaceMember::get_role(pool, workspace_id, user_id).await?;
     if role != Some(WorkspaceMemberRole::Owner) {
-        return Err(ApiError::Forbidden(
-            "Owner access required".to_string(),
-        ));
+        return Err(ApiError::Forbidden("Owner access required".to_string()));
     }
     Ok(())
 }
@@ -193,7 +189,8 @@ pub async fn get_admin_stats(
     verify_admin_access(&deployment.db().pool, workspace_id, &user.user_id).await?;
 
     // Get total members in workspace
-    let members = TenantWorkspaceMember::find_by_workspace(&deployment.db().pool, workspace_id).await?;
+    let members =
+        TenantWorkspaceMember::find_by_workspace(&deployment.db().pool, workspace_id).await?;
     let total_users = members.len() as i64;
     let active_users = total_users; // All members are considered active for now
 
@@ -305,7 +302,10 @@ pub async fn get_admin_activity(
     .collect();
 
     // Merge and sort by timestamp
-    let mut all_activity: Vec<AdminActivity> = recent_members.into_iter().chain(recent_invitations).collect();
+    let mut all_activity: Vec<AdminActivity> = recent_members
+        .into_iter()
+        .chain(recent_invitations)
+        .collect();
     all_activity.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
     all_activity.truncate(10);
 
@@ -324,7 +324,8 @@ pub async fn list_users(
 ) -> Result<ResponseJson<ApiResponse<Vec<AdminUser>>>, ApiError> {
     verify_admin_access(&deployment.db().pool, workspace_id, &user.user_id).await?;
 
-    let members = TenantWorkspaceMember::find_by_workspace(&deployment.db().pool, workspace_id).await?;
+    let members =
+        TenantWorkspaceMember::find_by_workspace(&deployment.db().pool, workspace_id).await?;
 
     let mut users: Vec<AdminUser> = Vec::new();
     for member in members {
@@ -367,9 +368,10 @@ pub async fn update_user_status(
 
     // For now, we just return the user without actually suspending
     // Full Clerk integration would be needed for actual suspension
-    let member = TenantWorkspaceMember::find_by_user(&deployment.db().pool, workspace_id, &target_user_id)
-        .await?
-        .ok_or_else(|| ApiError::NotFound("User not found in workspace".to_string()))?;
+    let member =
+        TenantWorkspaceMember::find_by_user(&deployment.db().pool, workspace_id, &target_user_id)
+            .await?
+            .ok_or_else(|| ApiError::NotFound("User not found in workspace".to_string()))?;
 
     let admin_user = AdminUser {
         id: member.user_id.clone(),
@@ -519,15 +521,13 @@ pub async fn create_invitation(
     // Get the first team in the workspace if no team_id is specified
     let team_id = match payload.team_id {
         Some(id) => id,
-        None => {
-            sqlx::query_scalar!(
-                r#"SELECT id FROM teams WHERE tenant_workspace_id = $1 LIMIT 1"#,
-                workspace_id
-            )
-            .fetch_optional(&deployment.db().pool)
-            .await?
-            .ok_or_else(|| ApiError::BadRequest("No teams in workspace".to_string()))?
-        }
+        None => sqlx::query_scalar!(
+            r#"SELECT id FROM teams WHERE tenant_workspace_id = $1 LIMIT 1"#,
+            workspace_id
+        )
+        .fetch_optional(&deployment.db().pool)
+        .await?
+        .ok_or_else(|| ApiError::BadRequest("No teams in workspace".to_string()))?,
     };
 
     // Get inviter's team member ID
@@ -551,23 +551,16 @@ pub async fn create_invitation(
         role: Some(role),
     };
 
-    let invitation = TeamInvitation::create(
-        &deployment.db().pool,
-        team_id,
-        &create_invitation,
-        inviter,
-    )
-    .await
-    .map_err(|e| ApiError::BadRequest(e.to_string()))?;
+    let invitation =
+        TeamInvitation::create(&deployment.db().pool, team_id, &create_invitation, inviter)
+            .await
+            .map_err(|e| ApiError::BadRequest(e.to_string()))?;
 
     // Get additional info for response
-    let team_name: String = sqlx::query_scalar!(
-        r#"SELECT name FROM teams WHERE id = $1"#,
-        team_id
-    )
-    .fetch_one(&deployment.db().pool)
-    .await
-    .unwrap_or_default();
+    let team_name: String = sqlx::query_scalar!(r#"SELECT name FROM teams WHERE id = $1"#, team_id)
+        .fetch_one(&deployment.db().pool)
+        .await
+        .unwrap_or_default();
 
     let workspace_name: String = sqlx::query_scalar!(
         r#"SELECT name FROM tenant_workspaces WHERE id = $1"#,
@@ -589,7 +582,10 @@ pub async fn create_invitation(
         expires_at: invitation.expires_at.to_rfc3339(),
     };
 
-    Ok((StatusCode::CREATED, ResponseJson(ApiResponse::success(admin_invitation))))
+    Ok((
+        StatusCode::CREATED,
+        ResponseJson(ApiResponse::success(admin_invitation)),
+    ))
 }
 
 /// Resend an invitation
@@ -673,12 +669,9 @@ pub async fn revoke_invitation(
         return Err(ApiError::NotFound("Invitation not found".to_string()));
     }
 
-    sqlx::query!(
-        "DELETE FROM team_invitations WHERE id = $1",
-        invitation_id
-    )
-    .execute(&deployment.db().pool)
-    .await?;
+    sqlx::query!("DELETE FROM team_invitations WHERE id = $1", invitation_id)
+        .execute(&deployment.db().pool)
+        .await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -867,7 +860,9 @@ pub async fn get_permissions(
 
     // Try to get permissions from settings, fall back to defaults
     let permissions = match workspace.settings.get("permissions") {
-        Some(value) => serde_json::from_value(value.clone()).unwrap_or_else(|_| get_default_permissions()),
+        Some(value) => {
+            serde_json::from_value(value.clone()).unwrap_or_else(|_| get_default_permissions())
+        }
         None => get_default_permissions(),
     };
 
@@ -890,7 +885,9 @@ pub async fn update_permission(
 
     // Get current permissions
     let mut permissions: Vec<AdminPermission> = match workspace.settings.get("permissions") {
-        Some(value) => serde_json::from_value(value.clone()).unwrap_or_else(|_| get_default_permissions()),
+        Some(value) => {
+            serde_json::from_value(value.clone()).unwrap_or_else(|_| get_default_permissions())
+        }
         None => get_default_permissions(),
     };
 
@@ -938,7 +935,9 @@ pub async fn get_feature_toggles(
         .ok_or_else(|| ApiError::NotFound("Workspace not found".to_string()))?;
 
     let features = match workspace.settings.get("features") {
-        Some(value) => serde_json::from_value(value.clone()).unwrap_or_else(|_| get_default_feature_toggles()),
+        Some(value) => {
+            serde_json::from_value(value.clone()).unwrap_or_else(|_| get_default_feature_toggles())
+        }
         None => get_default_feature_toggles(),
     };
 
@@ -959,7 +958,9 @@ pub async fn update_feature_toggle(
         .ok_or_else(|| ApiError::NotFound("Workspace not found".to_string()))?;
 
     let mut features: Vec<AdminFeatureToggle> = match workspace.settings.get("features") {
-        Some(value) => serde_json::from_value(value.clone()).unwrap_or_else(|_| get_default_feature_toggles()),
+        Some(value) => {
+            serde_json::from_value(value.clone()).unwrap_or_else(|_| get_default_feature_toggles())
+        }
         None => get_default_feature_toggles(),
     };
 
@@ -1028,7 +1029,9 @@ pub async fn get_configuration(
         .ok_or_else(|| ApiError::NotFound("Workspace not found".to_string()))?;
 
     let config = match workspace.settings.get("configuration") {
-        Some(value) => serde_json::from_value(value.clone()).unwrap_or_else(|_| get_default_configuration()),
+        Some(value) => {
+            serde_json::from_value(value.clone()).unwrap_or_else(|_| get_default_configuration())
+        }
         None => get_default_configuration(),
     };
 
@@ -1071,19 +1074,10 @@ pub async fn update_configuration(
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
         // Dashboard routes
-        .route(
-            "/admin/{workspace_id}/stats",
-            get(get_admin_stats),
-        )
-        .route(
-            "/admin/{workspace_id}/activity",
-            get(get_admin_activity),
-        )
+        .route("/admin/{workspace_id}/stats", get(get_admin_stats))
+        .route("/admin/{workspace_id}/activity", get(get_admin_activity))
         // Users routes
-        .route(
-            "/admin/{workspace_id}/users",
-            get(list_users),
-        )
+        .route("/admin/{workspace_id}/users", get(list_users))
         .route(
             "/admin/{workspace_id}/users/{target_user_id}/status",
             put(update_user_status),
@@ -1110,18 +1104,12 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             delete(revoke_invitation),
         )
         // Permissions routes
-        .route(
-            "/admin/{workspace_id}/permissions",
-            get(get_permissions),
-        )
+        .route("/admin/{workspace_id}/permissions", get(get_permissions))
         .route(
             "/admin/{workspace_id}/permissions/{permission_id}",
             put(update_permission),
         )
-        .route(
-            "/admin/{workspace_id}/features",
-            get(get_feature_toggles),
-        )
+        .route("/admin/{workspace_id}/features", get(get_feature_toggles))
         .route(
             "/admin/{workspace_id}/features/{feature_id}",
             put(update_feature_toggle),

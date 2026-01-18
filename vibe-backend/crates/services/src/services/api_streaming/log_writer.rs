@@ -121,7 +121,7 @@ impl ApiLogWriter {
         // Serialize all messages to JSONL
         let jsonl_lines: Vec<String> = messages
             .iter()
-            .map(|msg| serde_json::to_string(msg))
+            .map(serde_json::to_string)
             .collect::<Result<Vec<_>, _>>()?;
 
         // Combine into single JSONL string
@@ -183,7 +183,7 @@ impl ApiAsyncWriter {
                 self.writer
                     .write_raw(&line_str)
                     .await
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+                    .map_err(std::io::Error::other)?;
             }
         }
         Ok(())
@@ -204,7 +204,7 @@ impl ApiAsyncWriter {
                 self.writer
                     .write_raw(&line_str)
                     .await
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+                    .map_err(std::io::Error::other)?;
             }
         }
         Ok(())

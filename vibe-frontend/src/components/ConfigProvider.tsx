@@ -69,7 +69,12 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   const queryClient = useQueryClient();
   const { reportSuccess, reportFailure } = useConnectionSafe();
 
-  const { data: userSystemInfo, isLoading, isError, error } = useQuery({
+  const {
+    data: userSystemInfo,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ['user-system'],
     queryFn: async () => {
       try {
@@ -77,7 +82,9 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
         reportSuccess();
         return result;
       } catch (err) {
-        reportFailure(err instanceof Error ? err : new Error('Failed to fetch config'));
+        reportFailure(
+          err instanceof Error ? err : new Error('Failed to fetch config')
+        );
         throw err;
       }
     },
@@ -150,7 +157,10 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
         return true;
       } catch (err) {
         console.error('Error saving config:', err);
-        queryClient.invalidateQueries({ queryKey: ['user-system'], refetchType: 'none' });
+        queryClient.invalidateQueries({
+          queryKey: ['user-system'],
+          refetchType: 'none',
+        });
         return false;
       }
     },
@@ -158,7 +168,10 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   );
 
   const reloadSystem = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['user-system'], refetchType: 'none' });
+    await queryClient.invalidateQueries({
+      queryKey: ['user-system'],
+      refetchType: 'none',
+    });
   }, [queryClient]);
 
   const setEnvironment = useCallback(

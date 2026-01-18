@@ -30,7 +30,9 @@ const MemberProjectsDialogImpl = NiceModal.create<MemberProjectsDialogProps>(
     const modal = useModal();
     const { projects, isLoading: projectsLoading } = useProjects();
 
-    const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
+    const [selectedProjects, setSelectedProjects] = useState<Set<string>>(
+      new Set()
+    );
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -43,7 +45,11 @@ const MemberProjectsDialogImpl = NiceModal.create<MemberProjectsDialogProps>(
           const projectIds = await teamsApi.getMemberProjects(teamId, memberId);
           setSelectedProjects(new Set(projectIds));
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Failed to load member projects');
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Failed to load member projects'
+          );
         } finally {
           setIsLoading(false);
         }
@@ -76,11 +82,17 @@ const MemberProjectsDialogImpl = NiceModal.create<MemberProjectsDialogProps>(
       try {
         setIsSaving(true);
         setError(null);
-        await teamsApi.setMemberProjects(teamId, memberId, Array.from(selectedProjects));
+        await teamsApi.setMemberProjects(
+          teamId,
+          memberId,
+          Array.from(selectedProjects)
+        );
         modal.resolve('saved' as MemberProjectsDialogResult);
         modal.hide();
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to save project access');
+        setError(
+          err instanceof Error ? err.message : 'Failed to save project access'
+        );
       } finally {
         setIsSaving(false);
       }
@@ -107,7 +119,8 @@ const MemberProjectsDialogImpl = NiceModal.create<MemberProjectsDialogProps>(
               Configure Project Access
             </DialogTitle>
             <DialogDescription>
-              Select which projects <span className="font-medium">{memberName}</span> can access.
+              Select which projects{' '}
+              <span className="font-medium">{memberName}</span> can access.
               Unchecked projects will be hidden from this member.
             </DialogDescription>
           </DialogHeader>
@@ -183,13 +196,11 @@ const MemberProjectsDialogImpl = NiceModal.create<MemberProjectsDialogProps>(
 
               {/* Summary */}
               <div className="text-sm text-muted-foreground border-t pt-3">
-                {selectedProjects.size === 0 ? (
-                  'No projects selected - member will have no project access'
-                ) : selectedProjects.size === projects.length ? (
-                  'All projects selected - member has full access'
-                ) : (
-                  `${selectedProjects.size} of ${projects.length} projects selected`
-                )}
+                {selectedProjects.size === 0
+                  ? 'No projects selected - member will have no project access'
+                  : selectedProjects.size === projects.length
+                    ? 'All projects selected - member has full access'
+                    : `${selectedProjects.size} of ${projects.length} projects selected`}
               </div>
             </div>
           )}

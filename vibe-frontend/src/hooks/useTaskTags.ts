@@ -1,12 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { tasksApi } from "@/lib/api";
-import { TaskTagWithDetails } from "shared/types";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { tasksApi } from '@/lib/api';
+import { TaskTagWithDetails } from 'shared/types';
 
 export function useTaskTags(taskId: string | undefined) {
   const queryClient = useQueryClient();
 
   const tagsQuery = useQuery({
-    queryKey: ["task-tags", taskId],
+    queryKey: ['task-tags', taskId],
     queryFn: async () => {
       if (!taskId) return [];
       return tasksApi.getTags(taskId);
@@ -21,23 +21,23 @@ export function useTaskTags(taskId: string | undefined) {
 
   const addTagMutation = useMutation({
     mutationFn: async (tagId: string) => {
-      if (!taskId) throw new Error("Task ID required");
+      if (!taskId) throw new Error('Task ID required');
       return tasksApi.addTag(taskId, tagId);
     },
     onSuccess: () => {
       // Invalidate to fetch fresh data with tag details
-      queryClient.invalidateQueries({ queryKey: ["task-tags", taskId] });
+      queryClient.invalidateQueries({ queryKey: ['task-tags', taskId] });
     },
   });
 
   const removeTagMutation = useMutation({
     mutationFn: async (tagId: string) => {
-      if (!taskId) throw new Error("Task ID required");
+      if (!taskId) throw new Error('Task ID required');
       return tasksApi.removeTag(taskId, tagId);
     },
     onSuccess: (_, tagId) => {
       queryClient.setQueryData<TaskTagWithDetails[]>(
-        ["task-tags", taskId],
+        ['task-tags', taskId],
         (old) => old?.filter((t) => t.tag_id !== tagId) ?? []
       );
     },

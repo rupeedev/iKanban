@@ -4,7 +4,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { X, ExternalLink, ChevronRight, MessageSquare, FileText, Activity } from 'lucide-react';
+import {
+  X,
+  ExternalLink,
+  ChevronRight,
+  MessageSquare,
+  FileText,
+  Activity,
+} from 'lucide-react';
 import { useTeams } from '@/hooks/useTeams';
 import { useIssueCommentHandlers } from '@/hooks/useIssueCommentHandlers';
 import { tasksApi } from '@/lib/api';
@@ -15,7 +22,10 @@ import { ProjectSelector } from '@/components/tasks/ProjectSelector';
 import { TaskTagsSection } from '@/components/tags/TaskTagsSection';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
-import { PrioritySelector, type PriorityValue } from '@/components/selectors/PrioritySelector';
+import {
+  PrioritySelector,
+  type PriorityValue,
+} from '@/components/selectors/PrioritySelector';
 
 interface IssueDetailPanelProps {
   issue: TaskWithAttemptStatus;
@@ -26,11 +36,26 @@ interface IssueDetailPanelProps {
 }
 
 const STATUS_COLORS: Record<TaskStatus, { bg: string; text: string }> = {
-  todo: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-700 dark:text-gray-300' },
-  inprogress: { bg: 'bg-yellow-100 dark:bg-yellow-900', text: 'text-yellow-700 dark:text-yellow-300' },
-  inreview: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-700 dark:text-blue-300' },
-  done: { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-700 dark:text-green-300' },
-  cancelled: { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-700 dark:text-red-300' },
+  todo: {
+    bg: 'bg-gray-100 dark:bg-gray-800',
+    text: 'text-gray-700 dark:text-gray-300',
+  },
+  inprogress: {
+    bg: 'bg-yellow-100 dark:bg-yellow-900',
+    text: 'text-yellow-700 dark:text-yellow-300',
+  },
+  inreview: {
+    bg: 'bg-blue-100 dark:bg-blue-900',
+    text: 'text-blue-700 dark:text-blue-300',
+  },
+  done: {
+    bg: 'bg-green-100 dark:bg-green-900',
+    text: 'text-green-700 dark:text-green-300',
+  },
+  cancelled: {
+    bg: 'bg-red-100 dark:bg-red-900',
+    text: 'text-red-700 dark:text-red-300',
+  },
 };
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -145,7 +170,8 @@ export function IssueDetailPanel({
     }
   };
 
-  const statusColors = STATUS_COLORS[issue.status as TaskStatus] || STATUS_COLORS.todo;
+  const statusColors =
+    STATUS_COLORS[issue.status as TaskStatus] || STATUS_COLORS.todo;
   const statusLabel = STATUS_LABELS[issue.status as TaskStatus] || issue.status;
   const hasComments = comments.length > 0;
   const showCommentsLoading = commentsLoading && !hasComments;
@@ -173,7 +199,12 @@ export function IssueDetailPanel({
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
             <ExternalLink className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={onClose}
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -212,7 +243,9 @@ export function IssueDetailPanel({
 
           {/* Status and Priority row */}
           <div className="flex items-center gap-3">
-            <Badge className={cn(statusColors.bg, statusColors.text, 'font-medium')}>
+            <Badge
+              className={cn(statusColors.bg, statusColors.text, 'font-medium')}
+            >
               {statusLabel}
             </Badge>
             <PrioritySelector
@@ -242,7 +275,9 @@ export function IssueDetailPanel({
 
           {/* Description */}
           <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">
+              Description
+            </h3>
             {isEditingDescription ? (
               <div className="space-y-2">
                 <Textarea
@@ -254,7 +289,11 @@ export function IssueDetailPanel({
                   disabled={isSaving}
                 />
                 <div className="flex items-center gap-2">
-                  <Button size="sm" onClick={handleSaveDescription} disabled={isSaving}>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveDescription}
+                    disabled={isSaving}
+                  >
                     Save
                   </Button>
                   <Button
@@ -287,7 +326,11 @@ export function IssueDetailPanel({
           <IssueLinkedDocuments issueId={issue.id} teamId={teamId} />
 
           {/* ATTEMPTS section with Inline Prompt (handles comments + AI prompts) */}
-          <IssueAttemptsSection issueId={issue.id} projectId={issue.project_id} teamId={teamId} />
+          <IssueAttemptsSection
+            issueId={issue.id}
+            projectId={issue.project_id}
+            teamId={teamId}
+          />
 
           {/* Tabs for Comments, Details, Activity */}
           <Tabs defaultValue="comments" className="w-full">
@@ -299,7 +342,10 @@ export function IssueDetailPanel({
                 <MessageSquare className="h-4 w-4" />
                 Comments
                 {comments.length > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 h-5 px-1.5 text-xs"
+                  >
                     {comments.length}
                   </Badge>
                 )}
@@ -363,7 +409,9 @@ export function IssueDetailPanel({
             </TabsContent>
 
             <TabsContent value="activity" className="mt-4">
-              <div className="text-sm text-muted-foreground">Activity log coming soon...</div>
+              <div className="text-sm text-muted-foreground">
+                Activity log coming soon...
+              </div>
             </TabsContent>
           </Tabs>
         </div>

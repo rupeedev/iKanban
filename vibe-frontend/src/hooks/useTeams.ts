@@ -8,13 +8,17 @@ import { useWorkspaceOptional } from '@/contexts/WorkspaceContext';
 // Query key factory for workspace-scoped teams
 export const teamsKeys = {
   all: ['teams'] as const,
-  list: (workspaceId?: string | null) => [...teamsKeys.all, 'list', workspaceId ?? 'all'] as const,
+  list: (workspaceId?: string | null) =>
+    [...teamsKeys.all, 'list', workspaceId ?? 'all'] as const,
 };
 
 // Helper to check if error is a rate limit (429)
 function isRateLimitError(error: unknown): boolean {
   if (error instanceof Error) {
-    return error.message.includes('429') || error.message.includes('Too Many Requests');
+    return (
+      error.message.includes('429') ||
+      error.message.includes('Too Many Requests')
+    );
   }
   return false;
 }
@@ -39,7 +43,11 @@ export function useTeams(): UseTeamsResult {
   // Use workspace-scoped query key for proper cache isolation
   const queryKey = teamsKeys.list(currentWorkspaceId);
 
-  const { data: teams = [], isLoading, error } = useQuery<Team[], Error>({
+  const {
+    data: teams = [],
+    isLoading,
+    error,
+  } = useQuery<Team[], Error>({
     queryKey,
     queryFn: () => teamsApi.list(currentWorkspaceId ?? undefined),
     staleTime: 5 * 60 * 1000, // 5 minutes - teams rarely change
@@ -54,14 +62,15 @@ export function useTeams(): UseTeamsResult {
     retryDelay: 60000, // 60 seconds - respect rate limit window
   });
 
-  const teamsById = useMemo(() =>
-    teams.reduce(
-      (acc, team) => {
-        acc[team.id] = team;
-        return acc;
-      },
-      {} as Record<string, Team>
-    ),
+  const teamsById = useMemo(
+    () =>
+      teams.reduce(
+        (acc, team) => {
+          acc[team.id] = team;
+          return acc;
+        },
+        {} as Record<string, Team>
+      ),
     [teams]
   );
 
@@ -70,10 +79,11 @@ export function useTeams(): UseTeamsResult {
   }, [queryClient, queryKey]);
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateTeam) => teamsApi.create({
-      ...data,
-      tenant_workspace_id: currentWorkspaceId,
-    }),
+    mutationFn: (data: CreateTeam) =>
+      teamsApi.create({
+        ...data,
+        tenant_workspace_id: currentWorkspaceId,
+      }),
     onSuccess: (newTeam) => {
       // Optimistically add the new team to the cache
       queryClient.setQueryData<Team[]>(queryKey, (old) =>
@@ -87,8 +97,10 @@ export function useTeams(): UseTeamsResult {
       teamsApi.update(teamId, data),
     onSuccess: (updatedTeam) => {
       // Update the team in the cache
-      queryClient.setQueryData<Team[]>(queryKey, (old) =>
-        old?.map((t) => (t.id === updatedTeam.id ? updatedTeam : t)) ?? []
+      queryClient.setQueryData<Team[]>(
+        queryKey,
+        (old) =>
+          old?.map((t) => (t.id === updatedTeam.id ? updatedTeam : t)) ?? []
       );
     },
   });
@@ -97,8 +109,9 @@ export function useTeams(): UseTeamsResult {
     mutationFn: (teamId: string) => teamsApi.delete(teamId),
     onSuccess: (_, teamId) => {
       // Remove the team from the cache
-      queryClient.setQueryData<Team[]>(queryKey, (old) =>
-        old?.filter((t) => t.id !== teamId) ?? []
+      queryClient.setQueryData<Team[]>(
+        queryKey,
+        (old) => old?.filter((t) => t.id !== teamId) ?? []
       );
     },
   });

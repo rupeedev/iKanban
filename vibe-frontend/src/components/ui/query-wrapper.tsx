@@ -84,7 +84,9 @@ export function QueryWrapper<T>({
     return (
       <ErrorCard
         title={errorTitle}
-        message={error instanceof Error ? error.message : 'An unknown error occurred'}
+        message={
+          error instanceof Error ? error.message : 'An unknown error occurred'
+        }
         onRetry={() => refetch()}
         data-testid={testId ? `${testId}-error` : undefined}
       />

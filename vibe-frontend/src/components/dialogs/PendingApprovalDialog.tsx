@@ -36,7 +36,10 @@ function PendingApprovalDialogImpl(props: PendingApprovalDialogProps) {
   };
 
   return (
-    <Dialog open={modal.visible} onOpenChange={(open) => !open && handleClose()}>
+    <Dialog
+      open={modal.visible}
+      onOpenChange={(open) => !open && handleClose()}
+    >
       <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -70,8 +73,8 @@ function PendingApprovalDialogImpl(props: PendingApprovalDialogProps) {
                   <strong>{registration.workspace_name}</strong>".
                 </p>
                 <p>
-                  You'll receive access to the platform once your registration is
-                  approved. This usually takes less than 24 hours.
+                  You'll receive access to the platform once your registration
+                  is approved. This usually takes less than 24 hours.
                 </p>
               </AlertDescription>
             </Alert>
@@ -87,7 +90,8 @@ function PendingApprovalDialogImpl(props: PendingApprovalDialogProps) {
                 ) : (
                   <p>
                     Your registration for workspace "
-                    <strong>{registration.workspace_name}</strong>" was not approved.
+                    <strong>{registration.workspace_name}</strong>" was not
+                    approved.
                   </p>
                 )}
                 <p className="mt-2">

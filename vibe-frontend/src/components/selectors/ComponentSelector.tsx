@@ -7,7 +7,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Hexagon, Monitor, Server, Database, Cloud, Settings, FileCode, Palette, X } from 'lucide-react';
+import {
+  Hexagon,
+  Monitor,
+  Server,
+  Database,
+  Cloud,
+  Settings,
+  FileCode,
+  Palette,
+  X,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
 
@@ -19,13 +29,55 @@ export const COMPONENT_OPTIONS: {
   shortcut: string;
   color: string;
 }[] = [
-  { value: 'frontend', label: 'Frontend', icon: Monitor, shortcut: '1', color: 'text-blue-500' },
-  { value: 'backend', label: 'Backend', icon: Server, shortcut: '2', color: 'text-green-500' },
-  { value: 'api', label: 'API', icon: Cloud, shortcut: '3', color: 'text-purple-500' },
-  { value: 'database', label: 'Database', icon: Database, shortcut: '4', color: 'text-orange-500' },
-  { value: 'devops', label: 'DevOps', icon: Settings, shortcut: '5', color: 'text-gray-500' },
-  { value: 'design', label: 'Design', icon: Palette, shortcut: '6', color: 'text-pink-500' },
-  { value: 'core', label: 'Core', icon: FileCode, shortcut: '7', color: 'text-yellow-500' },
+  {
+    value: 'frontend',
+    label: 'Frontend',
+    icon: Monitor,
+    shortcut: '1',
+    color: 'text-blue-500',
+  },
+  {
+    value: 'backend',
+    label: 'Backend',
+    icon: Server,
+    shortcut: '2',
+    color: 'text-green-500',
+  },
+  {
+    value: 'api',
+    label: 'API',
+    icon: Cloud,
+    shortcut: '3',
+    color: 'text-purple-500',
+  },
+  {
+    value: 'database',
+    label: 'Database',
+    icon: Database,
+    shortcut: '4',
+    color: 'text-orange-500',
+  },
+  {
+    value: 'devops',
+    label: 'DevOps',
+    icon: Settings,
+    shortcut: '5',
+    color: 'text-gray-500',
+  },
+  {
+    value: 'design',
+    label: 'Design',
+    icon: Palette,
+    shortcut: '6',
+    color: 'text-pink-500',
+  },
+  {
+    value: 'core',
+    label: 'Core',
+    icon: FileCode,
+    shortcut: '7',
+    color: 'text-yellow-500',
+  },
 ];
 
 export type ComponentValue = string | null;
@@ -76,10 +128,13 @@ export function ComponentSelector({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, enableKeyboardShortcuts, onChange]);
 
-  const handleSelect = useCallback((newValue: ComponentValue) => {
-    onChange(newValue);
-    setOpen(false);
-  }, [onChange]);
+  const handleSelect = useCallback(
+    (newValue: ComponentValue) => {
+      onChange(newValue);
+      setOpen(false);
+    },
+    [onChange]
+  );
 
   const renderTrigger = () => {
     switch (variant) {
@@ -95,7 +150,12 @@ export function ComponentSelector({
             )}
             disabled={disabled}
           >
-            <ComponentIcon className={cn('h-3 w-3', selectedComponent?.color || 'text-muted-foreground')} />
+            <ComponentIcon
+              className={cn(
+                'h-3 w-3',
+                selectedComponent?.color || 'text-muted-foreground'
+              )}
+            />
             <span className="text-muted-foreground">
               {selectedComponent?.label || 'Add component'}
             </span>
@@ -112,7 +172,12 @@ export function ComponentSelector({
             )}
             disabled={disabled}
           >
-            <ComponentIcon className={cn('h-3.5 w-3.5', selectedComponent?.color || 'text-muted-foreground')} />
+            <ComponentIcon
+              className={cn(
+                'h-3.5 w-3.5',
+                selectedComponent?.color || 'text-muted-foreground'
+              )}
+            />
             {selectedComponent && <span>{selectedComponent.label}</span>}
           </Button>
         );
@@ -129,7 +194,12 @@ export function ComponentSelector({
             )}
             disabled={disabled}
           >
-            <ComponentIcon className={cn('h-3.5 w-3.5', selectedComponent?.color || 'text-muted-foreground')} />
+            <ComponentIcon
+              className={cn(
+                'h-3.5 w-3.5',
+                selectedComponent?.color || 'text-muted-foreground'
+              )}
+            />
             {selectedComponent?.label || 'Component'}
           </Button>
         );
@@ -145,7 +215,10 @@ export function ComponentSelector({
         {/* None option */}
         <DropdownMenuItem
           onClick={() => handleSelect(null)}
-          className={cn('justify-between cursor-pointer', !value && 'bg-accent')}
+          className={cn(
+            'justify-between cursor-pointer',
+            !value && 'bg-accent'
+          )}
         >
           <span className="flex items-center gap-2">
             <X className="h-4 w-4 text-muted-foreground" />
@@ -164,13 +237,18 @@ export function ComponentSelector({
             <DropdownMenuItem
               key={option.value}
               onClick={() => handleSelect(option.value)}
-              className={cn('justify-between cursor-pointer', isSelected && 'bg-accent')}
+              className={cn(
+                'justify-between cursor-pointer',
+                isSelected && 'bg-accent'
+              )}
             >
               <span className="flex items-center gap-2">
                 <Icon className={cn('h-4 w-4', option.color)} />
                 {option.label}
               </span>
-              <span className="text-xs text-muted-foreground font-mono">{option.shortcut}</span>
+              <span className="text-xs text-muted-foreground font-mono">
+                {option.shortcut}
+              </span>
             </DropdownMenuItem>
           );
         })}
@@ -190,9 +268,16 @@ export function useComponentKeyboardShortcut(
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only trigger on 'L' key when not in an input/textarea
       const target = e.target as HTMLElement;
-      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+      const isInput =
+        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
-      if (!isInput && e.key.toLowerCase() === 'l' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (
+        !isInput &&
+        e.key.toLowerCase() === 'l' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey
+      ) {
         e.preventDefault();
         onOpen();
       }

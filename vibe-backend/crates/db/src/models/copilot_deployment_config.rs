@@ -192,14 +192,19 @@ impl CopilotDeploymentConfig {
                 .map(|e| e.deploy_workflow_enabled)
                 .unwrap_or(false)
         });
-        let deploy_workflow_name = payload
-            .deploy_workflow_name
-            .clone()
-            .or_else(|| existing.as_ref().and_then(|e| e.deploy_workflow_name.clone()));
+        let deploy_workflow_name = payload.deploy_workflow_name.clone().or_else(|| {
+            existing
+                .as_ref()
+                .and_then(|e| e.deploy_workflow_name.clone())
+        });
         let deploy_workflow_ref = payload
             .deploy_workflow_ref
             .clone()
-            .or_else(|| existing.as_ref().and_then(|e| e.deploy_workflow_ref.clone()))
+            .or_else(|| {
+                existing
+                    .as_ref()
+                    .and_then(|e| e.deploy_workflow_ref.clone())
+            })
             .or(Some("main".to_string()));
         let required_ci_checks = payload
             .required_ci_checks

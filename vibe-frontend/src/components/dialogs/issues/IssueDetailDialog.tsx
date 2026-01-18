@@ -1,8 +1,5 @@
 import { useCallback, useState, useMemo } from 'react';
-import {
-  Dialog,
-  DialogContent,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,7 +23,10 @@ import { tasksApi } from '@/lib/api';
 import { CommentEditor, CommentList } from '@/components/comments';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
-import { PrioritySelector, type PriorityValue } from '@/components/selectors/PrioritySelector';
+import {
+  PrioritySelector,
+  type PriorityValue,
+} from '@/components/selectors/PrioritySelector';
 
 export interface IssueDetailDialogProps {
   issue: TaskWithAttemptStatus;
@@ -39,11 +39,26 @@ export type IssueDetailDialogResult = 'updated' | 'closed';
 
 // Status colors
 const STATUS_COLORS: Record<TaskStatus, { bg: string; text: string }> = {
-  todo: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-700 dark:text-gray-300' },
-  inprogress: { bg: 'bg-yellow-100 dark:bg-yellow-900', text: 'text-yellow-700 dark:text-yellow-300' },
-  inreview: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-700 dark:text-blue-300' },
-  done: { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-700 dark:text-green-300' },
-  cancelled: { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-700 dark:text-red-300' },
+  todo: {
+    bg: 'bg-gray-100 dark:bg-gray-800',
+    text: 'text-gray-700 dark:text-gray-300',
+  },
+  inprogress: {
+    bg: 'bg-yellow-100 dark:bg-yellow-900',
+    text: 'text-yellow-700 dark:text-yellow-300',
+  },
+  inreview: {
+    bg: 'bg-blue-100 dark:bg-blue-900',
+    text: 'text-blue-700 dark:text-blue-300',
+  },
+  done: {
+    bg: 'bg-green-100 dark:bg-green-900',
+    text: 'text-green-700 dark:text-green-300',
+  },
+  cancelled: {
+    bg: 'bg-red-100 dark:bg-red-900',
+    text: 'text-red-700 dark:text-red-300',
+  },
 };
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -71,10 +86,11 @@ const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
       }
 
       const userEmail = user.primaryEmailAddress?.emailAddress || '';
-      const userName = user.fullName || user.firstName || userEmail.split('@')[0] || 'Unknown';
+      const userName =
+        user.fullName || user.firstName || userEmail.split('@')[0] || 'Unknown';
 
       // Try to find matching team member to get their member ID
-      const matchingMember = members?.find(m => m.email === userEmail);
+      const matchingMember = members?.find((m) => m.email === userEmail);
 
       return {
         id: matchingMember?.id ?? null,
@@ -245,11 +261,16 @@ const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
       }
     };
 
-    const statusColors = STATUS_COLORS[issue.status as TaskStatus] || STATUS_COLORS.todo;
-    const statusLabel = STATUS_LABELS[issue.status as TaskStatus] || issue.status;
+    const statusColors =
+      STATUS_COLORS[issue.status as TaskStatus] || STATUS_COLORS.todo;
+    const statusLabel =
+      STATUS_LABELS[issue.status as TaskStatus] || issue.status;
 
     return (
-      <Dialog open={modal.visible} onOpenChange={(open) => !open && handleClose()}>
+      <Dialog
+        open={modal.visible}
+        onOpenChange={(open) => !open && handleClose()}
+      >
         <DialogContent className="sm:max-w-[800px] h-[85vh] p-0 gap-0 flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
@@ -272,7 +293,12 @@ const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                 <ExternalLink className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleClose}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={handleClose}
+              >
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -311,7 +337,13 @@ const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
 
               {/* Status and Priority row */}
               <div className="flex items-center gap-3">
-                <Badge className={cn(statusColors.bg, statusColors.text, 'font-medium')}>
+                <Badge
+                  className={cn(
+                    statusColors.bg,
+                    statusColors.text,
+                    'font-medium'
+                  )}
+                >
                   {statusLabel}
                 </Badge>
                 <PrioritySelector
@@ -323,7 +355,9 @@ const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
 
               {/* Description */}
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                  Description
+                </h3>
                 {isEditingDescription ? (
                   <div className="space-y-2">
                     <Textarea
@@ -335,7 +369,11 @@ const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
                       disabled={isSaving}
                     />
                     <div className="flex items-center gap-2">
-                      <Button size="sm" onClick={handleSaveDescription} disabled={isSaving}>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveDescription}
+                        disabled={isSaving}
+                      >
                         Save
                       </Button>
                       <Button
@@ -374,7 +412,10 @@ const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
                     <MessageSquare className="h-4 w-4" />
                     Comments
                     {comments.length > 0 && (
-                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                      <Badge
+                        variant="secondary"
+                        className="ml-1 h-5 px-1.5 text-xs"
+                      >
                         {comments.length}
                       </Badge>
                     )}
@@ -428,13 +469,17 @@ const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
                       </div>
                       {issue.due_date && (
                         <div>
-                          <span className="text-muted-foreground">Due Date</span>
+                          <span className="text-muted-foreground">
+                            Due Date
+                          </span>
                           <p>{new Date(issue.due_date).toLocaleDateString()}</p>
                         </div>
                       )}
                       {issue.assignee_id && (
                         <div>
-                          <span className="text-muted-foreground">Assignee</span>
+                          <span className="text-muted-foreground">
+                            Assignee
+                          </span>
                           <p>{issue.assignee_id}</p>
                         </div>
                       )}
@@ -456,6 +501,7 @@ const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
   }
 );
 
-export const IssueDetailDialog = defineModal<IssueDetailDialogProps, IssueDetailDialogResult>(
-  IssueDetailDialogImpl
-);
+export const IssueDetailDialog = defineModal<
+  IssueDetailDialogProps,
+  IssueDetailDialogResult
+>(IssueDetailDialogImpl);

@@ -239,8 +239,7 @@ async fn handle_pull_request_event(
                     assignment.task_id,
                     &format!(
                         "PR [#{}]({}) was closed without merging.",
-                        pr_number,
-                        event.pull_request.html_url
+                        pr_number, event.pull_request.html_url
                     ),
                 )
                 .await;
@@ -359,8 +358,14 @@ async fn handle_check_suite_event(
                 let conclusion = event.check_suite.conclusion.as_deref().unwrap_or("unknown");
                 match conclusion {
                     "success" => {
-                        handle_ci_success(deployment, &assignment, &checks_url, repo_owner, repo_name)
-                            .await?;
+                        handle_ci_success(
+                            deployment,
+                            &assignment,
+                            &checks_url,
+                            repo_owner,
+                            repo_name,
+                        )
+                        .await?;
                     }
                     "failure" | "cancelled" | "timed_out" => {
                         handle_ci_failure(pool, &assignment, conclusion, &checks_url).await?;
@@ -637,7 +642,10 @@ async fn trigger_deployment(
         }
     };
 
-    let workflow_name = config.deploy_workflow_name.as_deref().unwrap_or("deploy.yml");
+    let workflow_name = config
+        .deploy_workflow_name
+        .as_deref()
+        .unwrap_or("deploy.yml");
     let workflow_ref = config.deploy_workflow_ref.as_deref().unwrap_or("main");
 
     match trigger_workflow_dispatch(
@@ -691,7 +699,10 @@ async fn trigger_deployment(
             post_task_comment(
                 pool,
                 assignment.task_id,
-                &format!("Failed to trigger deployment: {}. Please deploy manually.", e),
+                &format!(
+                    "Failed to trigger deployment: {}. Please deploy manually.",
+                    e
+                ),
             )
             .await;
         }
@@ -733,13 +744,30 @@ async fn handle_workflow_run_event(
 
     match event.action.as_str() {
         "completed" => {
-            let conclusion = event.workflow_run.conclusion.as_deref().unwrap_or("unknown");
+            let conclusion = event
+                .workflow_run
+                .conclusion
+                .as_deref()
+                .unwrap_or("unknown");
             match conclusion {
                 "success" => {
-                    handle_deploy_success(pool, &assignment, &event.workflow_run.html_url, repo_owner, repo_name).await?;
+                    handle_deploy_success(
+                        pool,
+                        &assignment,
+                        &event.workflow_run.html_url,
+                        repo_owner,
+                        repo_name,
+                    )
+                    .await?;
                 }
                 "failure" | "cancelled" | "timed_out" => {
-                    handle_deploy_failure(pool, &assignment, conclusion, &event.workflow_run.html_url).await?;
+                    handle_deploy_failure(
+                        pool,
+                        &assignment,
+                        conclusion,
+                        &event.workflow_run.html_url,
+                    )
+                    .await?;
                 }
                 _ => {}
             }

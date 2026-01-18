@@ -11,7 +11,10 @@ interface IssueLinkedDocumentsProps {
   teamId?: string;
 }
 
-export function IssueLinkedDocuments({ issueId, teamId }: IssueLinkedDocumentsProps) {
+export function IssueLinkedDocuments({
+  issueId,
+  teamId,
+}: IssueLinkedDocumentsProps) {
   const navigate = useNavigateWithSearch();
   const [showLinkDocsDialog, setShowLinkDocsDialog] = useState(false);
 
@@ -65,7 +68,8 @@ export function IssueLinkedDocuments({ issueId, teamId }: IssueLinkedDocumentsPr
               key={link.id}
               className="flex items-center justify-between p-2 rounded-md border bg-muted/10 hover:bg-muted/30 group cursor-pointer"
               onClick={() =>
-                teamId && navigate(`/teams/${teamId}/documents?doc=${link.document_id}`)
+                teamId &&
+                navigate(`/teams/${teamId}/documents?doc=${link.document_id}`)
               }
             >
               <div className="flex items-center gap-2 min-w-0">
@@ -75,7 +79,9 @@ export function IssueLinkedDocuments({ issueId, teamId }: IssueLinkedDocumentsPr
                     {link.document_title}
                   </p>
                   {link.folder_name && (
-                    <p className="text-xs text-muted-foreground truncate">{link.folder_name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {link.folder_name}
+                    </p>
                   )}
                 </div>
               </div>

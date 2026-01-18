@@ -47,13 +47,22 @@ import {
 import { InvitePeopleDialog } from '@/components/dialogs/teams/InvitePeopleDialog';
 import { MemberProjectsDialog } from '@/components/dialogs/teams/MemberProjectsDialog';
 import { ConfirmDialog } from '@/components/dialogs/shared/ConfirmDialog';
-import type { TeamMember, TeamMemberRole, TeamInvitation, UserRegistration } from 'shared/types';
+import type {
+  TeamMember,
+  TeamMemberRole,
+  TeamInvitation,
+  UserRegistration,
+} from 'shared/types';
 import { format } from 'date-fns';
 import { useState, useMemo } from 'react';
 
 type TabValue = 'members' | 'pending';
 
-const ROLE_OPTIONS: { value: TeamMemberRole; label: string; icon: React.ElementType }[] = [
+const ROLE_OPTIONS: {
+  value: TeamMemberRole;
+  label: string;
+  icon: React.ElementType;
+}[] = [
   { value: 'viewer', label: 'Viewer', icon: Eye },
   { value: 'contributor', label: 'Contributor', icon: Pencil },
   { value: 'maintainer', label: 'Maintainer', icon: Shield },
@@ -101,7 +110,14 @@ interface MemberTableRowProps {
   isUpdating: boolean;
 }
 
-function MemberTableRow({ teamId, member, isCurrentUser, onRoleChange, onRemove, isUpdating }: MemberTableRowProps) {
+function MemberTableRow({
+  teamId,
+  member,
+  isCurrentUser,
+  onRoleChange,
+  onRemove,
+  isUpdating,
+}: MemberTableRowProps) {
   const [isChangingRole, setIsChangingRole] = useState(false);
 
   const handleRoleChange = async (newRole: TeamMemberRole) => {
@@ -153,7 +169,9 @@ function MemberTableRow({ teamId, member, isCurrentUser, onRoleChange, onRemove,
               className="h-10 w-10 rounded-full object-cover"
             />
           ) : (
-            <div className={`h-10 w-10 rounded-full ${avatarColor} flex items-center justify-center`}>
+            <div
+              className={`h-10 w-10 rounded-full ${avatarColor} flex items-center justify-center`}
+            >
               <span className="text-sm font-medium text-white">
                 {displayName.slice(0, 2).toUpperCase()}
               </span>
@@ -163,7 +181,10 @@ function MemberTableRow({ teamId, member, isCurrentUser, onRoleChange, onRemove,
             <div className="flex items-center gap-2">
               <span className="font-medium">{displayName}</span>
               {isCurrentUser && (
-                <Badge variant="outline" className="text-xs border-green-500 text-green-600 dark:text-green-400">
+                <Badge
+                  variant="outline"
+                  className="text-xs border-green-500 text-green-600 dark:text-green-400"
+                >
                   It's you
                 </Badge>
               )}
@@ -182,7 +203,10 @@ function MemberTableRow({ teamId, member, isCurrentUser, onRoleChange, onRemove,
       <td className="py-4 px-4">
         <span className="text-sm text-muted-foreground">
           {member.invited_by ? (
-            <>Direct member by <span className="text-blue-600 dark:text-blue-400">Admin</span></>
+            <>
+              Direct member by{' '}
+              <span className="text-blue-600 dark:text-blue-400">Admin</span>
+            </>
           ) : (
             'Direct member'
           )}
@@ -197,7 +221,9 @@ function MemberTableRow({ teamId, member, isCurrentUser, onRoleChange, onRemove,
           disabled={isUpdating || isChangingRole}
         >
           <SelectTrigger className="w-auto border-0 p-0 h-auto shadow-none focus:ring-0">
-            <span className={`font-medium capitalize ${getRoleColor(member.role)}`}>
+            <span
+              className={`font-medium capitalize ${getRoleColor(member.role)}`}
+            >
               {member.role}
             </span>
           </SelectTrigger>
@@ -274,7 +300,13 @@ interface InvitationTableRowProps {
   isUpdating: boolean;
 }
 
-function InvitationTableRow({ invitation, teamName, onRoleChange, onCancel, isUpdating }: InvitationTableRowProps) {
+function InvitationTableRow({
+  invitation,
+  teamName,
+  onRoleChange,
+  onCancel,
+  isUpdating,
+}: InvitationTableRowProps) {
   const [isChangingRole, setIsChangingRole] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -283,7 +315,10 @@ function InvitationTableRow({ invitation, teamName, onRoleChange, onCancel, isUp
   const createdAt = new Date(invitation.created_at);
   const isExpired = invitation.status === 'expired' || expiresAt < new Date();
   const isPending = invitation.status === 'pending' && !isExpired;
-  const effectiveStatus = isExpired && invitation.status === 'pending' ? 'expired' : invitation.status;
+  const effectiveStatus =
+    isExpired && invitation.status === 'pending'
+      ? 'expired'
+      : invitation.status;
 
   const handleRoleChange = async (newRole: TeamMemberRole) => {
     if (newRole === invitation.role) return;
@@ -319,11 +354,15 @@ function InvitationTableRow({ invitation, teamName, onRoleChange, onCancel, isUp
   const handleSendEmail = () => {
     if (!invitation.token) return;
     const inviteUrl = `${window.location.origin}/join?token=${invitation.token}`;
-    const daysUntilExpiry = Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const daysUntilExpiry = Math.ceil(
+      (expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    );
 
-    const subject = encodeURIComponent(`You're invited to join ${teamName} on iKanban`);
+    const subject = encodeURIComponent(
+      `You're invited to join ${teamName} on iKanban`
+    );
     const body = encodeURIComponent(
-`Hi,
+      `Hi,
 
 You've been invited to join the team "${teamName}" as a ${invitation.role.charAt(0).toUpperCase() + invitation.role.slice(1)}.
 
@@ -334,7 +373,10 @@ This invitation expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' :
 Best regards`
     );
 
-    window.open(`mailto:${invitation.email}?subject=${subject}&body=${body}`, '_blank');
+    window.open(
+      `mailto:${invitation.email}?subject=${subject}&body=${body}`,
+      '_blank'
+    );
   };
 
   const username = invitation.email.split('@')[0];
@@ -351,7 +393,13 @@ Best regards`
             <div className="flex items-center gap-2">
               <span className="font-medium">{invitation.email}</span>
               <Badge
-                variant={effectiveStatus === 'pending' ? 'secondary' : effectiveStatus === 'accepted' ? 'default' : 'outline'}
+                variant={
+                  effectiveStatus === 'pending'
+                    ? 'secondary'
+                    : effectiveStatus === 'accepted'
+                      ? 'default'
+                      : 'outline'
+                }
                 className="text-xs"
               >
                 {effectiveStatus}
@@ -364,7 +412,9 @@ Best regards`
 
       {/* Source */}
       <td className="py-4 px-4">
-        <span className="text-sm text-muted-foreground">Pending invitation</span>
+        <span className="text-sm text-muted-foreground">
+          Pending invitation
+        </span>
       </td>
 
       {/* Role */}
@@ -376,12 +426,14 @@ Best regards`
             disabled={isUpdating || isChangingRole}
           >
             <SelectTrigger className="w-auto border-0 p-0 h-auto shadow-none focus:ring-0">
-              <span className={`font-medium capitalize ${getRoleColor(invitation.role)}`}>
+              <span
+                className={`font-medium capitalize ${getRoleColor(invitation.role)}`}
+              >
                 {invitation.role}
               </span>
             </SelectTrigger>
             <SelectContent>
-              {ROLE_OPTIONS.filter(o => o.value !== 'owner').map((option) => (
+              {ROLE_OPTIONS.filter((o) => o.value !== 'owner').map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   <div className="flex items-center gap-2">
                     <option.icon className="h-4 w-4" />
@@ -392,7 +444,9 @@ Best regards`
             </SelectContent>
           </Select>
         ) : (
-          <span className={`font-medium capitalize ${getRoleColor(invitation.role)}`}>
+          <span
+            className={`font-medium capitalize ${getRoleColor(invitation.role)}`}
+          >
             {invitation.role}
           </span>
         )}
@@ -514,9 +568,10 @@ function PendingRegistrationRow({
     }
   };
 
-  const displayName = registration.first_name && registration.last_name
-    ? `${registration.first_name} ${registration.last_name}`
-    : registration.email.split('@')[0];
+  const displayName =
+    registration.first_name && registration.last_name
+      ? `${registration.first_name} ${registration.last_name}`
+      : registration.email.split('@')[0];
   const avatarColor = getAvatarPattern(registration.email);
   const createdAt = new Date(registration.created_at);
 
@@ -525,7 +580,9 @@ function PendingRegistrationRow({
       {/* Account */}
       <td className="py-4 px-4">
         <div className="flex items-center gap-3">
-          <div className={`h-10 w-10 rounded-full ${avatarColor} flex items-center justify-center`}>
+          <div
+            className={`h-10 w-10 rounded-full ${avatarColor} flex items-center justify-center`}
+          >
             <span className="text-sm font-medium text-white">
               {displayName.slice(0, 2).toUpperCase()}
             </span>
@@ -533,11 +590,16 @@ function PendingRegistrationRow({
           <div>
             <div className="flex items-center gap-2">
               <span className="font-medium">{displayName}</span>
-              <Badge variant="outline" className="text-xs border-amber-500 text-amber-600 dark:text-amber-400">
+              <Badge
+                variant="outline"
+                className="text-xs border-amber-500 text-amber-600 dark:text-amber-400"
+              >
                 Awaiting approval
               </Badge>
             </div>
-            <span className="text-sm text-muted-foreground">{registration.email}</span>
+            <span className="text-sm text-muted-foreground">
+              {registration.email}
+            </span>
           </div>
         </div>
       </td>
@@ -553,8 +615,14 @@ function PendingRegistrationRow({
       {/* Plans */}
       <td className="py-4 px-4">
         <div className="text-sm text-muted-foreground">
-          <div>{registration.planned_teams || 1} team{(registration.planned_teams || 1) !== 1 ? 's' : ''}</div>
-          <div>{registration.planned_projects || 1} project{(registration.planned_projects || 1) !== 1 ? 's' : ''}</div>
+          <div>
+            {registration.planned_teams || 1} team
+            {(registration.planned_teams || 1) !== 1 ? 's' : ''}
+          </div>
+          <div>
+            {registration.planned_projects || 1} project
+            {(registration.planned_projects || 1) !== 1 ? 's' : ''}
+          </div>
         </div>
       </td>
 
@@ -640,7 +708,8 @@ export function TeamMembers() {
   const [sortAsc, setSortAsc] = useState(true);
   const [activeTab, setActiveTab] = useState<TabValue>('members');
 
-  const totalCount = members.length + invitations.filter(i => i.status === 'pending').length;
+  const totalCount =
+    members.length + invitations.filter((i) => i.status === 'pending').length;
   const pendingCount = pendingRegistrations.length;
 
   // Filter and sort members
@@ -650,9 +719,10 @@ export function TeamMembers() {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(m =>
-        m.display_name?.toLowerCase().includes(query) ||
-        m.email.toLowerCase().includes(query)
+      result = result.filter(
+        (m) =>
+          m.display_name?.toLowerCase().includes(query) ||
+          m.email.toLowerCase().includes(query)
       );
     }
 
@@ -661,18 +731,27 @@ export function TeamMembers() {
       let comparison = 0;
       switch (sortBy) {
         case 'account':
-          comparison = (a.display_name || a.email).localeCompare(b.display_name || b.email);
+          comparison = (a.display_name || a.email).localeCompare(
+            b.display_name || b.email
+          );
           break;
         case 'role': {
-          const roleOrder: Record<TeamMemberRole, number> = { owner: 0, maintainer: 1, contributor: 2, viewer: 3 };
+          const roleOrder: Record<TeamMemberRole, number> = {
+            owner: 0,
+            maintainer: 1,
+            contributor: 2,
+            viewer: 3,
+          };
           comparison = roleOrder[a.role] - roleOrder[b.role];
           break;
         }
         case 'created':
-          comparison = new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime();
+          comparison =
+            new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime();
           break;
         case 'activity':
-          comparison = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+          comparison =
+            new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
           break;
       }
       return sortAsc ? comparison : -comparison;
@@ -683,11 +762,11 @@ export function TeamMembers() {
 
   // Filter invitations (only pending shown in main list)
   const filteredInvitations = useMemo(() => {
-    let result = invitations.filter(i => i.status === 'pending');
+    let result = invitations.filter((i) => i.status === 'pending');
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(i => i.email.toLowerCase().includes(query));
+      result = result.filter((i) => i.email.toLowerCase().includes(query));
     }
 
     return result;
@@ -720,7 +799,10 @@ export function TeamMembers() {
     await cancelInvitation(invitationId);
   };
 
-  const handleInvitationRoleChange = async (invitationId: string, role: TeamMemberRole) => {
+  const handleInvitationRoleChange = async (
+    invitationId: string,
+    role: TeamMemberRole
+  ) => {
     setIsUpdating(true);
     try {
       await updateInvitationRole(invitationId, role);
@@ -733,7 +815,10 @@ export function TeamMembers() {
     await approveRegistration(registrationId);
   };
 
-  const handleRejectRegistration = async (registrationId: string, reason?: string) => {
+  const handleRejectRegistration = async (
+    registrationId: string,
+    reason?: string
+  ) => {
     await rejectRegistration(registrationId, reason);
   };
 
@@ -777,7 +862,10 @@ export function TeamMembers() {
               : 'border-transparent text-muted-foreground hover:text-foreground'
           }`}
         >
-          Members <Badge variant="secondary" className="ml-2">{totalCount}</Badge>
+          Members{' '}
+          <Badge variant="secondary" className="ml-2">
+            {totalCount}
+          </Badge>
         </button>
         {isOwner && (
           <button
@@ -791,7 +879,9 @@ export function TeamMembers() {
             <UserCheck className="h-4 w-4" />
             Pending Approvals
             {pendingCount > 0 && (
-              <Badge variant="destructive" className="ml-1">{pendingCount}</Badge>
+              <Badge variant="destructive" className="ml-1">
+                {pendingCount}
+              </Badge>
             )}
           </button>
         )}
@@ -826,7 +916,10 @@ export function TeamMembers() {
           </div>
 
           {/* Sort By */}
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortField)}>
+          <Select
+            value={sortBy}
+            onValueChange={(v) => setSortBy(v as SortField)}
+          >
             <SelectTrigger className="w-[140px]">
               <SelectValue />
             </SelectTrigger>
@@ -894,15 +987,21 @@ export function TeamMembers() {
                       isUpdating={isUpdating}
                     />
                   ))}
-                  {filteredMembers.length === 0 && filteredInvitations.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-12 text-center text-muted-foreground">
-                        <Mail className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p>No members found</p>
-                        <p className="text-sm">Invite people to join this team</p>
-                      </td>
-                    </tr>
-                  )}
+                  {filteredMembers.length === 0 &&
+                    filteredInvitations.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="py-12 text-center text-muted-foreground"
+                        >
+                          <Mail className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p>No members found</p>
+                          <p className="text-sm">
+                            Invite people to join this team
+                          </p>
+                        </td>
+                      </tr>
+                    )}
                 </tbody>
               </table>
             )}
@@ -940,10 +1039,15 @@ export function TeamMembers() {
                   ))}
                   {pendingRegistrations.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-12 text-center text-muted-foreground">
+                      <td
+                        colSpan={5}
+                        className="py-12 text-center text-muted-foreground"
+                      >
                         <UserCheck className="h-8 w-8 mx-auto mb-2 opacity-50" />
                         <p>No pending registrations</p>
-                        <p className="text-sm">All sign-up requests have been reviewed</p>
+                        <p className="text-sm">
+                          All sign-up requests have been reviewed
+                        </p>
                       </td>
                     </tr>
                   )}

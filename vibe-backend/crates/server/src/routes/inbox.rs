@@ -95,7 +95,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let item_router = Router::new()
         .route("/", get(get_inbox_item).delete(delete_inbox_item))
         .route("/read", post(mark_as_read))
-        .layer(from_fn_with_state(deployment.clone(), load_inbox_item_middleware));
+        .layer(from_fn_with_state(
+            deployment.clone(),
+            load_inbox_item_middleware,
+        ));
 
     let inner = Router::new()
         .route("/", get(get_inbox_items).post(create_inbox_item))

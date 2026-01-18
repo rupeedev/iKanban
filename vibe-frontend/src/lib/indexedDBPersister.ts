@@ -1,5 +1,8 @@
 import { get, set, del } from 'idb-keyval';
-import type { PersistedClient, Persister } from '@tanstack/react-query-persist-client';
+import type {
+  PersistedClient,
+  Persister,
+} from '@tanstack/react-query-persist-client';
 
 const CACHE_KEY = 'vibe-kanban-query-cache';
 const CACHE_VERSION = 1;
@@ -41,7 +44,9 @@ export function createIndexedDBPersister(): Persister {
 
         // Version mismatch - clear old cache
         if (data.version !== CACHE_VERSION) {
-          console.info('[IndexedDB Persister] Cache version mismatch, clearing old cache');
+          console.info(
+            '[IndexedDB Persister] Cache version mismatch, clearing old cache'
+          );
           await del(CACHE_KEY);
           return undefined;
         }

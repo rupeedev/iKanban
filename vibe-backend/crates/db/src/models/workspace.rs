@@ -210,10 +210,7 @@ impl Workspace {
         Ok(())
     }
 
-    pub async fn clear_container_ref(
-        pool: &PgPool,
-        workspace_id: Uuid,
-    ) -> Result<(), sqlx::Error> {
+    pub async fn clear_container_ref(pool: &PgPool, workspace_id: Uuid) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "UPDATE workspaces SET container_ref = NULL, updated_at = NOW() WHERE id = $1",
             workspace_id
@@ -242,8 +239,6 @@ impl Workspace {
         .await
     }
 
-
-
     pub async fn container_ref_exists(
         pool: &PgPool,
         container_ref: &str,
@@ -259,9 +254,7 @@ impl Workspace {
     }
 
     /// Find workspaces that are expired (72+ hours since last activity) and eligible for cleanup
-    pub async fn find_expired_for_cleanup(
-        pool: &PgPool,
-    ) -> Result<Vec<Workspace>, sqlx::Error> {
+    pub async fn find_expired_for_cleanup(pool: &PgPool) -> Result<Vec<Workspace>, sqlx::Error> {
         sqlx::query_as!(
             Workspace,
             r#"
