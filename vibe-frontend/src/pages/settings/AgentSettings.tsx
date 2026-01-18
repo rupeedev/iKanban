@@ -27,7 +27,8 @@ import {
   TableHeaderCell,
   TableRow,
 } from '@/components/ui/table/table';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
@@ -37,12 +38,22 @@ import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteC
 import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
+type VisibilityMap = Record<string, boolean>;
 
 interface ConfigSummaryRow {
   agent: string;
   variant: string;
   model: string;
   keySettings: string;
+}
+
+// Check if an agent is visible (default is true if not specified)
+function isAgentVisible(
+  visibility: VisibilityMap | undefined,
+  agentName: string
+): boolean {
+  if (!visibility) return true;
+  return visibility[agentName] !== false;
 }
 
 // Extract key settings from a configuration object (excluding model and append_prompt)
@@ -65,11 +76,17 @@ function extractKeySettings(config: Record<string, unknown>): string {
   return settings.length > 0 ? settings.join(', ') : '-';
 }
 
-// Build summary rows from executor profiles
-function buildConfigSummary(executors: ExecutorsMap): ConfigSummaryRow[] {
+// Build summary rows from executor profiles (filtered by visibility)
+function buildConfigSummary(
+  executors: ExecutorsMap,
+  visibility?: VisibilityMap
+): ConfigSummaryRow[] {
   const rows: ConfigSummaryRow[] = [];
 
   for (const [agentName, variants] of Object.entries(executors)) {
+    // Skip hidden agents
+    if (!isAgentVisible(visibility, agentName)) continue;
+
     let isFirstVariant = true;
     for (const [variantName, configWrapper] of Object.entries(variants)) {
       // configWrapper is like { "COPILOT": { ...settings... } }
@@ -498,6 +515,46 @@ export function AgentSettings() {
     }
   };
 
+  // Handle visibility toggle for an agent
+  const handleVisibilityToggle = async (agentName: string, visible: boolean) => {
+    if (!localParsedProfiles) return;
+
+    setSaveError(null);
+
+    const updatedProfiles = {
+      ...localParsedProfiles,
+      visibility: {
+        ...(localParsedProfiles.visibility || {}),
+        [agentName]: visible,
+      },
+    };
+
+    // Update state
+    setLocalParsedProfiles(updatedProfiles);
+
+    // Save the updated profiles
+    try {
+      const contentToSave = JSON.stringify(updatedProfiles, null, 2);
+
+      await saveProfiles(contentToSave);
+      setProfilesSuccess(true);
+      setIsDirty(false);
+      setTimeout(() => setProfilesSuccess(false), 3000);
+
+      setLocalProfilesContent(contentToSave);
+      reloadSystem();
+    } catch (err: unknown) {
+      console.error('Failed to save visibility:', err);
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : t('settings.agents.errors.saveVisibilityFailed', {
+              defaultValue: 'Failed to save visibility settings',
+            });
+      setSaveError(errorMessage);
+    }
+  };
+
   if (profilesLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -533,6 +590,60 @@ export function AgentSettings() {
         </Alert>
       )}
 
+      {/* Agent Visibility Management */}
+      {useFormEditor &&
+        localParsedProfiles?.executors &&
+        Object.keys(localParsedProfiles.executors).length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5" />
+                {t('settings.agents.visibility.title', {
+                  defaultValue: 'Agent Visibility',
+                })}
+              </CardTitle>
+              <CardDescription>
+                {t('settings.agents.visibility.description', {
+                  defaultValue:
+                    'Toggle which agents appear in the configuration summary. Hidden agents remain functional.',
+                })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                {Object.keys(localParsedProfiles.executors).map((agentName) => {
+                  const visible = isAgentVisible(
+                    localParsedProfiles.visibility as VisibilityMap | undefined,
+                    agentName
+                  );
+                  return (
+                    <div
+                      key={agentName}
+                      className="flex items-center justify-between rounded-lg border p-3"
+                    >
+                      <div className="flex items-center gap-2">
+                        {visible ? (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="text-sm font-medium">{agentName}</span>
+                      </div>
+                      <Switch
+                        checked={visible}
+                        onCheckedChange={(checked) =>
+                          handleVisibilityToggle(agentName, checked)
+                        }
+                        disabled={profilesSaving}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
       {/* Configuration Summary Table - only show when using form editor, not JSON editor */}
       {useFormEditor &&
         localParsedProfiles?.executors &&
@@ -564,7 +675,8 @@ export function AgentSettings() {
                 </TableHead>
                 <TableBody>
                   {buildConfigSummary(
-                    localParsedProfiles.executors as unknown as ExecutorsMap
+                    localParsedProfiles.executors as unknown as ExecutorsMap,
+                    localParsedProfiles.visibility as VisibilityMap | undefined
                   ).map((row, idx) => (
                     <TableRow key={idx}>
                       <TableCell className="font-medium">{row.agent}</TableCell>
@@ -628,13 +740,20 @@ export function AgentSettings() {
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.keys(localParsedProfiles.executors).map(
-                        (type) => (
+                      {Object.keys(localParsedProfiles.executors)
+                        .filter((type) =>
+                          isAgentVisible(
+                            localParsedProfiles.visibility as
+                              | VisibilityMap
+                              | undefined,
+                            type
+                          )
+                        )
+                        .map((type) => (
                           <SelectItem key={type} value={type}>
                             {type}
                           </SelectItem>
-                        )
-                      )}
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>

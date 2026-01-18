@@ -915,7 +915,11 @@ variant: string | null, };
 
 export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } };
 
-export type ExecutorConfigs = { executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
+export type ExecutorConfigs = {
+  executors: { [key in BaseCodingAgent]?: ExecutorConfig },
+  /** Visibility settings per executor (true = visible, false = hidden in UI). Defaults to all visible if not specified. */
+  visibility?: { [key in BaseCodingAgent]?: boolean },
+};
 
 export enum BaseAgentCapability { SESSION_FORK = "SESSION_FORK", SETUP_HELPER = "SETUP_HELPER" }
 

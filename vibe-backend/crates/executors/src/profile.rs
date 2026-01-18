@@ -164,6 +164,10 @@ impl ExecutorConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ExecutorConfigs {
     pub executors: HashMap<BaseCodingAgent, ExecutorConfig>,
+    /// Visibility settings per executor (true = visible, false = hidden in UI)
+    /// Defaults to all visible if not specified
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub visibility: HashMap<BaseCodingAgent, bool>,
 }
 
 impl ExecutorConfigs {
@@ -272,6 +276,10 @@ impl ExecutorConfigs {
                 }
             }
         }
+        // Merge visibility settings (user visibility overrides defaults)
+        for (executor_key, visible) in overrides.visibility {
+            defaults.visibility.insert(executor_key, visible);
+        }
         defaults
     }
 
@@ -281,6 +289,7 @@ impl ExecutorConfigs {
     fn compute_overrides(defaults: &Self, current: &Self) -> Result<Self, ProfileError> {
         let mut overrides = Self {
             executors: HashMap::new(),
+            visibility: HashMap::new(),
         };
 
         // Note: We no longer error on missing built-in executors/configs.
@@ -319,6 +328,15 @@ impl ExecutorConfigs {
                 overrides
                     .executors
                     .insert(*executor_key, current_profile.clone());
+            }
+        }
+
+        // Include visibility overrides (any non-default visibility settings)
+        // Default visibility is true (visible), so only save false (hidden) values
+        for (executor_key, visible) in &current.visibility {
+            // Only save visibility settings that differ from default (true)
+            if !visible {
+                overrides.visibility.insert(*executor_key, *visible);
             }
         }
 
@@ -388,6 +406,17 @@ impl ExecutorConfigs {
                     .expect("No default variant found")
             })
     }
+
+    /// Check if an executor is visible (default is true if not specified)
+    pub fn is_executor_visible(&self, executor: &BaseCodingAgent) -> bool {
+        self.visibility.get(executor).copied().unwrap_or(true)
+    }
+
+    /// Set visibility for an executor
+    pub fn set_executor_visibility(&mut self, executor: BaseCodingAgent, visible: bool) {
+        self.visibility.insert(executor, visible);
+    }
+
     pub async fn get_recommended_executor_profile(
         &self,
     ) -> Result<ExecutorProfileId, ProfileError> {
