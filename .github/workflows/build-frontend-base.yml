@@ -1,15 +1,14 @@
 name: Build Frontend Base Image
 
-# Rebuild base image when dependencies change
+# Run manually when dependencies change significantly
+# Base image is stable - only rebuild when major dependency updates needed
 on:
-  push:
-    branches: [ "main" ]
-    paths:
-      - "vibe-frontend/package.json"
-      - "vibe-frontend/pnpm-lock.yaml"
-      - "vibe-frontend/Dockerfile.base"
-      - "shared/**"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag (e.g., v1, v2)'
+        required: false
+        default: 'v1'
 
 env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_USER }}/ikanban-frontend-builder
@@ -40,12 +39,12 @@ jobs:
           file: ./vibe-frontend/Dockerfile.base
           push: true
           tags: |
-            ${{ env.DOCKER_IMAGE }}:v1
+            ${{ env.DOCKER_IMAGE }}:${{ github.event.inputs.tag || 'v1' }}
             ${{ env.DOCKER_IMAGE }}:latest
           cache-from: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache
           cache-to: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache,mode=max
 
       - name: Image Info
         run: |
-          echo "Successfully built and pushed ${{ env.DOCKER_IMAGE }}:v1"
+          echo "Successfully built and pushed ${{ env.DOCKER_IMAGE }}:${{ github.event.inputs.tag || 'v1' }}"
           echo "This image contains Node.js, pnpm, and pre-installed dependencies"
