@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Card,
@@ -33,41 +33,41 @@ export function McpSettings() {
   const currentExecutor = config?.executor_profile?.executor;
 
   // Load existing MCP configuration for current executor
-  useEffect(() => {
-    const loadMcpServers = async () => {
-      if (!currentExecutor) return;
+  const loadMcpServers = useCallback(async () => {
+    if (!currentExecutor) return;
 
-      setMcpLoading(true);
-      setMcpError(null);
+    setMcpLoading(true);
+    setMcpError(null);
 
-      try {
-        const result = await mcpServersApi.load({
-          executor: currentExecutor,
-        });
-        // Store the McpConfig from backend
-        setMcpConfig(result.mcp_config);
-        // Create the full configuration structure using the schema
-        const fullConfig = McpConfigStrategyGeneral.createFullConfig(
-          result.mcp_config
-        );
-        const configJson = JSON.stringify(fullConfig, null, 2);
-        setMcpServers(configJson);
-      } catch (err: unknown) {
-        if (
-          err instanceof Error &&
-          err.message.includes('does not support MCP')
-        ) {
-          setMcpError(err.message);
-        } else {
-          console.error('Error loading MCP servers:', err);
-        }
-      } finally {
-        setMcpLoading(false);
+    try {
+      const result = await mcpServersApi.load({
+        executor: currentExecutor,
+      });
+      // Store the McpConfig from backend
+      setMcpConfig(result.mcp_config);
+      // Create the full configuration structure using the schema
+      const fullConfig = McpConfigStrategyGeneral.createFullConfig(
+        result.mcp_config
+      );
+      const configJson = JSON.stringify(fullConfig, null, 2);
+      setMcpServers(configJson);
+    } catch (err: unknown) {
+      if (
+        err instanceof Error &&
+        err.message.includes('does not support MCP')
+      ) {
+        setMcpError(err.message);
+      } else {
+        console.error('Error loading MCP servers:', err);
       }
-    };
-
-    loadMcpServers();
+    } finally {
+      setMcpLoading(false);
+    }
   }, [currentExecutor]);
+
+  useEffect(() => {
+    loadMcpServers();
+  }, [loadMcpServers]);
 
   const handleMcpServersChange = (value: string) => {
     setMcpServers(value);
@@ -190,7 +190,12 @@ export function McpSettings() {
       )}
 
       {/* Configuration Summary Table - Shows configured MCP servers */}
-      <McpConfigSummary mcpConfig={mcpConfig} isLoading={mcpLoading} />
+      <McpConfigSummary
+        mcpConfig={mcpConfig}
+        isLoading={mcpLoading}
+        onRefresh={loadMcpServers}
+        isRefreshing={mcpLoading}
+      />
 
       <Card>
         <CardHeader>

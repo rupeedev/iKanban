@@ -319,7 +319,8 @@
         "noServers": "No servers configured",
         "noServersConfigured": "No MCP servers configured yet",
         "addServerHint": "Add servers using the JSON editor below or select from popular servers",
-        "loading": "Loading..."
+        "loading": "Loading...",
+        "refresh": "Refresh MCP configuration"
       },
       "labels": {
         "agent": "Agent",

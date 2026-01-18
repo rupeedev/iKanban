@@ -16,7 +16,8 @@ import {
   TableRow,
 } from '@/components/ui/table/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Server } from 'lucide-react';
+import { Loader2, RefreshCw, Server } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { McpConfig } from 'shared/types';
 
 interface McpServerRow {
@@ -28,6 +29,8 @@ interface McpServerRow {
 interface McpConfigSummaryProps {
   mcpConfig: McpConfig | null;
   isLoading?: boolean;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 function getServerType(serverConfig: unknown): string {
@@ -52,6 +55,8 @@ function getServerType(serverConfig: unknown): string {
 export function McpConfigSummary({
   mcpConfig,
   isLoading = false,
+  onRefresh,
+  isRefreshing = false,
 }: McpConfigSummaryProps) {
   const { t } = useTranslation('settings');
 
@@ -98,10 +103,27 @@ export function McpConfigSummary({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('settings.mcp.summary.title')}</CardTitle>
-        <CardDescription>
-          {t('settings.mcp.summary.descriptionServers')}
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>{t('settings.mcp.summary.title')}</CardTitle>
+            <CardDescription>
+              {t('settings.mcp.summary.descriptionServers')}
+            </CardDescription>
+          </div>
+          {onRefresh && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onRefresh}
+              disabled={isRefreshing || isLoading}
+              title={t('settings.mcp.summary.refresh')}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
+              />
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {serverRows.length === 0 ? (
