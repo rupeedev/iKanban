@@ -196,10 +196,13 @@ mod tests {
     async fn test_registry_crud() {
         // Use temp directory for test
         let temp_dir = TempDir::new().unwrap();
-        std::env::set_var(
-            "VK_ASSET_DIR",
-            temp_dir.path().to_string_lossy().to_string(),
-        );
+        // SAFETY: This test runs in isolation and no other thread reads VK_ASSET_DIR concurrently
+        unsafe {
+            std::env::set_var(
+                "VK_ASSET_DIR",
+                temp_dir.path().to_string_lossy().to_string(),
+            );
+        }
 
         let registry = RegistryService::new().await.unwrap();
 
