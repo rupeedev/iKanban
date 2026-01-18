@@ -88,10 +88,7 @@ export function extractKeyReferences(
 /**
  * Recursively analyze a JSON value for key references
  */
-function analyzeValue(
-  value: JsonValue,
-  path: string[] = []
-): KeyReference[] {
+function analyzeValue(value: JsonValue, path: string[] = []): KeyReference[] {
   if (value === null || value === undefined) {
     return [];
   }

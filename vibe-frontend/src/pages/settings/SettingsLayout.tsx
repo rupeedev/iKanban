@@ -77,7 +77,9 @@ export function SettingsLayout() {
             variant="ghost"
             onClick={() => window.location.reload()}
             className="h-8 px-2 rounded-none border border-foreground/20 hover:border-foreground/30 transition-all hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center gap-1.5"
-            title={t('settings.layout.refresh', { defaultValue: 'Refresh page' })}
+            title={t('settings.layout.refresh', {
+              defaultValue: 'Refresh page',
+            })}
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
