@@ -1,0 +1,179 @@
+name: Auto-merge Agent PRs
+
+# Automatically approve and merge PRs created by Copilot or Claude agents
+# This enables fully automated issue-to-merge workflow
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, synchronize]
+  pull_request_review:
+    types: [submitted]
+  check_suite:
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  # Mark draft PRs as ready for review when created by agents
+  mark-ready:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.draft == true &&
+      (
+        github.event.pull_request.user.login == 'copilot-swe-agent[bot]' ||
+        github.event.pull_request.user.login == 'claude[bot]' ||
+        contains(github.event.pull_request.head.ref, 'copilot/') ||
+        contains(github.event.pull_request.head.ref, 'claude/')
+      )
+    steps:
+      - name: Mark PR as ready for review
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            console.log(`Marking PR #${pr.number} as ready for review (created by ${pr.user.login})`);
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              draft: false
+            });
+
+            console.log(`PR #${pr.number} is now ready for review`);
+
+  # Auto-approve PRs from agents when checks pass
+  auto-approve:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action != 'closed' &&
+      github.event.pull_request.draft == false &&
+      (
+        github.event.pull_request.user.login == 'copilot-swe-agent[bot]' ||
+        github.event.pull_request.user.login == 'claude[bot]' ||
+        contains(github.event.pull_request.head.ref, 'copilot/') ||
+        contains(github.event.pull_request.head.ref, 'claude/')
+      )
+    steps:
+      - name: Wait for checks to complete
+        uses: actions/github-script@v7
+        id: wait-checks
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const maxWait = 10 * 60 * 1000; // 10 minutes
+            const pollInterval = 30 * 1000; // 30 seconds
+            const startTime = Date.now();
+
+            console.log(`Waiting for checks on PR #${pr.number}...`);
+
+            while (Date.now() - startTime < maxWait) {
+              const { data: checks } = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: pr.head.sha
+              });
+
+              // Filter out this workflow's own checks
+              const relevantChecks = checks.check_runs.filter(
+                c => !c.name.includes('Auto-merge') && !c.name.includes('auto-approve')
+              );
+
+              const pending = relevantChecks.filter(c => c.status !== 'completed');
+              const failed = relevantChecks.filter(c => c.status === 'completed' && c.conclusion === 'failure');
+
+              console.log(`Checks: ${relevantChecks.length} total, ${pending.length} pending, ${failed.length} failed`);
+
+              if (pending.length === 0) {
+                if (failed.length > 0) {
+                  console.log('Some checks failed, skipping auto-approve');
+                  return { checksPass: false };
+                }
+                console.log('All checks passed!');
+                return { checksPass: true };
+              }
+
+              console.log(`Waiting ${pollInterval/1000}s for ${pending.length} pending checks...`);
+              await new Promise(r => setTimeout(r, pollInterval));
+            }
+
+            console.log('Timeout waiting for checks');
+            return { checksPass: false };
+
+      - name: Approve PR
+        if: fromJSON(steps.wait-checks.outputs.result).checksPass == true
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            console.log(`Auto-approving PR #${pr.number}`);
+
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              event: 'APPROVE',
+              body: '✅ Auto-approved: All checks passed. Created by trusted agent.'
+            });
+
+            console.log(`PR #${pr.number} approved`);
+
+  # Auto-merge after approval
+  auto-merge:
+    runs-on: ubuntu-latest
+    needs: auto-approve
+    if: |
+      always() &&
+      needs.auto-approve.result == 'success'
+    steps:
+      - name: Enable auto-merge
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            console.log(`Attempting to merge PR #${pr.number}`);
+
+            try {
+              // Try to merge directly
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                merge_method: 'squash'
+              });
+              console.log(`PR #${pr.number} merged successfully!`);
+            } catch (error) {
+              console.log(`Direct merge failed: ${error.message}`);
+
+              // If direct merge fails, enable auto-merge
+              try {
+                await github.graphql(`
+                  mutation($pullRequestId: ID!) {
+                    enablePullRequestAutoMerge(input: {
+                      pullRequestId: $pullRequestId,
+                      mergeMethod: SQUASH
+                    }) {
+                      pullRequest {
+                        autoMergeRequest {
+                          enabledAt
+                        }
+                      }
+                    }
+                  }
+                `, {
+                  pullRequestId: pr.node_id
+                });
+                console.log(`Auto-merge enabled for PR #${pr.number}`);
+              } catch (autoMergeError) {
+                console.log(`Failed to enable auto-merge: ${autoMergeError.message}`);
+              }
+            }
