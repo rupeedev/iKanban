@@ -5,7 +5,6 @@
 | Field | Value |
 |-------|-------|
 | Name | iKanban (Vibe Kanban) |
-| Team ID | `a263e43f-43d3-4af7-a947-5f70e6670921` |
 | Identifier | `IKA` |
 | Type | Full-stack Kanban + AI Agent Orchestration |
 
@@ -17,7 +16,8 @@
 | **Documentation** | `/Users/rupeshpanwar/Documents/docs/docs-ikanban/` |
 | **Backend** | `vibe-backend/` |
 | **Frontend** | `vibe-frontend/` |
-| **MCP Tools** | `mcp/` |
+| **MCP Tools** | `/Users/rupeshpanwar/Documents/docs/common-mcp/` |
+| **Teams Config** | `/Users/rupeshpanwar/Documents/docs/common-mcp/teams-config.json` |
 
 ## URLs
 
@@ -44,11 +44,10 @@
 
 ## Projects
 
-| Project | ID | Default |
-|---------|-----|---------|
-| frontend | `ff89ece5-eb49-4d8b-a349-4fc227773cbc` | Yes |
-| backend | (use `issues IKA` to find) | No |
-| integration | (use `issues IKA` to find) | No |
+Team and project IDs are defined in `teams-config.json`. Available projects for IKA:
+- `frontend` (default)
+- `backend`
+- `integration`
 
 ## Quick Commands
 
@@ -64,10 +63,11 @@ cd vibe-backend && cargo check
 # SQLx cache (after schema changes)
 cd vibe-backend/crates/db && cargo sqlx prepare
 
-# Task management
-python3 mcp/ikanban.py create IKA "title" -s inprogress
-python3 mcp/ikanban.py update IKA-XX --status done
-python3 mcp/ikanban.py issues IKA
+# Task management (requires VIBE_API_TOKEN)
+export VIBE_API_TOKEN=$(grep '^VIBE_API_TOKEN=' .env | cut -d'=' -f2)
+python3 /Users/rupeshpanwar/Documents/docs/common-mcp/ikanban.py create IKA "title" -s inprogress
+python3 /Users/rupeshpanwar/Documents/docs/common-mcp/ikanban.py update IKA-XX --status done
+python3 /Users/rupeshpanwar/Documents/docs/common-mcp/ikanban.py issues IKA
 ```
 
 ## Documentation Structure
