@@ -16,14 +16,21 @@ import {
   TableRow,
 } from '@/components/ui/table/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, RefreshCw, Server } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Loader2, RefreshCw, Server, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { McpConfig } from 'shared/types';
+import type { McpConfig, JsonValue } from 'shared/types';
+import { getServerKeyReferenceSummary } from '@/lib/mcpKeyReference';
 
 interface McpServerRow {
   name: string;
   type: string;
   status: 'configured' | 'preconfigured';
+  keyRefSummary: string | null;
 }
 
 interface McpConfigSummaryProps {
@@ -73,6 +80,7 @@ export function McpConfigSummary({
             name,
             type: getServerType(config),
             status: 'configured',
+            keyRefSummary: getServerKeyReferenceSummary(config as JsonValue),
           });
         }
       }
@@ -81,6 +89,9 @@ export function McpConfigSummary({
     // Sort by name
     return rows.sort((a, b) => a.name.localeCompare(b.name));
   }, [mcpConfig]);
+
+  // Check if any servers use key references
+  const hasKeyReferences = serverRows.some((row) => row.keyRefSummary !== null);
 
   if (isLoading) {
     return (
@@ -149,6 +160,11 @@ export function McpConfigSummary({
                 <TableHeaderCell>
                   {t('settings.mcp.summary.status')}
                 </TableHeaderCell>
+                {hasKeyReferences && (
+                  <TableHeaderCell>
+                    {t('settings.mcp.summary.apiKeys', 'API Keys')}
+                  </TableHeaderCell>
+                )}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -174,6 +190,28 @@ export function McpConfigSummary({
                         : t('settings.mcp.summary.statusPreconfigured')}
                     </Badge>
                   </TableCell>
+                  {hasKeyReferences && (
+                    <TableCell>
+                      {row.keyRefSummary ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge
+                              variant="outline"
+                              className="text-xs gap-1 cursor-help"
+                            >
+                              <Key className="h-3 w-3" />
+                              {t('settings.mcp.summary.keyLinked', 'Linked')}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">{row.keyRefSummary}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

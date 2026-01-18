@@ -18,6 +18,7 @@ import { mcpServersApi } from '@/lib/api';
 import { McpConfigStrategyGeneral } from '@/lib/mcpStrategies';
 import { McpConfigSummary } from '@/components/settings/McpConfigSummary';
 import { McpPreconfiguredServers } from '@/components/settings/McpPreconfiguredServers';
+import { McpKeyReferenceHelp } from '@/components/settings/McpKeyReferenceHelp';
 
 export function McpSettings() {
   const { t } = useTranslation('settings');
@@ -267,6 +268,9 @@ export function McpSettings() {
           )}
         </CardContent>
       </Card>
+
+      {/* API Key Reference Help - Shows how to reference keys from AI Provider Keys */}
+      <McpKeyReferenceHelp />
 
       {/* Sticky Save Button */}
       <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm border-t py-4">
