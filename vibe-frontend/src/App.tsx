@@ -31,7 +31,6 @@ import {
   ApiKeysSettings,
   GeneralSettings,
   McpSettings,
-  OrganizationSettings,
   ProjectSettings,
   SettingsLayout,
   WorkspaceSettings,
@@ -70,8 +69,15 @@ import NiceModal from '@ebay/nice-modal-react';
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
-  const { config, analyticsUserId, updateAndSaveConfig, loading, isError, error, reloadSystem } =
-    useUserSystem();
+  const {
+    config,
+    analyticsUserId,
+    updateAndSaveConfig,
+    loading,
+    isError,
+    error,
+    reloadSystem,
+  } = useUserSystem();
   const posthog = usePostHog();
   const { isSignedIn } = useAuth();
 
@@ -150,12 +156,7 @@ function AppContent() {
   // Only show full error state if we have no cached config at all
   // If we have cached data, show the app in degraded mode instead
   if (isError && !config) {
-    return (
-      <BackendErrorState
-        error={error}
-        onRetry={() => reloadSystem()}
-      />
-    );
+    return <BackendErrorState error={error} onRetry={() => reloadSystem()} />;
   }
 
   return (
@@ -222,22 +223,24 @@ function AppContent() {
                   <Route index element={<Navigate to="general" replace />} />
                   <Route path="general" element={<GeneralSettings />} />
                   <Route path="projects" element={<ProjectSettings />} />
-                  <Route
-                    path="organizations"
-                    element={<OrganizationSettings />}
-                  />
                   <Route path="workspace" element={<WorkspaceSettings />} />
                   <Route path="agents" element={<AgentSettings />} />
                   <Route path="mcp" element={<McpSettings />} />
                   <Route path="api-keys" element={<ApiKeysSettings />} />
-                  <Route path="ai-provider-keys" element={<AiProviderKeysSettings />} />
+                  <Route
+                    path="ai-provider-keys"
+                    element={<AiProviderKeysSettings />}
+                  />
                 </Route>
                 {/* Admin panel routes */}
                 <Route path="/admin/*" element={<AdminLayout />}>
                   <Route index element={<AdminDashboard />} />
                   <Route path="invitations" element={<AdminInvitations />} />
                   <Route path="permissions" element={<AdminPermissions />} />
-                  <Route path="configuration" element={<AdminConfiguration />} />
+                  <Route
+                    path="configuration"
+                    element={<AdminConfiguration />}
+                  />
                   <Route path="users" element={<AdminUsers />} />
                 </Route>
                 <Route
@@ -253,13 +256,31 @@ function AppContent() {
                   element={<ProjectTasks />}
                 />
                 {/* Team routes */}
-                <Route path="/teams/:teamId" element={<Navigate to="issues" replace />} />
+                <Route
+                  path="/teams/:teamId"
+                  element={<Navigate to="issues" replace />}
+                />
                 <Route path="/teams/:teamId/issues" element={<TeamIssues />} />
-                <Route path="/teams/:teamId/projects" element={<TeamProjects />} />
-                <Route path="/teams/:teamId/projects/:projectId" element={<TeamProjectDetail />} />
-                <Route path="/teams/:teamId/documents" element={<TeamDocuments />} />
-                <Route path="/teams/:teamId/members" element={<TeamMembers />} />
-                <Route path="/teams/:teamId/github" element={<Navigate to="/settings/organization" replace />} />
+                <Route
+                  path="/teams/:teamId/projects"
+                  element={<TeamProjects />}
+                />
+                <Route
+                  path="/teams/:teamId/projects/:projectId"
+                  element={<TeamProjectDetail />}
+                />
+                <Route
+                  path="/teams/:teamId/documents"
+                  element={<TeamDocuments />}
+                />
+                <Route
+                  path="/teams/:teamId/members"
+                  element={<TeamMembers />}
+                />
+                <Route
+                  path="/teams/:teamId/github"
+                  element={<Navigate to="/settings/organization" replace />}
+                />
                 <Route path="/teams/:teamId/views" element={<Views />} />
               </Route>
             </SentryRoutes>
