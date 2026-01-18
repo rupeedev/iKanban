@@ -23,10 +23,34 @@ import { TeamIssuesContent } from '@/components/tasks/TeamIssuesContent';
 import {
   TeamIssuesHeader,
   ViewFilter,
+  DisplayMode,
 } from '@/components/tasks/TeamIssuesHeader';
 import { IssueDetailPanel } from '@/components/tasks/IssueDetailPanel';
 import { FilterState } from '@/components/filters/IssueFilterDropdown';
 import type { DragEndEvent } from '@dnd-kit/core';
+
+// localStorage key for display mode persistence
+const DISPLAY_MODE_STORAGE_KEY = 'ikanban-issues-display-mode';
+
+function loadDisplayMode(): DisplayMode {
+  try {
+    const stored = localStorage.getItem(DISPLAY_MODE_STORAGE_KEY);
+    if (stored === 'list' || stored === 'board') {
+      return stored;
+    }
+  } catch {
+    // localStorage not available
+  }
+  return 'board'; // Default to board view
+}
+
+function saveDisplayMode(mode: DisplayMode): void {
+  try {
+    localStorage.setItem(DISPLAY_MODE_STORAGE_KEY, mode);
+  } catch {
+    // localStorage not available
+  }
+}
 
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 import type { TeamMember } from '@/components/selectors';
@@ -60,9 +84,15 @@ export function TeamIssues() {
 
   const [showInsights, setShowInsights] = useState(false);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
-  const [issuePanelSize, setIssuePanelSize] = useState<number>(
-    loadIssuePanelSize
-  );
+  const [issuePanelSize, setIssuePanelSize] =
+    useState<number>(loadIssuePanelSize);
+  const [displayMode, setDisplayMode] = useState<DisplayMode>(loadDisplayMode);
+
+  // Handle display mode change with localStorage persistence
+  const handleDisplayModeChange = useCallback((mode: DisplayMode) => {
+    setDisplayMode(mode);
+    saveDisplayMode(mode);
+  }, []);
 
   // Handle panel resize - save to localStorage
   const handlePanelResize = useCallback((sizes: number[]) => {
@@ -307,12 +337,14 @@ export function TeamIssues() {
         viewFilter={viewFilter}
         filters={filters}
         showInsights={showInsights}
+        displayMode={displayMode}
         teamMembers={teamMembers}
         teamProjects={teamProjectsForDropdown}
         issues={issues}
         onViewFilterChange={setViewFilter}
         onFiltersChange={setFilters}
         onToggleInsights={() => setShowInsights(!showInsights)}
+        onDisplayModeChange={handleDisplayModeChange}
         onCreateIssue={handleCreateIssue}
         onRefresh={refresh}
       />
@@ -335,6 +367,8 @@ export function TeamIssues() {
               hasFilteredIssues={hasFilteredIssues}
               hasActiveFilters={hasActiveFilters}
               showInsights={showInsights}
+              displayMode={displayMode}
+              selectedIssueId={selectedIssueId ?? undefined}
               issues={issues}
               kanbanColumns={kanbanColumns}
               teamMembers={teamMembers}

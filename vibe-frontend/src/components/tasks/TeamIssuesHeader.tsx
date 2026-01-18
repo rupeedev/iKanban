@@ -2,7 +2,6 @@ import { Button } from '@/components/ui/button';
 import {
   Plus,
   RefreshCw,
-  SlidersHorizontal,
   CircleDot,
   PlayCircle,
   Circle,
@@ -12,6 +11,10 @@ import {
   IssueFilterDropdown,
   FilterState,
 } from '@/components/filters/IssueFilterDropdown';
+import {
+  DisplayModeToggle,
+  type DisplayMode,
+} from '@/components/filters/DisplayModeToggle';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import type { TeamMember } from '@/components/selectors';
 
@@ -27,12 +30,14 @@ interface TeamIssuesHeaderProps {
   viewFilter: ViewFilter;
   filters: FilterState;
   showInsights: boolean;
+  displayMode: DisplayMode;
   teamMembers: TeamMember[];
   teamProjects: TeamProject[];
   issues: TaskWithAttemptStatus[];
   onViewFilterChange: (filter: ViewFilter) => void;
   onFiltersChange: (filters: FilterState) => void;
   onToggleInsights: () => void;
+  onDisplayModeChange: (mode: DisplayMode) => void;
   onCreateIssue: () => void;
   onRefresh: () => void;
 }
@@ -42,12 +47,14 @@ export function TeamIssuesHeader({
   viewFilter,
   filters,
   showInsights,
+  displayMode,
   teamMembers,
   teamProjects,
   issues,
   onViewFilterChange,
   onFiltersChange,
   onToggleInsights,
+  onDisplayModeChange,
   onCreateIssue,
   onRefresh,
 }: TeamIssuesHeaderProps) {
@@ -125,14 +132,10 @@ export function TeamIssuesHeader({
             >
               <BarChart3 className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground gap-1.5"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Display
-            </Button>
+            <DisplayModeToggle
+              mode={displayMode}
+              onModeChange={onDisplayModeChange}
+            />
           </div>
         </div>
       </div>
@@ -140,4 +143,4 @@ export function TeamIssuesHeader({
   );
 }
 
-export type { ViewFilter };
+export type { ViewFilter, DisplayMode };
