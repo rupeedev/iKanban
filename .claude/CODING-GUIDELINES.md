@@ -238,6 +238,48 @@ const queryClient = new QueryClient({
 
 **DO NOT add rate limit handling to individual hooks** - it's already inherited globally.
 
+### Rule 5: Choose the Right Mutation Cache Update Strategy
+
+When a mutation succeeds, you need to update the cache. Choose the right strategy based on what the server does:
+
+| Server Behavior | Strategy | Example Use Cases |
+|----------------|----------|-------------------|
+| Echoes back exactly what you send | Optimistic update | Simple CRUD (create user, update title) |
+| Transforms/computes data | Invalidate + refetch | Saves diffs, adds timestamps, merges with defaults |
+| Returns the computed result | Use response data | Server generates IDs, computed fields |
+
+```typescript
+// BAD - Server computes/transforms data, but we cache what we SENT
+// This causes data to appear different after page refresh!
+const mutation = useMutation({
+  mutationFn: (data) => api.save(data),
+  onSuccess: (_, sentData) => {
+    // sentData = what we sent, NOT what server saved
+    queryClient.setQueryData(['key'], sentData);  // Mismatch on refresh!
+  },
+});
+
+// GOOD - Server transforms data, so refetch to get actual saved state
+const mutation = useMutation({
+  mutationFn: (data) => api.save(data),
+  onSuccess: async () => {
+    // Let server be the source of truth
+    await queryClient.invalidateQueries({ queryKey: ['key'] });
+  },
+});
+
+// ALSO GOOD - Server returns the saved data in response
+const mutation = useMutation({
+  mutationFn: (data) => api.save(data),  // Returns saved data
+  onSuccess: (savedData) => {
+    // Use what server actually saved
+    queryClient.setQueryData(['key'], savedData);
+  },
+});
+```
+
+**Real example from IKA-148:** The profiles API saves only *overrides* (differences from defaults), not the full config. Using optimistic update with the sent data caused the UI to show different data after refresh.
+
 ### Common Patterns That Cause 429 Errors
 
 | Anti-Pattern | Problem | Fix |
@@ -567,6 +609,7 @@ components/
 | **No direct API calls in useEffect** | N/A | Code review |
 | **useQuery uses global defaults (don't override)** | N/A | Code review |
 | **invalidateQueries uses refetchType: 'none'** | N/A | Code review |
+| **Mutation cache strategy matches server behavior** | N/A | Code review |
 | **Components handle isLoading state** | N/A | Code review |
 | **Components handle isError state** | N/A | Code review |
 | **Components handle empty/null data** | N/A | Code review |
@@ -587,6 +630,7 @@ components/
 | **IKA-77** | invalidateQueries cascade | Add `refetchType: 'none'` |
 | **IKA-83** | Retry amplified 429 errors | Use global QueryClient defaults |
 | **IKA-84** | URL slug passed to API | Resolve param to entity first |
+| **IKA-148** | Optimistic update with server-computed data | Invalidate + refetch if server transforms data |
 | **VIB-70** | Migration file modified | Never modify existing migrations |
 
 ### Rate Limiting Prevention (IKA-76, IKA-77, IKA-83)
@@ -595,6 +639,13 @@ components/
 2. Always add `refetchType: 'none'` to `invalidateQueries()` calls
 3. Use global defaults - don't override in individual hooks
 4. Don't override `retry`, `refetchOnWindowFocus`, or `refetchOnReconnect`
+
+### Mutation Cache Strategy (IKA-148)
+
+1. Check if server transforms/computes data differently from what you send
+2. If server echoes back exactly what you send → optimistic update OK
+3. If server transforms data (saves diffs, merges defaults) → invalidate + refetch
+4. If server returns the saved data → use the response to update cache
 
 ### URL Parameter Prevention (IKA-84)
 
