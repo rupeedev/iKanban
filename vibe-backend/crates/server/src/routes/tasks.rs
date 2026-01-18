@@ -795,6 +795,7 @@ pub async fn assign_task_to_copilot(
     // Spawn background task to create GitHub issue
     let pool_clone = pool.clone();
     let assignment_id = assignment.id;
+    let task_id = task.id;
     let task_title = task.title.clone();
     let task_description = task.description.clone();
     let prompt = payload.prompt.clone();
@@ -806,6 +807,7 @@ pub async fn assign_task_to_copilot(
         if let Err(e) = create_github_issue_for_copilot(
             &pool_clone,
             assignment_id,
+            task_id,
             &task_title,
             task_description.as_deref(),
             &prompt,
@@ -1037,6 +1039,7 @@ async fn assign_issue_to_claude(
 async fn create_github_issue_for_copilot(
     pool: &sqlx::PgPool,
     assignment_id: Uuid,
+    task_id: Uuid,
     task_title: &str,
     task_description: Option<&str>,
     prompt: &str,
@@ -1047,12 +1050,15 @@ async fn create_github_issue_for_copilot(
     use db::models::copilot_assignment::UpdateCopilotAssignment;
 
     // Build issue title and body
+    // Include task_id in metadata for iKanban callback tracking (IKA-174)
     let issue_title = format!("[Copilot] Task: {}", task_title);
     let issue_body = format!(
-        "## Task\n{}\n\n## Description\n{}\n\n## Copilot Instructions\n{}\n\n---\n*Created by iKanban @copilot integration*",
+        "## Task\n{}\n\n## Description\n{}\n\n## Copilot Instructions\n{}\n\n---\n*Created by iKanban @copilot integration*\n\n<!-- ikanban-metadata\ntask_id: {}\nassignment_id: {}\n-->",
         task_title,
         task_description.unwrap_or("No description provided"),
-        prompt
+        prompt,
+        task_id,
+        assignment_id
     );
 
     // Build GitHub API URL
@@ -1137,6 +1143,35 @@ async fn create_github_issue_for_copilot(
                 "Successfully assigned issue #{} to Copilot",
                 issue_response.number
             );
+        }
+
+        // Post callback comment to iKanban task (IKA-174)
+        let comment_content = format!(
+            "🎫 **GitHub Issue Created**\n\n\
+            Agent: Copilot\n\
+            Issue: [#{number}]({url})\n\
+            Repository: {owner}/{name}\n\
+            Status: Waiting for Copilot to start work",
+            number = issue_response.number,
+            url = issue_response.html_url,
+            owner = repo_owner,
+            name = repo_name
+        );
+
+        if let Err(e) = TaskComment::create(
+            pool,
+            task_id,
+            &CreateTaskComment {
+                content: comment_content,
+                is_internal: false,
+                author_name: "GitHub Integration".to_string(),
+                author_email: None,
+                author_id: None,
+            },
+        )
+        .await
+        {
+            tracing::warn!("Failed to post callback comment to task {}: {}", task_id, e);
         }
 
         Ok(())
@@ -1242,6 +1277,7 @@ pub async fn assign_task_to_claude(
     // Spawn background task to create GitHub issue
     let pool_clone = pool.clone();
     let assignment_id = assignment.id;
+    let task_id = task.id;
     let task_title = task.title.clone();
     let task_description = task.description.clone();
     let prompt = payload.prompt.clone();
@@ -1253,6 +1289,7 @@ pub async fn assign_task_to_claude(
         if let Err(e) = create_github_issue_for_claude(
             &pool_clone,
             assignment_id,
+            task_id,
             &task_title,
             task_description.as_deref(),
             &prompt,
@@ -1285,6 +1322,7 @@ pub async fn assign_task_to_claude(
 async fn create_github_issue_for_claude(
     pool: &sqlx::PgPool,
     assignment_id: Uuid,
+    task_id: Uuid,
     task_title: &str,
     task_description: Option<&str>,
     prompt: &str,
@@ -1295,12 +1333,15 @@ async fn create_github_issue_for_claude(
     use db::models::copilot_assignment::UpdateCopilotAssignment;
 
     // Build issue title and body with @claude mention to trigger Claude Code Action
+    // Include task_id in metadata for iKanban callback tracking (IKA-174)
     let issue_title = format!("[Claude] Task: {}", task_title);
     let issue_body = format!(
-        "## Task\n{}\n\n## Description\n{}\n\n## Claude Instructions\n@claude {}\n\n---\n*Created by iKanban @claude integration*",
+        "## Task\n{}\n\n## Description\n{}\n\n## Claude Instructions\n@claude {}\n\n---\n*Created by iKanban @claude integration*\n\n<!-- ikanban-metadata\ntask_id: {}\nassignment_id: {}\n-->",
         task_title,
         task_description.unwrap_or("No description provided"),
-        prompt
+        prompt,
+        task_id,
+        assignment_id
     );
 
     // Build GitHub API URL
@@ -1385,6 +1426,35 @@ async fn create_github_issue_for_claude(
                 "Successfully assigned issue #{} to Claude",
                 issue_response.number
             );
+        }
+
+        // Post callback comment to iKanban task (IKA-174)
+        let comment_content = format!(
+            "🎫 **GitHub Issue Created**\n\n\
+            Agent: Claude\n\
+            Issue: [#{number}]({url})\n\
+            Repository: {owner}/{name}\n\
+            Status: Waiting for Claude to start work",
+            number = issue_response.number,
+            url = issue_response.html_url,
+            owner = repo_owner,
+            name = repo_name
+        );
+
+        if let Err(e) = TaskComment::create(
+            pool,
+            task_id,
+            &CreateTaskComment {
+                content: comment_content,
+                is_internal: false,
+                author_name: "GitHub Integration".to_string(),
+                author_email: None,
+                author_id: None,
+            },
+        )
+        .await
+        {
+            tracing::warn!("Failed to post callback comment to task {}: {}", task_id, e);
         }
 
         Ok(())
