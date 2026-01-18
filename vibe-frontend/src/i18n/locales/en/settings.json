@@ -289,6 +289,14 @@
         "deleteFailed": "Failed to delete configuration. Please try again.",
         "saveFailed": "Failed to save agent configurations. Please try again.",
         "saveConfigFailed": "Failed to save configuration. Please try again."
+      },
+      "summary": {
+        "title": "Configuration Summary",
+        "description": "Overview of all agent configurations.",
+        "agent": "Agent",
+        "variant": "Variant",
+        "model": "Model",
+        "keySettings": "Key Settings"
       }
     },
     "mcp": {
