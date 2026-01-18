@@ -18,8 +18,8 @@ use crate::{
     command::CommandBuildError,
     env::ExecutionEnv,
     executors::{
-        amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
-        droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
+        amp::Amp, claude::ClaudeCode, claude_github::Claude, codex::Codex, copilot::Copilot,
+        cursor::CursorAgent, droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
     },
     mcp_config::McpConfig,
 };
@@ -27,6 +27,7 @@ use crate::{
 pub mod acp;
 pub mod amp;
 pub mod claude;
+pub mod claude_github;
 pub mod codex;
 pub mod copilot;
 pub mod cursor;
@@ -100,6 +101,11 @@ pub enum CodingAgent {
     QwenCode,
     Copilot,
     Droid,
+    /// Claude Code Action - GitHub issue-based Claude integration (IKA-171)
+    #[serde(alias = "CLAUDE")]
+    #[strum_discriminants(serde(alias = "CLAUDE"))]
+    #[strum_discriminants(strum(serialize = "CLAUDE", serialize = "CLAUDE_ACTION"))]
+    Claude,
 }
 
 impl CodingAgent {
@@ -166,7 +172,7 @@ impl CodingAgent {
                 BaseAgentCapability::SetupHelper,
             ],
             Self::CursorAgent(_) => vec![BaseAgentCapability::SetupHelper],
-            Self::Copilot(_) => vec![],
+            Self::Copilot(_) | Self::Claude(_) => vec![],
         }
     }
 }
@@ -289,7 +295,8 @@ impl BaseCodingAgent {
             BaseCodingAgent::QwenCode => None, // Uses Qwen's own API
             // CLI-only agents have no API provider mapping
             BaseCodingAgent::CursorAgent => None,
-            BaseCodingAgent::Copilot => None, // GitHub-specific auth
+            BaseCodingAgent::Copilot => None,       // GitHub-specific auth
+            BaseCodingAgent::Claude => None,  // GitHub-specific (IKA-171)
         }
     }
 }

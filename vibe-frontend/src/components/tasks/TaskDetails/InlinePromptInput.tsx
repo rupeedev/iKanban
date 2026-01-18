@@ -8,9 +8,11 @@ import { useAttemptCreation } from '@/hooks/useAttemptCreation';
 import {
   useAgentMentions,
   isCopilotMention,
+  isClaudeMention,
   type AgentMention,
 } from '@/hooks/useAgentMentions';
 import { useAssignToCopilot } from '@/hooks/useCopilotAssignment';
+import { useAssignToClaude } from '@/hooks/useClaudeAssignment';
 import { useRepoBranchSelection } from '@/hooks/useRepoBranchSelection';
 import { useProjectRepos, useNavigateWithSearch } from '@/hooks';
 import { useProject } from '@/contexts/ProjectContext';
@@ -113,6 +115,23 @@ export function InlinePromptInput({
       },
     });
 
+  // Claude assignment hook (IKA-171: Claude Code Action Integration)
+  const { mutateAsync: assignToClaude, isPending: isAssigningClaude } =
+    useAssignToClaude({
+      onSuccess: () => {
+        toast.success('Task assigned to Claude', {
+          description: 'GitHub issue will be created and processed.',
+        });
+        onCommentCreated?.();
+      },
+      onError: (error) => {
+        console.error('Failed to assign to Claude:', error);
+        toast.error('Failed to assign to Claude', {
+          description: error.message || 'Please check GitHub connection.',
+        });
+      },
+    });
+
   // Get current mention state
   const mentionState = getMentionPosition(promptText, cursorPosition);
   const filteredSuggestions = mentionState
@@ -180,13 +199,14 @@ export function InlinePromptInput({
     [filteredSuggestions.length]
   );
 
-  // Handle form submission - supports simple comments, AI agent prompts, and @copilot
+  // Handle form submission - supports simple comments, AI agent prompts, @copilot, and @claude
   const handleSubmit = useCallback(async () => {
     if (
       !promptText.trim() ||
       isCreating ||
       isCreatingComment ||
-      isAssigningCopilot
+      isAssigningCopilot ||
+      isAssigningClaude
     )
       return;
 
@@ -238,6 +258,37 @@ export function InlinePromptInput({
       // Then assign to Copilot (creates GitHub Issue)
       try {
         await assignToCopilot({
+          taskId,
+          data: { prompt: cleanPrompt },
+        });
+        setPromptText('');
+      } catch (err) {
+        // Error is handled by onError callback
+        setPromptText('');
+      }
+      return;
+    }
+
+    // CASE 2.5: @claude mention → Comment + Claude Assignment (GitHub Issue) (IKA-171)
+    if (isClaudeMention(agent)) {
+      // First create the comment
+      try {
+        await createComment({
+          content: promptText.trim(),
+          is_internal: false,
+          author_name: currentUser.name,
+          author_email: currentUser.email,
+          author_id: currentUser.id,
+        });
+      } catch (err) {
+        console.error('Failed to create comment:', err);
+        toast.error('Failed to add comment');
+        return;
+      }
+
+      // Then assign to Claude (creates GitHub Issue with @claude mention)
+      try {
+        await assignToClaude({
           taskId,
           data: { prompt: cleanPrompt },
         });
@@ -307,12 +358,14 @@ export function InlinePromptInput({
     isCreating,
     isCreatingComment,
     isAssigningCopilot,
+    isAssigningClaude,
     parseAllMentions,
     createComment,
     currentUser,
     onCommentCreated,
     taskId,
     assignToCopilot,
+    assignToClaude,
     projectRepos.length,
     resolveMentionToProfile,
     getWorkspaceRepoInputs,
@@ -356,7 +409,8 @@ export function InlinePromptInput({
     promptText.trim().length > 0 &&
     !isCreating &&
     !isCreatingComment &&
-    !isAssigningCopilot;
+    !isAssigningCopilot &&
+    !isAssigningClaude;
 
   return (
     <div className={cn('relative', className)}>
@@ -404,7 +458,7 @@ export function InlinePromptInput({
               'Type a message or @agent to use AI...'
             )}
             className="min-h-[60px] max-h-[200px] resize-none pr-2"
-            disabled={isCreating || isCreatingComment || isAssigningCopilot}
+            disabled={isCreating || isCreatingComment || isAssigningCopilot || isAssigningClaude}
             data-testid="inline-prompt-input"
           />
         </div>
@@ -417,7 +471,7 @@ export function InlinePromptInput({
           className="h-10 w-10 flex-shrink-0"
           data-testid="inline-prompt-submit"
         >
-          {isCreating || isCreatingComment || isAssigningCopilot ? (
+          {isCreating || isCreatingComment || isAssigningCopilot || isAssigningClaude ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <SendHorizonal className="h-4 w-4" />
