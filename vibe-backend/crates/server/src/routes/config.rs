@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use axum::{
     Json, Router,
@@ -6,8 +6,9 @@ use axum::{
     extract::{Path, Query, State},
     http,
     response::{Json as ResponseJson, Response},
-    routing::{get, put},
+    routing::{get, post, put},
 };
+use db::DBService;
 use deployment::{Deployment, DeploymentError};
 use executors::{
     executors::{
@@ -36,6 +37,15 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/sounds/{sound}", get(get_sound))
         .route("/mcp-config", get(get_mcp_servers).post(update_mcp_servers))
         .route("/profiles", get(get_profiles).put(update_profiles))
+        .route(
+            "/agent-configs",
+            get(get_agent_configs).put(upsert_agent_config),
+        )
+        .route("/agent-configs/sync", post(sync_agent_configs))
+        .route(
+            "/agent-configs/storage-recommendation",
+            get(get_storage_recommendation),
+        )
         .route(
             "/editors/check-availability",
             get(check_editor_availability),
@@ -496,4 +506,229 @@ async fn check_agent_availability(
     };
 
     ResponseJson(ApiResponse::success(info))
+}
+
+// ============================================================================
+// Agent Configs API (Dual Storage Support)
+// ============================================================================
+
+use db::models::agent_config::{AgentConfig, UpsertAgentConfig};
+use executors::storage::{detect_recommended_storage, AgentStorageLocation};
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct GetAgentConfigsQuery {
+    agent_type: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct StorageRecommendationQuery {
+    agent_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct StorageRecommendation {
+    agent_type: String,
+    recommended_location: String, // 'local' or 'database'
+    local_path: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct SyncAgentConfigsRequest {
+    agent_type: String,
+    direction: String, // 'local_to_db' or 'db_to_local'
+}
+
+/// Get agent configs for the current team
+async fn get_agent_configs(
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<GetAgentConfigsQuery>,
+) -> Result<ResponseJson<ApiResponse<Vec<AgentConfig>>>, ApiError> {
+    let team_id = deployment.team_id();
+    let pool = deployment.db_pool();
+
+    let configs = if let Some(agent_type) = query.agent_type {
+        // Get specific agent config
+        match AgentConfig::get_by_team_and_agent(pool, team_id, &agent_type).await {
+            Ok(Some(config)) => vec![config],
+            Ok(None) => vec![],
+            Err(e) => {
+                tracing::error!("Failed to get agent config: {}", e);
+                return Ok(ResponseJson(ApiResponse::error(
+                    "Failed to get agent config",
+                )));
+            }
+        }
+    } else {
+        // Get all agent configs for team
+        match AgentConfig::get_by_team(pool, team_id).await {
+            Ok(configs) => configs,
+            Err(e) => {
+                tracing::error!("Failed to get agent configs: {}", e);
+                return Ok(ResponseJson(ApiResponse::error(
+                    "Failed to get agent configs",
+                )));
+            }
+        }
+    };
+
+    Ok(ResponseJson(ApiResponse::success(configs)))
+}
+
+/// Create or update an agent config
+async fn upsert_agent_config(
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<UpsertAgentConfig>,
+) -> Result<ResponseJson<ApiResponse<AgentConfig>>, ApiError> {
+    let team_id = deployment.team_id();
+    let pool = deployment.db_pool();
+
+    match AgentConfig::upsert(pool, team_id, &request).await {
+        Ok(config) => {
+            tracing::info!(
+                "Upserted agent config for team {} agent {}",
+                team_id,
+                request.agent_type
+            );
+            Ok(ResponseJson(ApiResponse::success(config)))
+        }
+        Err(e) => {
+            tracing::error!("Failed to upsert agent config: {}", e);
+            Ok(ResponseJson(ApiResponse::error(
+                "Failed to save agent config",
+            )))
+        }
+    }
+}
+
+/// Sync agent configs between local and database
+async fn sync_agent_configs(
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<SyncAgentConfigsRequest>,
+) -> Result<ResponseJson<ApiResponse<String>>, ApiError> {
+    let team_id = deployment.team_id();
+    let pool = deployment.db_pool();
+
+    // Parse agent type
+    let agent = match BaseCodingAgent::from_str(&request.agent_type) {
+        Ok(agent) => agent,
+        Err(_) => {
+            return Ok(ResponseJson(ApiResponse::error("Invalid agent type")));
+        }
+    };
+
+    // Get existing config from database
+    let db_config = AgentConfig::get_by_team_and_agent(pool, team_id, &request.agent_type)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to get agent config from DB: {}", e);
+            ApiError::InternalServerError
+        })?;
+
+    match request.direction.as_str() {
+        "local_to_db" => {
+            // Read from local file and save to database
+            let profiles = ExecutorConfigs::get_cached();
+            let config_data = serde_json::to_value(&profiles).map_err(|e| {
+                tracing::error!("Failed to serialize profiles: {}", e);
+                ApiError::InternalServerError
+            })?;
+
+            let local_path = executors::storage::get_local_config_path(&agent)
+                .map(|p| p.to_string_lossy().to_string());
+
+            let upsert_req = UpsertAgentConfig {
+                agent_type: request.agent_type.clone(),
+                storage_location: "database".to_string(),
+                local_path,
+                config_data: Some(config_data),
+            };
+
+            AgentConfig::upsert(pool, team_id, &upsert_req)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to save to database: {}", e);
+                    ApiError::InternalServerError
+                })?;
+
+            // Mark as synced
+            AgentConfig::mark_synced(pool, team_id, &request.agent_type)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to mark as synced: {}", e);
+                    ApiError::InternalServerError
+                })?;
+
+            Ok(ResponseJson(ApiResponse::success(
+                "Synced local config to database".to_string(),
+            )))
+        }
+        "db_to_local" => {
+            // Read from database and save to local file
+            let config = db_config.ok_or_else(|| {
+                tracing::error!("No database config found for agent {}", request.agent_type);
+                ApiError::NotFound
+            })?;
+
+            // Parse config data as ExecutorConfigs
+            let executor_configs: ExecutorConfigs =
+                serde_json::from_value(config.config_data).map_err(|e| {
+                    tracing::error!("Failed to parse config data: {}", e);
+                    ApiError::InternalServerError
+                })?;
+
+            // Save to local file
+            executor_configs.save_overrides().map_err(|e| {
+                tracing::error!("Failed to save to local file: {}", e);
+                ApiError::InternalServerError
+            })?;
+
+            // Reload cached profiles
+            ExecutorConfigs::reload();
+
+            // Mark as synced
+            AgentConfig::mark_synced(pool, team_id, &request.agent_type)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to mark as synced: {}", e);
+                    ApiError::InternalServerError
+                })?;
+
+            Ok(ResponseJson(ApiResponse::success(
+                "Synced database config to local file".to_string(),
+            )))
+        }
+        _ => Ok(ResponseJson(ApiResponse::error(
+            "Invalid sync direction. Use 'local_to_db' or 'db_to_local'",
+        ))),
+    }
+}
+
+/// Get storage recommendation for an agent type
+async fn get_storage_recommendation(
+    State(_deployment): State<DeploymentImpl>,
+    Query(query): Query<StorageRecommendationQuery>,
+) -> Result<ResponseJson<ApiResponse<StorageRecommendation>>, ApiError> {
+    let agent = match BaseCodingAgent::from_str(&query.agent_type) {
+        Ok(agent) => agent,
+        Err(_) => {
+            return Ok(ResponseJson(ApiResponse::error("Invalid agent type")));
+        }
+    };
+
+    let storage = detect_recommended_storage(&agent);
+
+    let recommendation = match storage {
+        AgentStorageLocation::Local(path) => StorageRecommendation {
+            agent_type: query.agent_type,
+            recommended_location: "local".to_string(),
+            local_path: Some(path.to_string_lossy().to_string()),
+        },
+        AgentStorageLocation::Database => StorageRecommendation {
+            agent_type: query.agent_type,
+            recommended_location: "database".to_string(),
+            local_path: None,
+        },
+    };
+
+    Ok(ResponseJson(ApiResponse::success(recommendation)))
 }
