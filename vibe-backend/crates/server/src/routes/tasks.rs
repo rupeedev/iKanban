@@ -680,6 +680,7 @@ struct GitHubIssueResponse {
     id: i64,
     number: i64,
     html_url: String,
+    node_id: String, // GraphQL global ID, needed for assignment
 }
 
 /// Parsed GitHub repository info from a URL path
@@ -825,6 +826,138 @@ pub async fn assign_task_to_copilot(
     Ok(ResponseJson(ApiResponse::success(assignment)))
 }
 
+/// Assign a GitHub issue to Copilot using the GraphQL API
+///
+/// GitHub's REST API doesn't support assigning issues to Copilot directly.
+/// We must use the GraphQL API with the `replaceActorsForAssignable` mutation.
+/// See: https://github.com/orgs/community/discussions/164267
+async fn assign_issue_to_copilot(
+    issue_node_id: &str,
+    repo_owner: &str,
+    repo_name: &str,
+    access_token: &str,
+) -> Result<(), String> {
+    let client = reqwest::Client::new();
+
+    // Step 1: Query for Copilot's actor ID in the repository
+    let actor_query = serde_json::json!({
+        "query": r#"
+            query($owner: String!, $name: String!) {
+                repository(owner: $owner, name: $name) {
+                    suggestedActors(first: 20, capabilities: [CAN_BE_ASSIGNED]) {
+                        nodes {
+                            login
+                            id
+                        }
+                    }
+                }
+            }
+        "#,
+        "variables": {
+            "owner": repo_owner,
+            "name": repo_name
+        }
+    });
+
+    let actor_response = client
+        .post("https://api.github.com/graphql")
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("User-Agent", "iKanban-Copilot")
+        .json(&actor_query)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to query GitHub GraphQL: {}", e))?;
+
+    if !actor_response.status().is_success() {
+        return Err(format!(
+            "GitHub GraphQL query failed: {}",
+            actor_response.status()
+        ));
+    }
+
+    let actor_data: serde_json::Value = actor_response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse actor response: {}", e))?;
+
+    // Find Copilot's actor ID (login is "copilot-swe-agent")
+    let actors = actor_data["data"]["repository"]["suggestedActors"]["nodes"]
+        .as_array()
+        .ok_or("No suggested actors found")?;
+
+    let copilot_actor = actors
+        .iter()
+        .find(|actor| {
+            actor["login"]
+                .as_str()
+                .map(|l| l == "copilot-swe-agent")
+                .unwrap_or(false)
+        })
+        .ok_or("Copilot coding agent not found. Ensure it's enabled for this repository.")?;
+
+    let copilot_actor_id = copilot_actor["id"]
+        .as_str()
+        .ok_or("Copilot actor ID not found")?;
+
+    tracing::info!(
+        "Found Copilot actor ID: {} for {}/{}",
+        copilot_actor_id,
+        repo_owner,
+        repo_name
+    );
+
+    // Step 2: Assign the issue to Copilot using the mutation
+    let assign_mutation = serde_json::json!({
+        "query": r#"
+            mutation($assignableId: ID!, $actorIds: [ID!]!) {
+                replaceActorsForAssignable(input: {
+                    assignableId: $assignableId,
+                    actorIds: $actorIds
+                }) {
+                    assignable {
+                        ... on Issue {
+                            id
+                            number
+                        }
+                    }
+                }
+            }
+        "#,
+        "variables": {
+            "assignableId": issue_node_id,
+            "actorIds": [copilot_actor_id]
+        }
+    });
+
+    let assign_response = client
+        .post("https://api.github.com/graphql")
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("User-Agent", "iKanban-Copilot")
+        .json(&assign_mutation)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to call assignment mutation: {}", e))?;
+
+    if !assign_response.status().is_success() {
+        return Err(format!(
+            "Assignment mutation failed: {}",
+            assign_response.status()
+        ));
+    }
+
+    let assign_data: serde_json::Value = assign_response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse assignment response: {}", e))?;
+
+    // Check for GraphQL errors
+    if let Some(errors) = assign_data.get("errors") {
+        return Err(format!("GraphQL errors: {}", errors));
+    }
+
+    Ok(())
+}
+
 /// Background task to create GitHub issue for Copilot
 ///
 /// This function is spawned as a background task and uses Result<(), String>
@@ -857,7 +990,7 @@ async fn create_github_issue_for_copilot(
         repo_owner, repo_name
     );
 
-    // Build request body
+    // Build request body with labels (assignment done via GraphQL after creation)
     let body = serde_json::json!({
         "title": issue_title,
         "body": issue_body,
@@ -907,7 +1040,7 @@ async fn create_github_issue_for_copilot(
             assignment_id,
             &UpdateCopilotAssignment {
                 github_issue_id: Some(issue_response.id),
-                github_issue_url: Some(issue_response.html_url),
+                github_issue_url: Some(issue_response.html_url.clone()),
                 github_repo_owner: Some(repo_owner.to_string()),
                 github_repo_name: Some(repo_name.to_string()),
                 status: Some("issue_created".to_string()),
@@ -916,6 +1049,24 @@ async fn create_github_issue_for_copilot(
         )
         .await
         .map_err(|e| format!("Failed to update assignment: {}", e))?;
+
+        // Attempt to assign the issue to Copilot via GraphQL
+        // This is best-effort: if it fails, the issue is still created with labels
+        if let Err(e) =
+            assign_issue_to_copilot(&issue_response.node_id, repo_owner, repo_name, access_token)
+                .await
+        {
+            tracing::warn!(
+                "Failed to assign issue #{} to Copilot: {}. Issue created with 'copilot' label.",
+                issue_response.number,
+                e
+            );
+        } else {
+            tracing::info!(
+                "Successfully assigned issue #{} to Copilot",
+                issue_response.number
+            );
+        }
 
         Ok(())
     } else {
