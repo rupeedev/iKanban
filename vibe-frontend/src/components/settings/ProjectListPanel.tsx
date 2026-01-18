@@ -1,8 +1,13 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { Loader2, FolderKanban } from 'lucide-react';
+import { Loader2, FolderKanban, ChevronRight } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { useProjects } from '@/hooks/useProjects';
 import { useTeams } from '@/hooks/useTeams';
 import { teamsApi } from '@/lib/api';
@@ -129,47 +134,55 @@ export function ProjectListPanel({
 
   return (
     <ScrollArea className="h-full">
-      <div className="p-2 space-y-4">
+      <div className="p-2 space-y-2">
         {projectsByTeam.map(({ team, projects: teamProjects }) => (
-          <div key={team?.id ?? 'unassigned'}>
-            <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              {team ? `${team.icon ?? '👥'} ${team.name}` : 'Other Projects'}
-            </div>
-            <div className="space-y-1 mt-1">
-              {teamProjects.map((project) => (
-                <button
-                  key={project.id}
-                  onClick={(e) => handleProjectClick(e, project.id)}
-                  className={cn(
-                    'relative w-full text-left px-3 py-2.5 rounded-md transition-colors overflow-hidden',
-                    'hover:bg-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    selectedProjectId === project.id
-                      ? 'bg-accent text-accent-foreground font-medium'
-                      : 'text-foreground'
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground min-w-[32px]">
-                      {projectToTeam[project.id]?.identifier ?? '—'}
-                    </span>
-                    <span className="truncate">{project.name}</span>
-                  </div>
-                  {/* Ripple effects */}
-                  {(ripples[project.id] ?? []).map((ripple) => (
-                    <span
-                      key={ripple.id}
-                      className="absolute pointer-events-none rounded-full bg-primary/20 animate-ripple"
-                      style={{
-                        left: ripple.x,
-                        top: ripple.y,
-                        transform: 'translate(-50%, -50%)',
-                      }}
-                    />
-                  ))}
-                </button>
-              ))}
-            </div>
-          </div>
+          <Collapsible key={team?.id ?? 'unassigned'} defaultOpen>
+            <CollapsibleTrigger className="flex items-center gap-1 w-full px-2 py-1.5 rounded-md hover:bg-accent/50 transition-colors group">
+              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-90" />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {team ? `${team.icon ?? '👥'} ${team.name}` : 'Other Projects'}
+              </span>
+              <span className="ml-auto text-xs text-muted-foreground/70">
+                {teamProjects.length}
+              </span>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="space-y-1 mt-1 ml-3">
+                {teamProjects.map((project) => (
+                  <button
+                    key={project.id}
+                    onClick={(e) => handleProjectClick(e, project.id)}
+                    className={cn(
+                      'relative w-full text-left px-3 py-2.5 rounded-md transition-colors overflow-hidden',
+                      'hover:bg-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      selectedProjectId === project.id
+                        ? 'bg-accent text-accent-foreground font-medium'
+                        : 'text-foreground'
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground min-w-[32px]">
+                        {projectToTeam[project.id]?.identifier ?? '—'}
+                      </span>
+                      <span className="truncate">{project.name}</span>
+                    </div>
+                    {/* Ripple effects */}
+                    {(ripples[project.id] ?? []).map((ripple) => (
+                      <span
+                        key={ripple.id}
+                        className="absolute pointer-events-none rounded-full bg-primary/20 animate-ripple"
+                        style={{
+                          left: ripple.x,
+                          top: ripple.y,
+                          transform: 'translate(-50%, -50%)',
+                        }}
+                      />
+                    ))}
+                  </button>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         ))}
       </div>
     </ScrollArea>
