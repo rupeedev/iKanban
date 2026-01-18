@@ -95,12 +95,47 @@ function buildConfigSummary(executors: ExecutorsMap): ConfigSummaryRow[] {
   return rows;
 }
 
+// Validation result type
+type ValidationResult =
+  | { valid: true; parsed: ExecutorConfigs }
+  | { valid: false; error: string };
+
+// Validate executor profiles structure
+function validateExecutorProfiles(
+  content: unknown,
+  t: (key: string, options?: { defaultValue: string }) => string
+): ValidationResult {
+  if (
+    !content ||
+    typeof content !== 'object' ||
+    !('executors' in (content as object))
+  ) {
+    return {
+      valid: false,
+      error: t('settings.agents.errors.missingExecutors', {
+        defaultValue:
+          'Invalid format: JSON must have an "executors" object at the root level. Expected structure: { "executors": { "CLAUDE_CODE": { ... }, "COPILOT": { ... } } }',
+      }),
+    };
+  }
+  const typed = content as { executors: unknown };
+  if (typeof typed.executors !== 'object' || typed.executors === null) {
+    return {
+      valid: false,
+      error: t('settings.agents.errors.invalidExecutors', {
+        defaultValue:
+          '"executors" must be an object containing executor configurations.',
+      }),
+    };
+  }
+  return { valid: true, parsed: content as ExecutorConfigs };
+}
+
 export function AgentSettings() {
   const { t } = useTranslation(['settings', 'common']);
   // Use profiles hook for server state
   const {
     profilesContent: serverProfilesContent,
-    profilesPath,
     isLoading: profilesLoading,
     isSaving: profilesSaving,
     error: profilesError,
@@ -307,14 +342,26 @@ export function AgentSettings() {
   const handleProfilesChange = (value: string) => {
     setLocalProfilesContent(value);
     setIsDirty(true);
+    setSaveError(null);
 
     // Validate JSON on change
     if (value.trim()) {
       try {
         const parsed = JSON.parse(value);
-        setLocalParsedProfiles(parsed);
-      } catch (err) {
-        // Invalid JSON, keep local content but clear parsed
+        const validation = validateExecutorProfiles(parsed, t);
+        if (validation.valid) {
+          setLocalParsedProfiles(validation.parsed);
+        } else {
+          setSaveError(validation.error);
+          setLocalParsedProfiles(null);
+        }
+      } catch {
+        // Invalid JSON syntax
+        setSaveError(
+          t('settings.agents.errors.invalidJSON', {
+            defaultValue: 'Invalid JSON syntax. Please check your configuration.',
+          })
+        );
         setLocalParsedProfiles(null);
       }
     }
@@ -329,6 +376,30 @@ export function AgentSettings() {
         useFormEditor && localParsedProfiles
           ? JSON.stringify(localParsedProfiles, null, 2)
           : localProfilesContent;
+
+      // Validate structure before saving
+      let toValidate: unknown;
+      if (useFormEditor) {
+        toValidate = localParsedProfiles;
+      } else {
+        try {
+          toValidate = JSON.parse(localProfilesContent);
+        } catch {
+          setSaveError(
+            t('settings.agents.errors.invalidJSON', {
+              defaultValue:
+                'Invalid JSON syntax. Please check your configuration.',
+            })
+          );
+          return;
+        }
+      }
+
+      const validation = validateExecutorProfiles(toValidate, t);
+      if (!validation.valid) {
+        setSaveError(validation.error);
+        return;
+      }
 
       await saveProfiles(contentToSave);
       setProfilesSuccess(true);
@@ -690,13 +761,20 @@ export function AgentSettings() {
                 />
               </div>
 
-              {!profilesError && profilesPath && (
+              {!profilesError && (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
                     <span className="font-medium">
-                      {t('settings.agents.editor.pathLabel')}
+                      {t('settings.agents.editor.storageInfo', {
+                        defaultValue: 'Storage:',
+                      })}
                     </span>{' '}
-                    <span className="font-mono text-xs">{profilesPath}</span>
+                    <span className="font-mono text-xs">
+                      {t('settings.agents.editor.storedOnServer', {
+                        defaultValue:
+                          'Agent configurations are stored on the server and synced across sessions.',
+                      })}
+                    </span>
                   </p>
                 </div>
               )}
