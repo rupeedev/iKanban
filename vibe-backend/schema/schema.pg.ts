@@ -846,3 +846,25 @@ export const copilotDeploymentConfig = pgTable("copilot_deployment_config", {
 }, (table) => ({
     idxCopilotDeploymentConfigRepoId: uniqueIndex("idx_copilot_deployment_config_repo_id").on(table.repositoryId),
 }));
+
+// ============================================================================
+// Workspace Subscriptions (IKA-177: Stripe billing integration)
+// ============================================================================
+
+// Subscription tracking for tenant workspaces (Stripe integration)
+export const workspaceSubscriptions = pgTable("workspace_subscriptions", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull().references(() => tenantWorkspaces.id, { onDelete: "cascade" }),
+    stripeCustomerId: text("stripe_customer_id"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    currentPeriodStart: timestamp("current_period_start", { withTimezone: true, mode: "string" }),
+    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true, mode: "string" }),
+    status: text("status").default("trialing").notNull(), // trialing, active, canceled, past_due, etc.
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
+}, (table) => ({
+    idxWorkspaceSubscriptionsWorkspaceId: index("idx_workspace_subscriptions_workspace_id").on(table.workspaceId),
+    idxWorkspaceSubscriptionsStatus: index("idx_workspace_subscriptions_status").on(table.status),
+    idxWorkspaceSubscriptionsStripeCustomerId: index("idx_workspace_subscriptions_stripe_customer_id").on(table.stripeCustomerId),
+    idxWorkspaceSubscriptionsStripeSubscriptionId: index("idx_workspace_subscriptions_stripe_subscription_id").on(table.stripeSubscriptionId),
+}));

@@ -33,3 +33,4 @@ pub mod tenant_workspace;
 pub mod user_registration;
 pub mod workspace;
 pub mod workspace_repo;
+pub mod workspace_subscription;
