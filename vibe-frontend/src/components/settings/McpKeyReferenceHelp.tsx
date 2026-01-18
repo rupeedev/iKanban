@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Key, Check, X, Copy, ExternalLink, Loader2 } from 'lucide-react';
@@ -57,7 +58,6 @@ export function McpKeyReferenceHelp() {
       console.error('Failed to copy:', err);
     }
   };
-
 
   return (
     <Card>
@@ -159,7 +159,7 @@ export function McpKeyReferenceHelp() {
                     </div>
                     <div className="flex items-center gap-1">
                       {isConfigured && (
-                        <>
+                        <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
@@ -192,7 +192,7 @@ export function McpKeyReferenceHelp() {
                               </code>
                             </TooltipContent>
                           </Tooltip>
-                        </>
+                        </TooltipProvider>
                       )}
                     </div>
                   </div>
