@@ -5,11 +5,13 @@ import type {
   WorkspaceRepoInput,
   Workspace,
 } from 'shared/types';
+import type { ExecutionLocation } from './useAgentMentions';
 
 type CreateAttemptArgs = {
   profile: ExecutorProfileId;
   repos: WorkspaceRepoInput[];
   prompt?: string;
+  executionLocation?: ExecutionLocation;
 };
 
 type UseAttemptCreationArgs = {
@@ -24,7 +26,14 @@ export function useAttemptCreation({
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async ({ profile, repos, prompt }: CreateAttemptArgs) => {
+    mutationFn: async ({ profile, repos, prompt, executionLocation = 'remote' }: CreateAttemptArgs) => {
+      // IKA-145: Log execution location for hybrid agent system
+      // TODO: Pass executionLocation to API when backend supports it
+      console.debug('[useAttemptCreation] Creating attempt', {
+        executor: profile.executor,
+        executionLocation,
+      });
+
       // Step 1: Create the workspace (attempt)
       const workspace = await attemptsApi.create({
         task_id: taskId,

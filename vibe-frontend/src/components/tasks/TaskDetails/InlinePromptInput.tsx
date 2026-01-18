@@ -68,7 +68,7 @@ export function InlinePromptInput({
   // Hooks
   const {
     filterMentions,
-    parseMentions,
+    parseAllMentions,
     resolveMentionToProfile,
     getMentionPosition,
   } = useAgentMentions();
@@ -177,8 +177,8 @@ export function InlinePromptInput({
   const handleSubmit = useCallback(async () => {
     if (!promptText.trim() || isCreating || isCreatingComment || isAssigningCopilot) return;
 
-    // Parse the prompt to extract agent mention
-    const { agent, cleanPrompt } = parseMentions(promptText);
+    // Use memoized parse result (IKA-145: agent + location parsing)
+    const { agent, location, cleanPrompt } = parseAllMentions(promptText);
 
     if (!cleanPrompt) {
       // Empty prompt after removing @mentions
@@ -278,6 +278,7 @@ export function InlinePromptInput({
         profile,
         repos,
         prompt: cleanPrompt,
+        executionLocation: location,
       });
       setPromptText('');
     } catch (err) {
@@ -292,7 +293,7 @@ export function InlinePromptInput({
     isCreating,
     isCreatingComment,
     isAssigningCopilot,
-    parseMentions,
+    parseAllMentions,
     createComment,
     currentUser,
     onCommentCreated,
@@ -323,8 +324,12 @@ export function InlinePromptInput({
     [showSuggestions, handleSubmit]
   );
 
-  // Parse current prompt to show which agent will be used
-  const { agent: selectedAgent } = parseMentions(promptText);
+  // Parse current prompt to show which agent and location will be used (IKA-145)
+  const parsedPrompt = useMemo(
+    () => parseAllMentions(promptText),
+    [parseAllMentions, promptText]
+  );
+  const { agent: selectedAgent, location: selectedLocation } = parsedPrompt;
 
   // Only show agent indicator if there's an @mention (not for simple comments)
   const showAgentIndicator = selectedAgent !== null;
@@ -336,11 +341,23 @@ export function InlinePromptInput({
 
   return (
     <div className={cn('relative', className)}>
-      {/* Agent indicator - only shown when @mention is detected */}
+      {/* Agent and location indicator - only shown when @mention is detected (IKA-145) */}
       {showAgentIndicator && selectedAgent && (
-        <div className="flex items-center gap-1 mb-1 text-xs text-muted-foreground">
-          <Bot className="h-3 w-3" />
-          <span>{selectedAgent.displayName}</span>
+        <div className="flex items-center gap-2 mb-1 text-xs">
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <Bot className="h-3 w-3" />
+            <span>{selectedAgent.displayName}</span>
+          </div>
+          <span
+            className={cn(
+              'px-1.5 py-0.5 rounded text-[10px] font-medium',
+              selectedLocation === 'local'
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+            )}
+          >
+            {selectedLocation === 'local' ? 'Local' : 'Remote'}
+          </span>
         </div>
       )}
 
