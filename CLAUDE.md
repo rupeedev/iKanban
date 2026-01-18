@@ -129,16 +129,16 @@ When `/full-stack-dev` is invoked, follow all 8 phases in order:
 
 ```bash
 # Create task (ALWAYS include description!)
-python3 mcp/ikanban.py create IKA "title" -s inprogress -d "what, why, acceptance criteria"
+python3 /Users/rupeshpanwar/Documents/docs/common-mcp/ikanban.py create IKA "title" -s inprogress -d "what, why, acceptance criteria"
 
 # List tasks
-python3 mcp/ikanban.py issues IKA
+python3 /Users/rupeshpanwar/Documents/docs/common-mcp/ikanban.py issues IKA
 
 # Add completion summary (use COMMENT, not description update)
-python3 mcp/ikanban.py comment IKA-XX "Summary: what was done, key changes, test status"
+python3 /Users/rupeshpanwar/Documents/docs/common-mcp/ikanban.py comment IKA-XX "Summary: what was done, key changes, test status"
 
 # Mark done (do NOT use -d flag here)
-python3 mcp/ikanban.py update IKA-XX --status done
+python3 /Users/rupeshpanwar/Documents/docs/common-mcp/ikanban.py update IKA-XX --status done
 ```
 
 **Important:** Description is set at creation. Use comments for completion summaries.
@@ -156,6 +156,42 @@ Teams: `IKA` (frontend), `SCH` (backend)
 **Frontend:** React 18, Vite, TailwindCSS v4, Zustand, TanStack Query v5
 
 **Deploy:** GitHub Actions → Docker Hub → Railway
+
+## Remote MCP Server Authentication
+
+The remote MCP server at `https://mcp.scho1ar.com/sse` requires API key authentication.
+
+### Generate Your API Key
+
+1. Go to **Settings → API Keys** at `app.scho1ar.com/settings/api-keys`
+2. Click **+ Create API Key**
+3. Name it (e.g., "my-laptop", "work-macbook")
+4. Copy the generated `vk_...` key
+
+### Client Configuration
+
+Add to `~/.claude/settings.json`:
+```json
+{
+  "mcpServers": {
+    "ikanban-remote": {
+      "type": "http",
+      "url": "https://mcp.scho1ar.com/sse",
+      "headers": {
+        "Authorization": "Bearer vk_your_personal_key_here"
+      }
+    }
+  }
+}
+```
+
+### Security Features (IKA-161, IKA-164)
+
+- **Per-user API keys**: Each team member generates their own key in Settings
+- **Database validation**: Keys validated against backend database (not env vars)
+- **Token caching**: 5-minute cache to reduce backend load
+- **Bearer token auth**: Via `Authorization` header
+- **Health endpoint bypass**: `/health` requires no auth (for Railway health checks)
 
 ## Troubleshooting
 

@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
     Extension, Router,
@@ -16,6 +16,7 @@ use rmcp::{
     },
 };
 use server::mcp::task_server::TaskServer;
+use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
@@ -23,33 +24,73 @@ use utils::{
     sentry::{self as sentry_utils, SentrySource, sentry_layer},
 };
 
-/// Configuration for MCP authentication
+/// Configuration for MCP authentication - validates tokens against backend
 #[derive(Clone)]
 struct McpAuthConfig {
-    api_key: String,
+    backend_url: String,
+    http_client: reqwest::Client,
+    /// Cache of validated tokens (token -> is_valid, expires_at)
+    token_cache: Arc<RwLock<std::collections::HashMap<String, (bool, std::time::Instant)>>>,
 }
 
-/// Get API token from environment (MCP_API_KEY or VIBE_API_TOKEN)
-fn get_api_token() -> Option<String> {
-    std::env::var("MCP_API_KEY")
-        .or_else(|_| std::env::var("VIBE_API_TOKEN"))
-        .ok()
-        .filter(|s| !s.is_empty())
-}
-
-/// Constant-time string comparison to prevent timing attacks
-/// Returns true if both strings are equal, using XOR to avoid early exit
-fn constant_time_eq(a: &str, b: &str) -> bool {
-    if a.len() != b.len() {
-        return false;
+impl McpAuthConfig {
+    fn new(backend_url: String) -> Self {
+        Self {
+            backend_url,
+            http_client: reqwest::Client::new(),
+            token_cache: Arc::new(RwLock::new(std::collections::HashMap::new())),
+        }
     }
 
-    let mut result: u8 = 0;
-    for (x, y) in a.bytes().zip(b.bytes()) {
-        result |= x ^ y;
-    }
+    /// Validate a token by calling the backend API
+    /// Caches results for 5 minutes to reduce backend load
+    async fn validate_token(&self, token: &str) -> bool {
+        // Check cache first
+        {
+            let cache = self.token_cache.read().await;
+            if let Some((is_valid, expires_at)) = cache.get(token)
+                && std::time::Instant::now() < *expires_at
+            {
+                tracing::debug!("[MCP Auth] Token validation from cache: {}", is_valid);
+                return *is_valid;
+            }
+        }
 
-    result == 0
+        // Call backend to validate - use /api/projects as a simple auth check
+        let result = self
+            .http_client
+            .get(format!("{}/api/projects", self.backend_url))
+            .header("Authorization", format!("Bearer {}", token))
+            .send()
+            .await;
+
+        let is_valid = match result {
+            Ok(response) => {
+                let status = response.status();
+                tracing::debug!("[MCP Auth] Backend validation response: {}", status);
+                status.is_success()
+            }
+            Err(e) => {
+                tracing::error!("[MCP Auth] Backend validation request failed: {}", e);
+                false
+            }
+        };
+
+        // Cache the result for 5 minutes
+        {
+            let mut cache = self.token_cache.write().await;
+            let expires_at = std::time::Instant::now() + std::time::Duration::from_secs(300);
+            cache.insert(token.to_string(), (is_valid, expires_at));
+
+            // Clean up expired entries if cache is getting large
+            if cache.len() > 1000 {
+                let now = std::time::Instant::now();
+                cache.retain(|_, (_, exp)| *exp > now);
+            }
+        }
+
+        is_valid
+    }
 }
 
 fn main() -> anyhow::Result<()> {
@@ -75,25 +116,23 @@ fn main() -> anyhow::Result<()> {
             let transport_mode =
                 std::env::var("MCP_TRANSPORT").unwrap_or_else(|_| "stdio".to_string());
 
-            // Get API token for backend auth
-            let api_token = get_api_token();
-            if api_token.is_some() {
-                tracing::info!("[MCP] API token configured for backend authentication");
-            } else {
-                tracing::warn!("[MCP] No API token configured (set MCP_API_KEY or VIBE_API_TOKEN)");
-            }
-
             // Get backend URL
             let base_url = get_backend_url().await?;
 
-            // Create service with API token
-            let service = TaskServer::with_token(&base_url, api_token.clone())
-                .init()
-                .await;
+            // For stdio mode, we can use an API token for the TaskServer's backend calls
+            // For SSE mode, each client provides their own token which we validate against backend
+            let api_token = std::env::var("MCP_API_KEY")
+                .or_else(|_| std::env::var("VIBE_API_TOKEN"))
+                .ok()
+                .filter(|s| !s.is_empty());
+
+            // Create service (for stdio, uses the configured token; for SSE, tokens come from clients)
+            let service = TaskServer::with_token(&base_url, api_token).init().await;
 
             match transport_mode.to_lowercase().as_str() {
                 "http" | "sse" => {
-                    run_sse_server(service, api_token).await?;
+                    tracing::info!("[MCP] SSE mode: tokens validated against backend database");
+                    run_sse_server(service, base_url.clone()).await?;
                 }
                 _ => {
                     tracing::info!("[MCP] Starting stdio transport");
@@ -118,22 +157,13 @@ async fn health_handler() -> &'static str {
 }
 
 /// Authentication middleware for MCP SSE endpoints
-/// Validates API key from Authorization header or api_key query parameter
+/// Validates API key against the backend database via HTTP call
 async fn auth_middleware(
     headers: HeaderMap,
-    Extension(config): Extension<Option<McpAuthConfig>>,
+    Extension(config): Extension<McpAuthConfig>,
     request: Request,
     next: Next,
 ) -> Response {
-    // Skip auth if no config (development mode)
-    let config = match config {
-        Some(c) => c,
-        None => {
-            tracing::debug!("[MCP Auth] No auth config, allowing request (dev mode)");
-            return next.run(request).await;
-        }
-    };
-
     // Skip auth for health endpoint
     if request.uri().path() == "/health" {
         return next.run(request).await;
@@ -158,20 +188,22 @@ async fn auth_middleware(
         });
 
     match provided_key {
-        Some(key) if constant_time_eq(&key, &config.api_key) => {
-            tracing::debug!("[MCP Auth] Valid API key");
-            next.run(request).await
-        }
-        Some(_) => {
-            tracing::warn!("[MCP Auth] Invalid API key provided");
-            (
-                StatusCode::UNAUTHORIZED,
-                axum::Json(serde_json::json!({
-                    "error": "unauthorized",
-                    "message": "Invalid API key"
-                })),
-            )
-                .into_response()
+        Some(key) => {
+            // Validate token against backend database
+            if config.validate_token(&key).await {
+                tracing::debug!("[MCP Auth] Token validated successfully");
+                next.run(request).await
+            } else {
+                tracing::warn!("[MCP Auth] Invalid or expired API key");
+                (
+                    StatusCode::UNAUTHORIZED,
+                    axum::Json(serde_json::json!({
+                        "error": "unauthorized",
+                        "message": "Invalid or expired API key"
+                    })),
+                )
+                    .into_response()
+            }
         }
         None => {
             tracing::warn!("[MCP Auth] No API key provided");
@@ -187,7 +219,7 @@ async fn auth_middleware(
     }
 }
 
-async fn run_sse_server<S>(service: S, api_token: Option<String>) -> anyhow::Result<()>
+async fn run_sse_server<S>(service: S, backend_url: String) -> anyhow::Result<()>
 where
     S: rmcp::Service<rmcp::RoleServer> + Send + Sync + Clone + 'static,
 {
@@ -212,21 +244,19 @@ where
 
     let (mut sse_server, sse_router) = SseServer::new(config);
 
-    // Create auth config if token is provided
-    let auth_config = api_token.map(|key| McpAuthConfig { api_key: key });
+    // Create auth config that validates tokens against backend
+    let auth_config = McpAuthConfig::new(backend_url.clone());
+    tracing::info!(
+        "[MCP] SSE endpoint authentication enabled (validating against {})",
+        backend_url
+    );
 
-    // Build router with optional auth middleware
+    // Build router with auth middleware
     let app = Router::new()
         .route("/health", get(health_handler))
         .merge(sse_router)
-        .layer(Extension(auth_config.clone()))
+        .layer(Extension(auth_config))
         .layer(middleware::from_fn(auth_middleware));
-
-    if auth_config.is_some() {
-        tracing::info!("[MCP] SSE endpoint authentication enabled");
-    } else {
-        tracing::warn!("[MCP] SSE endpoint running WITHOUT authentication (dev mode)");
-    }
 
     // Start the HTTP server
     let listener = tokio::net::TcpListener::bind(addr).await?;
