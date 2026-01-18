@@ -29,15 +29,6 @@ pub fn canonical_variant_key<S: AsRef<str>>(raw: S) -> String {
 
 #[derive(Error, Debug)]
 pub enum ProfileError {
-    #[error("Built-in executor '{executor}' cannot be deleted")]
-    CannotDeleteExecutor { executor: BaseCodingAgent },
-
-    #[error("Built-in configuration '{executor}:{variant}' cannot be deleted")]
-    CannotDeleteBuiltInConfig {
-        executor: BaseCodingAgent,
-        variant: String,
-    },
-
     #[error("Validation error: {0}")]
     Validation(String),
 
@@ -284,33 +275,17 @@ impl ExecutorConfigs {
         defaults
     }
 
-    /// Compute what overrides are needed to transform defaults into current config
+    /// Compute what overrides are needed to transform defaults into current config.
+    /// Built-in executors/configs that are missing from current are simply not overridden
+    /// (they will use defaults when merged). This allows partial configs to be saved.
     fn compute_overrides(defaults: &Self, current: &Self) -> Result<Self, ProfileError> {
         let mut overrides = Self {
             executors: HashMap::new(),
         };
 
-        // Fast scan for any illegal deletions BEFORE allocating/cloning
-        for (executor_key, default_profile) in &defaults.executors {
-            // Check if executor was removed entirely
-            if !current.executors.contains_key(executor_key) {
-                return Err(ProfileError::CannotDeleteExecutor {
-                    executor: *executor_key,
-                });
-            }
-
-            let current_profile = &current.executors[executor_key];
-
-            // Check if ANY built-in configuration was removed
-            for config_name in default_profile.configurations.keys() {
-                if !current_profile.configurations.contains_key(config_name) {
-                    return Err(ProfileError::CannotDeleteBuiltInConfig {
-                        executor: *executor_key,
-                        variant: config_name.clone(),
-                    });
-                }
-            }
-        }
+        // Note: We no longer error on missing built-in executors/configs.
+        // If a built-in is missing from current, it simply won't have any overrides
+        // and will use the default values when merged.
 
         for (executor_key, current_profile) in &current.executors {
             if let Some(default_profile) = defaults.executors.get(executor_key) {
