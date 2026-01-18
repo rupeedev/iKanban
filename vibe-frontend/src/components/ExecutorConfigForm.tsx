@@ -21,9 +21,24 @@ interface ExecutorConfigFormProps {
   disabled?: boolean;
   isSaving?: boolean;
   isDirty?: boolean;
+  /** Hide sandbox-specific fields for API-based workflow */
+  hideLocalFields?: boolean;
 }
 
 import schemas from 'virtual:executor-schemas';
+
+// Sandbox-specific fields to hide for API-based workflow
+const SANDBOX_FIELDS = [
+  'claude_code_router',
+  'plan',
+  'approvals',
+  'dangerously_skip_permissions',
+  'disable_api_key',
+  'base_command_override',
+  'append_args',
+  'cwd',
+  'timeout',
+];
 
 export function ExecutorConfigForm({
   executor,
@@ -34,6 +49,7 @@ export function ExecutorConfigForm({
   disabled = false,
   isSaving = false,
   isDirty = false,
+  hideLocalFields = true,
 }: ExecutorConfigFormProps) {
   const [formData, setFormData] = useState<unknown>(value || {});
   const [validationErrors, setValidationErrors] = useState<
@@ -59,14 +75,22 @@ export function ExecutorConfigForm({
     [formData, onChange]
   );
 
-  const uiSchema = useMemo(
-    () => ({
+  const uiSchema = useMemo(() => {
+    const baseSchema: Record<string, unknown> = {
       env: {
         'ui:field': 'KeyValueField',
       },
-    }),
-    []
-  );
+    };
+
+    // Hide sandbox-specific fields for API-based workflow
+    if (hideLocalFields) {
+      for (const field of SANDBOX_FIELDS) {
+        baseSchema[field] = { 'ui:widget': 'hidden' };
+      }
+    }
+
+    return baseSchema;
+  }, [hideLocalFields]);
 
   // Pass the env update handler via formContext
   const formContext = useMemo(
