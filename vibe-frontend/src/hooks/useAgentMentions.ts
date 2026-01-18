@@ -10,8 +10,18 @@ export interface AgentMention {
   available: boolean;
 }
 
+/** Execution location for agent tasks (IKA-145) */
+export type ExecutionLocation = 'local' | 'remote';
+
 interface ParsedMention {
   agent: AgentMention | null;
+  cleanPrompt: string;
+}
+
+/** Enhanced multi-mention parser result (IKA-145) */
+export interface ParsedMentions {
+  agent: AgentMention | null;
+  location: ExecutionLocation;
   cleanPrompt: string;
 }
 
@@ -129,6 +139,51 @@ export function useAgentMentions() {
     [agentMentions]
   );
 
+  /**
+   * Parse all @mentions including agent and location (IKA-145)
+   * Supports: @claude @local fix the bug
+   * Returns: { agent, location: 'local'|'remote', cleanPrompt }
+   */
+  const parseAllMentions = useCallback(
+    (text: string): ParsedMentions => {
+      const mentionRegex = /@[\w-]+/g;
+      const matches = text.match(mentionRegex) || [];
+
+      let agent: AgentMention | null = null;
+      let location: ExecutionLocation = 'remote'; // default
+
+      for (const match of matches) {
+        const mention = match.toLowerCase();
+
+        // Check for location mentions
+        if (mention === '@local') {
+          location = 'local';
+          continue;
+        }
+        if (mention === '@remote') {
+          location = 'remote';
+          continue;
+        }
+
+        // Check if it's an agent mention (only use first agent found)
+        if (!agent) {
+          const matchedAgent = agentMentions.find(
+            (m) => m.trigger.toLowerCase() === mention
+          );
+          if (matchedAgent) {
+            agent = matchedAgent;
+          }
+        }
+      }
+
+      // Remove all @mentions from the prompt
+      const cleanPrompt = text.replace(mentionRegex, '').trim();
+
+      return { agent, location, cleanPrompt };
+    },
+    [agentMentions]
+  );
+
   const resolveMentionToProfile = useCallback(
     (mention: AgentMention | null): ExecutorProfileId | null => {
       if (!mention) return defaultProfile;
@@ -165,6 +220,7 @@ export function useAgentMentions() {
     defaultProfile,
     filterMentions,
     parseMentions,
+    parseAllMentions,
     resolveMentionToProfile,
     getMentionPosition,
   };
