@@ -4,6 +4,7 @@ use sqlx::PgPool;
 
 use crate::{
     auth::{JwtService, OAuthHandoffService, OAuthTokenValidator, ProviderRegistry},
+    cache::AppCache,
     config::RemoteServerConfig,
     github_app::GitHubAppService,
     mail::Mailer,
@@ -22,6 +23,7 @@ pub struct AppState {
     oauth_token_validator: Arc<OAuthTokenValidator>,
     r2: Option<R2Service>,
     github_app: Option<Arc<GitHubAppService>>,
+    cache: Arc<AppCache>,
 }
 
 impl AppState {
@@ -49,6 +51,7 @@ impl AppState {
             oauth_token_validator,
             r2,
             github_app,
+            cache: Arc::new(AppCache::new()),
         }
     }
 
@@ -82,5 +85,9 @@ impl AppState {
 
     pub fn github_app(&self) -> Option<&GitHubAppService> {
         self.github_app.as_deref()
+    }
+
+    pub fn cache(&self) -> Arc<AppCache> {
+        Arc::clone(&self.cache)
     }
 }

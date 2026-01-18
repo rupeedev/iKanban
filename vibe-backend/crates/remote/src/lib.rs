@@ -1,9 +1,11 @@
 mod app;
 mod auth;
+pub mod cache;
 pub mod config;
 pub mod db;
 pub mod github_app;
 pub mod mail;
+pub mod middleware;
 pub mod r2;
 pub mod routes;
 mod state;
