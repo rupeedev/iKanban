@@ -304,6 +304,15 @@
       "description": "Configure Model Context Protocol servers to extend coding agent capabilities with custom tools and resources.",
       "loading": "Loading MCP configuration...",
       "applying": "Applying configuration...",
+      "summary": {
+        "title": "MCP Configuration Summary",
+        "description": "Overview of MCP server configurations per agent.",
+        "agent": "Agent",
+        "servers": "Servers",
+        "types": "Server Types",
+        "noServers": "No servers configured",
+        "loading": "Loading..."
+      },
       "labels": {
         "agent": "Agent",
         "agentPlaceholder": "Select executor",
@@ -311,7 +320,8 @@
         "serverConfig": "Server Configuration (JSON)",
         "popularServers": "Popular servers",
         "serverHelper": "Click a card to insert that MCP Server into the JSON above.",
-        "saveLocation": "Changes will be saved to:"
+        "saveLocation": "Configuration managed by:",
+        "saveLocationWorkspace": "Workspace settings"
       },
       "loadingStates": {
         "jsonEditor": "Loading...",

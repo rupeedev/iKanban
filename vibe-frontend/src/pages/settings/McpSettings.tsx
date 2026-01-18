@@ -15,13 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from '@/components/ui/carousel';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { JSONEditor } from '@/components/ui/json-editor';
@@ -31,6 +24,8 @@ import { McpConfig } from 'shared/types';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { mcpServersApi } from '@/lib/api';
 import { McpConfigStrategyGeneral } from '@/lib/mcpStrategies';
+import { McpConfigSummary } from '@/components/settings/McpConfigSummary';
+import { McpPreconfiguredServers } from '@/components/settings/McpPreconfiguredServers';
 
 export function McpSettings() {
   const { t } = useTranslation('settings');
@@ -43,7 +38,6 @@ export function McpSettings() {
     null
   );
   const [mcpApplying, setMcpApplying] = useState(false);
-  const [mcpConfigPath, setMcpConfigPath] = useState<string>('');
   const [success, setSuccess] = useState(false);
 
   // Initialize selected profile when config loads
@@ -66,8 +60,6 @@ export function McpSettings() {
       // Reset state when loading
       setMcpLoading(true);
       setMcpError(null);
-      // Set default empty config based on agent type using strategy
-      setMcpConfigPath('');
 
       try {
         // Load MCP servers for the selected profile/agent
@@ -90,7 +82,6 @@ export function McpSettings() {
         );
         const configJson = JSON.stringify(fullConfig, null, 2);
         setMcpServers(configJson);
-        setMcpConfigPath(result.config_path);
       } catch (err: unknown) {
         if (
           err instanceof Error &&
@@ -213,22 +204,6 @@ export function McpSettings() {
     }
   };
 
-  const preconfiguredObj = (mcpConfig?.preconfigured ?? {}) as Record<
-    string,
-    unknown
-  >;
-  const meta =
-    typeof preconfiguredObj.meta === 'object' && preconfiguredObj.meta !== null
-      ? (preconfiguredObj.meta as Record<
-          string,
-          { name?: string; description?: string; url?: string; icon?: string }
-        >)
-      : {};
-  const servers = Object.fromEntries(
-    Object.entries(preconfiguredObj).filter(([k]) => k !== 'meta')
-  ) as Record<string, unknown>;
-  const getMetaFor = (key: string) => meta[key] || {};
-
   if (!config) {
     return (
       <div className="py-8">
@@ -243,6 +218,9 @@ export function McpSettings() {
 
   return (
     <div className="space-y-6">
+      {/* MCP Configuration Summary - at the top */}
+      <McpConfigSummary profiles={profiles} />
+
       {mcpError && (
         <Alert variant="destructive">
           <AlertDescription>
@@ -349,90 +327,19 @@ export function McpSettings() {
                 ) : (
                   <span>
                     {t('settings.mcp.labels.saveLocation')}
-                    {mcpConfigPath && (
-                      <span className="ml-2 font-mono text-xs">
-                        {mcpConfigPath}
-                      </span>
-                    )}
+                    <span className="ml-2 font-mono text-xs">
+                      {t('settings.mcp.labels.saveLocationWorkspace')}
+                    </span>
                   </span>
                 )}
               </div>
 
               {mcpConfig?.preconfigured &&
                 typeof mcpConfig.preconfigured === 'object' && (
-                  <div className="pt-4">
-                    <Label>{t('settings.mcp.labels.popularServers')}</Label>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {t('settings.mcp.labels.serverHelper')}
-                    </p>
-
-                    <div className="relative overflow-hidden rounded-xl border bg-background">
-                      <Carousel className="w-full px-4 py-3">
-                        <CarouselContent className="gap-3 justify-center">
-                          {Object.entries(servers).map(([key]) => {
-                            const metaObj = getMetaFor(key) as {
-                              name?: string;
-                              description?: string;
-                              url?: string;
-                              icon?: string;
-                            };
-                            const name = metaObj.name || key;
-                            const description =
-                              metaObj.description || 'No description';
-                            const icon = metaObj.icon
-                              ? `/${metaObj.icon}`
-                              : null;
-
-                            return (
-                              <CarouselItem
-                                key={name}
-                                className="sm:basis-1/3 lg:basis-1/4"
-                              >
-                                <button
-                                  type="button"
-                                  onClick={() => addServer(key)}
-                                  aria-label={`Add ${name} to config`}
-                                  className="group w-full text-left outline-none"
-                                >
-                                  <Card className="h-32 rounded-xl border hover:shadow-md transition">
-                                    <CardHeader className="pb-0">
-                                      <div className="flex items-center gap-3">
-                                        <div className="w-6 h-6 rounded-lg border bg-muted grid place-items-center overflow-hidden">
-                                          {icon ? (
-                                            <img
-                                              src={icon}
-                                              alt=""
-                                              className="w-full h-full object-cover"
-                                            />
-                                          ) : (
-                                            <span className="font-semibold">
-                                              {name.slice(0, 1).toUpperCase()}
-                                            </span>
-                                          )}
-                                        </div>
-                                        <CardTitle className="text-base font-medium truncate">
-                                          {name}
-                                        </CardTitle>
-                                      </div>
-                                    </CardHeader>
-
-                                    <CardContent className="pt-2 px-4">
-                                      <p className="text-sm text-muted-foreground line-clamp-3">
-                                        {description}
-                                      </p>
-                                    </CardContent>
-                                  </Card>
-                                </button>
-                              </CarouselItem>
-                            );
-                          })}
-                        </CarouselContent>
-
-                        <CarouselPrevious className="left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full border bg-background/80 shadow-sm backdrop-blur hover:bg-background" />
-                        <CarouselNext className="right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full border bg-background/80 shadow-sm backdrop-blur hover:bg-background" />
-                      </Carousel>
-                    </div>
-                  </div>
+                  <McpPreconfiguredServers
+                    mcpConfig={mcpConfig}
+                    onAddServer={addServer}
+                  />
                 )}
             </div>
           )}
