@@ -38,12 +38,31 @@ const COPILOT_MENTION: AgentMention = {
   available: true, // Always available if GitHub is connected
 };
 
+// Special agent that uses Claude Code Action (IKA-171)
+// Note: 'CLAUDE' is a special value for GitHub integration, not a local executor
+const CLAUDE_EXECUTOR = 'CLAUDE' as unknown as BaseCodingAgent;
+const CLAUDE_MENTION: AgentMention = {
+  trigger: '@claude',
+  executor: CLAUDE_EXECUTOR,
+  variant: null,
+  displayName: 'Claude Code',
+  available: true, // Always available if GitHub is connected with Claude Code Action
+};
+
 /**
  * Check if an agent mention is the special Copilot integration
  * Copilot uses a different flow - creates GitHub Issue instead of local workspace
  */
 export function isCopilotMention(agent: AgentMention | null): boolean {
   return agent?.executor === 'COPILOT';
+}
+
+/**
+ * Check if an agent mention is the special Claude integration (IKA-171)
+ * Claude uses a different flow - creates GitHub Issue and triggers Claude Code Action
+ */
+export function isClaudeMention(agent: AgentMention | null): boolean {
+  return (agent?.executor as unknown as string) === 'CLAUDE';
 }
 
 // Map of common @mention triggers to executor profiles
@@ -55,11 +74,14 @@ function buildAgentMentions(
   // Always add the special Copilot mention (uses GitHub Copilot Workspace API)
   mentions.push(COPILOT_MENTION);
 
+  // Always add the special Claude mention (uses Claude Code Action - IKA-171)
+  mentions.push(CLAUDE_MENTION);
+
   if (!profiles) return mentions;
 
   for (const [executor, config] of Object.entries(profiles)) {
-    // Skip COPILOT since we handle it specially
-    if (executor === 'COPILOT') continue;
+    // Skip COPILOT and CLAUDE since we handle them specially
+    if (executor === 'COPILOT' || executor === 'CLAUDE') continue;
 
     // Add base agent mention (e.g., @claude, @gemini)
     const baseTrigger = `@${executor.toLowerCase().replace(/_/g, '-')}`;

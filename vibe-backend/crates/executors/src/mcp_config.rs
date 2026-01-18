@@ -298,7 +298,7 @@ impl CodingAgent {
             CodingAgent::CursorAgent(_) => Cursor,
             CodingAgent::Codex(_) => Codex,
             CodingAgent::Opencode(_) => Opencode,
-            CodingAgent::Copilot(..) => Copilot,
+            CodingAgent::Copilot(..) | CodingAgent::Claude(..) => Copilot,
         };
 
         let canonical = PRECONFIGURED_MCP_SERVERS.clone();

@@ -674,6 +674,13 @@ pub struct AssignToCopilotRequest {
     pub prompt: String,
 }
 
+/// Request to assign a task to Claude
+#[derive(Debug, Deserialize, TS)]
+#[ts(export)]
+pub struct AssignToClaudeRequest {
+    pub prompt: String,
+}
+
 /// GitHub API response for issue creation
 #[derive(Debug, Deserialize)]
 struct GitHubIssueResponse {
@@ -958,6 +965,141 @@ async fn assign_issue_to_copilot(
     Ok(())
 }
 
+/// Assign a GitHub issue to Claude using the GraphQL API
+///
+/// Similar to Copilot assignment, we use the GraphQL API with `replaceActorsForAssignable`.
+/// Claude's bot login is typically "claude[bot]" or configured per repository.
+async fn assign_issue_to_claude(
+    issue_node_id: &str,
+    repo_owner: &str,
+    repo_name: &str,
+    access_token: &str,
+) -> Result<(), String> {
+    let client = reqwest::Client::new();
+
+    // Step 1: Query for Claude's actor ID in the repository
+    let actor_query = serde_json::json!({
+        "query": r#"
+            query($owner: String!, $name: String!) {
+                repository(owner: $owner, name: $name) {
+                    suggestedActors(first: 20, capabilities: [CAN_BE_ASSIGNED]) {
+                        nodes {
+                            login
+                            id
+                        }
+                    }
+                }
+            }
+        "#,
+        "variables": {
+            "owner": repo_owner,
+            "name": repo_name
+        }
+    });
+
+    let actor_response = client
+        .post("https://api.github.com/graphql")
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("User-Agent", "iKanban-Claude")
+        .json(&actor_query)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to query GitHub GraphQL: {}", e))?;
+
+    if !actor_response.status().is_success() {
+        return Err(format!(
+            "GitHub GraphQL query failed: {}",
+            actor_response.status()
+        ));
+    }
+
+    let actor_data: serde_json::Value = actor_response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse actor response: {}", e))?;
+
+    // Find Claude's actor ID (login is typically "claude[bot]" or "claude-code[bot]")
+    let actors = actor_data["data"]["repository"]["suggestedActors"]["nodes"]
+        .as_array()
+        .ok_or("No suggested actors found")?;
+
+    let claude_actor = actors
+        .iter()
+        .find(|actor| {
+            actor["login"]
+                .as_str()
+                .map(|l| {
+                    l == "claude[bot]"
+                        || l == "claude-code[bot]"
+                        || l.starts_with("claude")
+                })
+                .unwrap_or(false)
+        })
+        .ok_or("Claude bot not found. Ensure Claude Code Action is configured for this repository.")?;
+
+    let claude_actor_id = claude_actor["id"]
+        .as_str()
+        .ok_or("Claude actor ID not found")?;
+
+    tracing::info!(
+        "Found Claude actor ID: {} for {}/{}",
+        claude_actor_id,
+        repo_owner,
+        repo_name
+    );
+
+    // Step 2: Assign the issue to Claude using the mutation
+    let assign_mutation = serde_json::json!({
+        "query": r#"
+            mutation($assignableId: ID!, $actorIds: [ID!]!) {
+                replaceActorsForAssignable(input: {
+                    assignableId: $assignableId,
+                    actorIds: $actorIds
+                }) {
+                    assignable {
+                        ... on Issue {
+                            id
+                            number
+                        }
+                    }
+                }
+            }
+        "#,
+        "variables": {
+            "assignableId": issue_node_id,
+            "actorIds": [claude_actor_id]
+        }
+    });
+
+    let assign_response = client
+        .post("https://api.github.com/graphql")
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("User-Agent", "iKanban-Claude")
+        .json(&assign_mutation)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to call assignment mutation: {}", e))?;
+
+    if !assign_response.status().is_success() {
+        return Err(format!(
+            "Assignment mutation failed: {}",
+            assign_response.status()
+        ));
+    }
+
+    let assign_data: serde_json::Value = assign_response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse assignment response: {}", e))?;
+
+    // Check for GraphQL errors
+    if let Some(errors) = assign_data.get("errors") {
+        return Err(format!("GraphQL errors: {}", errors));
+    }
+
+    Ok(())
+}
+
 /// Background task to create GitHub issue for Copilot
 ///
 /// This function is spawned as a background task and uses Result<(), String>
@@ -1108,6 +1250,254 @@ async fn create_github_issue_for_copilot(
     }
 }
 
+// ============ CLAUDE ASSIGNMENT HANDLERS ============
+
+/// Get all claude assignments for a task (reuses CopilotAssignment table for now)
+pub async fn get_claude_assignments(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<CopilotAssignment>>>, ApiError> {
+    // For now, Claude assignments use the same table as Copilot
+    // In future, we can add agent_type column to differentiate
+    let assignments = CopilotAssignment::find_by_task_id(&deployment.db().pool, task.id).await?;
+    Ok(ResponseJson(ApiResponse::success(assignments)))
+}
+
+/// Assign a task to Claude - creates GitHub issue and triggers Claude Code Action
+pub async fn assign_task_to_claude(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<AssignToClaudeRequest>,
+) -> Result<ResponseJson<ApiResponse<CopilotAssignment>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    // Get GitHub connection for access token (workspace-level)
+    let connection = GitHubConnection::find_workspace_connection(pool)
+        .await?
+        .ok_or_else(|| {
+            ApiError::BadRequest(
+                "No GitHub connection configured. Please connect GitHub in Settings > Projects > Repositories first.".to_string(),
+            )
+        })?;
+
+    // Get repos linked to the task's project
+    let project_repos = ProjectRepo::find_repos_for_project(pool, task.project_id).await?;
+    if project_repos.is_empty() {
+        return Err(ApiError::BadRequest(
+            "No repository linked to this project. Please add a GitHub repository in Settings > Projects > Repositories.".to_string(),
+        ));
+    }
+
+    // Find first GitHub repo by parsing the path URL
+    let github_repo = project_repos
+        .iter()
+        .find_map(|repo| parse_github_repo_from_path(&repo.path))
+        .ok_or_else(|| {
+            ApiError::BadRequest(
+                "No GitHub repository found in project. Please add a GitHub repository (e.g., https://github.com/owner/repo) in Settings > Projects > Repositories.".to_string(),
+            )
+        })?;
+
+    // Create the assignment with repo info (reuses CopilotAssignment for simplicity)
+    let create_payload = CreateCopilotAssignment {
+        prompt: payload.prompt.clone(),
+        github_issue_id: None,
+        github_issue_url: None,
+        github_repo_owner: Some(github_repo.owner.clone()),
+        github_repo_name: Some(github_repo.name.clone()),
+        status: "pending".to_string(),
+    };
+
+    let assignment = CopilotAssignment::create(pool, task.id, &create_payload).await?;
+
+    // Spawn background task to create GitHub issue
+    let pool_clone = pool.clone();
+    let assignment_id = assignment.id;
+    let task_title = task.title.clone();
+    let task_description = task.description.clone();
+    let prompt = payload.prompt.clone();
+    let access_token = connection.access_token.clone();
+    let repo_owner = github_repo.owner.clone();
+    let repo_name = github_repo.name.clone();
+
+    tokio::spawn(async move {
+        if let Err(e) = create_github_issue_for_claude(
+            &pool_clone,
+            assignment_id,
+            &task_title,
+            task_description.as_deref(),
+            &prompt,
+            &access_token,
+            &repo_owner,
+            &repo_name,
+        )
+        .await
+        {
+            tracing::error!("Failed to create GitHub issue for Claude: {}", e);
+        }
+    });
+
+    deployment
+        .track_if_analytics_allowed(
+            "claude_assignment_created",
+            serde_json::json!({
+                "task_id": task.id.to_string(),
+                "assignment_id": assignment.id.to_string(),
+                "repo": format!("{}/{}", github_repo.owner, github_repo.name),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(assignment)))
+}
+
+/// Background task to create GitHub issue for Claude
+#[allow(clippy::too_many_arguments)]
+async fn create_github_issue_for_claude(
+    pool: &sqlx::PgPool,
+    assignment_id: Uuid,
+    task_title: &str,
+    task_description: Option<&str>,
+    prompt: &str,
+    access_token: &str,
+    repo_owner: &str,
+    repo_name: &str,
+) -> Result<(), String> {
+    use db::models::copilot_assignment::UpdateCopilotAssignment;
+
+    // Build issue title and body with @claude mention to trigger Claude Code Action
+    let issue_title = format!("[Claude] Task: {}", task_title);
+    let issue_body = format!(
+        "## Task\n{}\n\n## Description\n{}\n\n## Claude Instructions\n@claude {}\n\n---\n*Created by iKanban @claude integration*",
+        task_title,
+        task_description.unwrap_or("No description provided"),
+        prompt
+    );
+
+    // Build GitHub API URL
+    let url = format!(
+        "https://api.github.com/repos/{}/{}/issues",
+        repo_owner, repo_name
+    );
+
+    // Build request body with labels (assignment done via GraphQL after creation)
+    let body = serde_json::json!({
+        "title": issue_title,
+        "body": issue_body,
+        "labels": ["claude", "automated"]
+    });
+
+    tracing::info!(
+        "Creating GitHub issue for Claude assignment {} in {}/{}",
+        assignment_id,
+        repo_owner,
+        repo_name
+    );
+
+    // Make GitHub API request
+    let client = reqwest::Client::new();
+    let response = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("User-Agent", "iKanban-Claude")
+        .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to call GitHub API: {}", e);
+            format!("GitHub API request failed: {}", e)
+        })?;
+
+    // Handle response
+    if response.status().is_success() {
+        let issue_response: GitHubIssueResponse =
+            response.json::<GitHubIssueResponse>().await.map_err(|e| {
+                tracing::error!("Failed to parse GitHub response: {}", e);
+                "Failed to parse GitHub response".to_string()
+            })?;
+
+        tracing::info!(
+            "Created GitHub issue #{} for Claude assignment {}",
+            issue_response.number,
+            assignment_id
+        );
+
+        // Update assignment with issue details
+        CopilotAssignment::update(
+            pool,
+            assignment_id,
+            &UpdateCopilotAssignment {
+                github_issue_id: Some(issue_response.id),
+                github_issue_url: Some(issue_response.html_url.clone()),
+                github_repo_owner: Some(repo_owner.to_string()),
+                github_repo_name: Some(repo_name.to_string()),
+                status: Some("issue_created".to_string()),
+                ..Default::default()
+            },
+        )
+        .await
+        .map_err(|e| format!("Failed to update assignment: {}", e))?;
+
+        // Attempt to assign the issue to Claude via GraphQL
+        // This is best-effort: if it fails, the issue is still created with labels and @claude mention
+        if let Err(e) =
+            assign_issue_to_claude(&issue_response.node_id, repo_owner, repo_name, access_token)
+                .await
+        {
+            tracing::warn!(
+                "Failed to assign issue #{} to Claude: {}. Issue created with 'claude' label and @claude mention.",
+                issue_response.number,
+                e
+            );
+        } else {
+            tracing::info!(
+                "Successfully assigned issue #{} to Claude",
+                issue_response.number
+            );
+        }
+
+        Ok(())
+    } else {
+        let status = response.status();
+        let error_body: String = response.text().await.unwrap_or_default();
+
+        tracing::error!(
+            "GitHub API error ({}): {} for Claude assignment {}",
+            status,
+            error_body,
+            assignment_id
+        );
+
+        // Parse GitHub error message if possible
+        let error_message =
+            if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&error_body) {
+                error_json["message"]
+                    .as_str()
+                    .unwrap_or("Unknown error")
+                    .to_string()
+            } else {
+                format!("GitHub API error: {}", status)
+            };
+
+        // Update assignment with error
+        CopilotAssignment::update(
+            pool,
+            assignment_id,
+            &UpdateCopilotAssignment {
+                status: Some("failed".to_string()),
+                error_message: Some(error_message.clone()),
+                ..Default::default()
+            },
+        )
+        .await
+        .ok(); // Don't fail on error update
+
+        Err(error_message)
+    }
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_actions_router = Router::new()
         .route("/", put(update_task))
@@ -1133,6 +1523,11 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route(
             "/copilot",
             get(get_copilot_assignments).post(assign_task_to_copilot),
+        )
+        // Claude assignment routes
+        .route(
+            "/claude",
+            get(get_claude_assignments).post(assign_task_to_claude),
         );
 
     let task_id_router = Router::new()
