@@ -14,20 +14,21 @@ pub enum AgentStorageLocation {
 pub fn detect_recommended_storage(agent: &BaseCodingAgent) -> AgentStorageLocation {
     match agent {
         // Local agents that work with project-specific configs
-        BaseCodingAgent::CLAUDE_CODE => {
+        BaseCodingAgent::ClaudeCode => {
             AgentStorageLocation::Local(PathBuf::from(".claude/profiles.json"))
         }
-        BaseCodingAgent::COPILOT => {
+        BaseCodingAgent::Copilot => {
             AgentStorageLocation::Local(PathBuf::from(".github/profiles.json"))
         }
         // Remote/API agents that need cross-session persistence
-        BaseCodingAgent::DROID
-        | BaseCodingAgent::AMP
-        | BaseCodingAgent::GEMINI
-        | BaseCodingAgent::CODEX
-        | BaseCodingAgent::OPENCODE
-        | BaseCodingAgent::QWEN_CODE
-        | BaseCodingAgent::CURSOR_AGENT => AgentStorageLocation::Database,
+        BaseCodingAgent::Droid
+        | BaseCodingAgent::Amp
+        | BaseCodingAgent::Gemini
+        | BaseCodingAgent::Codex
+        | BaseCodingAgent::Opencode
+        | BaseCodingAgent::QwenCode
+        | BaseCodingAgent::CursorAgent
+        | BaseCodingAgent::Claude => AgentStorageLocation::Database,
     }
 }
 
@@ -61,44 +62,44 @@ mod tests {
 
     #[test]
     fn test_claude_code_uses_local_storage() {
-        let storage = detect_recommended_storage(&BaseCodingAgent::CLAUDE_CODE);
+        let storage = detect_recommended_storage(&BaseCodingAgent::ClaudeCode);
         assert_eq!(
             storage,
             AgentStorageLocation::Local(PathBuf::from(".claude/profiles.json"))
         );
-        assert!(is_local_agent(&BaseCodingAgent::CLAUDE_CODE));
-        assert!(!is_database_agent(&BaseCodingAgent::CLAUDE_CODE));
+        assert!(is_local_agent(&BaseCodingAgent::ClaudeCode));
+        assert!(!is_database_agent(&BaseCodingAgent::ClaudeCode));
     }
 
     #[test]
     fn test_copilot_uses_local_storage() {
-        let storage = detect_recommended_storage(&BaseCodingAgent::COPILOT);
+        let storage = detect_recommended_storage(&BaseCodingAgent::Copilot);
         assert_eq!(
             storage,
             AgentStorageLocation::Local(PathBuf::from(".github/profiles.json"))
         );
-        assert!(is_local_agent(&BaseCodingAgent::COPILOT));
-        assert!(!is_database_agent(&BaseCodingAgent::COPILOT));
+        assert!(is_local_agent(&BaseCodingAgent::Copilot));
+        assert!(!is_database_agent(&BaseCodingAgent::Copilot));
     }
 
     #[test]
     fn test_droid_uses_database_storage() {
-        let storage = detect_recommended_storage(&BaseCodingAgent::DROID);
+        let storage = detect_recommended_storage(&BaseCodingAgent::Droid);
         assert_eq!(storage, AgentStorageLocation::Database);
-        assert!(!is_local_agent(&BaseCodingAgent::DROID));
-        assert!(is_database_agent(&BaseCodingAgent::DROID));
+        assert!(!is_local_agent(&BaseCodingAgent::Droid));
+        assert!(is_database_agent(&BaseCodingAgent::Droid));
     }
 
     #[test]
     fn test_get_local_config_path() {
         assert_eq!(
-            get_local_config_path(&BaseCodingAgent::CLAUDE_CODE),
+            get_local_config_path(&BaseCodingAgent::ClaudeCode),
             Some(PathBuf::from(".claude/profiles.json"))
         );
         assert_eq!(
-            get_local_config_path(&BaseCodingAgent::COPILOT),
+            get_local_config_path(&BaseCodingAgent::Copilot),
             Some(PathBuf::from(".github/profiles.json"))
         );
-        assert_eq!(get_local_config_path(&BaseCodingAgent::DROID), None);
+        assert_eq!(get_local_config_path(&BaseCodingAgent::Droid), None);
     }
 }
