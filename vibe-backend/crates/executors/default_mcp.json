@@ -269,8 +269,8 @@
   },
   "meta": {
     "vibe_kanban": {
-      "name": "Vibe Kanban",
-      "description": "Create, update and delete Vibe Kanban tasks",
+      "name": "iKanban",
+      "description": "Create, update and delete iKanban tasks",
       "url": "https://www.vibekanban.com/docs/integrations/vibe-kanban-mcp-server",
       "icon": "favicon-vk-light.svg",
       "category": "productivity"
