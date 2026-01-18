@@ -175,6 +175,7 @@ export function AgentSettings() {
   const [localParsedProfiles, setLocalParsedProfiles] =
     useState<ExecutorConfigs | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [showHiddenAgents, setShowHiddenAgents] = useState(false);
 
   // Sync server state to local state when not dirty
   useEffect(() => {
@@ -376,7 +377,8 @@ export function AgentSettings() {
         // Invalid JSON syntax
         setSaveError(
           t('settings.agents.errors.invalidJSON', {
-            defaultValue: 'Invalid JSON syntax. Please check your configuration.',
+            defaultValue:
+              'Invalid JSON syntax. Please check your configuration.',
           })
         );
         setLocalParsedProfiles(null);
@@ -516,7 +518,10 @@ export function AgentSettings() {
   };
 
   // Handle visibility toggle for an agent
-  const handleVisibilityToggle = async (agentName: string, visible: boolean) => {
+  const handleVisibilityToggle = async (
+    agentName: string,
+    visible: boolean
+  ) => {
     if (!localParsedProfiles) return;
 
     setSaveError(null);
@@ -596,49 +601,82 @@ export function AgentSettings() {
         Object.keys(localParsedProfiles.executors).length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Eye className="h-5 w-5" />
-                {t('settings.agents.visibility.title', {
-                  defaultValue: 'Agent Visibility',
-                })}
-              </CardTitle>
-              <CardDescription>
-                {t('settings.agents.visibility.description', {
-                  defaultValue:
-                    'Toggle which agents appear in the configuration summary. Hidden agents remain functional.',
-                })}
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Eye className="h-5 w-5" />
+                    {t('settings.agents.visibility.title', {
+                      defaultValue: 'Agent Visibility',
+                    })}
+                  </CardTitle>
+                  <CardDescription>
+                    {t('settings.agents.visibility.description', {
+                      defaultValue:
+                        'Toggle which agents appear in the configuration summary. Hidden agents remain functional.',
+                    })}
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="show-hidden-agents"
+                    className="text-sm text-muted-foreground"
+                  >
+                    {t('settings.agents.visibility.showHidden', {
+                      defaultValue: 'Show hidden',
+                    })}
+                  </Label>
+                  <Switch
+                    id="show-hidden-agents"
+                    checked={showHiddenAgents}
+                    onCheckedChange={setShowHiddenAgents}
+                  />
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                {Object.keys(localParsedProfiles.executors).map((agentName) => {
-                  const visible = isAgentVisible(
-                    localParsedProfiles.visibility as VisibilityMap | undefined,
-                    agentName
-                  );
-                  return (
-                    <div
-                      key={agentName}
-                      className="flex items-center justify-between rounded-lg border p-3"
-                    >
-                      <div className="flex items-center gap-2">
-                        {visible ? (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        <span className="text-sm font-medium">{agentName}</span>
+                {Object.keys(localParsedProfiles.executors)
+                  .filter((agentName) => {
+                    const visible = isAgentVisible(
+                      localParsedProfiles.visibility as
+                        | VisibilityMap
+                        | undefined,
+                      agentName
+                    );
+                    return showHiddenAgents || visible;
+                  })
+                  .map((agentName) => {
+                    const visible = isAgentVisible(
+                      localParsedProfiles.visibility as
+                        | VisibilityMap
+                        | undefined,
+                      agentName
+                    );
+                    return (
+                      <div
+                        key={agentName}
+                        className="flex items-center justify-between rounded-lg border p-3"
+                      >
+                        <div className="flex items-center gap-2">
+                          {visible ? (
+                            <Eye className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <span className="text-sm font-medium">
+                            {agentName}
+                          </span>
+                        </div>
+                        <Switch
+                          checked={visible}
+                          onCheckedChange={(checked) =>
+                            handleVisibilityToggle(agentName, checked)
+                          }
+                          disabled={profilesSaving}
+                        />
                       </div>
-                      <Switch
-                        checked={visible}
-                        onCheckedChange={(checked) =>
-                          handleVisibilityToggle(agentName, checked)
-                        }
-                        disabled={profilesSaving}
-                      />
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             </CardContent>
           </Card>
