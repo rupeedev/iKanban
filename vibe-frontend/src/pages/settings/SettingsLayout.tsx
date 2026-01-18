@@ -67,7 +67,7 @@ export function SettingsLayout() {
 
   return (
     <div className="h-full overflow-auto">
-      <div className="container mx-auto px-4 py-8">
+      <div className="max-w-5xl px-6 py-8">
         {/* Header with title and close button */}
         <div className="flex items-center justify-between sticky top-0 bg-background z-10 py-4 -mx-4 px-4">
           <h1 className="text-2xl font-semibold">
@@ -82,7 +82,7 @@ export function SettingsLayout() {
             <span className="text-xs font-medium">ESC</span>
           </Button>
         </div>
-        <div className="flex flex-col lg:flex-row gap-8">
+        <div className="flex flex-col lg:flex-row gap-6">
           {/* Sidebar Navigation */}
           <aside className="w-full lg:w-64 lg:shrink-0 lg:sticky lg:top-24 lg:h-fit lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
             <div className="space-y-1">
