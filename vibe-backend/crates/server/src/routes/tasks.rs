@@ -774,6 +774,7 @@ pub async fn assign_task_to_copilot(
 ///
 /// This function is spawned as a background task and uses Result<(), String>
 /// to allow clean error handling without blocking the main handler.
+#[allow(clippy::too_many_arguments)]
 async fn create_github_issue_for_copilot(
     pool: &sqlx::PgPool,
     assignment_id: Uuid,

@@ -32,10 +32,13 @@ export function useProfiles(): UseProfilesReturn {
 
   const { mutateAsync: saveMutation, isPending: isSaving } = useMutation({
     mutationFn: (content: string) => profilesApi.save(content),
-    onSuccess: async () => {
-      // Invalidate and refetch to get the server's merged view (defaults + overrides)
-      // Don't use optimistic update since server computes overrides differently
-      await queryClient.invalidateQueries({ queryKey: ['profiles'] });
+    onSuccess: (savedData) => {
+      // Backend now returns the merged profiles (defaults + saved overrides)
+      // Update the cache with what the server actually has
+      queryClient.setQueryData<{ content: string; path: string }>(
+        ['profiles'],
+        savedData
+      );
     },
   });
 

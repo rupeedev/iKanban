@@ -33,11 +33,12 @@ impl Default for RateLimitConfig {
     }
 }
 
+/// Type alias for rate limiter
+type IpRateLimiterType = Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock, NoOpMiddleware>>;
+
 /// Per-IP rate limiter using governor
 pub struct IpRateLimiter {
-    limiters: RwLock<
-        HashMap<String, Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock, NoOpMiddleware>>>,
-    >,
+    limiters: RwLock<HashMap<String, IpRateLimiterType>>,
     quota: Quota,
 }
 
@@ -56,10 +57,7 @@ impl IpRateLimiter {
     }
 
     /// Get or create a rate limiter for an IP
-    async fn get_limiter(
-        &self,
-        ip: &str,
-    ) -> Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock, NoOpMiddleware>> {
+    async fn get_limiter(&self, ip: &str) -> IpRateLimiterType {
         // Check if limiter exists
         {
             let limiters = self.limiters.read().await;
@@ -128,20 +126,20 @@ impl IntoResponse for RateLimitError {
 /// Extract client IP from request
 fn get_client_ip(request: &Request) -> String {
     // Check X-Forwarded-For header first (for proxies)
-    if let Some(forwarded) = request.headers().get("x-forwarded-for") {
-        if let Ok(value) = forwarded.to_str() {
-            // Take first IP in the chain
-            if let Some(ip) = value.split(',').next() {
-                return ip.trim().to_string();
-            }
+    if let Some(forwarded) = request.headers().get("x-forwarded-for")
+        && let Ok(value) = forwarded.to_str()
+    {
+        // Take first IP in the chain
+        if let Some(ip) = value.split(',').next() {
+            return ip.trim().to_string();
         }
     }
 
     // Check X-Real-IP header
-    if let Some(real_ip) = request.headers().get("x-real-ip") {
-        if let Ok(ip) = real_ip.to_str() {
-            return ip.to_string();
-        }
+    if let Some(real_ip) = request.headers().get("x-real-ip")
+        && let Ok(ip) = real_ip.to_str()
+    {
+        return ip.to_string();
     }
 
     // Fallback to connection info (if available via extension)

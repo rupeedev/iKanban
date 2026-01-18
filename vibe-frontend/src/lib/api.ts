@@ -1384,7 +1384,7 @@ export const profilesApi = {
     const response = await makeRequest('/api/profiles');
     return handleApiResponse<{ content: string; path: string }>(response);
   },
-  save: async (content: string): Promise<string> => {
+  save: async (content: string): Promise<{ content: string; path: string }> => {
     const response = await makeRequest('/api/profiles', {
       method: 'PUT',
       body: content,
@@ -1392,7 +1392,8 @@ export const profilesApi = {
         'Content-Type': 'application/json',
       },
     });
-    return handleApiResponse<string>(response);
+    // Backend now returns the merged profiles (defaults + saved overrides)
+    return handleApiResponse<{ content: string; path: string }>(response);
   },
 };
 

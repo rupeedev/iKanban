@@ -178,9 +178,7 @@ impl SseBridge {
         if let Some(candidates) = data.get("candidates").and_then(|c| c.as_array()) {
             for candidate in candidates {
                 // Check for finish reason
-                if let Some(finish_reason) = candidate
-                    .get("finishReason")
-                    .and_then(|r| r.as_str())
+                if let Some(finish_reason) = candidate.get("finishReason").and_then(|r| r.as_str())
                 {
                     if finish_reason == "STOP" || finish_reason == "END_TURN" {
                         return Ok(Some(LogMsg::Finished));
@@ -241,9 +239,7 @@ impl SseBridge {
         if let Some(choices) = parsed.get("choices").and_then(|c| c.as_array()) {
             for choice in choices {
                 // Check for finish reason
-                if let Some(finish_reason) = choice
-                    .get("finish_reason")
-                    .and_then(|r| r.as_str())
+                if let Some(finish_reason) = choice.get("finish_reason").and_then(|r| r.as_str())
                     && (finish_reason == "stop" || finish_reason == "length")
                 {
                     return Ok(Some(LogMsg::Finished));

@@ -238,13 +238,13 @@ pub async fn get_documents(
 
     // Load content from filesystem for each document
     for doc in &mut documents {
-        if let Some(ref file_path) = doc.file_path {
-            if doc.content.is_none() {
-                match storage.read_document(file_path).await {
-                    Ok(content) => doc.content = Some(content),
-                    Err(e) => {
-                        tracing::warn!("Failed to read document content from {}: {}", file_path, e);
-                    }
+        if let Some(ref file_path) = doc.file_path
+            && doc.content.is_none()
+        {
+            match storage.read_document(file_path).await {
+                Ok(content) => doc.content = Some(content),
+                Err(e) => {
+                    tracing::warn!("Failed to read document content from {}: {}", file_path, e);
                 }
             }
         }
@@ -275,13 +275,13 @@ pub async fn get_document(
     }
 
     // Load content from filesystem if we have a file_path
-    if let Some(ref file_path) = document.file_path {
-        if document.content.is_none() {
-            match storage.read_document(file_path).await {
-                Ok(content) => document.content = Some(content),
-                Err(e) => {
-                    tracing::warn!("Failed to read document content from {}: {}", file_path, e);
-                }
+    if let Some(ref file_path) = document.file_path
+        && document.content.is_none()
+    {
+        match storage.read_document(file_path).await {
+            Ok(content) => document.content = Some(content),
+            Err(e) => {
+                tracing::warn!("Failed to read document content from {}: {}", file_path, e);
             }
         }
     }
@@ -305,13 +305,13 @@ pub async fn get_document_by_slug(
         )))?;
 
     // Load content from filesystem if we have a file_path
-    if let Some(ref file_path) = document.file_path {
-        if document.content.is_none() {
-            match storage.read_document(file_path).await {
-                Ok(content) => document.content = Some(content),
-                Err(e) => {
-                    tracing::warn!("Failed to read document content from {}: {}", file_path, e);
-                }
+    if let Some(ref file_path) = document.file_path
+        && document.content.is_none()
+    {
+        match storage.read_document(file_path).await {
+            Ok(content) => document.content = Some(content),
+            Err(e) => {
+                tracing::warn!("Failed to read document content from {}: {}", file_path, e);
             }
         }
     }
@@ -368,12 +368,7 @@ pub async fn create_document(
                 subfolder.as_deref(), // Use folder name as subfolder
             )
             .await
-            .map_err(|e| {
-                ApiError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    e.to_string(),
-                ))
-            })?;
+            .map_err(|e| ApiError::Io(std::io::Error::other(e.to_string())))?;
 
         // Update document with file metadata
         let document = Document::update_file_metadata(
@@ -475,7 +470,7 @@ pub async fn update_document(
             // Write to existing file path (preserves user's file organization)
             tokio::fs::write(existing_path, content.as_bytes())
                 .await
-                .map_err(|e| ApiError::Io(e))?;
+                .map_err(ApiError::Io)?;
 
             services::services::document_storage::DocumentFileInfo {
                 file_path: existing_path.clone(),
@@ -494,12 +489,7 @@ pub async fn update_document(
                     None,
                 )
                 .await
-                .map_err(|e| {
-                    ApiError::Io(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        e.to_string(),
-                    ))
-                })?
+                .map_err(|e| ApiError::Io(std::io::Error::other(e.to_string())))?
         };
 
         // Update file metadata
@@ -560,10 +550,10 @@ pub async fn delete_document(
     }
 
     // Delete file from filesystem if it exists
-    if let Some(ref file_path) = existing.file_path {
-        if let Err(e) = storage.delete_document(file_path).await {
-            tracing::warn!("Failed to delete document file {}: {}", file_path, e);
-        }
+    if let Some(ref file_path) = existing.file_path
+        && let Err(e) = storage.delete_document(file_path).await
+    {
+        tracing::warn!("Failed to delete document file {}: {}", file_path, e);
     }
 
     // Delete from database
@@ -624,7 +614,11 @@ pub async fn get_document_content(
         })?;
 
         // Determine content type from file extension or mime_type
-        let extension = storage_key.split('.').last().unwrap_or("").to_lowercase();
+        let extension = storage_key
+            .split('.')
+            .next_back()
+            .unwrap_or("")
+            .to_lowercase();
 
         let (content, content_type_str) = match extension.as_str() {
             "md" | "markdown" | "txt" | "json" | "xml" | "html" | "htm" => {
@@ -669,28 +663,28 @@ pub async fn get_document_content(
     // Handle local filesystem files
     // First, check if content exists in database (preferred for text documents)
     // This handles cases where file_path points to a non-existent file (e.g., different server)
-    if let Some(ref content) = document.content {
-        if !content.is_empty() {
-            // Document has content stored in database - return it directly
-            let file_type = document.file_type.as_str();
-            let content_type_str = match file_type {
-                "md" | "markdown" | "txt" | "json" | "xml" | "html" | "htm" => "text",
-                "csv" => "csv",
-                _ => "text",
-            }
-            .to_string();
-
-            let response = DocumentContentResponse {
-                document_id,
-                content_type: content_type_str,
-                content: content.clone(),
-                csv_data: None,
-                file_path: document.file_path,
-                file_type: document.file_type,
-                mime_type: document.mime_type,
-            };
-            return Ok(ResponseJson(ApiResponse::success(response)));
+    if let Some(ref content) = document.content
+        && !content.is_empty()
+    {
+        // Document has content stored in database - return it directly
+        let file_type = document.file_type.as_str();
+        let content_type_str = match file_type {
+            "md" | "markdown" | "txt" | "json" | "xml" | "html" | "htm" => "text",
+            "csv" => "csv",
+            _ => "text",
         }
+        .to_string();
+
+        let response = DocumentContentResponse {
+            document_id,
+            content_type: content_type_str,
+            content: content.clone(),
+            csv_data: None,
+            file_path: document.file_path,
+            file_type: document.file_type,
+            mime_type: document.mime_type,
+        };
+        return Ok(ResponseJson(ApiResponse::success(response)));
     }
 
     // Fall back to filesystem if no DB content
@@ -778,9 +772,7 @@ pub async fn get_document_file(
         .ok_or_else(|| ApiError::NotFound("Document has no file path".to_string()))?;
 
     // Read file bytes
-    let file_bytes = tokio::fs::read(file_path)
-        .await
-        .map_err(|e| ApiError::Io(e))?;
+    let file_bytes = tokio::fs::read(file_path).await.map_err(ApiError::Io)?;
 
     // Determine content type from extension or mime_type
     let content_type = document.mime_type.clone().unwrap_or_else(|| {
@@ -804,12 +796,7 @@ pub async fn get_document_file(
             ),
         )
         .body(Body::from(file_bytes))
-        .map_err(|e| {
-            ApiError::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        .map_err(|e| ApiError::Io(std::io::Error::other(e.to_string())))?;
 
     Ok(response)
 }
@@ -1078,18 +1065,15 @@ pub async fn discover_folders(
     let path = std::path::Path::new(base_path);
 
     if path.exists() {
-        let mut entries = tokio::fs::read_dir(path)
-            .await
-            .map_err(|e| ApiError::Io(e))?;
+        let mut entries = tokio::fs::read_dir(path).await.map_err(ApiError::Io)?;
 
-        while let Some(entry) = entries.next_entry().await.map_err(|e| ApiError::Io(e))? {
-            if entry.path().is_dir() {
-                if let Some(name) = entry.file_name().to_str() {
-                    // Skip hidden folders (starting with .)
-                    if !name.starts_with('.') {
-                        fs_folders.push(name.to_string());
-                    }
-                }
+        while let Some(entry) = entries.next_entry().await.map_err(ApiError::Io)? {
+            if entry.path().is_dir()
+                && let Some(name) = entry.file_name().to_str()
+                && !name.starts_with('.')
+            {
+                // Skip hidden folders (starting with .)
+                fs_folders.push(name.to_string());
             }
         }
     }
@@ -1206,9 +1190,9 @@ pub async fn scan_filesystem(
     if scan_path.exists() {
         let mut entries = tokio::fs::read_dir(&scan_path)
             .await
-            .map_err(|e| ApiError::Io(e))?;
+            .map_err(ApiError::Io)?;
 
-        while let Some(entry) = entries.next_entry().await.map_err(|e| ApiError::Io(e))? {
+        while let Some(entry) = entries.next_entry().await.map_err(ApiError::Io)? {
             let path = entry.path();
 
             // Skip directories
@@ -1238,7 +1222,7 @@ pub async fn scan_filesystem(
                 .unwrap_or("Untitled");
 
             let title = file_stem
-                .split(|c| c == '-' || c == '_')
+                .split(['-', '_'])
                 .map(|word| {
                     let mut chars = word.chars();
                     match chars.next() {
@@ -1259,9 +1243,7 @@ pub async fn scan_filesystem(
                     .iter()
                     .find(|d| d.file_path.as_ref() == Some(&path_str))
                 {
-                    let metadata = tokio::fs::metadata(&path)
-                        .await
-                        .map_err(|e| ApiError::Io(e))?;
+                    let metadata = tokio::fs::metadata(&path).await.map_err(ApiError::Io)?;
                     let file_size = metadata.len() as i64;
 
                     if is_text {
@@ -1308,9 +1290,7 @@ pub async fn scan_filesystem(
                 if let Some(existing_doc) = existing_docs.iter().find(|d| {
                     d.title.to_lowercase().replace(' ', "-").replace(' ', "_") == normalized_title
                 }) {
-                    let metadata = tokio::fs::metadata(&path)
-                        .await
-                        .map_err(|e| ApiError::Io(e))?;
+                    let metadata = tokio::fs::metadata(&path).await.map_err(ApiError::Io)?;
                     let file_size = metadata.len() as i64;
 
                     if is_text {
@@ -1359,9 +1339,7 @@ pub async fn scan_filesystem(
             };
 
             // Get file metadata
-            let metadata = tokio::fs::metadata(&path)
-                .await
-                .map_err(|e| ApiError::Io(e))?;
+            let metadata = tokio::fs::metadata(&path).await.map_err(ApiError::Io)?;
             let file_size = metadata.len() as i64;
 
             // Create document record (metadata only for non-text files)
@@ -1471,7 +1449,7 @@ pub async fn scan_all_filesystem(
             }
         };
 
-        while let Some(entry) = entries.next_entry().await.map_err(|e| ApiError::Io(e))? {
+        while let Some(entry) = entries.next_entry().await.map_err(ApiError::Io)? {
             let path = entry.path();
             let name = match entry.file_name().to_str() {
                 Some(n) => n.to_string(),
@@ -1535,7 +1513,7 @@ pub async fn scan_all_filesystem(
                     .unwrap_or("Untitled");
 
                 let title = file_stem
-                    .split(|c| c == '-' || c == '_')
+                    .split(['-', '_'])
                     .map(|word| {
                         let mut chars = word.chars();
                         match chars.next() {
@@ -1547,9 +1525,7 @@ pub async fn scan_all_filesystem(
                     .join(" ");
 
                 // Get file metadata
-                let metadata = tokio::fs::metadata(&path)
-                    .await
-                    .map_err(|e| ApiError::Io(e))?;
+                let metadata = tokio::fs::metadata(&path).await.map_err(ApiError::Io)?;
                 let file_size = metadata.len() as i64;
                 let mime_type = get_mime_type(extension);
                 let file_type = extension.to_lowercase();
@@ -1666,10 +1642,10 @@ pub async fn upload_documents(
 
         // Handle folder_id field
         if field_name == "folder_id" {
-            if let Ok(text) = field.text().await {
-                if !text.is_empty() {
-                    folder_id = Uuid::parse_str(&text).ok();
-                }
+            if let Ok(text) = field.text().await
+                && !text.is_empty()
+            {
+                folder_id = Uuid::parse_str(&text).ok();
             }
             continue;
         }
@@ -1707,7 +1683,7 @@ pub async fn upload_documents(
                 .unwrap_or("Untitled");
 
             let title = file_stem
-                .split(|c| c == '-' || c == '_')
+                .split(['-', '_'])
                 .map(|word| {
                     let mut chars = word.chars();
                     match chars.next() {

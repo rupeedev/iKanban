@@ -408,7 +408,9 @@ async fn get_profiles(
 async fn update_profiles(
     State(_deployment): State<DeploymentImpl>,
     body: String,
-) -> ResponseJson<ApiResponse<String>> {
+) -> ResponseJson<ApiResponse<ProfilesContent>> {
+    let profiles_path = utils::assets::profiles_path();
+
     // Try to parse as ExecutorProfileConfigs format
     match serde_json::from_str::<ExecutorConfigs>(&body) {
         Ok(executor_profiles) => {
@@ -418,9 +420,19 @@ async fn update_profiles(
                     tracing::info!("Executor profiles saved successfully");
                     // Reload the cached profiles
                     ExecutorConfigs::reload();
-                    ResponseJson(ApiResponse::success(
-                        "Executor profiles updated successfully".to_string(),
-                    ))
+
+                    // Return the merged profiles (defaults + saved overrides)
+                    // so frontend can update its state with what the server actually has
+                    let merged = ExecutorConfigs::get_cached();
+                    let content = serde_json::to_string_pretty(&merged).unwrap_or_else(|e| {
+                        tracing::error!("Failed to serialize merged profiles: {}", e);
+                        "{}".to_string()
+                    });
+
+                    ResponseJson(ApiResponse::success(ProfilesContent {
+                        content,
+                        path: profiles_path.display().to_string(),
+                    }))
                 }
                 Err(e) => {
                     tracing::error!("Failed to save executor profiles: {}", e);

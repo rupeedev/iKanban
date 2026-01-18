@@ -179,35 +179,27 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
 
     // Allow dynamic origins from env var (comma separated)
     let cors = if let Ok(extra_origins) = std::env::var("CORS_ALLOWED_ORIGINS") {
-        let mut origins = Vec::new();
-        // Add hardcoded defaults
-        origins.push("https://app.scho1ar.com".parse::<HeaderValue>().unwrap());
-        origins.push(
+        let mut origins = vec![
+            "https://app.scho1ar.com".parse::<HeaderValue>().unwrap(),
             "https://www.app.scho1ar.com"
                 .parse::<HeaderValue>()
                 .unwrap(),
-        );
-        origins.push("https://api.scho1ar.com".parse::<HeaderValue>().unwrap());
-        origins.push("https://scho1ar.com".parse::<HeaderValue>().unwrap());
-        origins.push("https://www.scho1ar.com".parse::<HeaderValue>().unwrap());
-        origins.push("http://localhost:3000".parse::<HeaderValue>().unwrap());
-        origins.push("http://localhost:3003".parse::<HeaderValue>().unwrap());
-        origins.push(
+            "https://api.scho1ar.com".parse::<HeaderValue>().unwrap(),
+            "https://scho1ar.com".parse::<HeaderValue>().unwrap(),
+            "https://www.scho1ar.com".parse::<HeaderValue>().unwrap(),
+            "http://localhost:3000".parse::<HeaderValue>().unwrap(),
+            "http://localhost:3003".parse::<HeaderValue>().unwrap(),
             "https://vibe-kanban-frontend-production.up.railway.app"
                 .parse::<HeaderValue>()
                 .unwrap(),
-        );
-        origins.push(
             "https://vibe-kanban-api-production.up.railway.app"
                 .parse::<HeaderValue>()
                 .unwrap(),
-        );
-        origins.push("https://scho1ar.fly.dev".parse::<HeaderValue>().unwrap());
-        origins.push(
+            "https://scho1ar.fly.dev".parse::<HeaderValue>().unwrap(),
             "https://vibe-kanban.fly.dev"
                 .parse::<HeaderValue>()
                 .unwrap(),
-        );
+        ];
 
         for origin in extra_origins.split(',') {
             if let Ok(val) = origin.trim().parse::<HeaderValue>() {

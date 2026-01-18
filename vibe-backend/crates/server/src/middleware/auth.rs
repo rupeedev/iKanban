@@ -59,6 +59,12 @@ pub struct AuthState {
     db_pool: Option<PgPool>,
 }
 
+impl Default for AuthState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AuthState {
     pub fn new() -> Self {
         // Clerk issuer format: https://<clerk-subdomain>.clerk.accounts.dev
@@ -120,10 +126,10 @@ impl AuthState {
         // Check cache first
         {
             let cache = self.jwks_cache.read().await;
-            if let Some(cached) = cache.as_ref() {
-                if cached.fetched_at.elapsed() < self.cache_duration {
-                    return Ok(cached.jwks.clone());
-                }
+            if let Some(cached) = cache.as_ref()
+                && cached.fetched_at.elapsed() < self.cache_duration
+            {
+                return Ok(cached.jwks.clone());
             }
         }
 
@@ -297,12 +303,11 @@ pub async fn optional_auth_middleware(
         .headers()
         .get(AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
+        && let Some(token) = extract_bearer_token(auth_header)
     {
-        if let Some(token) = extract_bearer_token(auth_header) {
-            // Use authenticate which supports both JWT and API keys
-            if let Ok(user) = auth_state.authenticate(token).await {
-                request.extensions_mut().insert(user);
-            }
+        // Use authenticate which supports both JWT and API keys
+        if let Ok(user) = auth_state.authenticate(token).await {
+            request.extensions_mut().insert(user);
         }
     }
 

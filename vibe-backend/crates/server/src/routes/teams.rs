@@ -811,17 +811,13 @@ pub async fn push_documents_to_github(
 
         // Load content from filesystem for documents that have file_path
         for doc in &mut folder_docs {
-            if let Some(ref file_path) = doc.file_path {
-                if doc.content.is_none() {
-                    match storage.read_document(file_path).await {
-                        Ok(content) => doc.content = Some(content),
-                        Err(e) => {
-                            tracing::warn!(
-                                "Failed to read document content from {}: {}",
-                                file_path,
-                                e
-                            );
-                        }
+            if let Some(ref file_path) = doc.file_path
+                && doc.content.is_none()
+            {
+                match storage.read_document(file_path).await {
+                    Ok(content) => doc.content = Some(content),
+                    Err(e) => {
+                        tracing::warn!("Failed to read document content from {}: {}", file_path, e);
                     }
                 }
             }
@@ -859,51 +855,50 @@ pub async fn push_documents_to_github(
             .await;
 
         // Delete files that exist on GitHub but not locally
-        if let Ok(resp) = list_response {
-            if resp.status().is_success() {
-                if let Ok(files) = resp.json::<Vec<serde_json::Value>>().await {
-                    for file in files {
-                        let file_name = file.get("name").and_then(|n| n.as_str()).unwrap_or("");
-                        let file_type = file.get("type").and_then(|t| t.as_str()).unwrap_or("");
-                        let file_sha = file.get("sha").and_then(|s| s.as_str());
+        if let Ok(resp) = list_response
+            && resp.status().is_success()
+            && let Ok(files) = resp.json::<Vec<serde_json::Value>>().await
+        {
+            for file in files {
+                let file_name = file.get("name").and_then(|n| n.as_str()).unwrap_or("");
+                let file_type = file.get("type").and_then(|t| t.as_str()).unwrap_or("");
+                let file_sha = file.get("sha").and_then(|s| s.as_str());
 
-                        // Only process files (not directories)
-                        if file_type != "file" {
-                            continue;
-                        }
+                // Only process files (not directories)
+                if file_type != "file" {
+                    continue;
+                }
 
-                        // If file doesn't exist locally, delete it from GitHub
-                        if !local_filenames.contains(file_name) {
-                            if let Some(sha) = file_sha {
-                                let delete_path = format!("{}/{}", github_path, file_name);
-                                let delete_body = serde_json::json!({
-                                    "message": format!("Delete {}", file_name),
-                                    "sha": sha,
-                                    "branch": repo.default_branch.clone().unwrap_or_else(|| "main".to_string())
-                                });
+                // If file doesn't exist locally, delete it from GitHub
+                if !local_filenames.contains(file_name)
+                    && let Some(sha) = file_sha
+                {
+                    let delete_path = format!("{}/{}", github_path, file_name);
+                    let delete_body = serde_json::json!({
+                        "message": format!("Delete {}", file_name),
+                        "sha": sha,
+                        "branch": repo.default_branch.clone().unwrap_or_else(|| "main".to_string())
+                    });
 
-                                let delete_response = client
-                                    .delete(format!(
-                                        "https://api.github.com/repos/{}/contents/{}",
-                                        repo.repo_full_name, delete_path
-                                    ))
-                                    .header(
-                                        "Authorization",
-                                        format!("Bearer {}", connection.access_token),
-                                    )
-                                    .header("User-Agent", "vibe-kanban")
-                                    .json(&delete_body)
-                                    .send()
-                                    .await;
+                    let delete_response = client
+                        .delete(format!(
+                            "https://api.github.com/repos/{}/contents/{}",
+                            repo.repo_full_name, delete_path
+                        ))
+                        .header(
+                            "Authorization",
+                            format!("Bearer {}", connection.access_token),
+                        )
+                        .header("User-Agent", "vibe-kanban")
+                        .json(&delete_body)
+                        .send()
+                        .await;
 
-                                if let Ok(del_resp) = delete_response {
-                                    if del_resp.status().is_success() {
-                                        tracing::info!("Deleted {} from GitHub", delete_path);
-                                        synced_files.push(format!("DELETED: {}", delete_path));
-                                    }
-                                }
-                            }
-                        }
+                    if let Ok(del_resp) = delete_response
+                        && del_resp.status().is_success()
+                    {
+                        tracing::info!("Deleted {} from GitHub", delete_path);
+                        synced_files.push(format!("DELETED: {}", delete_path));
                     }
                 }
             }
@@ -1226,76 +1221,74 @@ pub async fn pull_documents_from_github(
                     .send()
                     .await;
 
-                if let Ok(resp) = content_response {
-                    if resp.status().is_success() {
-                        if let Ok(content) = resp.text().await {
-                            // Create document title from filename
-                            let title = file_name
-                                .trim_end_matches(".md")
-                                .replace("-", " ")
-                                .split_whitespace()
-                                .map(|w| {
-                                    let mut chars = w.chars();
-                                    match chars.next() {
-                                        Some(c) => c.to_uppercase().chain(chars).collect(),
-                                        None => String::new(),
-                                    }
-                                })
-                                .collect::<Vec<String>>()
-                                .join(" ");
-
-                            // Check if document already exists in this folder
-                            // Use normalized comparison to match regardless of case/spacing
-                            let existing_docs =
-                                Document::find_by_folder(&deployment.db().pool, team.id, folder_id)
-                                    .await?;
-                            let normalize_title = |t: &str| -> String {
-                                t.to_lowercase()
-                                    .chars()
-                                    .filter(|c| c.is_alphanumeric() || c.is_whitespace())
-                                    .collect::<String>()
-                                    .split_whitespace()
-                                    .collect::<Vec<_>>()
-                                    .join(" ")
-                            };
-                            let normalized_title = normalize_title(&title);
-                            let existing = existing_docs
-                                .into_iter()
-                                .find(|d| normalize_title(&d.title) == normalized_title);
-
-                            if let Some(doc) = existing {
-                                // Update existing document
-                                let update = UpdateDocument {
-                                    folder_id: None,
-                                    title: None,
-                                    content: Some(content),
-                                    icon: None,
-                                    is_pinned: None,
-                                    is_archived: None,
-                                    position: None,
-                                };
-                                Document::update(&deployment.db().pool, doc.id, &update).await?;
-                            } else {
-                                // Create new document
-                                let create = CreateDocument {
-                                    team_id: team.id,
-                                    folder_id,
-                                    title: title.clone(),
-                                    content: Some(content),
-                                    file_type: Some("markdown".to_string()),
-                                    icon: None,
-                                    file_path: None,
-                                    file_size: None,
-                                    mime_type: None,
-                                    storage_provider: None,
-                                    storage_key: None,
-                                };
-                                Document::create(&deployment.db().pool, &create).await?;
+                if let Ok(resp) = content_response
+                    && resp.status().is_success()
+                    && let Ok(content) = resp.text().await
+                {
+                    // Create document title from filename
+                    let title = file_name
+                        .trim_end_matches(".md")
+                        .replace("-", " ")
+                        .split_whitespace()
+                        .map(|w| {
+                            let mut chars = w.chars();
+                            match chars.next() {
+                                Some(c) => c.to_uppercase().chain(chars).collect(),
+                                None => String::new(),
                             }
+                        })
+                        .collect::<Vec<String>>()
+                        .join(" ");
 
-                            synced_files.push(format!("{}/{}", github_path, file_name));
-                        }
+                    // Check if document already exists in this folder
+                    // Use normalized comparison to match regardless of case/spacing
+                    let existing_docs =
+                        Document::find_by_folder(&deployment.db().pool, team.id, folder_id).await?;
+                    let normalize_title = |t: &str| -> String {
+                        t.to_lowercase()
+                            .chars()
+                            .filter(|c| c.is_alphanumeric() || c.is_whitespace())
+                            .collect::<String>()
+                            .split_whitespace()
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    };
+                    let normalized_title = normalize_title(&title);
+                    let existing = existing_docs
+                        .into_iter()
+                        .find(|d| normalize_title(&d.title) == normalized_title);
+
+                    if let Some(doc) = existing {
+                        // Update existing document
+                        let update = UpdateDocument {
+                            folder_id: None,
+                            title: None,
+                            content: Some(content),
+                            icon: None,
+                            is_pinned: None,
+                            is_archived: None,
+                            position: None,
+                        };
+                        Document::update(&deployment.db().pool, doc.id, &update).await?;
+                    } else {
+                        // Create new document
+                        let create = CreateDocument {
+                            team_id: team.id,
+                            folder_id,
+                            title: title.clone(),
+                            content: Some(content),
+                            file_type: Some("markdown".to_string()),
+                            icon: None,
+                            file_path: None,
+                            file_size: None,
+                            mime_type: None,
+                            storage_provider: None,
+                            storage_key: None,
+                        };
+                        Document::create(&deployment.db().pool, &create).await?;
                     }
+
+                    synced_files.push(format!("{}/{}", github_path, file_name));
                 }
             }
         }
