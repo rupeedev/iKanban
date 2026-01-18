@@ -14,9 +14,10 @@ use axum::{
 };
 use db::models::{
     copilot_assignment::{CopilotAssignment, CreateCopilotAssignment},
-    github_connection::{GitHubConnection, GitHubRepository},
+    github_connection::GitHubConnection,
     image::TaskImage,
     project::{Project, ProjectError},
+    project_repo::ProjectRepo,
     repo::Repo,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     task_comment::{CreateTaskComment, TaskComment, UpdateTaskComment},
@@ -681,6 +682,52 @@ struct GitHubIssueResponse {
     html_url: String,
 }
 
+/// Parsed GitHub repository info from a URL path
+#[derive(Debug, Clone)]
+struct ParsedGitHubRepo {
+    owner: String,
+    name: String,
+}
+
+/// Parse GitHub owner/name from a repo path (URL or local path)
+/// Supports formats:
+/// - https://github.com/owner/repo
+/// - https://github.com/owner/repo.git
+/// - git@github.com:owner/repo.git
+fn parse_github_repo_from_path(path: &std::path::Path) -> Option<ParsedGitHubRepo> {
+    let path_str = path.to_string_lossy();
+
+    // Try HTTPS URL format: https://github.com/owner/repo
+    if path_str.contains("github.com") {
+        // Remove .git suffix if present
+        let clean_path = path_str.trim_end_matches(".git");
+
+        // Parse URL-style path
+        if let Some(github_path) = clean_path.split("github.com/").nth(1) {
+            let parts: Vec<&str> = github_path.split('/').collect();
+            if parts.len() >= 2 {
+                return Some(ParsedGitHubRepo {
+                    owner: parts[0].to_string(),
+                    name: parts[1].to_string(),
+                });
+            }
+        }
+
+        // Parse git@ style: git@github.com:owner/repo.git
+        if let Some(github_path) = clean_path.split("github.com:").nth(1) {
+            let parts: Vec<&str> = github_path.split('/').collect();
+            if parts.len() >= 2 {
+                return Some(ParsedGitHubRepo {
+                    owner: parts[0].to_string(),
+                    name: parts[1].to_string(),
+                });
+            }
+        }
+    }
+
+    None
+}
+
 /// Get all copilot assignments for a task
 pub async fn get_copilot_assignments(
     Extension(task): Extension<Task>,
@@ -698,55 +745,40 @@ pub async fn assign_task_to_copilot(
 ) -> Result<ResponseJson<ApiResponse<CopilotAssignment>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    // Try to find GitHub connection - first check team-level, then workspace-level
-    let connection = if let Some(team_id) = task.team_id {
-        // Try team-level connection first
-        match GitHubConnection::find_by_team_id(pool, team_id).await? {
-            Some(conn) => conn,
-            None => {
-                // Fall back to workspace-level connection
-                GitHubConnection::find_workspace_connection(pool)
-                    .await?
-                    .ok_or_else(|| {
-                        ApiError::BadRequest(
-                            "No GitHub connection configured. Please connect GitHub in Settings > Repositories first.".to_string(),
-                        )
-                    })?
-            }
-        }
-    } else {
-        // No team, use workspace-level connection
-        GitHubConnection::find_workspace_connection(pool)
-            .await?
-            .ok_or_else(|| {
-                ApiError::BadRequest(
-                    "No GitHub connection configured. Please connect GitHub in Settings > Repositories first.".to_string(),
-                )
-            })?
-    };
+    // Get GitHub connection for access token (workspace-level)
+    let connection = GitHubConnection::find_workspace_connection(pool)
+        .await?
+        .ok_or_else(|| {
+            ApiError::BadRequest(
+                "No GitHub connection configured. Please connect GitHub in Settings > Projects > Repositories first.".to_string(),
+            )
+        })?;
 
-    // Verify at least one repository is linked to this connection
-    let repos = GitHubRepository::find_by_connection_id(pool, connection.id).await?;
-    if repos.is_empty() {
-        let github_user = connection
-            .github_username
-            .as_deref()
-            .unwrap_or("your account");
-        return Err(ApiError::BadRequest(format!(
-            "No repository linked to GitHub connection (@{}). Please link a repository in Settings > Repositories by clicking 'Add Repository'.",
-            github_user
-        )));
+    // Get repos linked to the task's project
+    let project_repos = ProjectRepo::find_repos_for_project(pool, task.project_id).await?;
+    if project_repos.is_empty() {
+        return Err(ApiError::BadRequest(
+            "No repository linked to this project. Please add a GitHub repository in Settings > Projects > Repositories.".to_string(),
+        ));
     }
 
-    let repo = &repos[0]; // Use first linked repo
+    // Find first GitHub repo by parsing the path URL
+    let github_repo = project_repos
+        .iter()
+        .find_map(|repo| parse_github_repo_from_path(&repo.path))
+        .ok_or_else(|| {
+            ApiError::BadRequest(
+                "No GitHub repository found in project. Please add a GitHub repository (e.g., https://github.com/owner/repo) in Settings > Projects > Repositories.".to_string(),
+            )
+        })?;
 
     // Create the assignment with repo info
     let create_payload = CreateCopilotAssignment {
         prompt: payload.prompt.clone(),
         github_issue_id: None,
         github_issue_url: None,
-        github_repo_owner: Some(repo.repo_owner.clone()),
-        github_repo_name: Some(repo.repo_name.clone()),
+        github_repo_owner: Some(github_repo.owner.clone()),
+        github_repo_name: Some(github_repo.name.clone()),
         status: "pending".to_string(),
     };
 
@@ -759,8 +791,8 @@ pub async fn assign_task_to_copilot(
     let task_description = task.description.clone();
     let prompt = payload.prompt.clone();
     let access_token = connection.access_token.clone();
-    let repo_owner = repo.repo_owner.clone();
-    let repo_name = repo.repo_name.clone();
+    let repo_owner = github_repo.owner.clone();
+    let repo_name = github_repo.name.clone();
 
     tokio::spawn(async move {
         if let Err(e) = create_github_issue_for_copilot(
@@ -785,7 +817,7 @@ pub async fn assign_task_to_copilot(
             serde_json::json!({
                 "task_id": task.id.to_string(),
                 "assignment_id": assignment.id.to_string(),
-                "repo": format!("{}/{}", repo.repo_owner, repo.repo_name),
+                "repo": format!("{}/{}", github_repo.owner, github_repo.name),
             }),
         )
         .await;
