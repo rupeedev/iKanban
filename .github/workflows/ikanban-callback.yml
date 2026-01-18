@@ -1,0 +1,336 @@
+name: iKanban Callback
+
+# Post stage-wise comments back to iKanban tasks (IKA-174)
+# Stages: Issue Created, PR Created, PR Merged
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened, closed]
+
+jobs:
+  # Post comment when agent issue is created
+  issue-created:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issues' &&
+      github.event.action == 'opened' &&
+      (
+        contains(github.event.issue.labels.*.name, 'copilot') ||
+        contains(github.event.issue.labels.*.name, 'claude')
+      )
+    steps:
+      - name: Extract iKanban metadata and post comment
+        uses: actions/github-script@v7
+        env:
+          IKANBAN_API_TOKEN: ${{ secrets.IKANBAN_API_TOKEN }}
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+
+            // Extract task_id from metadata comment
+            const metadataMatch = body.match(/<!-- ikanban-metadata\ntask_id: ([a-f0-9-]+)\nassignment_id: ([a-f0-9-]+)\n-->/);
+
+            if (!metadataMatch) {
+              console.log('No iKanban metadata found in issue body');
+              return;
+            }
+
+            const taskId = metadataMatch[1];
+            const assignmentId = metadataMatch[2];
+            const agentType = issue.labels.some(l => l.name === 'claude') ? 'Claude' : 'Copilot';
+
+            console.log(`Found iKanban metadata: task=${taskId}, assignment=${assignmentId}`);
+
+            // Build comment content
+            const comment = `🎫 **GitHub Issue Created**\n\n` +
+              `Agent: ${agentType}\n` +
+              `Issue: [#${issue.number}](${issue.html_url})\n` +
+              `Status: Waiting for agent to start work`;
+
+            // Call iKanban API to add comment
+            const apiToken = process.env.IKANBAN_API_TOKEN;
+            if (!apiToken) {
+              console.log('IKANBAN_API_TOKEN not set, skipping callback');
+              return;
+            }
+
+            try {
+              const response = await fetch(`https://api.scho1ar.com/api/tasks/${taskId}/comments`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${apiToken}`
+                },
+                body: JSON.stringify({
+                  content: comment,
+                  author_name: 'GitHub Actions'
+                })
+              });
+
+              if (response.ok) {
+                console.log(`Posted comment to iKanban task ${taskId}`);
+              } else {
+                console.log(`Failed to post comment: ${response.status} ${await response.text()}`);
+              }
+            } catch (error) {
+              console.log(`Error posting comment: ${error.message}`);
+            }
+
+  # Post comment when PR is created for an agent issue
+  pr-created:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action == 'opened' &&
+      (
+        github.event.pull_request.user.login == 'copilot-swe-agent[bot]' ||
+        github.event.pull_request.user.login == 'claude[bot]' ||
+        contains(github.event.pull_request.head.ref, 'copilot/') ||
+        contains(github.event.pull_request.head.ref, 'claude/')
+      )
+    steps:
+      - name: Find linked issue and post comment
+        uses: actions/github-script@v7
+        env:
+          IKANBAN_API_TOKEN: ${{ secrets.IKANBAN_API_TOKEN }}
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const prBody = pr.body || '';
+
+            // Try to find linked issue from PR body
+            // Agent PRs typically reference "Fixes #123" or "Closes #123"
+            const issueMatch = prBody.match(/(?:fixes|closes|resolves)\s*#(\d+)/i);
+
+            let taskId = null;
+            let assignmentId = null;
+            let agentType = 'Unknown';
+
+            if (issueMatch) {
+              const issueNumber = parseInt(issueMatch[1]);
+              console.log(`Found linked issue #${issueNumber}`);
+
+              // Fetch the issue to get metadata
+              try {
+                const { data: issue } = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber
+                });
+
+                const issueBody = issue.body || '';
+                const metadataMatch = issueBody.match(/<!-- ikanban-metadata\ntask_id: ([a-f0-9-]+)\nassignment_id: ([a-f0-9-]+)\n-->/);
+
+                if (metadataMatch) {
+                  taskId = metadataMatch[1];
+                  assignmentId = metadataMatch[2];
+                  agentType = issue.labels.some(l => l.name === 'claude') ? 'Claude' : 'Copilot';
+                }
+              } catch (error) {
+                console.log(`Could not fetch issue #${issueNumber}: ${error.message}`);
+              }
+            }
+
+            // Also check PR body directly for metadata (fallback)
+            if (!taskId) {
+              const metadataMatch = prBody.match(/<!-- ikanban-metadata\ntask_id: ([a-f0-9-]+)\nassignment_id: ([a-f0-9-]+)\n-->/);
+              if (metadataMatch) {
+                taskId = metadataMatch[1];
+                assignmentId = metadataMatch[2];
+              }
+            }
+
+            if (!taskId) {
+              console.log('No iKanban metadata found');
+              return;
+            }
+
+            // Determine agent type from PR author
+            if (pr.user.login === 'claude[bot]' || pr.head.ref.includes('claude/')) {
+              agentType = 'Claude';
+            } else if (pr.user.login === 'copilot-swe-agent[bot]' || pr.head.ref.includes('copilot/')) {
+              agentType = 'Copilot';
+            }
+
+            console.log(`Found iKanban metadata: task=${taskId}, agent=${agentType}`);
+
+            // Build comment content
+            const comment = `🔀 **Pull Request Created**\n\n` +
+              `Agent: ${agentType}\n` +
+              `PR: [#${pr.number}](${pr.html_url})\n` +
+              `Branch: \`${pr.head.ref}\`\n` +
+              `Status: Awaiting review and CI checks`;
+
+            // Call iKanban API to add comment
+            const apiToken = process.env.IKANBAN_API_TOKEN;
+            if (!apiToken) {
+              console.log('IKANBAN_API_TOKEN not set, skipping callback');
+              return;
+            }
+
+            try {
+              const response = await fetch(`https://api.scho1ar.com/api/tasks/${taskId}/comments`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${apiToken}`
+                },
+                body: JSON.stringify({
+                  content: comment,
+                  author_name: 'GitHub Actions'
+                })
+              });
+
+              if (response.ok) {
+                console.log(`Posted PR created comment to iKanban task ${taskId}`);
+              } else {
+                console.log(`Failed to post comment: ${response.status} ${await response.text()}`);
+              }
+            } catch (error) {
+              console.log(`Error posting comment: ${error.message}`);
+            }
+
+  # Post comment when PR is merged
+  pr-merged:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true &&
+      (
+        github.event.pull_request.user.login == 'copilot-swe-agent[bot]' ||
+        github.event.pull_request.user.login == 'claude[bot]' ||
+        contains(github.event.pull_request.head.ref, 'copilot/') ||
+        contains(github.event.pull_request.head.ref, 'claude/')
+      )
+    steps:
+      - name: Find linked issue and post completion comment
+        uses: actions/github-script@v7
+        env:
+          IKANBAN_API_TOKEN: ${{ secrets.IKANBAN_API_TOKEN }}
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const prBody = pr.body || '';
+
+            // Try to find linked issue from PR body
+            const issueMatch = prBody.match(/(?:fixes|closes|resolves)\s*#(\d+)/i);
+
+            let taskId = null;
+            let assignmentId = null;
+            let agentType = 'Unknown';
+
+            if (issueMatch) {
+              const issueNumber = parseInt(issueMatch[1]);
+              console.log(`Found linked issue #${issueNumber}`);
+
+              // Fetch the issue to get metadata
+              try {
+                const { data: issue } = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber
+                });
+
+                const issueBody = issue.body || '';
+                const metadataMatch = issueBody.match(/<!-- ikanban-metadata\ntask_id: ([a-f0-9-]+)\nassignment_id: ([a-f0-9-]+)\n-->/);
+
+                if (metadataMatch) {
+                  taskId = metadataMatch[1];
+                  assignmentId = metadataMatch[2];
+                  agentType = issue.labels.some(l => l.name === 'claude') ? 'Claude' : 'Copilot';
+                }
+              } catch (error) {
+                console.log(`Could not fetch issue #${issueNumber}: ${error.message}`);
+              }
+            }
+
+            // Also check PR body directly for metadata (fallback)
+            if (!taskId) {
+              const metadataMatch = prBody.match(/<!-- ikanban-metadata\ntask_id: ([a-f0-9-]+)\nassignment_id: ([a-f0-9-]+)\n-->/);
+              if (metadataMatch) {
+                taskId = metadataMatch[1];
+                assignmentId = metadataMatch[2];
+              }
+            }
+
+            if (!taskId) {
+              console.log('No iKanban metadata found');
+              return;
+            }
+
+            // Determine agent type from PR author
+            if (pr.user.login === 'claude[bot]' || pr.head.ref.includes('claude/')) {
+              agentType = 'Claude';
+            } else if (pr.user.login === 'copilot-swe-agent[bot]' || pr.head.ref.includes('copilot/')) {
+              agentType = 'Copilot';
+            }
+
+            console.log(`Found iKanban metadata: task=${taskId}, agent=${agentType}`);
+
+            // Get PR stats
+            const additions = pr.additions || 0;
+            const deletions = pr.deletions || 0;
+            const changedFiles = pr.changed_files || 0;
+
+            // Build completion comment
+            const comment = `✅ **Pull Request Merged**\n\n` +
+              `Agent: ${agentType}\n` +
+              `PR: [#${pr.number}](${pr.html_url})\n` +
+              `Merged by: ${pr.merged_by?.login || 'auto-merge'}\n` +
+              `Changes: +${additions} -${deletions} in ${changedFiles} file(s)\n\n` +
+              `**Task completed successfully!** The code has been merged to \`${pr.base.ref}\`.`;
+
+            // Call iKanban API to add comment
+            const apiToken = process.env.IKANBAN_API_TOKEN;
+            if (!apiToken) {
+              console.log('IKANBAN_API_TOKEN not set, skipping callback');
+              return;
+            }
+
+            try {
+              const response = await fetch(`https://api.scho1ar.com/api/tasks/${taskId}/comments`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${apiToken}`
+                },
+                body: JSON.stringify({
+                  content: comment,
+                  author_name: 'GitHub Actions'
+                })
+              });
+
+              if (response.ok) {
+                console.log(`Posted merge comment to iKanban task ${taskId}`);
+              } else {
+                console.log(`Failed to post comment: ${response.status} ${await response.text()}`);
+              }
+            } catch (error) {
+              console.log(`Error posting comment: ${error.message}`);
+            }
+
+            // Optionally update task status to done
+            try {
+              const statusResponse = await fetch(`https://api.scho1ar.com/api/tasks/${taskId}`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${apiToken}`
+                },
+                body: JSON.stringify({
+                  status: 'done'
+                })
+              });
+
+              if (statusResponse.ok) {
+                console.log(`Updated task ${taskId} status to done`);
+              } else {
+                console.log(`Failed to update status: ${statusResponse.status}`);
+              }
+            } catch (error) {
+              console.log(`Error updating status: ${error.message}`);
+            }
