@@ -26,6 +26,14 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { JSONEditor } from '@/components/ui/json-editor';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from '@/components/ui/table/table';
 import { ChevronDown, Loader2 } from 'lucide-react';
 
 import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
@@ -42,6 +50,60 @@ import type {
 } from 'shared/types';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
+
+interface ConfigSummaryRow {
+  agent: string;
+  variant: string;
+  model: string;
+  keySettings: string;
+}
+
+// Extract key settings from a configuration object (excluding model and append_prompt)
+function extractKeySettings(config: Record<string, unknown>): string {
+  const settings: string[] = [];
+  for (const [key, value] of Object.entries(config)) {
+    // Skip model and append_prompt as they have dedicated columns
+    if (key === 'model' || key === 'append_prompt') continue;
+    // Skip null/undefined values
+    if (value === null || value === undefined) continue;
+    // Format the setting
+    if (typeof value === 'boolean') {
+      settings.push(`${key}: ${value}`);
+    } else if (typeof value === 'string' && value) {
+      settings.push(`${key}: "${value}"`);
+    } else if (typeof value === 'object') {
+      settings.push(`${key}: {...}`);
+    }
+  }
+  return settings.length > 0 ? settings.join(', ') : '-';
+}
+
+// Build summary rows from executor profiles
+function buildConfigSummary(executors: ExecutorsMap): ConfigSummaryRow[] {
+  const rows: ConfigSummaryRow[] = [];
+
+  for (const [agentName, variants] of Object.entries(executors)) {
+    let isFirstVariant = true;
+    for (const [variantName, configWrapper] of Object.entries(variants)) {
+      // configWrapper is like { "COPILOT": { ...settings... } }
+      const innerConfig = configWrapper[agentName] as Record<string, unknown> | undefined;
+      if (!innerConfig) continue;
+
+      const model = typeof innerConfig.model === 'string' ? innerConfig.model : '(default)';
+      const keySettings = extractKeySettings(innerConfig);
+
+      rows.push({
+        agent: isFirstVariant ? agentName : '',
+        variant: variantName,
+        model,
+        keySettings,
+      });
+      isFirstVariant = false;
+    }
+  }
+
+  return rows;
+}
 
 export function AgentSettings() {
   const { t } = useTranslation(['settings', 'common']);
@@ -296,7 +358,10 @@ export function AgentSettings() {
         reloadSystem();
       } catch (saveError: unknown) {
         console.error('Failed to save deletion to backend:', saveError);
-        setSaveError(t('settings.agents.errors.deleteFailed'));
+        // Show actual API error message if available
+        const errorMessage =
+          saveError instanceof Error ? saveError.message : t('settings.agents.errors.deleteFailed');
+        setSaveError(errorMessage);
       }
     } catch (error) {
       console.error('Error deleting configuration:', error);
@@ -343,7 +408,10 @@ export function AgentSettings() {
       reloadSystem();
     } catch (err: unknown) {
       console.error('Failed to save profiles:', err);
-      setSaveError(t('settings.agents.errors.saveFailed'));
+      // Show actual API error message if available
+      const errorMessage =
+        err instanceof Error ? err.message : t('settings.agents.errors.saveFailed');
+      setSaveError(errorMessage);
     }
   };
 
@@ -412,7 +480,10 @@ export function AgentSettings() {
       reloadSystem();
     } catch (err: unknown) {
       console.error('Failed to save profiles:', err);
-      setSaveError(t('settings.agents.errors.saveConfigFailed'));
+      // Show actual API error message if available
+      const errorMessage =
+        err instanceof Error ? err.message : t('settings.agents.errors.saveConfigFailed');
+      setSaveError(errorMessage);
     }
   };
 
@@ -790,6 +861,49 @@ export function AgentSettings() {
           )}
         </CardContent>
       </Card>
+
+      {/* Configuration Summary Table */}
+      {localParsedProfiles?.executors &&
+        Object.keys(localParsedProfiles.executors).length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('settings.agents.summary.title')}</CardTitle>
+              <CardDescription>
+                {t('settings.agents.summary.description')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeaderCell>{t('settings.agents.summary.agent')}</TableHeaderCell>
+                    <TableHeaderCell>{t('settings.agents.summary.variant')}</TableHeaderCell>
+                    <TableHeaderCell>{t('settings.agents.summary.model')}</TableHeaderCell>
+                    <TableHeaderCell>
+                      {t('settings.agents.summary.keySettings')}
+                    </TableHeaderCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {buildConfigSummary(
+                    localParsedProfiles.executors as unknown as ExecutorsMap
+                  ).map((row, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell className="font-medium">{row.agent}</TableCell>
+                      <TableCell>{row.variant}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {row.model}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
+                        {row.keySettings}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
 
       {!useFormEditor && (
         <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm border-t py-4">
