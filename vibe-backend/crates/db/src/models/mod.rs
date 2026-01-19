@@ -17,6 +17,7 @@ pub mod image;
 pub mod inbox;
 pub mod member_project_access;
 pub mod merge;
+pub mod plan_limits;
 pub mod project;
 pub mod project_repo;
 pub mod repo;
