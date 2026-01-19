@@ -26,6 +26,7 @@ export interface UseTeamDashboardResult {
   issuesByStatus: Record<TaskStatus, TaskWithAttemptStatus[]>;
   // Query state
   isLoading: boolean;
+  isFetching: boolean;
   error: Error | null;
   refresh: () => Promise<void>;
 }
@@ -43,6 +44,7 @@ export function useTeamDashboard(
   const {
     data: dashboard,
     isLoading,
+    isFetching,
     error,
   } = useQuery<TeamDashboard>({
     queryKey: teamDashboardKeys.team(teamId!),
@@ -53,9 +55,10 @@ export function useTeamDashboard(
 
   const refresh = useCallback(async () => {
     if (!teamId) return;
-    // Invalidate and refetch in one call - removes stale data and triggers fresh fetch
-    await queryClient.invalidateQueries({
+    // Force refetch - ignores cache and staleTime, makes network request
+    await queryClient.refetchQueries({
       queryKey: teamDashboardKeys.team(teamId),
+      type: 'active',
     });
   }, [teamId, queryClient]);
 
@@ -118,6 +121,7 @@ export function useTeamDashboard(
     issuesById,
     issuesByStatus,
     isLoading,
+    isFetching,
     error: error
       ? error instanceof Error
         ? error

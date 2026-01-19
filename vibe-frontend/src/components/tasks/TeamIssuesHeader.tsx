@@ -34,6 +34,7 @@ interface TeamIssuesHeaderProps {
   teamMembers: TeamMember[];
   teamProjects: TeamProject[];
   issues: TaskWithAttemptStatus[];
+  isFetching?: boolean;
   onViewFilterChange: (filter: ViewFilter) => void;
   onFiltersChange: (filters: FilterState) => void;
   onToggleInsights: () => void;
@@ -51,6 +52,7 @@ export function TeamIssuesHeader({
   teamMembers,
   teamProjects,
   issues,
+  isFetching = false,
   onViewFilterChange,
   onFiltersChange,
   onToggleInsights,
@@ -69,8 +71,15 @@ export function TeamIssuesHeader({
             <span className="text-muted-foreground">/ Issues</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={onRefresh}>
-              <RefreshCw className="h-4 w-4" />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onRefresh}
+              disabled={isFetching}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`}
+              />
             </Button>
             <Button size="sm" onClick={onCreateIssue}>
               <Plus className="h-4 w-4 mr-1" />

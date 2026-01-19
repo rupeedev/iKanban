@@ -78,6 +78,7 @@ export function TeamIssues() {
     issues,
     issuesById,
     isLoading,
+    isFetching,
     error,
     refresh,
   } = useTeamDashboard(teamId);
@@ -341,6 +342,7 @@ export function TeamIssues() {
         teamMembers={teamMembers}
         teamProjects={teamProjectsForDropdown}
         issues={issues}
+        isFetching={isFetching}
         onViewFilterChange={setViewFilter}
         onFiltersChange={setFilters}
         onToggleInsights={() => setShowInsights(!showInsights)}
