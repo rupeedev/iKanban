@@ -29,6 +29,7 @@ tracing-error = "0.2"
 thiserror = { workspace = true }
 ts-rs = { workspace = true }
 utils = { path = "../utils" }
+db = { path = "../db" }
 uuid = { version = "1", features = ["serde", "v4"] }
 jsonwebtoken = "9"
 rand = "0.9"
@@ -50,3 +51,5 @@ moka = { version = "0.12", features = ["future"] }
 # Rate limiting (TENANCY-QW-03: IKA-203)
 tower_governor = "0.4"
 governor = "0.6"
+# Stripe payment integration (IKA-181)
+async-stripe = { version = "0.41", default-features = false, features = ["runtime-tokio-hyper", "checkout", "billing"] }

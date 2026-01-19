@@ -16,6 +16,7 @@ use crate::{
     mail::LoopsMailer,
     r2::R2Service,
     routes,
+    stripe::StripeService,
 };
 
 pub struct Server;
@@ -124,6 +125,17 @@ impl Server {
             }
         };
 
+        // Initialize Stripe service (IKA-181)
+        let stripe = config.stripe.as_ref().map(|stripe_config| {
+            tracing::info!("Stripe payment service initialized");
+            Arc::new(StripeService::new(stripe_config))
+        });
+        if stripe.is_none() {
+            tracing::info!(
+                "Stripe not configured. Set STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRO_PRICE_ID, and STRIPE_ENTERPRISE_PRICE_ID to enable."
+            );
+        }
+
         let state = AppState::new(
             pool.clone(),
             config.clone(),
@@ -135,6 +147,7 @@ impl Server {
             http_client,
             r2,
             github_app,
+            stripe,
         );
 
         let router = routes::router(state);

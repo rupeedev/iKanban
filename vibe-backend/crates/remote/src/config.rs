@@ -16,6 +16,7 @@ pub struct RemoteServerConfig {
     pub r2: Option<R2Config>,
     pub review_worker_base_url: Option<String>,
     pub github_app: Option<GitHubAppConfig>,
+    pub stripe: Option<StripeConfig>,
 }
 
 #[derive(Debug, Clone)]
@@ -114,6 +115,57 @@ impl GitHubAppConfig {
     }
 }
 
+/// Stripe configuration for payment processing (IKA-181)
+#[derive(Debug, Clone)]
+pub struct StripeConfig {
+    /// Stripe secret key (sk_live_... or sk_test_...)
+    pub secret_key: SecretString,
+    /// Stripe webhook signing secret (whsec_...)
+    pub webhook_secret: SecretString,
+    /// Stripe Price ID for Pro plan
+    pub pro_price_id: String,
+    /// Stripe Price ID for Enterprise plan
+    pub enterprise_price_id: String,
+    /// Frontend URL for checkout success/cancel redirects
+    pub frontend_url: String,
+}
+
+impl StripeConfig {
+    pub fn from_env() -> Result<Option<Self>, ConfigError> {
+        let secret_key = match env::var("STRIPE_SECRET_KEY") {
+            Ok(v) => v,
+            Err(_) => {
+                tracing::info!("STRIPE_SECRET_KEY not set, Stripe integration disabled");
+                return Ok(None);
+            }
+        };
+
+        tracing::info!("STRIPE_SECRET_KEY is set, checking other Stripe env vars");
+
+        let webhook_secret = env::var("STRIPE_WEBHOOK_SECRET")
+            .map_err(|_| ConfigError::MissingVar("STRIPE_WEBHOOK_SECRET"))?;
+
+        let pro_price_id = env::var("STRIPE_PRO_PRICE_ID")
+            .map_err(|_| ConfigError::MissingVar("STRIPE_PRO_PRICE_ID"))?;
+
+        let enterprise_price_id = env::var("STRIPE_ENTERPRISE_PRICE_ID")
+            .map_err(|_| ConfigError::MissingVar("STRIPE_ENTERPRISE_PRICE_ID"))?;
+
+        let frontend_url = env::var("FRONTEND_URL")
+            .unwrap_or_else(|_| "http://localhost:5173".to_string());
+
+        tracing::info!("Stripe config loaded successfully");
+
+        Ok(Some(Self {
+            secret_key: SecretString::new(secret_key.into()),
+            webhook_secret: SecretString::new(webhook_secret.into()),
+            pro_price_id,
+            enterprise_price_id,
+            frontend_url,
+        }))
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum ConfigError {
     #[error("environment variable `{0}` is not set")]
@@ -154,6 +206,8 @@ impl RemoteServerConfig {
 
         let github_app = GitHubAppConfig::from_env()?;
 
+        let stripe = StripeConfig::from_env()?;
+
         Ok(Self {
             database_url,
             listen_addr,
@@ -165,6 +219,7 @@ impl RemoteServerConfig {
             r2,
             review_worker_base_url,
             github_app,
+            stripe,
         })
     }
 }

@@ -9,6 +9,7 @@ pub mod middleware;
 pub mod r2;
 pub mod routes;
 mod state;
+pub mod stripe;
 pub mod validated_where;
 
 use std::{env, sync::OnceLock};

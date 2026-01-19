@@ -23,6 +23,7 @@ pub(crate) mod organization_members;
 mod organizations;
 mod projects;
 mod review;
+mod stripe;
 pub mod tasks;
 mod tokens;
 
@@ -53,7 +54,8 @@ pub fn router(state: AppState) -> Router {
         .merge(organization_members::public_router())
         .merge(tokens::public_router())
         .merge(review::public_router())
-        .merge(github_app::public_router());
+        .merge(github_app::public_router())
+        .merge(stripe::public_router());
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
@@ -64,6 +66,7 @@ pub fn router(state: AppState) -> Router {
         .merge(oauth::protected_router())
         .merge(electric_proxy::router())
         .merge(github_app::protected_router())
+        .merge(stripe::protected_router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,
