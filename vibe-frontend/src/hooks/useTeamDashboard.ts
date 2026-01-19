@@ -53,12 +53,8 @@ export function useTeamDashboard(
 
   const refresh = useCallback(async () => {
     if (!teamId) return;
+    // Invalidate and refetch in one call - removes stale data and triggers fresh fetch
     await queryClient.invalidateQueries({
-      queryKey: teamDashboardKeys.team(teamId),
-      refetchType: 'none',
-    });
-    // Also refetch immediately
-    await queryClient.refetchQueries({
       queryKey: teamDashboardKeys.team(teamId),
     });
   }, [teamId, queryClient]);
