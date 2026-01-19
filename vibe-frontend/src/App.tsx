@@ -42,6 +42,7 @@ import {
   AdminPermissions,
   AdminConfiguration,
   AdminUsers,
+  AdminFlaggedUsers,
 } from '@/pages/admin/';
 import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -242,6 +243,7 @@ function AppContent() {
                     element={<AdminConfiguration />}
                   />
                   <Route path="users" element={<AdminUsers />} />
+                  <Route path="flagged-users" element={<AdminFlaggedUsers />} />
                 </Route>
                 <Route
                   path="/mcp-servers"
