@@ -868,3 +868,78 @@ export const workspaceSubscriptions = pgTable("workspace_subscriptions", {
     idxWorkspaceSubscriptionsStripeCustomerId: index("idx_workspace_subscriptions_stripe_customer_id").on(table.stripeCustomerId),
     idxWorkspaceSubscriptionsStripeSubscriptionId: index("idx_workspace_subscriptions_stripe_subscription_id").on(table.stripeSubscriptionId),
 }));
+
+// ============================================================================
+// Trust & Safety (IKA-186 - IKA-190: User Trust Profiles & Abuse Detection)
+// ============================================================================
+
+// User Trust Profiles (IKA-186: Trust level tracking per user)
+export const userTrustProfiles = pgTable("user_trust_profiles", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull().unique(), // Clerk user ID
+    trustLevel: integer("trust_level").default(0).notNull(), // 0=New, 1=Basic, 2=Standard, 3=Trusted, 4=Verified
+    emailVerified: boolean("email_verified").default(false).notNull(),
+    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    accountAgeDays: integer("account_age_days").default(0).notNull(),
+    totalTasksCreated: integer("total_tasks_created").default(0).notNull(),
+    membersInvited: integer("members_invited").default(0).notNull(),
+    // Flagging
+    isFlagged: boolean("is_flagged").default(false).notNull(),
+    flaggedReason: text("flagged_reason"),
+    flaggedAt: timestamp("flagged_at", { withTimezone: true }),
+    flaggedBy: text("flagged_by"), // Admin user ID who flagged
+    // Banning
+    isBanned: boolean("is_banned").default(false).notNull(),
+    bannedAt: timestamp("banned_at", { withTimezone: true }),
+    bannedBy: text("banned_by"), // Admin user ID who banned
+    banReason: text("ban_reason"),
+    // Timestamps
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+    idxUserTrustProfilesUserId: uniqueIndex("idx_user_trust_profiles_user_id").on(table.userId),
+    idxUserTrustProfilesTrustLevel: index("idx_user_trust_profiles_trust_level").on(table.trustLevel),
+    idxUserTrustProfilesIsFlagged: index("idx_user_trust_profiles_is_flagged").on(table.isFlagged),
+    idxUserTrustProfilesIsBanned: index("idx_user_trust_profiles_is_banned").on(table.isBanned),
+    idxUserTrustProfilesEmailVerified: index("idx_user_trust_profiles_email_verified").on(table.emailVerified),
+}));
+
+// Abuse Detection Signals (IKA-188: Track suspicious activity)
+export const abuseDetectionSignals = pgTable("abuse_detection_signals", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(), // Clerk user ID (can have multiple signals per user)
+    signalType: text("signal_type").notNull(), // rapid_registration, disposable_email, suspicious_activity, etc.
+    severity: text("severity").notNull(), // low, medium, high
+    description: text("description"),
+    metadata: jsonb("metadata").default({}).notNull(), // Additional context (IP, user agent, etc.)
+    sourceIp: text("source_ip"),
+    // Resolution tracking
+    isResolved: boolean("is_resolved").default(false).notNull(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedBy: text("resolved_by"), // Admin user ID
+    resolutionNotes: text("resolution_notes"),
+    // Timestamps
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+    idxAbuseDetectionSignalsUserId: index("idx_abuse_detection_signals_user_id").on(table.userId),
+    idxAbuseDetectionSignalsType: index("idx_abuse_detection_signals_type").on(table.signalType),
+    idxAbuseDetectionSignalsSeverity: index("idx_abuse_detection_signals_severity").on(table.severity),
+    idxAbuseDetectionSignalsIsResolved: index("idx_abuse_detection_signals_is_resolved").on(table.isResolved),
+    idxAbuseDetectionSignalsCreatedAt: index("idx_abuse_detection_signals_created_at").on(table.createdAt),
+}));
+
+// Email Verifications (IKA-189: Email verification tokens)
+export const emailVerifications = pgTable("email_verifications", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(), // Clerk user ID
+    email: text("email").notNull(),
+    tokenHash: text("token_hash").notNull(), // SHA256 hash of verification token
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+    idxEmailVerificationsUserId: index("idx_email_verifications_user_id").on(table.userId),
+    idxEmailVerificationsTokenHash: uniqueIndex("idx_email_verifications_token_hash").on(table.tokenHash),
+    idxEmailVerificationsEmail: index("idx_email_verifications_email").on(table.email),
+    idxEmailVerificationsExpiresAt: index("idx_email_verifications_expires_at").on(table.expiresAt),
+}));
