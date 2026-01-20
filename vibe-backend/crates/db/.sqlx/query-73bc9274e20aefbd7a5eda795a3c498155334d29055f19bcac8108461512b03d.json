@@ -1,0 +1,1 @@
+{"db_name":"PostgreSQL","query":"DELETE FROM superadmins WHERE id = $1","describe":{"columns":[],"parameters":{"Left":["Uuid"]},"nullable":[]},"hash":"73bc9274e20aefbd7a5eda795a3c498155334d29055f19bcac8108461512b03d"}

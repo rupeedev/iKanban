@@ -46,6 +46,10 @@ import {
   AdminUsers,
   AdminFlaggedUsers,
 } from '@/pages/admin/';
+import {
+  SuperadminLayout,
+  SuperadminDashboard,
+} from '@/pages/superadmin/';
 import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { SearchProvider } from '@/contexts/SearchContext';
@@ -253,6 +257,10 @@ function AppContent() {
                   />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="flagged-users" element={<AdminFlaggedUsers />} />
+                </Route>
+                {/* Superadmin panel routes (app owner only) */}
+                <Route path="/superadmin/*" element={<SuperadminLayout />}>
+                  <Route index element={<SuperadminDashboard />} />
                 </Route>
                 <Route
                   path="/mcp-servers"

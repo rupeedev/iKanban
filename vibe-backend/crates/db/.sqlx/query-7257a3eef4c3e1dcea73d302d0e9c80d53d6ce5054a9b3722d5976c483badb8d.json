@@ -1,0 +1,5 @@
+{"db_name":"PostgreSQL","query":"SELECT id, user_id, email, name, is_active,
+                          created_at as \"created_at\!: DateTime<Utc>\",
+                          updated_at as \"updated_at\!: DateTime<Utc>\"
+                   FROM superadmins
+                   ORDER BY created_at ASC","describe":{"columns":[{"ordinal":0,"name":"id","type_info":"Uuid"},{"ordinal":1,"name":"user_id","type_info":"Text"},{"ordinal":2,"name":"email","type_info":"Text"},{"ordinal":3,"name":"name","type_info":"Text"},{"ordinal":4,"name":"is_active","type_info":"Bool"},{"ordinal":5,"name":"created_at\!: DateTime<Utc>","type_info":"Timestamptz"},{"ordinal":6,"name":"updated_at\!: DateTime<Utc>","type_info":"Timestamptz"}],"parameters":{"Left":[]},"nullable":[false,false,false,true,true,false,false]},"hash":"7257a3eef4c3e1dcea73d302d0e9c80d53d6ce5054a9b3722d5976c483badb8d"}
