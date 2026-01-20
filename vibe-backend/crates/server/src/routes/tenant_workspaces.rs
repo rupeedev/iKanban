@@ -10,7 +10,9 @@ use db::models::tenant_workspace::{
     TenantWorkspaceMember, UpdateTenantWorkspace, UpdateWorkspaceMemberRole, WorkspaceMemberRole,
 };
 use deployment::Deployment;
+use remote::middleware::usage_limits::{track_member_invitation, track_member_removal};
 use serde::Deserialize;
+use tracing::warn;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -48,6 +50,14 @@ pub async fn ensure_default_workspace(
     // Find or create the default "iKanban" workspace
     let default_workspace = TenantWorkspace::find_or_create_default(&deployment.db().pool).await?;
 
+    // Check if user is already a member before adding
+    let was_member = TenantWorkspaceMember::is_member(
+        &deployment.db().pool,
+        default_workspace.id,
+        &params.user_id,
+    )
+    .await?;
+
     // Ensure user is a member of the default workspace
     TenantWorkspace::ensure_user_is_member(
         &deployment.db().pool,
@@ -56,6 +66,13 @@ pub async fn ensure_default_workspace(
         &params.email,
     )
     .await?;
+
+    // Track member addition only if user wasn't already a member
+    if !was_member
+        && let Err(e) = track_member_invitation(&deployment.db().pool, default_workspace.id).await
+    {
+        warn!(workspace_id = %default_workspace.id, error = %e, "Failed to track member for default workspace");
+    }
 
     // Return all workspaces the user now belongs to
     let workspaces =
@@ -87,6 +104,11 @@ pub async fn create_workspace(
         &params.email,
     )
     .await?;
+
+    // Track member addition (creator is first member) - soft limits
+    if let Err(e) = track_member_invitation(&deployment.db().pool, workspace.id).await {
+        warn!(workspace_id = %workspace.id, error = %e, "Failed to track member for new workspace");
+    }
 
     deployment
         .track_if_analytics_allowed(
@@ -249,6 +271,11 @@ pub async fn add_member(
 
     let member = TenantWorkspaceMember::add(&deployment.db().pool, workspace_id, &payload).await?;
 
+    // Track member addition - soft limits (allow but log warnings)
+    if let Err(e) = track_member_invitation(&deployment.db().pool, workspace_id).await {
+        warn!(workspace_id = %workspace_id, error = %e, "Failed to track member invitation");
+    }
+
     deployment
         .track_if_analytics_allowed(
             "tenant_workspace_member_added",
@@ -327,6 +354,11 @@ pub async fn remove_member(
     }
 
     TenantWorkspaceMember::remove(&deployment.db().pool, workspace_id, &target_user_id).await?;
+
+    // Track member removal - decrement usage counter
+    if let Err(e) = track_member_removal(&deployment.db().pool, workspace_id).await {
+        warn!(workspace_id = %workspace_id, error = %e, "Failed to track member removal");
+    }
 
     deployment
         .track_if_analytics_allowed(
