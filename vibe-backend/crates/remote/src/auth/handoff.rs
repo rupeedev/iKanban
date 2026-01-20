@@ -425,6 +425,15 @@ impl OAuthHandoffService {
         provider: &Arc<dyn AuthorizationProvider>,
         profile: &ProviderUser,
     ) -> Result<IdentityUser, HandoffError> {
+        self.upsert_identity_with_ip(provider, profile, None).await
+    }
+
+    async fn upsert_identity_with_ip(
+        &self,
+        provider: &Arc<dyn AuthorizationProvider>,
+        profile: &ProviderUser,
+        source_ip: Option<&str>,
+    ) -> Result<IdentityUser, HandoffError> {
         let account_repo = OAuthAccountRepository::new(&self.pool);
         let user_repo = UserRepository::new(&self.pool);
         let org_repo = OrganizationRepository::new(&self.pool);
@@ -437,6 +446,7 @@ impl OAuthHandoffService {
             .get_by_provider_user(provider.name(), &profile.id)
             .await?;
 
+        let is_new_registration = existing_account.is_none();
         let user_id = match existing_account {
             Some(account) => account.user_id,
             None => Uuid::new_v4(),
@@ -469,6 +479,19 @@ impl OAuthHandoffService {
                 avatar_url: profile.avatar_url.as_deref(),
             })
             .await?;
+
+        // Check for abuse signals on new registrations (IKA-188)
+        if is_new_registration {
+            let abuse_detector = super::AbuseDetector::new(self.pool.clone());
+            let user_id_str = user.id.to_string();
+            if let Err(e) = abuse_detector
+                .check_registration(&user_id_str, &email, source_ip)
+                .await
+            {
+                tracing::error!(?e, user_id = %user.id, "failed to check registration abuse signals");
+                // Continue registration even if abuse check fails - we don't want to block users
+            }
+        }
 
         Ok(user)
     }

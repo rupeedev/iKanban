@@ -8,6 +8,7 @@ use crate::db::organization_members::MemberRole;
 const LOOPS_INVITE_TEMPLATE_ID: &str = "cmhvy2wgs3s13z70i1pxakij9";
 const LOOPS_REVIEW_READY_TEMPLATE_ID: &str = "cmj47k5ge16990iylued9by17";
 const LOOPS_REVIEW_FAILED_TEMPLATE_ID: &str = "cmj49ougk1c8s0iznavijdqpo";
+const LOOPS_EMAIL_VERIFICATION_TEMPLATE_ID: &str = "cm70vmnpx02y40mi0vry4ej3f";
 
 #[async_trait]
 pub trait Mailer: Send + Sync {
@@ -23,6 +24,9 @@ pub trait Mailer: Send + Sync {
     async fn send_review_ready(&self, email: &str, review_url: &str, pr_name: &str);
 
     async fn send_review_failed(&self, email: &str, pr_name: &str, review_id: &str);
+
+    /// Send email verification email (IKA-189)
+    async fn send_email_verification(&self, email: &str, verify_url: &str);
 }
 
 pub struct LoopsMailer {
@@ -178,6 +182,45 @@ impl Mailer for LoopsMailer {
             }
             Err(err) => {
                 tracing::error!(error = ?err, "Loops request error for review failed");
+            }
+        }
+    }
+
+    async fn send_email_verification(&self, email: &str, verify_url: &str) {
+        if cfg!(debug_assertions) {
+            tracing::info!(
+                "Sending email verification to {email}\n\
+                 Verify URL: {verify_url}"
+            );
+        }
+
+        let payload = json!({
+            "transactionalId": LOOPS_EMAIL_VERIFICATION_TEMPLATE_ID,
+            "email": email,
+            "dataVariables": {
+                "verify_url": verify_url,
+            }
+        });
+
+        let res = self
+            .client
+            .post("https://app.loops.so/api/v1/transactional")
+            .bearer_auth(&self.api_key)
+            .json(&payload)
+            .send()
+            .await;
+
+        match res {
+            Ok(resp) if resp.status().is_success() => {
+                tracing::debug!("Email verification sent via Loops to {email}");
+            }
+            Ok(resp) => {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                tracing::warn!(status = %status, body = %body, "Loops send failed for email verification");
+            }
+            Err(err) => {
+                tracing::error!(error = ?err, "Loops request error for email verification");
             }
         }
     }

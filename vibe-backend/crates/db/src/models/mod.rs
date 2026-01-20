@@ -1,4 +1,8 @@
 pub mod abuse_detection_signal;
+pub use abuse_detection_signal::{
+    AbuseDetectionSignal, CreateAbuseSignal, ResolveAbuseSignal, Severity, SignalType,
+};
+
 pub mod agent_config;
 pub mod ai_provider_key;
 pub mod api_key;
@@ -40,3 +44,8 @@ pub mod workspace;
 pub mod workspace_repo;
 pub mod workspace_subscription;
 pub mod workspace_usage;
+
+pub mod email_verification;
+pub use email_verification::{
+    EmailVerification, SendVerificationRequest, VerificationTokenResponse,
+};
