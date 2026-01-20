@@ -66,6 +66,7 @@ import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDial
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 import { SidebarProvider } from './contexts/SidebarContext';
 import { GlobalKeyboardShortcuts } from '@/components/layout/GlobalKeyboardShortcuts';
+import { UsageLimitProvider } from '@/contexts/UsageLimitContext';
 import NiceModal from '@ebay/nice-modal-react';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
@@ -320,7 +321,9 @@ function App() {
                   ]}
                 >
                   <NiceModal.Provider>
-                    <AppContent />
+                    <UsageLimitProvider>
+                      <AppContent />
+                    </UsageLimitProvider>
                   </NiceModal.Provider>
                 </HotkeysProvider>
               </SidebarProvider>

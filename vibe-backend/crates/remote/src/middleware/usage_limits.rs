@@ -1,11 +1,13 @@
-//! Usage limit enforcement middleware for soft limits (IKA-180)
+//! Usage limit enforcement middleware (IKA-180: soft limits, IKA-184: hard limits)
 //!
 //! This middleware checks workspace resource usage against plan limits.
-//! In soft limit mode, actions are allowed but warnings are returned.
+//! - Soft limit mode: Actions are allowed but warnings are returned (trialing/past_due)
+//! - Hard limit mode: Actions are blocked with 429 error (active subscriptions)
 
 use db_crate::models::{
     plan_limits::PlanLimits,
     tenant_workspace::TenantWorkspace,
+    workspace_subscription::{SubscriptionStatus, WorkspaceSubscription},
     workspace_usage::{LimitCheckResult, UsageAction, WorkspaceUsage},
 };
 use serde::{Deserialize, Serialize};
@@ -13,6 +15,39 @@ use sqlx::PgPool;
 use tracing::{info, warn};
 use ts_rs::TS;
 use uuid::Uuid;
+
+// ============================================================================
+// Limit Mode (IKA-184)
+// ============================================================================
+
+/// Limit enforcement mode based on subscription status
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LimitMode {
+    /// Soft limits: allow action but return warning (for trialing/past_due)
+    Soft,
+    /// Hard limits: block action with 429 error (for active subscriptions)
+    Hard,
+}
+
+/// Determine the limit mode based on workspace subscription status
+pub async fn get_limit_mode(pool: &PgPool, workspace_id: Uuid) -> Result<LimitMode, UsageLimitError> {
+    let subscription = WorkspaceSubscription::find_by_workspace_id(pool, workspace_id).await?;
+
+    match subscription {
+        Some(sub) => match sub.status {
+            // Active subscriptions get hard limits - they're paying, enforce strictly
+            SubscriptionStatus::Active => Ok(LimitMode::Hard),
+            // Trialing gets soft limits - don't block during trial
+            SubscriptionStatus::Trialing => Ok(LimitMode::Soft),
+            // Past due gets soft limits - give grace period to fix payment
+            SubscriptionStatus::PastDue => Ok(LimitMode::Soft),
+            // Other statuses (canceled, unpaid, etc.) get hard limits
+            _ => Ok(LimitMode::Hard),
+        },
+        // No subscription = free tier = soft limits (generous onboarding)
+        None => Ok(LimitMode::Soft),
+    }
+}
 
 // ============================================================================
 // Error Types
@@ -28,6 +63,14 @@ pub enum UsageLimitError {
     PlanNotFound(String),
     #[error("Usage tracking error: {0}")]
     UsageError(String),
+    /// Hard limit exceeded - action blocked (IKA-184)
+    #[error("Usage limit exceeded: {resource} at {current}/{limit}. Upgrade your plan to continue.")]
+    HardLimitExceeded {
+        resource: String,
+        current: i64,
+        limit: i64,
+        upgrade_url: String,
+    },
 }
 
 impl From<db_crate::models::workspace_usage::WorkspaceUsageError> for UsageLimitError {
@@ -59,6 +102,22 @@ impl From<db_crate::models::tenant_workspace::TenantWorkspaceError> for UsageLim
                 UsageLimitError::Database(e)
             }
             _ => UsageLimitError::UsageError(e.to_string()),
+        }
+    }
+}
+
+impl From<db_crate::models::workspace_subscription::WorkspaceSubscriptionError> for UsageLimitError {
+    fn from(e: db_crate::models::workspace_subscription::WorkspaceSubscriptionError) -> Self {
+        match e {
+            db_crate::models::workspace_subscription::WorkspaceSubscriptionError::NotFound => {
+                UsageLimitError::UsageError("Subscription not found".to_string())
+            }
+            db_crate::models::workspace_subscription::WorkspaceSubscriptionError::WorkspaceNotFound => {
+                UsageLimitError::WorkspaceNotFound(Uuid::nil())
+            }
+            db_crate::models::workspace_subscription::WorkspaceSubscriptionError::Database(e) => {
+                UsageLimitError::Database(e)
+            }
         }
     }
 }
@@ -251,6 +310,73 @@ fn check_limit(current: i64, limit: i64, resource_name: &str) -> LimitCheckResul
     } else {
         // Under limit - no warning
         LimitCheckResult::allowed(current, limit)
+    }
+}
+
+// ============================================================================
+// Hard Limit Enforcement (IKA-184)
+// ============================================================================
+
+/// Enforce usage limit based on subscription status (IKA-184)
+///
+/// - Soft mode (trialing/past_due): Check and return warning, but allow action
+/// - Hard mode (active): Block action if limit exceeded with HardLimitExceeded error
+///
+/// Returns Ok(LimitCheckResult) if action is allowed, Err(HardLimitExceeded) if blocked
+pub async fn enforce_usage_limit(
+    pool: &PgPool,
+    workspace_id: Uuid,
+    action: UsageAction,
+) -> Result<LimitCheckResult, UsageLimitError> {
+    // Check the limit first
+    let check = check_usage_limits(pool, workspace_id, action.clone()).await?;
+
+    // If not exceeded, always allow
+    if !check.exceeded {
+        return Ok(check);
+    }
+
+    // Limit exceeded - check mode to determine if we block
+    let mode = get_limit_mode(pool, workspace_id).await?;
+
+    match mode {
+        LimitMode::Soft => {
+            // Soft mode: allow but return the warning
+            info!(
+                workspace_id = %workspace_id,
+                action = ?action,
+                current = check.current,
+                limit = check.limit,
+                "Soft limit exceeded - allowing action with warning"
+            );
+            Ok(check)
+        }
+        LimitMode::Hard => {
+            // Hard mode: block the action
+            let resource = match action {
+                UsageAction::CreateTeam => "teams",
+                UsageAction::CreateProject => "projects",
+                UsageAction::InviteMember => "members",
+                UsageAction::CreateTask => "tasks",
+                UsageAction::AiRequest => "ai_requests",
+                UsageAction::UploadStorage(_) => "storage",
+            };
+
+            warn!(
+                workspace_id = %workspace_id,
+                action = ?action,
+                current = check.current,
+                limit = check.limit,
+                "Hard limit exceeded - blocking action"
+            );
+
+            Err(UsageLimitError::HardLimitExceeded {
+                resource: resource.to_string(),
+                current: check.current,
+                limit: check.limit,
+                upgrade_url: format!("/settings/billing?workspace={}", workspace_id),
+            })
+        }
     }
 }
 

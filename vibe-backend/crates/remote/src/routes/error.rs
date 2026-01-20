@@ -6,6 +6,7 @@ use axum::{
 use serde_json::json;
 
 use crate::db::{identity_errors::IdentityError, projects::ProjectError, tasks::SharedTaskError};
+use crate::middleware::usage_limits::UsageLimitError;
 
 #[derive(Debug)]
 pub struct ErrorResponse {
@@ -115,6 +116,57 @@ pub(crate) fn membership_error(error: IdentityError, forbidden_message: &str) ->
         other => {
             tracing::warn!(?other, "unexpected membership error");
             ErrorResponse::new(StatusCode::FORBIDDEN, forbidden_message)
+        }
+    }
+}
+
+/// Handle usage limit errors (IKA-184)
+///
+/// Returns 429 TOO_MANY_REQUESTS for hard limit exceeded errors with upgrade info
+pub(crate) fn usage_limit_error_response(error: UsageLimitError) -> Response {
+    match error {
+        UsageLimitError::HardLimitExceeded {
+            resource,
+            current,
+            limit,
+            upgrade_url,
+        } => (
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(json!({
+                "error": "usage_limit_exceeded",
+                "message": format!("You've reached your {} limit ({}/{}). Upgrade your plan to continue.", resource, current, limit),
+                "resource": resource,
+                "current": current,
+                "limit": limit,
+                "upgrade_url": upgrade_url,
+            })),
+        )
+            .into_response(),
+        UsageLimitError::WorkspaceNotFound(id) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": format!("Workspace not found: {}", id) })),
+        )
+            .into_response(),
+        UsageLimitError::PlanNotFound(name) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": format!("Plan not found: {}", name) })),
+        )
+            .into_response(),
+        UsageLimitError::Database(err) => {
+            tracing::error!(?err, "usage limit database error");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "internal server error" })),
+            )
+                .into_response()
+        }
+        UsageLimitError::UsageError(msg) => {
+            tracing::error!(msg, "usage tracking error");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "usage tracking error" })),
+            )
+                .into_response()
         }
     }
 }
