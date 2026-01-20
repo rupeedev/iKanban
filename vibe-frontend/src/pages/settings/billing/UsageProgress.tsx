@@ -87,7 +87,10 @@ interface StorageProgressProps {
   isUnlimited?: boolean;
 }
 
-export function StorageProgress({ storage, isUnlimited }: StorageProgressProps) {
+export function StorageProgress({
+  storage,
+  isUnlimited,
+}: StorageProgressProps) {
   const { t } = useTranslation('settings');
 
   if (!storage) {

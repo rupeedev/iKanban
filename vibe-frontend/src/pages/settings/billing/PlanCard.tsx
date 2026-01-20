@@ -49,7 +49,9 @@ export function PlanCard({
   const getActionType = (): SubscriptionAction => {
     if (isCurrentPlan) return 'nochange';
 
-    const currentPlanObj = allPlans.find((p) => p.plan_name === currentPlanName);
+    const currentPlanObj = allPlans.find(
+      (p) => p.plan_name === currentPlanName
+    );
     if (!currentPlanObj) return 'upgrade';
 
     // Compare by price - higher price = upgrade, lower = downgrade

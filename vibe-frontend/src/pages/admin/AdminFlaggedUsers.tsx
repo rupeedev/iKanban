@@ -62,11 +62,7 @@ function getTrustLevelBadge(level: TrustLevel) {
     verified: { name: 'Verified', color: 'bg-yellow-100 text-yellow-700' },
   };
   const config = levels[level] || levels.new;
-  return (
-    <Badge className={config.color}>
-      {config.name}
-    </Badge>
-  );
+  return <Badge className={config.color}>{config.name}</Badge>;
 }
 
 function getSeverityBadge(severity: string) {
@@ -148,9 +144,8 @@ function UserDetailsDialog({
   const [showBanConfirm, setShowBanConfirm] = useState(false);
 
   // Fetch abuse signals for this user
-  const { data: signals = [], isLoading: isLoadingSignals } = useUserAbuseSignals(
-    user?.user_id
-  );
+  const { data: signals = [], isLoading: isLoadingSignals } =
+    useUserAbuseSignals(user?.user_id);
 
   if (!user) return null;
 
@@ -277,7 +272,9 @@ function UserDetailsDialog({
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : signals.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No abuse signals</p>
+                <p className="text-sm text-muted-foreground">
+                  No abuse signals
+                </p>
               ) : (
                 <div className="space-y-3">
                   {signals.map((signal) => (
@@ -591,8 +588,7 @@ export function AdminFlaggedUsers() {
           </Card>
         ) : (
           filteredUsers.map((user) => {
-            const displayName =
-              user.user_id.split('_').pop() || user.user_id;
+            const displayName = user.user_id.split('_').pop() || user.user_id;
 
             return (
               <Card
@@ -613,7 +609,9 @@ export function AdminFlaggedUsers() {
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium truncate">{displayName}</h3>
                       {user.is_banned && (
-                        <Badge className="bg-red-100 text-red-700">Banned</Badge>
+                        <Badge className="bg-red-100 text-red-700">
+                          Banned
+                        </Badge>
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground truncate font-mono">

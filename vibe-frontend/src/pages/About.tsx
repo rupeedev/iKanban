@@ -5,13 +5,15 @@ import { useUser } from '@clerk/clerk-react';
 import {
   Layers,
   GitBranch,
-  Users,
   FileText,
   Zap,
   Shield,
-  Globe,
+  CreditCard,
   Terminal,
   Loader2,
+  Bot,
+  Building2,
+  CheckCircle2,
 } from 'lucide-react';
 import { OnboardingWizard } from '@/components/dialogs/OnboardingWizard';
 import { PendingApprovalDialog } from '@/components/dialogs/PendingApprovalDialog';
@@ -43,7 +45,6 @@ function AboutWithClerk() {
   // Show onboarding wizard for first-time sign-ups
   useEffect(() => {
     if (isSignedIn && user && !isLoadingRegistration && !hasRegistration) {
-      // First-time user - show onboarding wizard
       OnboardingWizard.show({
         clerkUserId: user.id,
         email: user.primaryEmailAddress?.emailAddress || '',
@@ -63,11 +64,9 @@ function AboutWithClerk() {
     }
   }, [isSignedIn, registration, isPending, isRejected, refresh]);
 
-  // Determine welcome message
   const welcomeMessage =
     isSignedIn && user?.firstName ? `Welcome back, ${user.firstName}!` : null;
 
-  // Show loading state while checking registration
   if (isSignedIn && isLoadingRegistration) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -96,7 +95,6 @@ function AboutContent({
   isApproved = false,
   welcomeMessage,
 }: AboutContentProps) {
-  // If user is signed in but not approved, they can see the page but not access dashboard
   const canAccessDashboard = isSignedIn && isApproved;
 
   return (
@@ -143,21 +141,20 @@ function AboutContent({
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4 bg-gradient-to-b from-muted/50 to-background">
         <div className="container mx-auto text-center">
           {welcomeMessage && (
             <p className="text-lg text-primary mb-4">{welcomeMessage}</p>
           )}
           <h1 className="text-4xl md:text-6xl font-bold mb-6">
-            Task Management for
-            <span className="text-primary"> AI Coding Agents</span>
+            AI-Powered Task Management
+            <span className="text-primary"> for Modern Teams</span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Orchestrate Claude Code, Gemini CLI, Codex, Cursor, and other AI
-            assistants with a unified kanban board designed for modern
-            development workflows.
+            Orchestrate AI coding agents, manage team workspaces, and streamline
+            your development workflow with intelligent kanban boards.
           </p>
-          <div className="flex gap-4 justify-center">
+          <div className="flex gap-4 justify-center flex-wrap">
             {canAccessDashboard ? (
               <Link to="/projects">
                 <Button size="lg">Open Dashboard</Button>
@@ -169,121 +166,196 @@ function AboutContent({
             ) : (
               <>
                 <Link to="/sign-up">
-                  <Button size="lg">Start Free</Button>
+                  <Button size="lg">Start Free Trial</Button>
                 </Link>
-                <Link to="/sign-in">
+                <Link to="/pricing">
                   <Button size="lg" variant="outline">
-                    Sign In
+                    View Pricing
                   </Button>
                 </Link>
               </>
             )}
           </div>
+          <p className="text-sm text-muted-foreground mt-4">
+            14-day free trial · No credit card required
+          </p>
         </div>
       </section>
 
       {/* Features Grid */}
-      <section className="py-16 px-4 bg-muted/30">
+      <section className="py-16 px-4">
         <div className="container mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">
-            Built for AI-Assisted Development
+          <h2 className="text-3xl font-bold text-center mb-4">
+            Everything You Need to Ship Faster
           </h2>
+          <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
+            A complete platform for AI-assisted development with powerful
+            features for teams of all sizes.
+          </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             <FeatureCard
+              icon={<Bot className="h-8 w-8" />}
+              title="AI Agent Integration"
+              description="Connect Claude Code, Gemini CLI, Cursor, and other AI assistants via MCP protocol."
+            />
+            <FeatureCard
               icon={<Layers className="h-8 w-8" />}
-              title="Kanban Boards"
-              description="Visual task management with drag-and-drop. Track issues through todo, in-progress, review, and done stages."
+              title="Visual Kanban Boards"
+              description="Drag-and-drop task management with customizable workflows and priority tracking."
+            />
+            <FeatureCard
+              icon={<Building2 className="h-8 w-8" />}
+              title="Team Workspaces"
+              description="Multi-tenant workspaces with role-based permissions and team collaboration."
             />
             <FeatureCard
               icon={<GitBranch className="h-8 w-8" />}
               title="GitHub Integration"
-              description="Sync documents with repositories. Push and pull markdown files directly from your GitHub repos."
-            />
-            <FeatureCard
-              icon={<Users className="h-8 w-8" />}
-              title="Team Collaboration"
-              description="Invite team members, assign tasks, and collaborate in real-time with role-based permissions."
+              description="Sync repositories, link pull requests, and track commits directly from tasks."
             />
             <FeatureCard
               icon={<FileText className="h-8 w-8" />}
               title="Document Management"
-              description="Create and organize planning documents. Support for markdown, PDF, CSV, and more."
+              description="Create planning docs, specs, and notes with rich markdown support."
             />
             <FeatureCard
-              icon={<Terminal className="h-8 w-8" />}
-              title="MCP Integration"
-              description="Model Context Protocol support for seamless AI agent interaction via CLI tools."
-            />
-            <FeatureCard
-              icon={<Zap className="h-8 w-8" />}
-              title="Distributed Sync"
-              description="Turso-powered distributed SQLite keeps your data in sync across all devices."
+              icon={<CreditCard className="h-8 w-8" />}
+              title="Flexible Billing"
+              description="Subscription plans that scale with your team. Upgrade or downgrade anytime."
             />
             <FeatureCard
               icon={<Shield className="h-8 w-8" />}
-              title="Secure by Design"
-              description="Clerk authentication, encrypted secrets, and per-team data isolation."
+              title="Enterprise Security"
+              description="SOC 2 ready with SSO support, audit logs, and encrypted data at rest."
             />
             <FeatureCard
-              icon={<Globe className="h-8 w-8" />}
-              title="Self-Hostable"
-              description="Run locally via npx or deploy to your own infrastructure with Docker."
+              icon={<Zap className="h-8 w-8" />}
+              title="Real-time Sync"
+              description="Instant updates across all devices with distributed database technology."
             />
           </div>
         </div>
       </section>
 
       {/* How It Works */}
-      <section className="py-16 px-4">
+      <section className="py-16 px-4 bg-muted/30">
         <div className="container mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
+          <h2 className="text-3xl font-bold text-center mb-4">
+            Get Started in Minutes
+          </h2>
+          <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">
+            Simple setup process to get your team up and running quickly.
+          </p>
           <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <StepCard
               number="1"
-              title="Create a Team"
-              description="Set up your workspace with custom projects and invite collaborators."
+              title="Create Your Workspace"
+              description="Sign up and set up your team workspace with projects and invite members."
             />
             <StepCard
               number="2"
-              title="Add Tasks"
-              description="Create issues on your kanban board with descriptions, priorities, and assignees."
+              title="Organize Your Tasks"
+              description="Create issues, set priorities, assign team members, and track progress on kanban boards."
             />
             <StepCard
               number="3"
-              title="Let AI Work"
-              description="Use MCP tools to let AI agents pick up tasks and update progress automatically."
+              title="Connect AI Agents"
+              description="Use MCP tools to let AI assistants pick up tasks and update progress automatically."
             />
           </div>
         </div>
       </section>
 
-      {/* Quick Start */}
+      {/* MCP Integration Section */}
+      <section className="py-16 px-4">
+        <div className="container mx-auto">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center gap-3 justify-center mb-4">
+              <Terminal className="h-8 w-8 text-primary" />
+              <h2 className="text-3xl font-bold">MCP Server Integration</h2>
+            </div>
+            <p className="text-muted-foreground text-center mb-8 max-w-2xl mx-auto">
+              Connect your favorite AI coding assistants to iKanban using the
+              Model Context Protocol. Let AI agents read tasks, update progress,
+              and collaborate with your team.
+            </p>
+            <div className="bg-card border rounded-lg p-6 max-w-2xl mx-auto">
+              <p className="text-sm text-muted-foreground mb-3">
+                Add to your MCP configuration:
+              </p>
+              <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">
+                <code>{`{
+  "mcpServers": {
+    "ikanban": {
+      "type": "http",
+      "url": "https://mcp.scho1ar.com/sse",
+      "authorizationToken": "your_api_key"
+    }
+  }
+}`}</code>
+              </pre>
+              <p className="text-xs text-muted-foreground mt-3">
+                Generate your API key in Settings → API Keys after signing up.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Preview */}
       <section className="py-16 px-4 bg-muted/30">
         <div className="container mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-6">Quick Start</h2>
-          <p className="text-muted-foreground mb-8">
-            Get up and running in seconds with npx
+          <h2 className="text-3xl font-bold mb-4">
+            Simple, Transparent Pricing
+          </h2>
+          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
+            Start free and scale as you grow. All plans include a 14-day trial.
           </p>
-          <div className="bg-card border rounded-lg p-6 max-w-md mx-auto font-mono text-left">
-            <code className="text-sm">
-              <span className="text-muted-foreground">$</span> npx vibe-kanban
-            </code>
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-8">
+            <PricingPreviewCard
+              name="Starter"
+              price="$19"
+              features={['2 teams', '5 projects', '5 members', 'Email support']}
+            />
+            <PricingPreviewCard
+              name="Professional"
+              price="$39"
+              features={[
+                '10 teams',
+                '25 projects',
+                '25 members',
+                'Priority support',
+              ]}
+              highlighted
+            />
+            <PricingPreviewCard
+              name="Enterprise"
+              price="$99"
+              features={[
+                'Unlimited teams',
+                'Unlimited projects',
+                'SSO/SAML',
+                '24/7 support',
+              ]}
+            />
           </div>
-          <p className="text-sm text-muted-foreground mt-4">
-            No installation required. Just run and start managing tasks.
-          </p>
+          <Link to="/pricing">
+            <Button variant="outline" size="lg">
+              View Full Pricing Details
+            </Button>
+          </Link>
         </div>
       </section>
 
       {/* CTA Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-6">
-            Ready to Supercharge Your Workflow?
+          <h2 className="text-3xl font-bold mb-4">
+            Ready to Transform Your Workflow?
           </h2>
           <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Join developers who are using iKanban to orchestrate AI coding
-            agents and ship faster.
+            Join teams using iKanban to orchestrate AI agents and ship faster
+            than ever before.
           </p>
           {canAccessDashboard ? (
             <Link to="/projects">
@@ -294,9 +366,11 @@ function AboutContent({
               Awaiting Approval
             </Button>
           ) : (
-            <Link to="/sign-up">
-              <Button size="lg">Get Started Free</Button>
-            </Link>
+            <div className="flex gap-4 justify-center">
+              <Link to="/sign-up">
+                <Button size="lg">Start Your Free Trial</Button>
+              </Link>
+            </div>
           )}
         </div>
       </section>
@@ -307,25 +381,24 @@ function AboutContent({
           <div className="flex items-center gap-2">
             <Layers className="h-5 w-5 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">
-              iKanban - Task Management for AI Agents
+              iKanban - AI-Powered Task Management
             </span>
           </div>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <a
-              href="https://github.com/rupeedev/iKanban"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              to="/pricing"
               className="hover:text-foreground transition-colors"
             >
-              GitHub
-            </a>
+              Pricing
+            </Link>
+            <Link to="/docs" className="hover:text-foreground transition-colors">
+              Documentation
+            </Link>
             <a
-              href="https://www.npmjs.com/package/vibe-kanban"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="mailto:support@scho1ar.com"
               className="hover:text-foreground transition-colors"
             >
-              npm
+              Contact
             </a>
           </div>
         </div>
@@ -344,7 +417,7 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <div className="bg-card border rounded-lg p-6">
+    <div className="bg-card border rounded-lg p-6 hover:shadow-md transition-shadow">
       <div className="text-primary mb-4">{icon}</div>
       <h3 className="font-semibold mb-2">{title}</h3>
       <p className="text-sm text-muted-foreground">{description}</p>
@@ -368,6 +441,38 @@ function StepCard({
       </div>
       <h3 className="font-semibold mb-2">{title}</h3>
       <p className="text-sm text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
+function PricingPreviewCard({
+  name,
+  price,
+  features,
+  highlighted = false,
+}: {
+  name: string;
+  price: string;
+  features: string[];
+  highlighted?: boolean;
+}) {
+  return (
+    <div
+      className={`bg-card border rounded-lg p-6 ${highlighted ? 'border-primary shadow-lg' : ''}`}
+    >
+      <h3 className="font-semibold text-lg mb-1">{name}</h3>
+      <p className="text-2xl font-bold mb-4">
+        {price}
+        <span className="text-sm font-normal text-muted-foreground">/month</span>
+      </p>
+      <ul className="space-y-2 text-sm text-left">
+        {features.map((feature, i) => (
+          <li key={i} className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+            <span>{feature}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
