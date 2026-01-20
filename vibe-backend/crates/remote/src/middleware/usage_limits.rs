@@ -3,7 +3,7 @@
 //! This middleware checks workspace resource usage against plan limits.
 //! In soft limit mode, actions are allowed but warnings are returned.
 
-use db_crate::models::{
+use db::models::{
     plan_limits::PlanLimits,
     tenant_workspace::TenantWorkspace,
     workspace_usage::{LimitCheckResult, UsageAction, WorkspaceUsage},
@@ -30,32 +30,32 @@ pub enum UsageLimitError {
     UsageError(String),
 }
 
-impl From<db_crate::models::workspace_usage::WorkspaceUsageError> for UsageLimitError {
-    fn from(e: db_crate::models::workspace_usage::WorkspaceUsageError) -> Self {
+impl From<db::models::workspace_usage::WorkspaceUsageError> for UsageLimitError {
+    fn from(e: db::models::workspace_usage::WorkspaceUsageError) -> Self {
         UsageLimitError::UsageError(e.to_string())
     }
 }
 
-impl From<db_crate::models::plan_limits::PlanLimitsError> for UsageLimitError {
-    fn from(e: db_crate::models::plan_limits::PlanLimitsError) -> Self {
+impl From<db::models::plan_limits::PlanLimitsError> for UsageLimitError {
+    fn from(e: db::models::plan_limits::PlanLimitsError) -> Self {
         match e {
-            db_crate::models::plan_limits::PlanLimitsError::PlanNotFound(name) => {
+            db::models::plan_limits::PlanLimitsError::PlanNotFound(name) => {
                 UsageLimitError::PlanNotFound(name)
             }
-            db_crate::models::plan_limits::PlanLimitsError::Database(e) => {
+            db::models::plan_limits::PlanLimitsError::Database(e) => {
                 UsageLimitError::Database(e)
             }
         }
     }
 }
 
-impl From<db_crate::models::tenant_workspace::TenantWorkspaceError> for UsageLimitError {
-    fn from(e: db_crate::models::tenant_workspace::TenantWorkspaceError) -> Self {
+impl From<db::models::tenant_workspace::TenantWorkspaceError> for UsageLimitError {
+    fn from(e: db::models::tenant_workspace::TenantWorkspaceError) -> Self {
         match e {
-            db_crate::models::tenant_workspace::TenantWorkspaceError::NotFound => {
+            db::models::tenant_workspace::TenantWorkspaceError::NotFound => {
                 UsageLimitError::WorkspaceNotFound(Uuid::nil())
             }
-            db_crate::models::tenant_workspace::TenantWorkspaceError::Database(e) => {
+            db::models::tenant_workspace::TenantWorkspaceError::Database(e) => {
                 UsageLimitError::Database(e)
             }
             _ => UsageLimitError::UsageError(e.to_string()),
