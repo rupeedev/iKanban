@@ -1,9 +1,10 @@
 /**
- * Billing hooks for subscription management (IKA-182)
+ * Billing hooks for subscription management (IKA-182, IKA-206)
  * TanStack Query hooks for plan limits, usage, and subscription management
+ * With upgrade/downgrade flow support
  */
-import { useCallback } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useCallback, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   billingApi,
   type PlanInfo,
@@ -14,6 +15,8 @@ import {
   type CreateCheckoutSessionResponse,
   type CreatePortalSessionRequest,
   type CreatePortalSessionResponse,
+  type ProrationPreview,
+  type SubscriptionChangeResult,
 } from '@/lib/api';
 
 // Query key factory for billing
@@ -252,6 +255,171 @@ export function useManageBilling(
 }
 
 // ============================================================================
+// Preview Proration Hook (IKA-206)
+// ============================================================================
+
+export interface UsePreviewProrationResult {
+  previewProration: (targetPlan: string) => Promise<ProrationPreview>;
+  preview: ProrationPreview | null;
+  reset: () => void;
+  isLoading: boolean;
+  error: Error | null;
+}
+
+export function usePreviewProration(
+  workspaceId: string | null
+): UsePreviewProrationResult {
+  const [preview, setPreview] = useState<ProrationPreview | null>(null);
+
+  const mutation = useMutation<
+    ProrationPreview,
+    Error,
+    { workspace_id: string; target_plan: string }
+  >({
+    mutationFn: (data) => billingApi.previewProration(data),
+    onSuccess: (data) => {
+      setPreview(data);
+    },
+  });
+
+  const previewProration = useCallback(
+    async (targetPlan: string): Promise<ProrationPreview> => {
+      if (!workspaceId) {
+        throw new Error('Workspace ID is required');
+      }
+      const result = await mutation.mutateAsync({
+        workspace_id: workspaceId,
+        target_plan: targetPlan,
+      });
+      return result;
+    },
+    [workspaceId, mutation]
+  );
+
+  const reset = useCallback(() => {
+    setPreview(null);
+    mutation.reset();
+  }, [mutation]);
+
+  return {
+    previewProration,
+    preview,
+    reset,
+    isLoading: mutation.isPending,
+    error: mutation.error,
+  };
+}
+
+// ============================================================================
+// Change Plan Hook (IKA-206)
+// ============================================================================
+
+export interface UseChangePlanResult {
+  changePlan: (targetPlan: string) => Promise<SubscriptionChangeResult>;
+  isLoading: boolean;
+  error: Error | null;
+}
+
+export function useChangePlan(
+  workspaceId: string | null,
+  onSuccess?: () => void
+): UseChangePlanResult {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation<
+    SubscriptionChangeResult,
+    Error,
+    { workspace_id: string; target_plan: string }
+  >({
+    mutationFn: (data) => billingApi.changePlan(data),
+    onSuccess: () => {
+      // Invalidate subscription and usage queries to refresh data
+      if (workspaceId) {
+        queryClient.invalidateQueries({
+          queryKey: billingKeys.subscription(workspaceId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: billingKeys.usage(workspaceId),
+        });
+      }
+      onSuccess?.();
+    },
+  });
+
+  const changePlan = useCallback(
+    async (targetPlan: string): Promise<SubscriptionChangeResult> => {
+      if (!workspaceId) {
+        throw new Error('Workspace ID is required');
+      }
+      return mutation.mutateAsync({
+        workspace_id: workspaceId,
+        target_plan: targetPlan,
+      });
+    },
+    [workspaceId, mutation]
+  );
+
+  return {
+    changePlan,
+    isLoading: mutation.isPending,
+    error: mutation.error,
+  };
+}
+
+// ============================================================================
+// Cancel Subscription Hook (IKA-206)
+// ============================================================================
+
+export interface UseCancelSubscriptionResult {
+  cancelSubscription: () => Promise<SubscriptionChangeResult>;
+  isLoading: boolean;
+  error: Error | null;
+}
+
+export function useCancelSubscription(
+  workspaceId: string | null,
+  onSuccess?: () => void
+): UseCancelSubscriptionResult {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation<
+    SubscriptionChangeResult,
+    Error,
+    { workspace_id: string }
+  >({
+    mutationFn: (data) => billingApi.cancelSubscription(data),
+    onSuccess: () => {
+      // Invalidate subscription and usage queries to refresh data
+      if (workspaceId) {
+        queryClient.invalidateQueries({
+          queryKey: billingKeys.subscription(workspaceId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: billingKeys.usage(workspaceId),
+        });
+      }
+      onSuccess?.();
+    },
+  });
+
+  const cancelSubscription =
+    useCallback(async (): Promise<SubscriptionChangeResult> => {
+      if (!workspaceId) {
+        throw new Error('Workspace ID is required');
+      }
+      return mutation.mutateAsync({
+        workspace_id: workspaceId,
+      });
+    }, [workspaceId, mutation]);
+
+  return {
+    cancelSubscription,
+    isLoading: mutation.isPending,
+    error: mutation.error,
+  };
+}
+
+// ============================================================================
 // Combined Hook - All billing data for a workspace
 // ============================================================================
 
@@ -277,6 +445,13 @@ export interface UseBillingResult {
   // Action loading states
   isUpgrading: boolean;
   isOpeningPortal: boolean;
+  // Plan change hooks (IKA-206)
+  previewProration: (targetPlan: string) => Promise<ProrationPreview>;
+  changePlan: (targetPlan: string) => Promise<SubscriptionChangeResult>;
+  prorationPreview: ProrationPreview | null;
+  resetProrationPreview: () => void;
+  isPreviewingProration: boolean;
+  isChangingPlan: boolean;
 }
 
 export function useBilling(workspaceId: string | null): UseBillingResult {
@@ -301,6 +476,22 @@ export function useBilling(workspaceId: string | null): UseBillingResult {
   const { openBillingPortal, isLoading: isOpeningPortal } =
     useManageBilling(workspaceId);
 
+  // Plan change hooks (IKA-206)
+  const {
+    previewProration,
+    preview: prorationPreview,
+    reset: resetProrationPreview,
+    isLoading: isPreviewingProration,
+  } = usePreviewProration(workspaceId);
+
+  const { changePlan, isLoading: isChangingPlan } = useChangePlan(
+    workspaceId,
+    () => {
+      refetchSubscription();
+      refetchUsage();
+    }
+  );
+
   return {
     // Data
     plans,
@@ -323,5 +514,12 @@ export function useBilling(workspaceId: string | null): UseBillingResult {
     // Action loading states
     isUpgrading,
     isOpeningPortal,
+    // Plan change hooks (IKA-206)
+    previewProration,
+    changePlan,
+    prorationPreview,
+    resetProrationPreview,
+    isPreviewingProration,
+    isChangingPlan,
   };
 }

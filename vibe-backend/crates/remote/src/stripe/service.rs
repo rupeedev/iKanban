@@ -5,6 +5,10 @@
 //! - Creating billing portal sessions for subscription management
 //! - Syncing subscription data from webhooks
 
+use db_crate::models::workspace_subscription::{
+    CreateWorkspaceSubscription, SubscriptionStatus, UpdateWorkspaceSubscription,
+    WorkspaceSubscription,
+};
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use stripe::{
@@ -14,10 +18,6 @@ use stripe::{
 use uuid::Uuid;
 
 use crate::config::StripeConfig;
-use db_crate::models::workspace_subscription::{
-    CreateWorkspaceSubscription, SubscriptionStatus, UpdateWorkspaceSubscription,
-    WorkspaceSubscription,
-};
 
 /// Stripe service for handling subscription operations
 #[derive(Clone)]
@@ -113,9 +113,11 @@ impl StripeService {
 
         let session = CheckoutSession::create(&self.client, params).await?;
 
-        session
-            .url
-            .ok_or_else(|| StripeError::Api(stripe::StripeError::ClientError("No checkout URL returned".into())))
+        session.url.ok_or_else(|| {
+            StripeError::Api(stripe::StripeError::ClientError(
+                "No checkout URL returned".into(),
+            ))
+        })
     }
 
     /// Create a billing portal session for managing an existing subscription
@@ -140,7 +142,9 @@ impl StripeService {
 
         let params = CreateBillingPortalSession {
             customer: customer_id.parse().map_err(|_| {
-                StripeError::Api(stripe::StripeError::ClientError("Invalid customer ID".into()))
+                StripeError::Api(stripe::StripeError::ClientError(
+                    "Invalid customer ID".into(),
+                ))
             })?,
             return_url: Some(&return_url),
             configuration: None,
@@ -156,9 +160,14 @@ impl StripeService {
     }
 
     /// Get a Stripe subscription by ID
-    pub async fn get_subscription(&self, subscription_id: &str) -> Result<Subscription, StripeError> {
+    pub async fn get_subscription(
+        &self,
+        subscription_id: &str,
+    ) -> Result<Subscription, StripeError> {
         let id = subscription_id.parse().map_err(|_| {
-            StripeError::Api(stripe::StripeError::ClientError("Invalid subscription ID".into()))
+            StripeError::Api(stripe::StripeError::ClientError(
+                "Invalid subscription ID".into(),
+            ))
         })?;
         let subscription = Subscription::retrieve(&self.client, &id, &[]).await?;
         Ok(subscription)
@@ -178,8 +187,10 @@ impl StripeService {
         let customer_id = Some(stripe_subscription.customer.id().to_string());
 
         // current_period_start/end are Timestamp (i64), not Option
-        let period_start = chrono::DateTime::from_timestamp(stripe_subscription.current_period_start, 0);
-        let period_end = chrono::DateTime::from_timestamp(stripe_subscription.current_period_end, 0);
+        let period_start =
+            chrono::DateTime::from_timestamp(stripe_subscription.current_period_start, 0);
+        let period_end =
+            chrono::DateTime::from_timestamp(stripe_subscription.current_period_end, 0);
 
         // Try to find existing subscription by workspace
         let existing = WorkspaceSubscription::find_by_workspace_id(pool, workspace_id)
@@ -240,14 +251,12 @@ impl StripeService {
         plan: &str,
     ) -> Result<(), StripeError> {
         // Use runtime type checking for SQLx cache compatibility
-        sqlx::query(
-            r#"UPDATE tenant_workspaces SET plan = $1, updated_at = NOW() WHERE id = $2"#
-        )
-        .bind(plan)
-        .bind(workspace_id)
-        .execute(pool)
-        .await
-        .map_err(|e| StripeError::Database(e.to_string()))?;
+        sqlx::query(r#"UPDATE tenant_workspaces SET plan = $1, updated_at = NOW() WHERE id = $2"#)
+            .bind(plan)
+            .bind(workspace_id)
+            .execute(pool)
+            .await
+            .map_err(|e| StripeError::Database(e.to_string()))?;
 
         Ok(())
     }

@@ -1,23 +1,23 @@
 //! Stripe API routes for subscription management (IKA-181)
 
 use axum::{
+    Json, Router,
     body::Bytes,
     extract::{Extension, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{get, post},
-    Json, Router,
 };
+use db_crate::models::workspace_subscription::{SubscriptionStatus, WorkspaceSubscription};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use crate::{
-    auth::RequestContext,
-    stripe::{parse_webhook_event, verify_webhook_signature, StripeWebhookEvent},
     AppState,
+    auth::RequestContext,
+    stripe::{StripeWebhookEvent, parse_webhook_event, verify_webhook_signature},
 };
-use db_crate::models::workspace_subscription::{SubscriptionStatus, WorkspaceSubscription};
 
 /// Protected routes - require authentication
 pub fn protected_router() -> Router<AppState> {
@@ -143,7 +143,7 @@ async fn get_subscription_status(
 ) -> Result<Json<SubscriptionStatusResponse>, StripeRouteError> {
     // Get workspace plan (use runtime type checking for SQLx cache compatibility)
     let workspace = sqlx::query_as::<_, (Uuid, String)>(
-        r#"SELECT id, plan FROM tenant_workspaces WHERE id = $1"#
+        r#"SELECT id, plan FROM tenant_workspaces WHERE id = $1"#,
     )
     .bind(query.workspace_id)
     .fetch_optional(state.pool())
@@ -152,9 +152,10 @@ async fn get_subscription_status(
     .ok_or(StripeRouteError::WorkspaceNotFound)?;
 
     // Get subscription if exists
-    let subscription = WorkspaceSubscription::find_by_workspace_id(state.pool(), query.workspace_id)
-        .await
-        .map_err(|e| StripeRouteError::Database(e.to_string()))?;
+    let subscription =
+        WorkspaceSubscription::find_by_workspace_id(state.pool(), query.workspace_id)
+            .await
+            .map_err(|e| StripeRouteError::Database(e.to_string()))?;
 
     let (status, current_period_end, stripe_customer_id) = match subscription {
         Some(sub) => (
@@ -201,8 +202,8 @@ async fn handle_webhook(
         .map_err(|e| StripeRouteError::InvalidSignature(e.to_string()))?;
 
     // Parse event
-    let event = parse_webhook_event(&body)
-        .map_err(|e| StripeRouteError::InvalidPayload(e.to_string()))?;
+    let event =
+        parse_webhook_event(&body).map_err(|e| StripeRouteError::InvalidPayload(e.to_string()))?;
 
     // Handle event
     handle_stripe_event(&state, event).await?;
@@ -211,7 +212,10 @@ async fn handle_webhook(
 }
 
 /// Process Stripe webhook events
-async fn handle_stripe_event(state: &AppState, event: StripeWebhookEvent) -> Result<(), StripeRouteError> {
+async fn handle_stripe_event(
+    state: &AppState,
+    event: StripeWebhookEvent,
+) -> Result<(), StripeRouteError> {
     match event {
         StripeWebhookEvent::CheckoutSessionCompleted {
             session_id,
@@ -246,19 +250,18 @@ async fn handle_stripe_event(state: &AppState, event: StripeWebhookEvent) -> Res
                         })?;
 
                     // Determine plan from price and update workspace
-                    if let Some(first_item) = subscription.items.data.first() {
-                        if let Some(price) = &first_item.price {
-                            if let Some(plan) = stripe.plan_from_price_id(&price.id) {
-                                stripe
-                                    .update_workspace_plan(state.pool(), workspace_id, plan)
-                                    .await
-                                    .map_err(|e| {
-                                        error!(?e, "Failed to update workspace plan");
-                                        StripeRouteError::StripeError(e.to_string())
-                                    })?;
-                                info!(workspace_id = %workspace_id, plan = %plan, "Updated workspace plan");
-                            }
-                        }
+                    if let Some(first_item) = subscription.items.data.first()
+                        && let Some(price) = &first_item.price
+                        && let Some(plan) = stripe.plan_from_price_id(&price.id)
+                    {
+                        stripe
+                            .update_workspace_plan(state.pool(), workspace_id, plan)
+                            .await
+                            .map_err(|e| {
+                                error!(?e, "Failed to update workspace plan");
+                                StripeRouteError::StripeError(e.to_string())
+                            })?;
+                        info!(workspace_id = %workspace_id, plan = %plan, "Updated workspace plan");
                     }
                 }
             }
@@ -283,20 +286,22 @@ async fn handle_stripe_event(state: &AppState, event: StripeWebhookEvent) -> Res
                     .map_err(|_| StripeRouteError::InvalidWorkspaceId)?;
 
                 // Update subscription record
-                if let Some(subscription) = WorkspaceSubscription::find_by_workspace_id(state.pool(), workspace_id)
-                    .await
-                    .map_err(|e| StripeRouteError::Database(e.to_string()))?
+                if let Some(subscription) =
+                    WorkspaceSubscription::find_by_workspace_id(state.pool(), workspace_id)
+                        .await
+                        .map_err(|e| StripeRouteError::Database(e.to_string()))?
                 {
                     let status = status.parse::<SubscriptionStatus>().ok();
-                    let update = db_crate::models::workspace_subscription::UpdateWorkspaceSubscription {
-                        stripe_customer_id: None,
-                        stripe_subscription_id: Some(subscription_id),
-                        current_period_start: current_period_start
-                            .and_then(|ts| chrono::DateTime::from_timestamp(ts, 0)),
-                        current_period_end: current_period_end
-                            .and_then(|ts| chrono::DateTime::from_timestamp(ts, 0)),
-                        status,
-                    };
+                    let update =
+                        db_crate::models::workspace_subscription::UpdateWorkspaceSubscription {
+                            stripe_customer_id: None,
+                            stripe_subscription_id: Some(subscription_id),
+                            current_period_start: current_period_start
+                                .and_then(|ts| chrono::DateTime::from_timestamp(ts, 0)),
+                            current_period_end: current_period_end
+                                .and_then(|ts| chrono::DateTime::from_timestamp(ts, 0)),
+                            status,
+                        };
 
                     WorkspaceSubscription::update(state.pool(), subscription.id, &update)
                         .await
@@ -328,9 +333,10 @@ async fn handle_stripe_event(state: &AppState, event: StripeWebhookEvent) -> Res
                 }
 
                 // Update subscription status to canceled
-                if let Some(subscription) = WorkspaceSubscription::find_by_workspace_id(state.pool(), workspace_id)
-                    .await
-                    .map_err(|e| StripeRouteError::Database(e.to_string()))?
+                if let Some(subscription) =
+                    WorkspaceSubscription::find_by_workspace_id(state.pool(), workspace_id)
+                        .await
+                        .map_err(|e| StripeRouteError::Database(e.to_string()))?
                 {
                     WorkspaceSubscription::update_status(
                         state.pool(),
@@ -392,15 +398,21 @@ pub enum StripeRouteError {
 impl IntoResponse for StripeRouteError {
     fn into_response(self) -> axum::response::Response {
         let (status, message) = match &self {
-            StripeRouteError::NotConfigured => (StatusCode::SERVICE_UNAVAILABLE, "Stripe not configured"),
+            StripeRouteError::NotConfigured => {
+                (StatusCode::SERVICE_UNAVAILABLE, "Stripe not configured")
+            }
             StripeRouteError::InvalidPlan(_) => (StatusCode::BAD_REQUEST, "Invalid plan"),
             StripeRouteError::StripeError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Stripe error"),
             StripeRouteError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
             StripeRouteError::WorkspaceNotFound => (StatusCode::NOT_FOUND, "Workspace not found"),
             StripeRouteError::MissingSignature => (StatusCode::BAD_REQUEST, "Missing signature"),
-            StripeRouteError::InvalidSignature(_) => (StatusCode::UNAUTHORIZED, "Invalid signature"),
+            StripeRouteError::InvalidSignature(_) => {
+                (StatusCode::UNAUTHORIZED, "Invalid signature")
+            }
             StripeRouteError::InvalidPayload(_) => (StatusCode::BAD_REQUEST, "Invalid payload"),
-            StripeRouteError::InvalidWorkspaceId => (StatusCode::BAD_REQUEST, "Invalid workspace ID"),
+            StripeRouteError::InvalidWorkspaceId => {
+                (StatusCode::BAD_REQUEST, "Invalid workspace ID")
+            }
         };
 
         (status, Json(serde_json::json!({ "error": message }))).into_response()

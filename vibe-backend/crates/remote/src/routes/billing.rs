@@ -1,18 +1,18 @@
 //! Billing API routes for plan limits and usage (IKA-182)
 
 use axum::{
+    Extension, Json, Router,
     extract::{Query, State},
     routing::get,
-    Extension, Json, Router,
 };
 use db_crate::models::plan_limits::PlanLimits;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    auth::RequestContext,
-    middleware::usage_limits::{get_usage_summary, WorkspaceUsageSummary},
     AppState,
+    auth::RequestContext,
+    middleware::usage_limits::{WorkspaceUsageSummary, get_usage_summary},
 };
 
 /// Protected routes - require authentication

@@ -30,7 +30,10 @@ pub enum LimitMode {
 }
 
 /// Determine the limit mode based on workspace subscription status
-pub async fn get_limit_mode(pool: &PgPool, workspace_id: Uuid) -> Result<LimitMode, UsageLimitError> {
+pub async fn get_limit_mode(
+    pool: &PgPool,
+    workspace_id: Uuid,
+) -> Result<LimitMode, UsageLimitError> {
     let subscription = WorkspaceSubscription::find_by_workspace_id(pool, workspace_id).await?;
 
     match subscription {
@@ -64,7 +67,9 @@ pub enum UsageLimitError {
     #[error("Usage tracking error: {0}")]
     UsageError(String),
     /// Hard limit exceeded - action blocked (IKA-184)
-    #[error("Usage limit exceeded: {resource} at {current}/{limit}. Upgrade your plan to continue.")]
+    #[error(
+        "Usage limit exceeded: {resource} at {current}/{limit}. Upgrade your plan to continue."
+    )]
     HardLimitExceeded {
         resource: String,
         current: i64,
@@ -106,7 +111,9 @@ impl From<db_crate::models::tenant_workspace::TenantWorkspaceError> for UsageLim
     }
 }
 
-impl From<db_crate::models::workspace_subscription::WorkspaceSubscriptionError> for UsageLimitError {
+impl From<db_crate::models::workspace_subscription::WorkspaceSubscriptionError>
+    for UsageLimitError
+{
     fn from(e: db_crate::models::workspace_subscription::WorkspaceSubscriptionError) -> Self {
         match e {
             db_crate::models::workspace_subscription::WorkspaceSubscriptionError::NotFound => {
@@ -329,7 +336,7 @@ pub async fn enforce_usage_limit(
     action: UsageAction,
 ) -> Result<LimitCheckResult, UsageLimitError> {
     // Check the limit first
-    let check = check_usage_limits(pool, workspace_id, action.clone()).await?;
+    let check = check_usage_limits(pool, workspace_id, action).await?;
 
     // If not exceeded, always allow
     if !check.exceeded {

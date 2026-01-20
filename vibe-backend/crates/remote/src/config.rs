@@ -151,8 +151,8 @@ impl StripeConfig {
         let enterprise_price_id = env::var("STRIPE_ENTERPRISE_PRICE_ID")
             .map_err(|_| ConfigError::MissingVar("STRIPE_ENTERPRISE_PRICE_ID"))?;
 
-        let frontend_url = env::var("FRONTEND_URL")
-            .unwrap_or_else(|_| "http://localhost:5173".to_string());
+        let frontend_url =
+            env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
 
         tracing::info!("Stripe config loaded successfully");
 

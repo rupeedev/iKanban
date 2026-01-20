@@ -176,12 +176,10 @@ impl ProjectRepository {
         project_id: Uuid,
     ) -> Result<Option<Uuid>, ProjectError> {
         // Use runtime type checking since SQLx cache may not be available
-        sqlx::query_scalar::<_, Uuid>(
-            r#"SELECT organization_id FROM projects WHERE id = $1"#
-        )
-        .bind(project_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(ProjectError::from)
+        sqlx::query_scalar::<_, Uuid>(r#"SELECT organization_id FROM projects WHERE id = $1"#)
+            .bind(project_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(ProjectError::from)
     }
 }

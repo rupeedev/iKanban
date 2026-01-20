@@ -3387,6 +3387,41 @@ export interface CreatePortalSessionResponse {
   portal_url: string;
 }
 
+// IKA-206: Subscription action types
+export type SubscriptionAction = 'upgrade' | 'downgrade' | 'cancel' | 'nochange';
+
+// IKA-206: Proration preview for plan changes
+export interface ProrationPreview {
+  current_plan: string;
+  target_plan: string;
+  action: SubscriptionAction;
+  immediate_amount_cents: number;
+  new_recurring_cents: number;
+  effective_date: string;
+  description: string;
+}
+
+// IKA-206: Plan change result
+export interface SubscriptionChangeResult {
+  success: boolean;
+  action: SubscriptionAction;
+  new_plan: string;
+  effective_date: string;
+  subscription_id: string | null;
+  message: string;
+}
+
+// IKA-206: Plan change request
+export interface ChangePlanRequest {
+  workspace_id: string;
+  target_plan: string;
+}
+
+// IKA-206: Cancel subscription request
+export interface CancelSubscriptionRequest {
+  workspace_id: string;
+}
+
 export const billingApi = {
   // Get all available plans
   getPlans: async (): Promise<PlansResponse> => {
@@ -3432,5 +3467,34 @@ export const billingApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<CreatePortalSessionResponse>(response);
+  },
+
+  // IKA-206: Preview proration for plan change
+  previewProration: async (data: ChangePlanRequest): Promise<ProrationPreview> => {
+    const response = await makeRequest('/v1/stripe/preview-proration', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ProrationPreview>(response);
+  },
+
+  // IKA-206: Change subscription plan
+  changePlan: async (data: ChangePlanRequest): Promise<SubscriptionChangeResult> => {
+    const response = await makeRequest('/v1/stripe/change-plan', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<SubscriptionChangeResult>(response);
+  },
+
+  // IKA-206: Cancel subscription
+  cancelSubscription: async (
+    data: CancelSubscriptionRequest
+  ): Promise<SubscriptionChangeResult> => {
+    const response = await makeRequest('/v1/stripe/cancel-subscription', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<SubscriptionChangeResult>(response);
   },
 };

@@ -1,5 +1,6 @@
 /**
- * Plan Card component for billing settings (IKA-182)
+ * Plan Card component for billing settings (IKA-182, IKA-206)
+ * Updated to support upgrade/downgrade/cancel actions
  */
 import { useTranslation } from 'react-i18next';
 import {
@@ -11,21 +12,25 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Check, Zap } from 'lucide-react';
-import type { PlanInfo } from '@/lib/api';
+import { Loader2, Check, Zap, ArrowDown } from 'lucide-react';
+import type { PlanInfo, SubscriptionAction } from '@/lib/api';
 
 interface PlanCardProps {
   plan: PlanInfo;
   isCurrentPlan: boolean;
-  onUpgrade: () => void;
-  isUpgrading: boolean;
+  currentPlanName: string;
+  onPlanAction: (planName: string, action: SubscriptionAction) => void;
+  isLoading: boolean;
+  allPlans: PlanInfo[];
 }
 
 export function PlanCard({
   plan,
   isCurrentPlan,
-  onUpgrade,
-  isUpgrading,
+  currentPlanName,
+  onPlanAction,
+  isLoading,
+  allPlans,
 }: PlanCardProps) {
   const { t } = useTranslation('settings');
 
@@ -38,6 +43,56 @@ export function PlanCard({
   const formatLimit = (value: number, isUnlimited: boolean) => {
     if (isUnlimited) return t('settings.billing.plans.unlimited');
     return value.toString();
+  };
+
+  // Determine action type based on plan comparison
+  const getActionType = (): SubscriptionAction => {
+    if (isCurrentPlan) return 'nochange';
+
+    const currentPlanObj = allPlans.find((p) => p.plan_name === currentPlanName);
+    if (!currentPlanObj) return 'upgrade';
+
+    // Compare by price - higher price = upgrade, lower = downgrade
+    const currentPrice = currentPlanObj.price_monthly ?? 0;
+    const targetPrice = plan.price_monthly ?? 0;
+
+    if (targetPrice === 0 && currentPrice > 0) {
+      return 'cancel'; // Going to free plan = cancellation
+    }
+    return targetPrice > currentPrice ? 'upgrade' : 'downgrade';
+  };
+
+  const actionType = getActionType();
+
+  const getButtonConfig = () => {
+    switch (actionType) {
+      case 'upgrade':
+        return {
+          label: t('settings.billing.plans.upgrade'),
+          icon: <Zap className="mr-2 h-4 w-4" />,
+          variant: 'default' as const,
+        };
+      case 'downgrade':
+        return {
+          label: t('settings.billing.plans.downgrade'),
+          icon: <ArrowDown className="mr-2 h-4 w-4" />,
+          variant: 'outline' as const,
+        };
+      case 'cancel':
+        return {
+          label: t('settings.billing.plans.switchToFree'),
+          icon: <ArrowDown className="mr-2 h-4 w-4" />,
+          variant: 'outline' as const,
+        };
+      default:
+        return null;
+    }
+  };
+
+  const buttonConfig = getButtonConfig();
+
+  const handleClick = () => {
+    onPlanAction(plan.plan_name, actionType);
   };
 
   return (
@@ -97,20 +152,21 @@ export function PlanCard({
           </li>
         </ul>
 
-        {!isCurrentPlan && (
+        {!isCurrentPlan && buttonConfig && (
           <Button
             className="w-full"
-            onClick={onUpgrade}
-            disabled={isUpgrading || plan.price_monthly === null}
+            variant={buttonConfig.variant}
+            onClick={handleClick}
+            disabled={isLoading || plan.price_monthly === null}
           >
-            {isUpgrading ? (
+            {isLoading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Zap className="mr-2 h-4 w-4" />
+              buttonConfig.icon
             )}
             {plan.price_monthly === null
               ? t('settings.billing.plans.contactSales')
-              : t('settings.billing.plans.upgrade')}
+              : buttonConfig.label}
           </Button>
         )}
       </CardContent>

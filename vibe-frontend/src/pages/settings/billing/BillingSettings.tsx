@@ -1,10 +1,12 @@
 /**
- * Billing Settings Page (IKA-182)
- * Displays subscription status, plan comparison, and usage metrics
+ * Billing Settings Page (IKA-182, IKA-206)
+ * Displays subscription status, plan comparison, usage metrics,
+ * and upgrade/downgrade flows
  */
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { toast } from 'sonner';
 import {
   Card,
   CardContent,
@@ -28,6 +30,8 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useBilling } from '@/hooks/useBilling';
 import { UsageProgress, StorageProgress } from './UsageProgress';
 import { PlanCard } from './PlanCard';
+import { PlanChangeDialog } from './PlanChangeDialog';
+import type { SubscriptionAction } from '@/lib/api';
 
 export function BillingSettings() {
   const { t } = useTranslation('settings');
@@ -35,6 +39,13 @@ export function BillingSettings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [showCanceledAlert, setShowCanceledAlert] = useState(false);
+
+  // Plan change dialog state (IKA-206)
+  const [planChangeDialogOpen, setPlanChangeDialogOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<SubscriptionAction | null>(
+    null
+  );
 
   const {
     plans,
@@ -48,6 +59,13 @@ export function BillingSettings() {
     openBillingPortal,
     isUpgrading,
     isOpeningPortal,
+    // IKA-206 hooks
+    previewProration,
+    changePlan,
+    prorationPreview,
+    resetProrationPreview,
+    isPreviewingProration,
+    isChangingPlan,
   } = useBilling(currentWorkspaceId);
 
   // Handle Stripe redirect success/cancel
@@ -70,6 +88,63 @@ export function BillingSettings() {
   const currentPlanObj = useMemo(
     () => plans.find((p) => p.plan_name === currentPlan),
     [plans, currentPlan]
+  );
+
+  // Handle plan action (upgrade/downgrade/cancel)
+  const handlePlanAction = useCallback(
+    (planName: string, action: SubscriptionAction) => {
+      if (action === 'nochange') return;
+
+      // For upgrade from free plan, use the Stripe checkout flow
+      if (action === 'upgrade' && currentPlan === 'free') {
+        upgradePlan(planName);
+        return;
+      }
+
+      // For existing subscribers, use the plan change dialog
+      setSelectedPlan(planName);
+      setPendingAction(action);
+      setPlanChangeDialogOpen(true);
+    },
+    [currentPlan, upgradePlan]
+  );
+
+  // Handle plan change confirmation
+  const handleConfirmPlanChange = useCallback(async () => {
+    if (!selectedPlan) return;
+
+    try {
+      await changePlan(selectedPlan);
+      setPlanChangeDialogOpen(false);
+      setSelectedPlan(null);
+      setPendingAction(null);
+      resetProrationPreview();
+
+      // Show success message
+      if (pendingAction === 'cancel') {
+        toast.success(t('settings.billing.planChange.cancelSuccess'));
+      } else {
+        toast.success(t('settings.billing.planChange.success'));
+      }
+    } catch {
+      // Error is handled by the hook
+    }
+  }, [selectedPlan, changePlan, resetProrationPreview, pendingAction, t]);
+
+  // Handle dialog close
+  const handleCloseDialog = useCallback(() => {
+    setPlanChangeDialogOpen(false);
+    setSelectedPlan(null);
+    setPendingAction(null);
+    resetProrationPreview();
+  }, [resetProrationPreview]);
+
+  // Handle proration preview request
+  const handlePreviewPlan = useCallback(
+    (planName: string) => {
+      previewProration(planName);
+    },
+    [previewProration]
   );
 
   if (isLoading && !plans.length) {
@@ -231,13 +306,29 @@ export function BillingSettings() {
                 key={plan.plan_name}
                 plan={plan}
                 isCurrentPlan={plan.plan_name === currentPlan}
-                onUpgrade={() => upgradePlan(plan.plan_name)}
-                isUpgrading={isUpgrading}
+                currentPlanName={currentPlan}
+                onPlanAction={handlePlanAction}
+                isLoading={isUpgrading || isChangingPlan}
+                allPlans={plans}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Plan Change Dialog (IKA-206) */}
+      <PlanChangeDialog
+        isOpen={planChangeDialogOpen}
+        onClose={handleCloseDialog}
+        targetPlan={selectedPlan}
+        currentPlan={currentPlan}
+        preview={prorationPreview}
+        isLoadingPreview={isPreviewingProration}
+        previewError={null}
+        onConfirm={handleConfirmPlanChange}
+        isConfirming={isChangingPlan}
+        onPreviewPlan={handlePreviewPlan}
+      />
     </div>
   );
 }

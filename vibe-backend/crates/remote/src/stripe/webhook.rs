@@ -1,9 +1,10 @@
 //! Stripe webhook signature verification and event parsing (IKA-181)
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use hmac::{Hmac, Mac};
 use secrecy::ExposeSecret;
 use sha2::Sha256;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::config::StripeConfig;
 
@@ -108,10 +109,8 @@ pub fn verify_webhook_signature(
     // Compute expected signature
     let signed_payload = format!("{}.{}", timestamp, String::from_utf8_lossy(payload));
 
-    let mut mac = Hmac::<Sha256>::new_from_slice(
-        config.webhook_secret.expose_secret().as_bytes(),
-    )
-    .expect("HMAC can take key of any size");
+    let mut mac = Hmac::<Sha256>::new_from_slice(config.webhook_secret.expose_secret().as_bytes())
+        .expect("HMAC can take key of any size");
     mac.update(signed_payload.as_bytes());
 
     let expected_signature = hex::encode(mac.finalize().into_bytes());
@@ -126,8 +125,8 @@ pub fn verify_webhook_signature(
 
 /// Parse a webhook event from JSON payload
 pub fn parse_webhook_event(payload: &[u8]) -> Result<StripeWebhookEvent, WebhookError> {
-    let json: serde_json::Value = serde_json::from_slice(payload)
-        .map_err(|e| WebhookError::InvalidPayload(e.to_string()))?;
+    let json: serde_json::Value =
+        serde_json::from_slice(payload).map_err(|e| WebhookError::InvalidPayload(e.to_string()))?;
 
     let event_type = json["type"]
         .as_str()
@@ -137,17 +136,9 @@ pub fn parse_webhook_event(payload: &[u8]) -> Result<StripeWebhookEvent, Webhook
 
     match event_type {
         "checkout.session.completed" => {
-            let session_id = data["id"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
-            let customer_id = data["customer"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
-            let subscription_id = data["subscription"]
-                .as_str()
-                .map(|s| s.to_string());
+            let session_id = data["id"].as_str().unwrap_or_default().to_string();
+            let customer_id = data["customer"].as_str().unwrap_or_default().to_string();
+            let subscription_id = data["subscription"].as_str().map(|s| s.to_string());
             let workspace_id = data["metadata"]["workspace_id"]
                 .as_str()
                 .map(|s| s.to_string());
@@ -160,18 +151,9 @@ pub fn parse_webhook_event(payload: &[u8]) -> Result<StripeWebhookEvent, Webhook
             })
         }
         "customer.subscription.created" => {
-            let subscription_id = data["id"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
-            let customer_id = data["customer"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
-            let status = data["status"]
-                .as_str()
-                .unwrap_or("unknown")
-                .to_string();
+            let subscription_id = data["id"].as_str().unwrap_or_default().to_string();
+            let customer_id = data["customer"].as_str().unwrap_or_default().to_string();
+            let status = data["status"].as_str().unwrap_or("unknown").to_string();
             let workspace_id = data["metadata"]["workspace_id"]
                 .as_str()
                 .map(|s| s.to_string());
@@ -184,18 +166,9 @@ pub fn parse_webhook_event(payload: &[u8]) -> Result<StripeWebhookEvent, Webhook
             })
         }
         "customer.subscription.updated" => {
-            let subscription_id = data["id"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
-            let customer_id = data["customer"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
-            let status = data["status"]
-                .as_str()
-                .unwrap_or("unknown")
-                .to_string();
+            let subscription_id = data["id"].as_str().unwrap_or_default().to_string();
+            let customer_id = data["customer"].as_str().unwrap_or_default().to_string();
+            let status = data["status"].as_str().unwrap_or("unknown").to_string();
             let workspace_id = data["metadata"]["workspace_id"]
                 .as_str()
                 .map(|s| s.to_string());
@@ -212,14 +185,8 @@ pub fn parse_webhook_event(payload: &[u8]) -> Result<StripeWebhookEvent, Webhook
             })
         }
         "customer.subscription.deleted" => {
-            let subscription_id = data["id"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
-            let customer_id = data["customer"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
+            let subscription_id = data["id"].as_str().unwrap_or_default().to_string();
+            let customer_id = data["customer"].as_str().unwrap_or_default().to_string();
             let workspace_id = data["metadata"]["workspace_id"]
                 .as_str()
                 .map(|s| s.to_string());
@@ -231,17 +198,9 @@ pub fn parse_webhook_event(payload: &[u8]) -> Result<StripeWebhookEvent, Webhook
             })
         }
         "invoice.paid" => {
-            let invoice_id = data["id"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
-            let subscription_id = data["subscription"]
-                .as_str()
-                .map(|s| s.to_string());
-            let customer_id = data["customer"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
+            let invoice_id = data["id"].as_str().unwrap_or_default().to_string();
+            let subscription_id = data["subscription"].as_str().map(|s| s.to_string());
+            let customer_id = data["customer"].as_str().unwrap_or_default().to_string();
 
             Ok(StripeWebhookEvent::InvoicePaid {
                 invoice_id,
@@ -250,17 +209,9 @@ pub fn parse_webhook_event(payload: &[u8]) -> Result<StripeWebhookEvent, Webhook
             })
         }
         "invoice.payment_failed" => {
-            let invoice_id = data["id"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
-            let subscription_id = data["subscription"]
-                .as_str()
-                .map(|s| s.to_string());
-            let customer_id = data["customer"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
+            let invoice_id = data["id"].as_str().unwrap_or_default().to_string();
+            let subscription_id = data["subscription"].as_str().map(|s| s.to_string());
+            let customer_id = data["customer"].as_str().unwrap_or_default().to_string();
 
             Ok(StripeWebhookEvent::InvoicePaymentFailed {
                 invoice_id,
@@ -290,7 +241,9 @@ mod tests {
     fn test_parse_unknown_event() {
         let payload = br#"{"type": "some.unknown.event", "data": {"object": {}}}"#;
         let event = parse_webhook_event(payload).unwrap();
-        assert!(matches!(event, StripeWebhookEvent::Unknown { event_type } if event_type == "some.unknown.event"));
+        assert!(
+            matches!(event, StripeWebhookEvent::Unknown { event_type } if event_type == "some.unknown.event")
+        );
     }
 
     #[test]

@@ -5,8 +5,10 @@ use axum::{
 };
 use serde_json::json;
 
-use crate::db::{identity_errors::IdentityError, projects::ProjectError, tasks::SharedTaskError};
-use crate::middleware::usage_limits::UsageLimitError;
+use crate::{
+    db::{identity_errors::IdentityError, projects::ProjectError, tasks::SharedTaskError},
+    middleware::usage_limits::UsageLimitError,
+};
 
 #[derive(Debug)]
 pub struct ErrorResponse {
@@ -123,6 +125,7 @@ pub(crate) fn membership_error(error: IdentityError, forbidden_message: &str) ->
 /// Handle usage limit errors (IKA-184)
 ///
 /// Returns 429 TOO_MANY_REQUESTS for hard limit exceeded errors with upgrade info
+#[allow(dead_code)]
 pub(crate) fn usage_limit_error_response(error: UsageLimitError) -> Response {
     match error {
         UsageLimitError::HardLimitExceeded {
