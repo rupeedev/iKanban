@@ -109,6 +109,12 @@ function AboutContent({
             <span className="text-xl font-bold">iKanban</span>
           </div>
           <nav className="flex items-center gap-4">
+            <Link
+              to="/pricing"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Pricing
+            </Link>
             {welcomeMessage && (
               <span className="text-sm text-muted-foreground hidden sm:inline">
                 {welcomeMessage}
