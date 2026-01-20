@@ -16,6 +16,7 @@ import { About } from '@/pages/About';
 import { DocsPage } from '@/pages/DocsPage';
 import { Views } from '@/pages/Views';
 import { LandingPage } from '@/pages/LandingPage';
+import { PricingPage } from '@/pages/PricingPage';
 import { SignInPage, SignUpPage, VerifyEmailPage } from '@/pages/auth';
 import { MyIssues } from '@/pages/MyIssues';
 import { Inbox } from '@/pages/Inbox';
@@ -179,6 +180,7 @@ function AppContent() {
               {/* Public routes - no authentication required */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/about" element={<About />} />
+              <Route path="/pricing" element={<PricingPage />} />
               <Route path="/docs" element={<DocsPage />} />
 
               {/* Auth pages - centered sign-in/sign-up */}
