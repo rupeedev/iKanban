@@ -7,7 +7,6 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 axum = { workspace = true }
-db_crate = { path = "../db", package = "db" }
 axum-extra = { version = "0.10.3", features = ["typed-header"] }
 aes-gcm = "0.10"
 chrono = { version = "0.4", features = ["serde"] }
