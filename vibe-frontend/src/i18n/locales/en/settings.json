@@ -18,7 +18,45 @@
         "api-keys": "API Keys",
         "api-keysDesc": "Manage API keys for programmatic access",
         "ai-provider-keys": "AI Provider Keys",
-        "ai-provider-keysDesc": "Configure API keys for Claude, Gemini, and OpenAI"
+        "ai-provider-keysDesc": "Configure API keys for Claude, Gemini, and OpenAI",
+        "billing": "Billing",
+        "billingDesc": "Manage subscription, plans, and usage"
+      }
+    },
+    "billing": {
+      "loading": "Loading billing information...",
+      "upgradeSuccess": "✓ Your subscription has been upgraded successfully!",
+      "upgradeCanceled": "Upgrade was canceled. Your current plan remains unchanged.",
+      "plansError": "Failed to load available plans.",
+      "usageError": "Failed to load usage information.",
+      "subscription": {
+        "title": "Current Subscription",
+        "description": "Your current plan and billing status.",
+        "manageBilling": "Manage Billing",
+        "active": "Active subscription",
+        "noSubscription": "No active subscription"
+      },
+      "usage": {
+        "title": "Usage Overview",
+        "description": "Monitor your resource consumption across your workspace.",
+        "teams": "Teams",
+        "projects": "Projects",
+        "members": "Members",
+        "aiRequests": "AI Requests",
+        "storage": "Storage"
+      },
+      "plans": {
+        "title": "Available Plans",
+        "current": "Current",
+        "upgrade": "Upgrade",
+        "contactSales": "Contact Sales",
+        "free": "Free",
+        "unlimited": "Unlimited",
+        "teams": "teams",
+        "projects": "projects",
+        "members": "members",
+        "storage": "storage",
+        "aiRequests": "AI requests/month"
       }
     },
     "general": {

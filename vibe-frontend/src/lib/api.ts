@@ -3302,3 +3302,135 @@ export const chatApi = {
     return handleApiResponse<void>(response);
   },
 };
+
+// ============================================================================
+// Billing API (IKA-182: Subscription Management UI)
+// ============================================================================
+
+export interface UsageDetail {
+  current: number;
+  limit: number;
+  percentage: number;
+  warning: boolean;
+  exceeded: boolean;
+}
+
+export interface StorageDetail {
+  used_bytes: number;
+  used_gb: number;
+  limit_gb: number;
+  percentage: number;
+  warning: boolean;
+  exceeded: boolean;
+}
+
+export interface WorkspaceUsageSummary {
+  teams: UsageDetail;
+  projects: UsageDetail;
+  members: UsageDetail;
+  tasks: UsageDetail;
+  ai_requests: UsageDetail;
+  storage: StorageDetail;
+}
+
+export interface PlanInfo {
+  plan_name: string;
+  max_teams: number;
+  max_projects: number;
+  max_members: number;
+  max_storage_gb: number;
+  max_ai_requests_per_month: number;
+  price_monthly: number | null;
+  is_unlimited_teams: boolean;
+  is_unlimited_projects: boolean;
+  is_unlimited_members: boolean;
+  is_unlimited_storage: boolean;
+  is_unlimited_ai: boolean;
+}
+
+export interface PlansResponse {
+  plans: PlanInfo[];
+}
+
+export interface UsageResponse {
+  workspace_id: string;
+  plan: string;
+  usage: WorkspaceUsageSummary;
+}
+
+export interface SubscriptionStatusResponse {
+  workspace_id: string;
+  plan: string;
+  status: string;
+  current_period_end: string | null;
+  stripe_customer_id: string | null;
+  has_active_subscription: boolean;
+}
+
+export interface CreateCheckoutSessionRequest {
+  workspace_id: string;
+  plan_name: string;
+  success_url: string;
+  cancel_url: string;
+}
+
+export interface CreateCheckoutSessionResponse {
+  checkout_url: string;
+}
+
+export interface CreatePortalSessionRequest {
+  workspace_id: string;
+  return_url: string;
+}
+
+export interface CreatePortalSessionResponse {
+  portal_url: string;
+}
+
+export const billingApi = {
+  // Get all available plans
+  getPlans: async (): Promise<PlansResponse> => {
+    const response = await makeRequest('/v1/billing/plans');
+    return handleApiResponse<PlansResponse>(response);
+  },
+
+  // Get workspace usage
+  getUsage: async (workspaceId: string): Promise<UsageResponse> => {
+    const response = await makeRequest(
+      `/v1/billing/usage?workspace_id=${workspaceId}`
+    );
+    return handleApiResponse<UsageResponse>(response);
+  },
+
+  // Get subscription status
+  getSubscription: async (
+    workspaceId: string
+  ): Promise<SubscriptionStatusResponse> => {
+    const response = await makeRequest(
+      `/v1/stripe/subscription?workspace_id=${workspaceId}`
+    );
+    return handleApiResponse<SubscriptionStatusResponse>(response);
+  },
+
+  // Create checkout session for upgrading
+  createCheckoutSession: async (
+    data: CreateCheckoutSessionRequest
+  ): Promise<CreateCheckoutSessionResponse> => {
+    const response = await makeRequest('/v1/stripe/checkout-session', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<CreateCheckoutSessionResponse>(response);
+  },
+
+  // Create billing portal session
+  createPortalSession: async (
+    data: CreatePortalSessionRequest
+  ): Promise<CreatePortalSessionResponse> => {
+    const response = await makeRequest('/v1/stripe/portal-session', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<CreatePortalSessionResponse>(response);
+  },
+};

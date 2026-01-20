@@ -17,7 +17,7 @@ use crate::{
     stripe::{parse_webhook_event, verify_webhook_signature, StripeWebhookEvent},
     AppState,
 };
-use db::models::workspace_subscription::{SubscriptionStatus, WorkspaceSubscription};
+use db_crate::models::workspace_subscription::{SubscriptionStatus, WorkspaceSubscription};
 
 /// Protected routes - require authentication
 pub fn protected_router() -> Router<AppState> {
@@ -288,7 +288,7 @@ async fn handle_stripe_event(state: &AppState, event: StripeWebhookEvent) -> Res
                     .map_err(|e| StripeRouteError::Database(e.to_string()))?
                 {
                     let status = status.parse::<SubscriptionStatus>().ok();
-                    let update = db::models::workspace_subscription::UpdateWorkspaceSubscription {
+                    let update = db_crate::models::workspace_subscription::UpdateWorkspaceSubscription {
                         stripe_customer_id: None,
                         stripe_subscription_id: Some(subscription_id),
                         current_period_start: current_period_start

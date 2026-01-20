@@ -29,6 +29,7 @@ import {
   AgentSettings,
   AiProviderKeysSettings,
   ApiKeysSettings,
+  BillingSettings,
   GeneralSettings,
   McpSettings,
   ProjectSettings,
@@ -225,6 +226,7 @@ function AppContent() {
                   <Route path="general" element={<GeneralSettings />} />
                   <Route path="projects" element={<ProjectSettings />} />
                   <Route path="workspace" element={<WorkspaceSettings />} />
+                  <Route path="billing" element={<BillingSettings />} />
                   <Route path="agents" element={<AgentSettings />} />
                   <Route path="mcp" element={<McpSettings />} />
                   <Route path="api-keys" element={<ApiKeysSettings />} />

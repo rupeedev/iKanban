@@ -14,7 +14,7 @@ use stripe::{
 use uuid::Uuid;
 
 use crate::config::StripeConfig;
-use db::models::workspace_subscription::{
+use db_crate::models::workspace_subscription::{
     CreateWorkspaceSubscription, SubscriptionStatus, UpdateWorkspaceSubscription,
     WorkspaceSubscription,
 };

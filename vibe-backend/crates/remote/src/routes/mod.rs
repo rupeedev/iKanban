@@ -14,6 +14,7 @@ use tracing::{Level, field};
 
 use crate::{AppState, auth::require_session};
 
+mod billing;
 mod electric_proxy;
 mod error;
 mod github_app;
@@ -67,6 +68,7 @@ pub fn router(state: AppState) -> Router {
         .merge(electric_proxy::router())
         .merge(github_app::protected_router())
         .merge(stripe::protected_router())
+        .merge(billing::protected_router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,

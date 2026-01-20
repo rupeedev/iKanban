@@ -30,7 +30,6 @@ tracing-error = "0.2"
 thiserror = { workspace = true }
 ts-rs = { workspace = true }
 utils = { path = "../utils" }
-db = { path = "../db" }
 uuid = { version = "1", features = ["serde", "v4"] }
 jsonwebtoken = "9"
 rand = "0.9"
