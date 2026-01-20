@@ -173,7 +173,11 @@ function getTrustLevelBadge(level: number) {
     { name: 'Verified', color: 'bg-yellow-100 text-yellow-700' },
   ];
   const config = levels[level] || levels[0];
-  return <Badge className={config.color}>Level {level}: {config.name}</Badge>;
+  return (
+    <Badge className={config.color}>
+      Level {level}: {config.name}
+    </Badge>
+  );
 }
 
 function getSeverityBadge(severity: string) {
@@ -308,7 +312,9 @@ function UserDetailsDialog({
             <div className="grid grid-cols-3 gap-4">
               <div className="p-3 rounded-lg bg-muted/50 text-center">
                 <p className="text-2xl font-bold">{user.account_age_days}</p>
-                <p className="text-xs text-muted-foreground">Account Age (days)</p>
+                <p className="text-xs text-muted-foreground">
+                  Account Age (days)
+                </p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50 text-center">
                 <p className="text-2xl font-bold">{user.total_tasks_created}</p>
@@ -332,8 +338,8 @@ function UserDetailsDialog({
                         {user.flagged_reason}
                       </p>
                       <p className="text-xs text-orange-600 mt-1">
-                        Flagged {user.flagged_at && formatDate(user.flagged_at)} by{' '}
-                        {user.flagged_by || 'system'}
+                        Flagged {user.flagged_at && formatDate(user.flagged_at)}{' '}
+                        by {user.flagged_by || 'system'}
                       </p>
                     </div>
                   </div>
@@ -348,7 +354,9 @@ function UserDetailsDialog({
                 Abuse Signals ({signals.length})
               </h4>
               {signals.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No abuse signals</p>
+                <p className="text-sm text-muted-foreground">
+                  No abuse signals
+                </p>
               ) : (
                 <div className="space-y-3">
                   {signals.map((signal) => (
@@ -574,8 +582,9 @@ export function AdminFlaggedUsers() {
                 {isLoadingUsers ? (
                   <Skeleton className="h-8 w-8" />
                 ) : (
-                  Object.values(mockAbuseSignals).flat().filter((s) => !s.is_resolved)
-                    .length
+                  Object.values(mockAbuseSignals)
+                    .flat()
+                    .filter((s) => !s.is_resolved).length
                 )}
               </div>
               <p className="text-sm text-muted-foreground">Open Signals</p>
@@ -657,7 +666,9 @@ export function AdminFlaggedUsers() {
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium truncate">{displayName}</h3>
                       {user.is_banned && (
-                        <Badge className="bg-red-100 text-red-700">Banned</Badge>
+                        <Badge className="bg-red-100 text-red-700">
+                          Banned
+                        </Badge>
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground truncate">
@@ -667,7 +678,8 @@ export function AdminFlaggedUsers() {
                       {getTrustLevelBadge(user.trust_level)}
                       {signals.length > 0 && (
                         <Badge variant="outline" className="text-xs">
-                          {signals.length} signal{signals.length !== 1 ? 's' : ''}
+                          {signals.length} signal
+                          {signals.length !== 1 ? 's' : ''}
                         </Badge>
                       )}
                       {highSeverityCount > 0 && (
@@ -699,7 +711,9 @@ export function AdminFlaggedUsers() {
       {/* User Details Dialog */}
       <UserDetailsDialog
         user={selectedUser}
-        signals={selectedUser ? mockAbuseSignals[selectedUser.user_id] || [] : []}
+        signals={
+          selectedUser ? mockAbuseSignals[selectedUser.user_id] || [] : []
+        }
         open={isDialogOpen}
         onClose={() => {
           setIsDialogOpen(false);

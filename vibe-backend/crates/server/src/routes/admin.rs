@@ -5,6 +5,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{delete, get, post, put},
 };
+use chrono::{DateTime, Utc};
 use db::models::{
     team_member::{CreateTeamInvitation, TeamInvitation, TeamMemberRole},
     tenant_workspace::{TenantWorkspace, TenantWorkspaceMember, WorkspaceMemberRole},
@@ -12,10 +13,31 @@ use db::models::{
 };
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::auth::ClerkUser};
+
+// ============================================================================
+// SQLx Row Types (for runtime type checking)
+// ============================================================================
+
+#[derive(FromRow)]
+struct MemberActivityRow {
+    id: String,
+    user_email: String,
+    to_role: String,
+    timestamp: DateTime<Utc>,
+}
+
+#[derive(FromRow)]
+struct InvitationActivityRow {
+    id: String,
+    target_email: String,
+    to_role: String,
+    timestamp: DateTime<Utc>,
+}
 
 // ============================================================================
 // Request/Response Types
@@ -203,22 +225,22 @@ pub async fn get_admin_stats(
     // Get workspace count
     let total_workspaces = 1i64; // Current workspace only for now
 
-    // Get teams in workspace
-    let teams_count: i64 = sqlx::query_scalar!(
-        r#"SELECT COUNT(*) as "count!" FROM teams WHERE tenant_workspace_id = $1"#,
-        workspace_id
+    // Get teams in workspace (runtime type checking for SQLx cache compatibility)
+    let teams_count: i64 = sqlx::query_scalar::<_, i64>(
+        r#"SELECT COUNT(*) FROM teams WHERE tenant_workspace_id = $1"#,
     )
+    .bind(workspace_id)
     .fetch_one(&deployment.db().pool)
     .await
     .unwrap_or(0);
 
-    // Get pending invitations
-    let pending_invitations: i64 = sqlx::query_scalar!(
-        r#"SELECT COUNT(*) as "count!" FROM team_invitations ti
+    // Get pending invitations (runtime type checking for SQLx cache compatibility)
+    let pending_invitations: i64 = sqlx::query_scalar::<_, i64>(
+        r#"SELECT COUNT(*) FROM team_invitations ti
            JOIN teams t ON ti.team_id = t.id
            WHERE t.tenant_workspace_id = $1 AND ti.status = 'pending'"#,
-        workspace_id
     )
+    .bind(workspace_id)
     .fetch_one(&deployment.db().pool)
     .await
     .unwrap_or(0);
@@ -243,20 +265,20 @@ pub async fn get_admin_activity(
 ) -> Result<ResponseJson<ApiResponse<Vec<AdminActivity>>>, ApiError> {
     verify_admin_access(&deployment.db().pool, workspace_id, &user.user_id).await?;
 
-    // Get recent team member additions
-    let recent_members: Vec<AdminActivity> = sqlx::query!(
+    // Get recent team member additions (runtime type checking for SQLx cache compatibility)
+    let recent_members: Vec<AdminActivity> = sqlx::query_as::<_, MemberActivityRow>(
         r#"SELECT
-            tm.id::text as "id!",
-            tm.email as "user_email",
-            tm.role as "to_role",
-            tm.joined_at as "timestamp!"
+            tm.id::text as id,
+            tm.email as user_email,
+            tm.role as to_role,
+            tm.joined_at as timestamp
            FROM team_members tm
            JOIN teams t ON tm.team_id = t.id
            WHERE t.tenant_workspace_id = $1
            ORDER BY tm.joined_at DESC
            LIMIT 10"#,
-        workspace_id
     )
+    .bind(workspace_id)
     .fetch_all(&deployment.db().pool)
     .await
     .unwrap_or_default()
@@ -272,20 +294,20 @@ pub async fn get_admin_activity(
     })
     .collect();
 
-    // Get recent invitations sent
-    let recent_invitations: Vec<AdminActivity> = sqlx::query!(
+    // Get recent invitations sent (runtime type checking for SQLx cache compatibility)
+    let recent_invitations: Vec<AdminActivity> = sqlx::query_as::<_, InvitationActivityRow>(
         r#"SELECT
-            ti.id::text as "id!",
-            ti.email as "target_email",
-            ti.role as "to_role",
-            ti.created_at as "timestamp!"
+            ti.id::text as id,
+            ti.email as target_email,
+            ti.role as to_role,
+            ti.created_at as timestamp
            FROM team_invitations ti
            JOIN teams t ON ti.team_id = t.id
            WHERE t.tenant_workspace_id = $1
            ORDER BY ti.created_at DESC
            LIMIT 5"#,
-        workspace_id
     )
+    .bind(workspace_id)
     .fetch_all(&deployment.db().pool)
     .await
     .unwrap_or_default()
@@ -329,14 +351,14 @@ pub async fn list_users(
 
     let mut users: Vec<AdminUser> = Vec::new();
     for member in members {
-        // Count teams for this user
-        let teams_count: i64 = sqlx::query_scalar!(
-            r#"SELECT COUNT(*) as "count!" FROM team_members tm
+        // Count teams for this user (runtime type checking)
+        let teams_count: i64 = sqlx::query_scalar::<_, i64>(
+            r#"SELECT COUNT(*) FROM team_members tm
                JOIN teams t ON tm.team_id = t.id
                WHERE t.tenant_workspace_id = $1 AND tm.clerk_user_id = $2"#,
-            workspace_id,
-            member.user_id
         )
+        .bind(workspace_id)
+        .bind(&member.user_id)
         .fetch_one(&deployment.db().pool)
         .await
         .unwrap_or(0);
@@ -456,8 +478,8 @@ pub async fn list_invitations(
 ) -> Result<ResponseJson<ApiResponse<Vec<AdminInvitation>>>, ApiError> {
     verify_admin_access(&deployment.db().pool, workspace_id, &user.user_id).await?;
 
-    let invitations: Vec<AdminInvitation> = sqlx::query_as!(
-        InvitationRow,
+    // Runtime type checking for SQLx cache compatibility
+    let invitations: Vec<AdminInvitation> = sqlx::query_as::<_, ListInvitationRow>(
         r#"SELECT
             ti.id,
             ti.email,
@@ -474,8 +496,8 @@ pub async fn list_invitations(
            LEFT JOIN team_members tm ON ti.invited_by = tm.id
            WHERE t.tenant_workspace_id = $1
            ORDER BY ti.created_at DESC"#,
-        workspace_id
     )
+    .bind(workspace_id)
     .fetch_all(&deployment.db().pool)
     .await
     .unwrap_or_default()
@@ -496,8 +518,8 @@ pub async fn list_invitations(
     Ok(ResponseJson(ApiResponse::success(invitations)))
 }
 
-#[derive(Debug)]
-struct InvitationRow {
+#[derive(Debug, FromRow)]
+struct ListInvitationRow {
     id: Uuid,
     email: String,
     role: String,
@@ -518,24 +540,24 @@ pub async fn create_invitation(
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<AdminInvitation>>), ApiError> {
     verify_admin_access(&deployment.db().pool, workspace_id, &user.user_id).await?;
 
-    // Get the first team in the workspace if no team_id is specified
+    // Get the first team in the workspace if no team_id is specified (runtime type checking)
     let team_id = match payload.team_id {
         Some(id) => id,
-        None => sqlx::query_scalar!(
+        None => sqlx::query_scalar::<_, Uuid>(
             r#"SELECT id FROM teams WHERE tenant_workspace_id = $1 LIMIT 1"#,
-            workspace_id
         )
+        .bind(workspace_id)
         .fetch_optional(&deployment.db().pool)
         .await?
         .ok_or_else(|| ApiError::BadRequest("No teams in workspace".to_string()))?,
     };
 
-    // Get inviter's team member ID
-    let inviter = sqlx::query_scalar!(
-        r#"SELECT id as "id!: Uuid" FROM team_members WHERE team_id = $1 AND clerk_user_id = $2"#,
-        team_id,
-        user.user_id
+    // Get inviter's team member ID (runtime type checking)
+    let inviter: Option<Uuid> = sqlx::query_scalar::<_, Uuid>(
+        r#"SELECT id FROM team_members WHERE team_id = $1 AND clerk_user_id = $2"#,
     )
+    .bind(team_id)
+    .bind(&user.user_id)
     .fetch_optional(&deployment.db().pool)
     .await?;
 
@@ -556,19 +578,20 @@ pub async fn create_invitation(
             .await
             .map_err(|e| ApiError::BadRequest(e.to_string()))?;
 
-    // Get additional info for response
-    let team_name: String = sqlx::query_scalar!(r#"SELECT name FROM teams WHERE id = $1"#, team_id)
-        .fetch_one(&deployment.db().pool)
-        .await
-        .unwrap_or_default();
+    // Get additional info for response (runtime type checking)
+    let team_name: String =
+        sqlx::query_scalar::<_, String>(r#"SELECT name FROM teams WHERE id = $1"#)
+            .bind(team_id)
+            .fetch_one(&deployment.db().pool)
+            .await
+            .unwrap_or_default();
 
-    let workspace_name: String = sqlx::query_scalar!(
-        r#"SELECT name FROM tenant_workspaces WHERE id = $1"#,
-        workspace_id
-    )
-    .fetch_one(&deployment.db().pool)
-    .await
-    .unwrap_or_default();
+    let workspace_name: String =
+        sqlx::query_scalar::<_, String>(r#"SELECT name FROM tenant_workspaces WHERE id = $1"#)
+            .bind(workspace_id)
+            .fetch_one(&deployment.db().pool)
+            .await
+            .unwrap_or_default();
 
     let admin_invitation = AdminInvitation {
         id: invitation.id,
@@ -596,9 +619,8 @@ pub async fn resend_invitation(
 ) -> Result<ResponseJson<ApiResponse<AdminInvitation>>, ApiError> {
     verify_admin_access(&deployment.db().pool, workspace_id, &user.user_id).await?;
 
-    // Get the existing invitation
-    let invitation = sqlx::query_as!(
-        InvitationRow,
+    // Get the existing invitation (runtime type checking)
+    let invitation = sqlx::query_as::<_, ListInvitationRow>(
         r#"SELECT
             ti.id,
             ti.email,
@@ -614,22 +636,20 @@ pub async fn resend_invitation(
            JOIN tenant_workspaces tw ON t.tenant_workspace_id = tw.id
            LEFT JOIN team_members tm ON ti.invited_by = tm.id
            WHERE ti.id = $1 AND t.tenant_workspace_id = $2"#,
-        invitation_id,
-        workspace_id
     )
+    .bind(invitation_id)
+    .bind(workspace_id)
     .fetch_optional(&deployment.db().pool)
     .await?
     .ok_or_else(|| ApiError::NotFound("Invitation not found".to_string()))?;
 
-    // Update expires_at to extend the invitation
+    // Update expires_at to extend the invitation (runtime type checking)
     let new_expires_at = chrono::Utc::now() + chrono::Duration::days(7);
-    sqlx::query!(
-        "UPDATE team_invitations SET expires_at = $1, status = 'pending' WHERE id = $2",
-        new_expires_at,
-        invitation_id
-    )
-    .execute(&deployment.db().pool)
-    .await?;
+    sqlx::query("UPDATE team_invitations SET expires_at = $1, status = 'pending' WHERE id = $2")
+        .bind(new_expires_at)
+        .bind(invitation_id)
+        .execute(&deployment.db().pool)
+        .await?;
 
     let admin_invitation = AdminInvitation {
         id: invitation.id,
@@ -654,14 +674,14 @@ pub async fn revoke_invitation(
 ) -> Result<StatusCode, ApiError> {
     verify_admin_access(&deployment.db().pool, workspace_id, &user.user_id).await?;
 
-    // Verify invitation belongs to workspace
-    let exists = sqlx::query_scalar!(
-        r#"SELECT COUNT(*) > 0 as "exists!" FROM team_invitations ti
+    // Verify invitation belongs to workspace (runtime type checking)
+    let exists: bool = sqlx::query_scalar::<_, bool>(
+        r#"SELECT COUNT(*) > 0 FROM team_invitations ti
            JOIN teams t ON ti.team_id = t.id
            WHERE ti.id = $1 AND t.tenant_workspace_id = $2"#,
-        invitation_id,
-        workspace_id
     )
+    .bind(invitation_id)
+    .bind(workspace_id)
     .fetch_one(&deployment.db().pool)
     .await?;
 
@@ -669,7 +689,9 @@ pub async fn revoke_invitation(
         return Err(ApiError::NotFound("Invitation not found".to_string()));
     }
 
-    sqlx::query!("DELETE FROM team_invitations WHERE id = $1", invitation_id)
+    // Runtime type checking
+    sqlx::query("DELETE FROM team_invitations WHERE id = $1")
+        .bind(invitation_id)
         .execute(&deployment.db().pool)
         .await?;
 
@@ -911,13 +933,12 @@ pub async fn update_permission(
     settings["permissions"] = serde_json::to_value(&permissions)
         .map_err(|e| ApiError::BadRequest(format!("Failed to serialize permissions: {}", e)))?;
 
-    sqlx::query!(
-        "UPDATE tenant_workspaces SET settings = $1, updated_at = NOW() WHERE id = $2",
-        settings,
-        workspace_id
-    )
-    .execute(&deployment.db().pool)
-    .await?;
+    // Runtime type checking
+    sqlx::query("UPDATE tenant_workspaces SET settings = $1, updated_at = NOW() WHERE id = $2")
+        .bind(&settings)
+        .bind(workspace_id)
+        .execute(&deployment.db().pool)
+        .await?;
 
     Ok(ResponseJson(ApiResponse::success(updated_permission)))
 }
@@ -977,13 +998,12 @@ pub async fn update_feature_toggle(
     settings["features"] = serde_json::to_value(&features)
         .map_err(|e| ApiError::BadRequest(format!("Failed to serialize features: {}", e)))?;
 
-    sqlx::query!(
-        "UPDATE tenant_workspaces SET settings = $1, updated_at = NOW() WHERE id = $2",
-        settings,
-        workspace_id
-    )
-    .execute(&deployment.db().pool)
-    .await?;
+    // Runtime type checking
+    sqlx::query("UPDATE tenant_workspaces SET settings = $1, updated_at = NOW() WHERE id = $2")
+        .bind(&settings)
+        .bind(workspace_id)
+        .execute(&deployment.db().pool)
+        .await?;
 
     Ok(ResponseJson(ApiResponse::success(updated_feature)))
 }
@@ -1056,13 +1076,12 @@ pub async fn update_configuration(
     settings["configuration"] = serde_json::to_value(&payload.config)
         .map_err(|e| ApiError::BadRequest(format!("Failed to serialize configuration: {}", e)))?;
 
-    sqlx::query!(
-        "UPDATE tenant_workspaces SET settings = $1, updated_at = NOW() WHERE id = $2",
-        settings,
-        workspace_id
-    )
-    .execute(&deployment.db().pool)
-    .await?;
+    // Runtime type checking
+    sqlx::query("UPDATE tenant_workspaces SET settings = $1, updated_at = NOW() WHERE id = $2")
+        .bind(&settings)
+        .bind(workspace_id)
+        .execute(&deployment.db().pool)
+        .await?;
 
     Ok(ResponseJson(ApiResponse::success(payload.config)))
 }

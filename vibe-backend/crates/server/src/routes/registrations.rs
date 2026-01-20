@@ -7,10 +7,17 @@ use axum::{
 use db::models::user_registration::{CreateUserRegistration, RegistrationStatus, UserRegistration};
 use deployment::Deployment;
 use serde::Deserialize;
+use sqlx::FromRow;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::auth::ClerkUser};
+
+// SQLx row type for runtime type checking
+#[derive(FromRow)]
+struct ExistingMemberRow {
+    team_name: String,
+}
 
 /// Query params for listing registrations
 #[derive(Debug, Deserialize)]
@@ -33,14 +40,15 @@ pub async fn get_my_registration(
     }
 
     // No registration - check if user is already a team member (existing user before registration system)
-    let existing_member = sqlx::query!(
-        r#"SELECT tm.id, t.name as team_name
+    // Runtime type checking for SQLx cache compatibility
+    let existing_member = sqlx::query_as::<_, ExistingMemberRow>(
+        r#"SELECT t.name as team_name
            FROM team_members tm
            JOIN teams t ON t.id = tm.team_id
            WHERE tm.clerk_user_id = $1
            LIMIT 1"#,
-        &user.user_id
     )
+    .bind(&user.user_id)
     .fetch_optional(&deployment.db().pool)
     .await?;
 
@@ -202,18 +210,15 @@ async fn find_admin_member_id(
     clerk_user_id: &str,
 ) -> Result<Uuid, ApiError> {
     // Query to find a team member with owner role for this clerk user
-    let result = sqlx::query!(
-        r#"SELECT id as "id!: uuid::Uuid"
-           FROM team_members
-           WHERE clerk_user_id = $1 AND role = 'owner'
-           LIMIT 1"#,
-        clerk_user_id
+    // Runtime type checking for SQLx cache compatibility
+    let result = sqlx::query_scalar::<_, Uuid>(
+        r#"SELECT id FROM team_members WHERE clerk_user_id = $1 AND role = 'owner' LIMIT 1"#,
     )
+    .bind(clerk_user_id)
     .fetch_optional(&deployment.db().pool)
     .await?;
 
     result
-        .map(|r| r.id)
         .ok_or_else(|| ApiError::Forbidden("Only team owners can review registrations".to_string()))
 }
 

@@ -69,15 +69,16 @@ async fn _users_share_team(
     user1_id: &str,
     user2_id: &str,
 ) -> Result<bool, ApiError> {
-    let result = sqlx::query_scalar!(
+    // Runtime type checking for SQLx cache compatibility
+    let result: bool = sqlx::query_scalar::<_, bool>(
         r#"SELECT EXISTS(
             SELECT 1 FROM team_members tm1
             JOIN team_members tm2 ON tm1.team_id = tm2.team_id
             WHERE tm1.clerk_user_id = $1 AND tm2.clerk_user_id = $2
-        ) as "exists!: bool""#,
-        user1_id,
-        user2_id
+        )"#,
     )
+    .bind(user1_id)
+    .bind(user2_id)
     .fetch_one(pool)
     .await?;
 
@@ -177,14 +178,12 @@ pub async fn create_direct_conversation(
         .await?
         .ok_or_else(|| ApiError::Forbidden("Recipient is not a member of this team".to_string()))?;
 
-    // Get workspace ID from team
-    let workspace_id = sqlx::query_scalar!(
-        r#"SELECT tenant_workspace_id as "workspace_id: Uuid" FROM teams WHERE id = $1"#,
-        query.team_id
-    )
-    .fetch_one(pool)
-    .await?
-    .ok_or_else(|| ApiError::BadRequest("Team has no workspace".to_string()))?;
+    // Get workspace ID from team (runtime type checking)
+    let workspace_id: Uuid =
+        sqlx::query_scalar::<_, Uuid>(r#"SELECT tenant_workspace_id FROM teams WHERE id = $1"#)
+            .bind(query.team_id)
+            .fetch_one(pool)
+            .await?;
 
     // Create or get existing DM
     let conversation = Conversation::create_direct(
@@ -229,14 +228,12 @@ pub async fn create_group_conversation(
         participant_pairs.push((participant_id.clone(), member.id));
     }
 
-    // Get workspace ID
-    let workspace_id = sqlx::query_scalar!(
-        r#"SELECT tenant_workspace_id as "workspace_id: Uuid" FROM teams WHERE id = $1"#,
-        query.team_id
-    )
-    .fetch_one(pool)
-    .await?
-    .ok_or_else(|| ApiError::BadRequest("Team has no workspace".to_string()))?;
+    // Get workspace ID (runtime type checking)
+    let workspace_id: Uuid =
+        sqlx::query_scalar::<_, Uuid>(r#"SELECT tenant_workspace_id FROM teams WHERE id = $1"#)
+            .bind(query.team_id)
+            .fetch_one(pool)
+            .await?;
 
     // Create group conversation
     let conversation = Conversation::create_group(
