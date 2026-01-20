@@ -9,6 +9,12 @@ import {
   AdminFeatureToggle,
   AdminConfiguration,
   CreateInvitationRequest,
+  trustProfilesApi,
+  abuseSignalsApi,
+  UserTrustProfile,
+  AbuseDetectionSignal,
+  BanUserRequest,
+  ResolveAbuseSignalRequest,
 } from '@/lib/api';
 
 // Query keys factory
@@ -28,6 +34,13 @@ export const adminKeys = {
     [...adminKeys.all, 'features', workspaceId] as const,
   configuration: (workspaceId: string) =>
     [...adminKeys.all, 'configuration', workspaceId] as const,
+  // Trust & Safety (IKA-190)
+  flaggedUsers: () => [...adminKeys.all, 'flagged-users'] as const,
+  trustProfile: (userId: string) =>
+    [...adminKeys.all, 'trust-profile', userId] as const,
+  abuseSignals: () => [...adminKeys.all, 'abuse-signals'] as const,
+  userAbuseSignals: (userId: string) =>
+    [...adminKeys.all, 'abuse-signals', userId] as const,
 };
 
 // Check if error is rate limit
@@ -339,5 +352,156 @@ export function useAdminConfigurationMutations(
     updateConfiguration: (config: AdminConfiguration) =>
       updateMutation.mutateAsync(config),
     isUpdating: updateMutation.isPending,
+  };
+}
+
+// =============================================================================
+// Trust & Safety Hooks (IKA-190: Admin Flagged Users Dashboard)
+// =============================================================================
+
+export function useFlaggedUsers() {
+  return useQuery<UserTrustProfile[]>({
+    queryKey: adminKeys.flaggedUsers(),
+    queryFn: () => trustProfilesApi.listFlagged(),
+    staleTime: 2 * 60 * 1000, // 2 minutes - flagged users can change frequently
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      if (isRateLimitError(error)) return false;
+      return failureCount < 1;
+    },
+  });
+}
+
+export function useUserTrustProfile(userId: string | undefined) {
+  return useQuery<UserTrustProfile>({
+    queryKey: adminKeys.trustProfile(userId ?? ''),
+    queryFn: () => trustProfilesApi.get(userId!),
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      if (isRateLimitError(error)) return false;
+      return failureCount < 1;
+    },
+  });
+}
+
+export function useUnresolvedAbuseSignals() {
+  return useQuery<AbuseDetectionSignal[]>({
+    queryKey: adminKeys.abuseSignals(),
+    queryFn: () => abuseSignalsApi.listUnresolved(),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      if (isRateLimitError(error)) return false;
+      return failureCount < 1;
+    },
+  });
+}
+
+export function useUserAbuseSignals(userId: string | undefined) {
+  return useQuery<AbuseDetectionSignal[]>({
+    queryKey: adminKeys.userAbuseSignals(userId ?? ''),
+    queryFn: () => abuseSignalsApi.getByUser(userId!),
+    enabled: !!userId,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      if (isRateLimitError(error)) return false;
+      return failureCount < 1;
+    },
+  });
+}
+
+export function useTrustProfileMutations() {
+  const queryClient = useQueryClient();
+
+  const unflagMutation = useMutation({
+    mutationFn: (userId: string) => trustProfilesApi.unflag(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.flaggedUsers(),
+        refetchType: 'none',
+      });
+    },
+  });
+
+  const banMutation = useMutation({
+    mutationFn: ({ userId, data }: { userId: string; data: BanUserRequest }) =>
+      trustProfilesApi.ban(userId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.flaggedUsers(),
+        refetchType: 'none',
+      });
+    },
+  });
+
+  const updateTrustLevelMutation = useMutation({
+    mutationFn: ({
+      userId,
+      trustLevel,
+    }: {
+      userId: string;
+      trustLevel: number;
+    }) => trustProfilesApi.updateTrustLevel(userId, trustLevel),
+    onSuccess: (_, { userId }) => {
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.trustProfile(userId),
+        refetchType: 'none',
+      });
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.flaggedUsers(),
+        refetchType: 'none',
+      });
+    },
+  });
+
+  return {
+    unflag: (userId: string) => unflagMutation.mutateAsync(userId),
+    ban: (userId: string, reason: string) =>
+      banMutation.mutateAsync({ userId, data: { reason } }),
+    updateTrustLevel: (userId: string, trustLevel: number) =>
+      updateTrustLevelMutation.mutateAsync({ userId, trustLevel }),
+    isUnflagging: unflagMutation.isPending,
+    isBanning: banMutation.isPending,
+    isUpdatingTrustLevel: updateTrustLevelMutation.isPending,
+  };
+}
+
+export function useAbuseSignalMutations() {
+  const queryClient = useQueryClient();
+
+  const resolveMutation = useMutation({
+    mutationFn: ({
+      signalId,
+      data,
+    }: {
+      signalId: string;
+      data?: ResolveAbuseSignalRequest;
+    }) => abuseSignalsApi.resolve(signalId, data),
+    onSuccess: (signal) => {
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.abuseSignals(),
+        refetchType: 'none',
+      });
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.userAbuseSignals(signal.user_id),
+        refetchType: 'none',
+      });
+    },
+  });
+
+  return {
+    resolve: (signalId: string, notes?: string) =>
+      resolveMutation.mutateAsync({
+        signalId,
+        data: notes ? { resolution_notes: notes } : undefined,
+      }),
+    isResolving: resolveMutation.isPending,
   };
 }

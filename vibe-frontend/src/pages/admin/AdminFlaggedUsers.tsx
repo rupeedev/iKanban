@@ -45,137 +45,26 @@ import {
   Filter,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  useFlaggedUsers,
+  useUserAbuseSignals,
+  useUnresolvedAbuseSignals,
+  useTrustProfileMutations,
+} from '@/hooks/useAdmin';
+import type { UserTrustProfile, TrustLevel } from '@/lib/api';
 
-// Types for Trust & Safety (IKA-186 - IKA-190)
-interface UserTrustProfile {
-  id: string;
-  user_id: string;
-  email: string;
-  display_name?: string;
-  trust_level: number;
-  email_verified: boolean;
-  email_verified_at?: string;
-  account_age_days: number;
-  total_tasks_created: number;
-  members_invited: number;
-  is_flagged: boolean;
-  flagged_reason?: string;
-  flagged_at?: string;
-  flagged_by?: string;
-  is_banned: boolean;
-  banned_at?: string;
-  banned_by?: string;
-  ban_reason?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface AbuseSignal {
-  id: string;
-  user_id: string;
-  signal_type: string;
-  severity: 'low' | 'medium' | 'high';
-  description?: string;
-  metadata: Record<string, unknown>;
-  source_ip?: string;
-  is_resolved: boolean;
-  resolved_at?: string;
-  resolved_by?: string;
-  resolution_notes?: string;
-  created_at: string;
-}
-
-// Mock data for development (to be replaced with API hooks)
-const mockFlaggedUsers: UserTrustProfile[] = [
-  {
-    id: '1',
-    user_id: 'user_123',
-    email: 'suspicious@tempmail.com',
-    display_name: 'Suspicious User',
-    trust_level: 0,
-    email_verified: false,
-    account_age_days: 2,
-    total_tasks_created: 0,
-    members_invited: 0,
-    is_flagged: true,
-    flagged_reason: 'Multiple abuse signals detected',
-    flagged_at: '2024-01-15T10:00:00Z',
-    flagged_by: 'system',
-    is_banned: false,
-    created_at: '2024-01-13T10:00:00Z',
-    updated_at: '2024-01-15T10:00:00Z',
-  },
-  {
-    id: '2',
-    user_id: 'user_456',
-    email: 'spammer@example.com',
-    display_name: 'Spam Account',
-    trust_level: 0,
-    email_verified: true,
-    email_verified_at: '2024-01-10T10:00:00Z',
-    account_age_days: 5,
-    total_tasks_created: 50,
-    members_invited: 0,
-    is_flagged: true,
-    flagged_reason: 'Reported for spam by multiple users',
-    flagged_at: '2024-01-14T10:00:00Z',
-    flagged_by: 'admin_001',
-    is_banned: false,
-    created_at: '2024-01-09T10:00:00Z',
-    updated_at: '2024-01-14T10:00:00Z',
-  },
-];
-
-const mockAbuseSignals: Record<string, AbuseSignal[]> = {
-  user_123: [
-    {
-      id: 's1',
-      user_id: 'user_123',
-      signal_type: 'disposable_email',
-      severity: 'medium',
-      description: 'Email from known disposable email provider',
-      metadata: { provider: 'tempmail.com' },
-      is_resolved: false,
-      created_at: '2024-01-13T10:00:00Z',
-    },
-    {
-      id: 's2',
-      user_id: 'user_123',
-      signal_type: 'rapid_registration',
-      severity: 'high',
-      description: 'Multiple accounts created from same IP',
-      metadata: { count: 5, time_window: '1 hour' },
-      source_ip: '192.168.1.100',
-      is_resolved: false,
-      created_at: '2024-01-13T10:05:00Z',
-    },
-  ],
-  user_456: [
-    {
-      id: 's3',
-      user_id: 'user_456',
-      signal_type: 'reported_spam',
-      severity: 'high',
-      description: 'Reported by 3 different users for spam content',
-      metadata: { reports: 3 },
-      is_resolved: false,
-      created_at: '2024-01-14T09:00:00Z',
-    },
-  ],
-};
-
-function getTrustLevelBadge(level: number) {
-  const levels = [
-    { name: 'New', color: 'bg-gray-100 text-gray-700' },
-    { name: 'Basic', color: 'bg-blue-100 text-blue-700' },
-    { name: 'Standard', color: 'bg-green-100 text-green-700' },
-    { name: 'Trusted', color: 'bg-purple-100 text-purple-700' },
-    { name: 'Verified', color: 'bg-yellow-100 text-yellow-700' },
-  ];
-  const config = levels[level] || levels[0];
+function getTrustLevelBadge(level: TrustLevel) {
+  const levels: Record<TrustLevel, { name: string; color: string }> = {
+    new: { name: 'New', color: 'bg-gray-100 text-gray-700' },
+    basic: { name: 'Basic', color: 'bg-blue-100 text-blue-700' },
+    standard: { name: 'Standard', color: 'bg-green-100 text-green-700' },
+    trusted: { name: 'Trusted', color: 'bg-purple-100 text-purple-700' },
+    verified: { name: 'Verified', color: 'bg-yellow-100 text-yellow-700' },
+  };
+  const config = levels[level] || levels.new;
   return (
     <Badge className={config.color}>
-      Level {level}: {config.name}
+      {config.name}
     </Badge>
   );
 }
@@ -207,6 +96,10 @@ function getSignalTypeLabel(type: string) {
     rate_limit_exceeded: 'Rate Limit Exceeded',
     reported_spam: 'Reported Spam',
     failed_login_attempts: 'Failed Login Attempts',
+    ip_reputation: 'IP Reputation',
+    geo_velocity: 'Geo Velocity',
+    device_fingerprint: 'Device Fingerprint',
+    user_report: 'User Report',
   };
   return labels[type] || type;
 }
@@ -236,7 +129,6 @@ function getAvatarColor(str: string): string {
 
 interface UserDetailsDialogProps {
   user: UserTrustProfile | null;
-  signals: AbuseSignal[];
   open: boolean;
   onClose: () => void;
   onUnflag: () => void;
@@ -246,7 +138,6 @@ interface UserDetailsDialogProps {
 
 function UserDetailsDialog({
   user,
-  signals,
   open,
   onClose,
   onUnflag,
@@ -256,9 +147,15 @@ function UserDetailsDialog({
   const [banReason, setBanReason] = useState('');
   const [showBanConfirm, setShowBanConfirm] = useState(false);
 
+  // Fetch abuse signals for this user
+  const { data: signals = [], isLoading: isLoadingSignals } = useUserAbuseSignals(
+    user?.user_id
+  );
+
   if (!user) return null;
 
-  const displayName = user.display_name || user.email.split('@')[0];
+  // Use user_id as display name since we don't have email in the profile
+  const displayName = user.user_id.split('_').pop() || user.user_id;
 
   return (
     <>
@@ -278,13 +175,15 @@ function UserDetailsDialog({
             {/* User Info */}
             <div className="flex items-start gap-4">
               <Avatar className="h-14 w-14">
-                <AvatarFallback className={getAvatarColor(user.email)}>
+                <AvatarFallback className={getAvatarColor(user.user_id)}>
                   {displayName.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold">{displayName}</h3>
-                <p className="text-sm text-muted-foreground">{user.email}</p>
+                <p className="text-sm text-muted-foreground font-mono">
+                  {user.user_id}
+                </p>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {getTrustLevelBadge(user.trust_level)}
                   {user.email_verified ? (
@@ -347,16 +246,38 @@ function UserDetailsDialog({
               </Card>
             )}
 
+            {/* Ban Info */}
+            {user.is_banned && user.ban_reason && (
+              <Card className="border-red-200 bg-red-50">
+                <CardContent className="py-3">
+                  <div className="flex items-start gap-2">
+                    <Ban className="h-4 w-4 text-red-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-red-900">Ban Reason</p>
+                      <p className="text-sm text-red-700">{user.ban_reason}</p>
+                      <p className="text-xs text-red-600 mt-1">
+                        Banned {user.banned_at && formatDate(user.banned_at)} by{' '}
+                        {user.banned_by || 'admin'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Abuse Signals */}
             <div>
               <h4 className="font-medium mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4" />
                 Abuse Signals ({signals.length})
               </h4>
-              {signals.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No abuse signals
-                </p>
+              {isLoadingSignals ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : signals.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No abuse signals</p>
               ) : (
                 <div className="space-y-3">
                   {signals.map((signal) => (
@@ -431,9 +352,8 @@ function UserDetailsDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Ban User</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to ban{' '}
-              <strong>{user.display_name || user.email}</strong>? This will
-              prevent them from accessing the platform.
+              Are you sure you want to ban <strong>{displayName}</strong>? This
+              will prevent them from accessing the platform.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
@@ -473,11 +393,22 @@ export function AdminFlaggedUsers() {
     null
   );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // TODO: Replace with actual API hooks
-  const flaggedUsers = mockFlaggedUsers;
-  const isLoadingUsers = false;
+  // Fetch flagged users from API
+  const {
+    data: flaggedUsers = [],
+    isLoading: isLoadingUsers,
+    isError,
+    refetch,
+  } = useFlaggedUsers();
+
+  // Fetch unresolved abuse signals for the count
+  const { data: unresolvedSignals = [] } = useUnresolvedAbuseSignals();
+
+  // Mutations for unflag/ban actions
+  const { unflag, ban, isUnflagging, isBanning } = useTrustProfileMutations();
+
+  const isLoading = isUnflagging || isBanning;
 
   const filteredUsers = flaggedUsers.filter((user) => {
     if (filter === 'flagged') return user.is_flagged && !user.is_banned;
@@ -492,23 +423,26 @@ export function AdminFlaggedUsers() {
 
   const handleUnflag = async () => {
     if (!selectedUser) return;
-    setIsLoading(true);
-    // TODO: Call API to unflag user
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    setIsDialogOpen(false);
-    setSelectedUser(null);
+    try {
+      await unflag(selectedUser.user_id);
+      setIsDialogOpen(false);
+      setSelectedUser(null);
+      refetch();
+    } catch (error) {
+      console.error('Failed to unflag user:', error);
+    }
   };
 
   const handleBan = async (reason: string) => {
     if (!selectedUser) return;
-    setIsLoading(true);
-    // TODO: Call API to ban user
-    console.log('Banning user:', selectedUser.user_id, 'Reason:', reason);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    setIsDialogOpen(false);
-    setSelectedUser(null);
+    try {
+      await ban(selectedUser.user_id, reason);
+      setIsDialogOpen(false);
+      setSelectedUser(null);
+      refetch();
+    } catch (error) {
+      console.error('Failed to ban user:', error);
+    }
   };
 
   const userCounts = {
@@ -530,11 +464,29 @@ export function AdminFlaggedUsers() {
             Review flagged users and abuse signals
           </p>
         </div>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
       </div>
+
+      {/* Error State */}
+      {isError && (
+        <Card className="p-4 border-red-200 bg-red-50">
+          <div className="flex items-center gap-2 text-red-700">
+            <AlertCircle className="h-5 w-5" />
+            <span>Failed to load flagged users. Please try again.</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              className="ml-auto"
+            >
+              Retry
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 grid-cols-3">
@@ -582,9 +534,7 @@ export function AdminFlaggedUsers() {
                 {isLoadingUsers ? (
                   <Skeleton className="h-8 w-8" />
                 ) : (
-                  Object.values(mockAbuseSignals)
-                    .flat()
-                    .filter((s) => !s.is_resolved).length
+                  unresolvedSignals.filter((s) => !s.is_resolved).length
                 )}
               </div>
               <p className="text-sm text-muted-foreground">Open Signals</p>
@@ -641,11 +591,8 @@ export function AdminFlaggedUsers() {
           </Card>
         ) : (
           filteredUsers.map((user) => {
-            const displayName = user.display_name || user.email.split('@')[0];
-            const signals = mockAbuseSignals[user.user_id] || [];
-            const highSeverityCount = signals.filter(
-              (s) => s.severity === 'high' && !s.is_resolved
-            ).length;
+            const displayName =
+              user.user_id.split('_').pop() || user.user_id;
 
             return (
               <Card
@@ -658,7 +605,7 @@ export function AdminFlaggedUsers() {
               >
                 <div className="flex items-center gap-4">
                   <Avatar className="h-12 w-12">
-                    <AvatarFallback className={getAvatarColor(user.email)}>
+                    <AvatarFallback className={getAvatarColor(user.user_id)}>
                       {displayName.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -666,27 +613,14 @@ export function AdminFlaggedUsers() {
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium truncate">{displayName}</h3>
                       {user.is_banned && (
-                        <Badge className="bg-red-100 text-red-700">
-                          Banned
-                        </Badge>
+                        <Badge className="bg-red-100 text-red-700">Banned</Badge>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {user.email}
+                    <p className="text-sm text-muted-foreground truncate font-mono">
+                      {user.user_id}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       {getTrustLevelBadge(user.trust_level)}
-                      {signals.length > 0 && (
-                        <Badge variant="outline" className="text-xs">
-                          {signals.length} signal
-                          {signals.length !== 1 ? 's' : ''}
-                        </Badge>
-                      )}
-                      {highSeverityCount > 0 && (
-                        <Badge className="bg-red-100 text-red-700 text-xs">
-                          {highSeverityCount} high severity
-                        </Badge>
-                      )}
                     </div>
                   </div>
                   <div className="text-right">
@@ -711,9 +645,6 @@ export function AdminFlaggedUsers() {
       {/* User Details Dialog */}
       <UserDetailsDialog
         user={selectedUser}
-        signals={
-          selectedUser ? mockAbuseSignals[selectedUser.user_id] || [] : []
-        }
         open={isDialogOpen}
         onClose={() => {
           setIsDialogOpen(false);

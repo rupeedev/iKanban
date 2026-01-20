@@ -3388,7 +3388,11 @@ export interface CreatePortalSessionResponse {
 }
 
 // IKA-206: Subscription action types
-export type SubscriptionAction = 'upgrade' | 'downgrade' | 'cancel' | 'nochange';
+export type SubscriptionAction =
+  | 'upgrade'
+  | 'downgrade'
+  | 'cancel'
+  | 'nochange';
 
 // IKA-206: Proration preview for plan changes
 export interface ProrationPreview {
@@ -3470,7 +3474,9 @@ export const billingApi = {
   },
 
   // IKA-206: Preview proration for plan change
-  previewProration: async (data: ChangePlanRequest): Promise<ProrationPreview> => {
+  previewProration: async (
+    data: ChangePlanRequest
+  ): Promise<ProrationPreview> => {
     const response = await makeRequest('/v1/stripe/preview-proration', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -3479,7 +3485,9 @@ export const billingApi = {
   },
 
   // IKA-206: Change subscription plan
-  changePlan: async (data: ChangePlanRequest): Promise<SubscriptionChangeResult> => {
+  changePlan: async (
+    data: ChangePlanRequest
+  ): Promise<SubscriptionChangeResult> => {
     const response = await makeRequest('/v1/stripe/change-plan', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -3496,5 +3504,241 @@ export const billingApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<SubscriptionChangeResult>(response);
+  },
+};
+
+// ============================================================================
+// Trust & Safety API (IKA-190: Admin Flagged Users Dashboard)
+// ============================================================================
+
+export type TrustLevel = 'new' | 'basic' | 'standard' | 'trusted' | 'verified';
+
+export interface UserTrustProfile {
+  id: string;
+  user_id: string;
+  trust_level: TrustLevel;
+  email_verified: boolean;
+  email_verified_at: string | null;
+  account_age_days: number;
+  total_tasks_created: number;
+  members_invited: number;
+  is_flagged: boolean;
+  flagged_reason: string | null;
+  flagged_at: string | null;
+  flagged_by: string | null;
+  is_banned: boolean;
+  banned_at: string | null;
+  banned_by: string | null;
+  ban_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AbuseSignalType =
+  | 'rapid_registration'
+  | 'disposable_email'
+  | 'suspicious_activity'
+  | 'rate_limit_exceeded'
+  | 'reported_spam'
+  | 'failed_login_attempts'
+  | string;
+
+export type AbuseSeverity = 'low' | 'medium' | 'high';
+
+export interface AbuseDetectionSignal {
+  id: string;
+  user_id: string;
+  signal_type: AbuseSignalType;
+  severity: AbuseSeverity;
+  description: string | null;
+  metadata: Record<string, unknown>;
+  source_ip: string | null;
+  is_resolved: boolean;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  resolution_notes: string | null;
+  created_at: string;
+}
+
+export interface FlagUserRequest {
+  reason: string;
+}
+
+export interface BanUserRequest {
+  reason: string;
+}
+
+export interface ResolveAbuseSignalRequest {
+  resolution_notes?: string;
+}
+
+export const trustProfilesApi = {
+  // List all flagged users (admin only)
+  listFlagged: async (): Promise<UserTrustProfile[]> => {
+    const response = await makeRequest('/v1/admin/trust-profiles/flagged');
+    return handleApiResponse<UserTrustProfile[]>(response);
+  },
+
+  // Get a specific user's trust profile (admin only)
+  get: async (userId: string): Promise<UserTrustProfile> => {
+    const response = await makeRequest(`/v1/admin/trust-profiles/${userId}`);
+    return handleApiResponse<UserTrustProfile>(response);
+  },
+
+  // Flag a user (admin only)
+  flag: async (
+    userId: string,
+    data: FlagUserRequest
+  ): Promise<UserTrustProfile> => {
+    const response = await makeRequest(
+      `/v1/admin/trust-profiles/${userId}/flag`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<UserTrustProfile>(response);
+  },
+
+  // Unflag a user (admin only)
+  unflag: async (userId: string): Promise<UserTrustProfile> => {
+    const response = await makeRequest(
+      `/v1/admin/trust-profiles/${userId}/unflag`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<UserTrustProfile>(response);
+  },
+
+  // Ban a user (admin only)
+  ban: async (
+    userId: string,
+    data: BanUserRequest
+  ): Promise<UserTrustProfile> => {
+    const response = await makeRequest(
+      `/v1/admin/trust-profiles/${userId}/ban`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<UserTrustProfile>(response);
+  },
+
+  // Update trust level (admin only)
+  updateTrustLevel: async (
+    userId: string,
+    trustLevel: number
+  ): Promise<UserTrustProfile> => {
+    const response = await makeRequest(
+      `/v1/admin/trust-profiles/${userId}/trust-level`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ trust_level: trustLevel }),
+      }
+    );
+    return handleApiResponse<UserTrustProfile>(response);
+  },
+};
+
+export const abuseSignalsApi = {
+  // List all unresolved abuse signals (admin only)
+  listUnresolved: async (): Promise<AbuseDetectionSignal[]> => {
+    const response = await makeRequest('/v1/admin/abuse-signals');
+    return handleApiResponse<AbuseDetectionSignal[]>(response);
+  },
+
+  // Get abuse signals for a specific user (admin only)
+  getByUser: async (userId: string): Promise<AbuseDetectionSignal[]> => {
+    const response = await makeRequest(
+      `/v1/admin/abuse-signals/user/${userId}`
+    );
+    return handleApiResponse<AbuseDetectionSignal[]>(response);
+  },
+
+  // Resolve an abuse signal (admin only)
+  resolve: async (
+    signalId: string,
+    data?: ResolveAbuseSignalRequest
+  ): Promise<AbuseDetectionSignal> => {
+    const response = await makeRequest(
+      `/v1/admin/abuse-signals/${signalId}/resolve`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      }
+    );
+    return handleApiResponse<AbuseDetectionSignal>(response);
+  },
+};
+
+// ============================================================================
+// Email Verification Types & API (IKA-189)
+// ============================================================================
+
+export interface PendingVerification {
+  email: string;
+  expires_at: string;
+  can_resend: boolean;
+}
+
+export interface VerificationStatusResponse {
+  is_verified: boolean;
+  email: string | null;
+  verified_at: string | null;
+  pending_verification: PendingVerification | null;
+}
+
+export interface SendVerificationRequest {
+  email: string;
+}
+
+export interface SendVerificationResponse {
+  message: string;
+  expires_at: string;
+}
+
+export interface VerifyEmailResponse {
+  message: string;
+  email: string;
+  trust_level_upgraded: boolean;
+}
+
+export const emailVerificationApi = {
+  // Get current user's verification status
+  getStatus: async (): Promise<VerificationStatusResponse> => {
+    const response = await makeRequest('/v1/auth/verification-status');
+    return handleApiResponse<VerificationStatusResponse>(response);
+  },
+
+  // Send verification email
+  sendVerification: async (
+    data: SendVerificationRequest
+  ): Promise<SendVerificationResponse> => {
+    const response = await makeRequest('/v1/auth/send-verification', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<SendVerificationResponse>(response);
+  },
+
+  // Verify email token (public - no auth required)
+  verifyToken: async (token: string): Promise<VerifyEmailResponse> => {
+    const url = import.meta.env.VITE_VK_API_BASE || '';
+    const response = await fetch(
+      `${url}/v1/auth/verify-email?token=${encodeURIComponent(token)}`
+    );
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ error: 'Verification failed' }));
+      throw new ApiError(
+        error.error || 'Verification failed',
+        response.status,
+        response
+      );
+    }
+    return response.json();
   },
 };

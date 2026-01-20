@@ -14,8 +14,10 @@ use tracing::{Level, field};
 
 use crate::{AppState, auth::require_session};
 
+mod abuse_signals;
 mod billing;
 mod electric_proxy;
+mod email_verification;
 mod error;
 mod github_app;
 mod identity;
@@ -57,7 +59,8 @@ pub fn router(state: AppState) -> Router {
         .merge(tokens::public_router())
         .merge(review::public_router())
         .merge(github_app::public_router())
-        .merge(stripe::public_router());
+        .merge(stripe::public_router())
+        .merge(email_verification::public_router());
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
@@ -71,6 +74,8 @@ pub fn router(state: AppState) -> Router {
         .merge(stripe::protected_router())
         .merge(billing::protected_router())
         .merge(trust_profiles::protected_router())
+        .merge(abuse_signals::protected_router())
+        .merge(email_verification::protected_router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,
