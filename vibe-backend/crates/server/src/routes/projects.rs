@@ -19,11 +19,13 @@ use db::models::{
 };
 use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
+use remote::middleware::usage_limits::{track_project_creation, track_project_deletion};
 use serde::Deserialize;
 use services::services::{
     file_search_cache::SearchQuery, project::ProjectServiceError,
     remote_client::CreateRemoteProjectPayload,
 };
+use tracing::warn;
 use ts_rs::TS;
 use utils::{
     api::projects::{RemoteProject, RemoteProjectMembersResponse},
@@ -230,6 +232,7 @@ pub async fn create_project(
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
     tracing::debug!("Creating project '{}'", payload.name);
     let repo_count = payload.repositories.len();
+    let workspace_id = payload.tenant_workspace_id;
 
     match deployment
         .project()
@@ -237,6 +240,13 @@ pub async fn create_project(
         .await
     {
         Ok(project) => {
+            // Track project creation in workspace usage (soft limits)
+            if let Some(ws_id) = workspace_id
+                && let Err(e) = track_project_creation(&deployment.db().pool, ws_id).await
+            {
+                warn!(workspace_id = %ws_id, error = %e, "Failed to track project creation");
+            }
+
             // Track project creation event
             deployment
                 .track_if_analytics_allowed(
@@ -289,6 +299,8 @@ pub async fn delete_project(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
+    let workspace_id = project.tenant_workspace_id;
+
     match deployment
         .project()
         .delete_project(&deployment.db().pool, project.id)
@@ -298,6 +310,13 @@ pub async fn delete_project(
             if rows_affected == 0 {
                 Err(StatusCode::NOT_FOUND)
             } else {
+                // Track project deletion in workspace usage
+                if let Some(ws_id) = workspace_id
+                    && let Err(e) = track_project_deletion(&deployment.db().pool, ws_id).await
+                {
+                    warn!(workspace_id = %ws_id, error = %e, "Failed to track project deletion");
+                }
+
                 deployment
                     .track_if_analytics_allowed(
                         "project_deleted",

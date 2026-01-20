@@ -4,3 +4,4 @@ export { AdminInvitations } from './AdminInvitations';
 export { AdminPermissions } from './AdminPermissions';
 export { AdminConfiguration } from './AdminConfiguration';
 export { AdminUsers } from './AdminUsers';
+export { AdminFlaggedUsers } from './AdminFlaggedUsers';

@@ -25,13 +25,11 @@ async fn get_user_tenant_workspace(
     email: Option<&str>,
 ) -> Result<uuid::Uuid, ApiError> {
     // First, try to find existing membership
-    let workspace_id: Option<uuid::Uuid> = sqlx::query_scalar!(
-        r#"SELECT tenant_workspace_id as "id: uuid::Uuid"
-           FROM tenant_workspace_members
-           WHERE user_id = $1
-           LIMIT 1"#,
-        user_id
+    // Runtime type checking for SQLx cache compatibility
+    let workspace_id: Option<uuid::Uuid> = sqlx::query_scalar::<_, uuid::Uuid>(
+        r#"SELECT tenant_workspace_id FROM tenant_workspace_members WHERE user_id = $1 LIMIT 1"#,
     )
+    .bind(user_id)
     .fetch_optional(pool)
     .await?;
 

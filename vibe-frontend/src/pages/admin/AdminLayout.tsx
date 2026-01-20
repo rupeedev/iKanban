@@ -14,6 +14,7 @@ import {
   Users,
   X,
   ShieldCheck,
+  Flag,
 } from 'lucide-react';
 
 const adminNavigation = [
@@ -46,6 +47,12 @@ const adminNavigation = [
     label: 'Users',
     description: 'User management',
     icon: Users,
+  },
+  {
+    path: 'flagged-users',
+    label: 'Trust & Safety',
+    description: 'Review flagged users',
+    icon: Flag,
   },
 ];
 

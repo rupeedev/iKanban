@@ -60,5 +60,8 @@ jsonwebtoken = "9"
 governor = "0.6"
 tower = { version = "0.4", features = ["util"] }
 
+[dev-dependencies]
+tempfile = "3.12"
+
 [build-dependencies]
 dotenv = "0.15"
