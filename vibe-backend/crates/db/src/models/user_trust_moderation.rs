@@ -3,58 +3,10 @@
 //! Handles flag/ban operations for user moderation.
 
 use chrono::{DateTime, Utc};
-use sqlx::{FromRow, PgPool};
+use sqlx::PgPool;
 use uuid::Uuid;
 
-use super::user_trust_profile::{TrustLevel, UserTrustProfile};
-
-// Re-use the row struct for DB mapping
-#[derive(FromRow)]
-struct UserTrustProfileRow {
-    id: Uuid,
-    user_id: String,
-    trust_level: i32,
-    email_verified: bool,
-    email_verified_at: Option<DateTime<Utc>>,
-    account_age_days: i32,
-    total_tasks_created: i32,
-    members_invited: i32,
-    is_flagged: bool,
-    flagged_reason: Option<String>,
-    flagged_at: Option<DateTime<Utc>>,
-    flagged_by: Option<String>,
-    is_banned: bool,
-    banned_at: Option<DateTime<Utc>>,
-    banned_by: Option<String>,
-    ban_reason: Option<String>,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
-}
-
-impl From<UserTrustProfileRow> for UserTrustProfile {
-    fn from(row: UserTrustProfileRow) -> Self {
-        Self {
-            id: row.id,
-            user_id: row.user_id,
-            trust_level: TrustLevel::from(row.trust_level),
-            email_verified: row.email_verified,
-            email_verified_at: row.email_verified_at,
-            account_age_days: row.account_age_days,
-            total_tasks_created: row.total_tasks_created,
-            members_invited: row.members_invited,
-            is_flagged: row.is_flagged,
-            flagged_reason: row.flagged_reason,
-            flagged_at: row.flagged_at,
-            flagged_by: row.flagged_by,
-            is_banned: row.is_banned,
-            banned_at: row.banned_at,
-            banned_by: row.banned_by,
-            ban_reason: row.ban_reason,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-        }
-    }
-}
+use super::user_trust_profile::{UserTrustProfile, UserTrustProfileRow};
 
 impl UserTrustProfile {
     /// Flag a user (IKA-190)

@@ -80,27 +80,27 @@ pub struct BanUserRequest {
     pub reason: String,
 }
 
-// Helper struct for raw DB rows
+/// Helper struct for raw DB rows (pub(crate) for sharing with moderation module)
 #[derive(FromRow)]
-struct UserTrustProfileRow {
-    id: Uuid,
-    user_id: String,
-    trust_level: i32,
-    email_verified: bool,
-    email_verified_at: Option<DateTime<Utc>>,
-    account_age_days: i32,
-    total_tasks_created: i32,
-    members_invited: i32,
-    is_flagged: bool,
-    flagged_reason: Option<String>,
-    flagged_at: Option<DateTime<Utc>>,
-    flagged_by: Option<String>,
-    is_banned: bool,
-    banned_at: Option<DateTime<Utc>>,
-    banned_by: Option<String>,
-    ban_reason: Option<String>,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
+pub(crate) struct UserTrustProfileRow {
+    pub id: Uuid,
+    pub user_id: String,
+    pub trust_level: i32,
+    pub email_verified: bool,
+    pub email_verified_at: Option<DateTime<Utc>>,
+    pub account_age_days: i32,
+    pub total_tasks_created: i32,
+    pub members_invited: i32,
+    pub is_flagged: bool,
+    pub flagged_reason: Option<String>,
+    pub flagged_at: Option<DateTime<Utc>>,
+    pub flagged_by: Option<String>,
+    pub is_banned: bool,
+    pub banned_at: Option<DateTime<Utc>>,
+    pub banned_by: Option<String>,
+    pub ban_reason: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<UserTrustProfileRow> for UserTrustProfile {
