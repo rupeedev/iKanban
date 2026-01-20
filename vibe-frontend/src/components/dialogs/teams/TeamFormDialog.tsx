@@ -30,6 +30,8 @@ import {
   type StorageProvider,
   type StorageConfig,
 } from './StorageProviderConfig';
+import { ResourceUpgradeHint } from '@/components/subscription';
+import { useUsageLimits } from '@/hooks/useUsageLimits';
 
 export interface TeamFormDialogProps {
   editTeam?: Team;
@@ -86,7 +88,10 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(
   ({ editTeam }) => {
     const modal = useModal();
     const { createTeam, updateTeam, deleteTeam, teams } = useTeams();
+    const { getLimitStatus, wouldExceedLimit } = useUsageLimits();
     const isEditing = !!editTeam;
+    const teamLimitStatus = getLimitStatus('teams');
+    const wouldExceedTeamLimit = !isEditing && wouldExceedLimit('teams');
 
     const [name, setName] = useState(editTeam?.name || '');
     const [icon, setIcon] = useState<string | null>(editTeam?.icon || null);
@@ -257,6 +262,11 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(
             </DialogHeader>
 
             <div className="py-6 space-y-5">
+              {/* Usage limit warning for new teams (IKA-185) */}
+              {!isEditing && teamLimitStatus.severity !== 'none' && (
+                <ResourceUpgradeHint resource="teams" />
+              )}
+
               {/* Team Icon and Name Row */}
               <div className="flex gap-4">
                 <div className="space-y-2">
@@ -450,7 +460,12 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSubmitting || isDeleting || !name.trim()}
+                  disabled={
+                    isSubmitting ||
+                    isDeleting ||
+                    !name.trim() ||
+                    wouldExceedTeamLimit
+                  }
                 >
                   {isSubmitting
                     ? isEditing

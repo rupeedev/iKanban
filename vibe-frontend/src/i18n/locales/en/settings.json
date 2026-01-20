@@ -49,6 +49,8 @@
         "title": "Available Plans",
         "current": "Current",
         "upgrade": "Upgrade",
+        "downgrade": "Downgrade",
+        "switchToFree": "Switch to Free",
         "contactSales": "Contact Sales",
         "free": "Free",
         "unlimited": "Unlimited",
@@ -57,6 +59,37 @@
         "members": "members",
         "storage": "storage",
         "aiRequests": "AI requests/month"
+      },
+      "limits": {
+        "warning": "You're approaching your {{resource}} limit ({{percentage}}%).",
+        "critical": "You're at {{percentage}}% of your {{resource}} limit.",
+        "exceeded": "You've reached the {{resource}} limit for your plan.",
+        "upgradePrompt": "Upgrade to {{plan}} for more.",
+        "cannotCreate": "Cannot create more {{resource}}. Limit reached.",
+        "usageStatus": "{{current}}/{{limit}} {{resource}} used ({{percentage}}%)",
+        "globalWarning": "Usage at {{percentage}}% for {{resources}}.",
+        "globalCritical": "Approaching plan limits for {{resources}}. Consider upgrading.",
+        "globalExceeded": "Plan limit reached for {{resources}}. Upgrade to continue.",
+        "upgradeButton": "Upgrade",
+        "upgradePlan": "Upgrade Plan"
+      },
+      "planChange": {
+        "title": "Confirm Plan Change",
+        "upgradeTitle": "Upgrade to {{plan}}",
+        "downgradeTitle": "Downgrade to {{plan}}",
+        "cancelTitle": "Cancel Subscription",
+        "loading": "Calculating proration...",
+        "error": "Failed to load proration details",
+        "upgradeDescription": "Your new plan will be effective immediately. You'll be charged a prorated amount for the remainder of your billing period.",
+        "downgradeDescription": "Your plan change will take effect at the end of your current billing period. You'll continue to have access to your current plan features until then.",
+        "cancelDescription": "Your subscription will be canceled at the end of your current billing period. You'll continue to have access until then.",
+        "immediateCharge": "Immediate charge",
+        "newMonthlyRate": "New monthly rate",
+        "effectiveDate": "Effective date",
+        "confirm": "Confirm Change",
+        "cancel": "Cancel",
+        "success": "Plan changed successfully!",
+        "cancelSuccess": "Subscription canceled. You'll have access until the end of your billing period."
       }
     },
     "general": {

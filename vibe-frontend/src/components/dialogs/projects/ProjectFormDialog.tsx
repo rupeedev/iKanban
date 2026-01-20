@@ -41,6 +41,8 @@ import { teamsApi } from '@/lib/api';
 import type { CreateProject, ProjectStatus, Team, Project } from 'shared/types';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { useQueryClient } from '@tanstack/react-query';
+import { ResourceUpgradeHint } from '@/components/subscription';
+import { useUsageLimits } from '@/hooks/useUsageLimits';
 
 export interface ProjectFormDialogProps {
   teamId?: string;
@@ -167,7 +169,10 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(
     const { teams, teamsById } = useTeams();
     const { projects: allProjects, addProject } = useProjects();
     const { projects: teamProjects } = useTeamProjects(teamId);
+    const { getLimitStatus, wouldExceedLimit } = useUsageLimits();
     const isEditing = !!editProject;
+    const projectLimitStatus = getLimitStatus('projects');
+    const wouldExceedProjectLimit = !isEditing && wouldExceedLimit('projects');
 
     // Form state
     const [name, setName] = useState(editProject?.name || '');
@@ -368,8 +373,9 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(
     }, [name, existingProjectNames]);
 
     // Only name is required - repository is optional for new projects
-    // Also block submission if name is duplicate
-    const canSubmit = !!name.trim() && !isDuplicateName;
+    // Also block submission if name is duplicate or would exceed limit
+    const canSubmit =
+      !!name.trim() && !isDuplicateName && !wouldExceedProjectLimit;
 
     // Keyboard shortcuts
     useEffect(() => {
@@ -480,6 +486,11 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(
 
           {/* Main form */}
           <div className="p-4 space-y-3">
+            {/* Usage limit warning for new projects (IKA-185) */}
+            {!isEditing && projectLimitStatus.severity !== 'none' && (
+              <ResourceUpgradeHint resource="projects" />
+            )}
+
             {/* Project name */}
             <div className="space-y-1">
               <Input

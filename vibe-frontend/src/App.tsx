@@ -67,6 +67,7 @@ import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 import { SidebarProvider } from './contexts/SidebarContext';
 import { GlobalKeyboardShortcuts } from '@/components/layout/GlobalKeyboardShortcuts';
 import { UsageLimitProvider } from '@/contexts/UsageLimitContext';
+import { GlobalLimitBanner } from '@/components/subscription';
 import NiceModal from '@ebay/nice-modal-react';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
@@ -171,6 +172,8 @@ function AppContent() {
           <ConnectionStatusBar />
           {/* Service unavailable banner - shows when circuit breaker is open */}
           <ServiceUnavailable />
+          {/* Usage limit warning banner (IKA-185) */}
+          <GlobalLimitBanner />
           <div className="h-screen flex flex-col bg-background">
             <SentryRoutes>
               {/* Public routes - no authentication required */}
