@@ -1,3 +1,4 @@
+pub mod abuse_detection_signal;
 pub mod agent_config;
 pub mod ai_provider_key;
 pub mod api_key;
@@ -31,7 +32,10 @@ pub mod task_tag;
 pub mod team;
 pub mod team_member;
 pub mod tenant_workspace;
+pub mod trust_level_progression;
 pub mod user_registration;
+pub mod user_trust_moderation;
+pub mod user_trust_profile;
 pub mod workspace;
 pub mod workspace_repo;
 pub mod workspace_subscription;

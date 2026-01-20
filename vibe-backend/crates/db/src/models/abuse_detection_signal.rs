@@ -142,7 +142,8 @@ impl From<AbuseDetectionSignalRow> for AbuseDetectionSignal {
         Self {
             id: row.id,
             user_id: row.user_id,
-            signal_type: SignalType::from_str(&row.signal_type).unwrap_or(SignalType::Other(row.signal_type)),
+            signal_type: SignalType::from_str(&row.signal_type)
+                .unwrap_or(SignalType::Other(row.signal_type)),
             severity: Severity::from_str(&row.severity).unwrap_or_default(),
             description: row.description,
             metadata: row.metadata,
@@ -194,10 +195,7 @@ impl AbuseDetectionSignal {
     }
 
     /// Find signals by user ID
-    pub async fn find_by_user_id(
-        pool: &PgPool,
-        user_id: &str,
-    ) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn find_by_user_id(pool: &PgPool, user_id: &str) -> Result<Vec<Self>, sqlx::Error> {
         let rows = sqlx::query_as!(
             AbuseDetectionSignalRow,
             r#"SELECT id as "id!: Uuid",

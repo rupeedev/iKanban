@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
@@ -281,163 +279,6 @@ impl UserTrustProfile {
         Ok(row.into())
     }
 
-    /// Flag a user (IKA-190)
-    pub async fn flag_user(
-        pool: &PgPool,
-        user_id: &str,
-        reason: &str,
-        flagged_by: &str,
-    ) -> Result<Self, sqlx::Error> {
-        let row = sqlx::query_as!(
-            UserTrustProfileRow,
-            r#"UPDATE user_trust_profiles
-               SET is_flagged = true,
-                   flagged_reason = $2,
-                   flagged_at = NOW(),
-                   flagged_by = $3,
-                   updated_at = NOW()
-               WHERE user_id = $1
-               RETURNING id as "id!: Uuid",
-                         user_id,
-                         trust_level,
-                         email_verified,
-                         email_verified_at as "email_verified_at: DateTime<Utc>",
-                         account_age_days,
-                         total_tasks_created,
-                         members_invited,
-                         is_flagged,
-                         flagged_reason,
-                         flagged_at as "flagged_at: DateTime<Utc>",
-                         flagged_by,
-                         is_banned,
-                         banned_at as "banned_at: DateTime<Utc>",
-                         banned_by,
-                         ban_reason,
-                         created_at as "created_at!: DateTime<Utc>",
-                         updated_at as "updated_at!: DateTime<Utc>""#,
-            user_id,
-            reason,
-            flagged_by
-        )
-        .fetch_one(pool)
-        .await?;
-
-        Ok(row.into())
-    }
-
-    /// Unflag a user
-    pub async fn unflag_user(pool: &PgPool, user_id: &str) -> Result<Self, sqlx::Error> {
-        let row = sqlx::query_as!(
-            UserTrustProfileRow,
-            r#"UPDATE user_trust_profiles
-               SET is_flagged = false,
-                   flagged_reason = NULL,
-                   flagged_at = NULL,
-                   flagged_by = NULL,
-                   updated_at = NOW()
-               WHERE user_id = $1
-               RETURNING id as "id!: Uuid",
-                         user_id,
-                         trust_level,
-                         email_verified,
-                         email_verified_at as "email_verified_at: DateTime<Utc>",
-                         account_age_days,
-                         total_tasks_created,
-                         members_invited,
-                         is_flagged,
-                         flagged_reason,
-                         flagged_at as "flagged_at: DateTime<Utc>",
-                         flagged_by,
-                         is_banned,
-                         banned_at as "banned_at: DateTime<Utc>",
-                         banned_by,
-                         ban_reason,
-                         created_at as "created_at!: DateTime<Utc>",
-                         updated_at as "updated_at!: DateTime<Utc>""#,
-            user_id
-        )
-        .fetch_one(pool)
-        .await?;
-
-        Ok(row.into())
-    }
-
-    /// Ban a user
-    pub async fn ban_user(
-        pool: &PgPool,
-        user_id: &str,
-        reason: &str,
-        banned_by: &str,
-    ) -> Result<Self, sqlx::Error> {
-        let row = sqlx::query_as!(
-            UserTrustProfileRow,
-            r#"UPDATE user_trust_profiles
-               SET is_banned = true,
-                   ban_reason = $2,
-                   banned_at = NOW(),
-                   banned_by = $3,
-                   updated_at = NOW()
-               WHERE user_id = $1
-               RETURNING id as "id!: Uuid",
-                         user_id,
-                         trust_level,
-                         email_verified,
-                         email_verified_at as "email_verified_at: DateTime<Utc>",
-                         account_age_days,
-                         total_tasks_created,
-                         members_invited,
-                         is_flagged,
-                         flagged_reason,
-                         flagged_at as "flagged_at: DateTime<Utc>",
-                         flagged_by,
-                         is_banned,
-                         banned_at as "banned_at: DateTime<Utc>",
-                         banned_by,
-                         ban_reason,
-                         created_at as "created_at!: DateTime<Utc>",
-                         updated_at as "updated_at!: DateTime<Utc>""#,
-            user_id,
-            reason,
-            banned_by
-        )
-        .fetch_one(pool)
-        .await?;
-
-        Ok(row.into())
-    }
-
-    /// List all flagged users (IKA-190: Admin dashboard)
-    pub async fn list_flagged(pool: &PgPool) -> Result<Vec<Self>, sqlx::Error> {
-        let rows = sqlx::query_as!(
-            UserTrustProfileRow,
-            r#"SELECT id as "id!: Uuid",
-                      user_id,
-                      trust_level,
-                      email_verified,
-                      email_verified_at as "email_verified_at: DateTime<Utc>",
-                      account_age_days,
-                      total_tasks_created,
-                      members_invited,
-                      is_flagged,
-                      flagged_reason,
-                      flagged_at as "flagged_at: DateTime<Utc>",
-                      flagged_by,
-                      is_banned,
-                      banned_at as "banned_at: DateTime<Utc>",
-                      banned_by,
-                      ban_reason,
-                      created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
-               FROM user_trust_profiles
-               WHERE is_flagged = true
-               ORDER BY flagged_at DESC"#
-        )
-        .fetch_all(pool)
-        .await?;
-
-        Ok(rows.into_iter().map(|r| r.into()).collect())
-    }
-
     /// Increment task count
     pub async fn increment_tasks_created(
         pool: &PgPool,
@@ -484,6 +325,40 @@ impl UserTrustProfile {
             UserTrustProfileRow,
             r#"UPDATE user_trust_profiles
                SET members_invited = members_invited + 1,
+                   updated_at = NOW()
+               WHERE user_id = $1
+               RETURNING id as "id!: Uuid",
+                         user_id,
+                         trust_level,
+                         email_verified,
+                         email_verified_at as "email_verified_at: DateTime<Utc>",
+                         account_age_days,
+                         total_tasks_created,
+                         members_invited,
+                         is_flagged,
+                         flagged_reason,
+                         flagged_at as "flagged_at: DateTime<Utc>",
+                         flagged_by,
+                         is_banned,
+                         banned_at as "banned_at: DateTime<Utc>",
+                         banned_by,
+                         ban_reason,
+                         created_at as "created_at!: DateTime<Utc>",
+                         updated_at as "updated_at!: DateTime<Utc>""#,
+            user_id
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(row.into())
+    }
+
+    /// Update account age based on created_at (call periodically or on activity)
+    pub async fn refresh_account_age(pool: &PgPool, user_id: &str) -> Result<Self, sqlx::Error> {
+        let row = sqlx::query_as!(
+            UserTrustProfileRow,
+            r#"UPDATE user_trust_profiles
+               SET account_age_days = EXTRACT(DAY FROM (NOW() - created_at))::INTEGER,
                    updated_at = NOW()
                WHERE user_id = $1
                RETURNING id as "id!: Uuid",

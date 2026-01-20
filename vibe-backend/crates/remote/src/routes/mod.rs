@@ -27,6 +27,7 @@ mod review;
 mod stripe;
 pub mod tasks;
 mod tokens;
+mod trust_profiles;
 
 pub fn router(state: AppState) -> Router {
     let trace_layer = TraceLayer::new_for_http()
@@ -69,6 +70,7 @@ pub fn router(state: AppState) -> Router {
         .merge(github_app::protected_router())
         .merge(stripe::protected_router())
         .merge(billing::protected_router())
+        .merge(trust_profiles::protected_router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,
