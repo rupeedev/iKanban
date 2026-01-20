@@ -6,6 +6,8 @@ publish = false
 
 [dependencies]
 anyhow = { workspace = true }
+# Use db_crate alias to avoid shadowing local pub mod db (see lib.rs line 5)
+db_crate = { path = "../db", package = "db" }
 axum = { workspace = true }
 axum-extra = { version = "0.10.3", features = ["typed-header"] }
 aes-gcm = "0.10"
