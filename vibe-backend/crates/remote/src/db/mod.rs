@@ -8,6 +8,7 @@ pub mod organization_members;
 pub mod organizations;
 pub mod projects;
 pub mod reviews;
+pub mod superadmins;
 pub mod tasks;
 pub mod users;
 

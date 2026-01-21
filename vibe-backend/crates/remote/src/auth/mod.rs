@@ -4,6 +4,7 @@ mod jwt;
 mod middleware;
 mod oauth_token_validator;
 mod provider;
+mod superadmin;
 
 pub use abuse_detector::AbuseDetector;
 pub use handoff::{CallbackResult, HandoffError, OAuthHandoffService};
@@ -13,3 +14,5 @@ pub use oauth_token_validator::{OAuthTokenValidationError, OAuthTokenValidator};
 pub use provider::{
     GitHubOAuthProvider, GoogleOAuthProvider, ProviderRegistry, ProviderTokenDetails,
 };
+#[allow(unused_imports)]
+pub use superadmin::require_superadmin;

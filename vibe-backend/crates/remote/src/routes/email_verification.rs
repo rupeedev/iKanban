@@ -340,7 +340,10 @@ async fn upgrade_trust_level_if_needed(pool: &sqlx::PgPool, user_id: &str) -> bo
                                 return true;
                             }
                             Err(err) => {
-                                tracing::error!(?err, "failed to upgrade trust level for new profile");
+                                tracing::error!(
+                                    ?err,
+                                    "failed to upgrade trust level for new profile"
+                                );
                             }
                         }
                     }
