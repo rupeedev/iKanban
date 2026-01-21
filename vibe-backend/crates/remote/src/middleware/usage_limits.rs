@@ -606,6 +606,7 @@ fn create_default_limits(workspace: &TenantWorkspace) -> PlanLimits {
     PlanLimits {
         id: Uuid::nil(),
         plan_name: workspace.plan.clone(),
+        max_workspaces: 1, // Default: workspace limit is plan-level, not workspace-level
         max_teams: workspace.max_teams,
         max_projects: workspace.max_projects,
         max_members: workspace.max_members,
