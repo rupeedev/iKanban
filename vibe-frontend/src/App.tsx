@@ -21,7 +21,9 @@ import {
   SignInPage,
   SignUpPage,
   VerifyEmailPage,
+  PendingApprovalPage,
   RejectedPage,
+  RegisterPage,
 } from '@/pages/auth';
 import { MyIssues } from '@/pages/MyIssues';
 import { Inbox } from '@/pages/Inbox';
@@ -199,6 +201,11 @@ function AppContent() {
               <Route path="/sign-in/*" element={<SignInPage />} />
               <Route path="/sign-up/*" element={<SignUpPage />} />
               <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route
+                path="/pending-approval"
+                element={<PendingApprovalPage />}
+              />
               <Route path="/rejected" element={<RejectedPage />} />
 
               {/* Join team via invite link (standalone page) */}
