@@ -383,6 +383,49 @@ python3 ikanban.py update IKA-XX -s done
 
 ---
 
+## Context Compaction Recovery
+
+When a session continues after context compaction (you see "This session is being continued from a previous conversation"), follow these rules to avoid wasted time:
+
+### DO NOT Re-run Completed Steps
+
+1. **Read the summary carefully** - It lists which phases were completed
+2. **Check todo list** - Completed items don't need re-doing
+3. **Check git status FIRST** - See what's already staged/committed
+
+### DO NOT Wait on Background Tasks Unnecessarily
+
+1. **Check task notifications** - If you see `<task-notification>` with `status: completed`, the task is DONE
+2. **Don't block on TaskOutput** - If notifications show completion, proceed immediately
+3. **Kill stuck processes** - If cargo/build processes seem stuck, kill them and proceed
+
+### Recovery Checklist
+
+```bash
+# Step 1: Check current state
+git status
+git branch --show-current
+
+# Step 2: If files are ready, commit directly
+git add <relevant-files>
+git commit -m "message"
+
+# Step 3: Don't re-run validation if summary says it passed
+```
+
+### Common Mistakes to Avoid
+
+| Mistake | Correct Action |
+|---------|----------------|
+| Re-running `cargo sqlx prepare` when cache exists | Check if `.sqlx/` files exist first |
+| Re-running `cargo check` after it passed | Skip - proceed to commit |
+| Waiting 40+ mins for background tasks | Check task notifications, kill if stuck |
+| Re-reading files already in summary | Trust the summary, proceed |
+
+**Rule: After context compaction, assume previous work is valid unless git status shows otherwise.**
+
+---
+
 ## Commit Message Format
 
 ```

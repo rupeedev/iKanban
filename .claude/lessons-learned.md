@@ -425,6 +425,38 @@ Frontend sends: { executors: { CLAUDE_CODE: { DEFAULT: {...}, CUSTOM: {...} } } 
 
 ---
 
+## Incident: IKA-215 Context Compaction Delay (2026-01-21)
+
+### What Happened
+
+A task that was essentially complete took 40+ minutes after context compaction because:
+1. Re-ran `cargo sqlx prepare` when SQLx cache was already generated
+2. Waited on `TaskOutput` for background tasks that had already completed
+3. Re-validated code that had already passed all checks
+
+### Root Causes
+
+1. **Not reading context compaction summary carefully** - Summary clearly stated validation had passed
+2. **Ignoring task notifications** - Multiple `<task-notification>` showed `status: completed`
+3. **Blocking on TaskOutput** - Waited for background tasks instead of checking notifications
+4. **Cargo process locks** - Multiple cargo processes competing for same lock file
+
+### How It Was Fixed
+
+1. Killed stuck processes
+2. Checked `git status` to see actual state
+3. Proceeded directly to commit and merge
+
+### Prevention
+
+Added "Context Compaction Recovery" section to `.claude/WORKFLOW.md`:
+- Check task notifications first
+- Trust the summary - don't re-run completed phases
+- Check `git status` immediately to see actual state
+- Don't block on TaskOutput if notifications show completion
+
+---
+
 ## Template for Future Incidents
 
 ### Incident: [Title] (Date)
