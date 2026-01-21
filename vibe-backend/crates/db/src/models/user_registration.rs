@@ -6,6 +6,27 @@ use sqlx::{FromRow, PgPool};
 use ts_rs::TS;
 use uuid::Uuid;
 
+/// Valid plan names
+pub const PLAN_HOBBY: &str = "hobby";
+pub const PLAN_STARTER: &str = "starter";
+pub const PLAN_PRO: &str = "pro";
+
+/// All valid plan names
+pub const VALID_PLANS: [&str; 3] = [PLAN_HOBBY, PLAN_STARTER, PLAN_PRO];
+
+/// Check if a plan name is valid
+pub fn is_valid_plan(plan: &str) -> bool {
+    VALID_PLANS.contains(&plan)
+}
+
+/// Validate and normalize a plan name, returning the default if invalid
+pub fn validate_plan(plan: Option<&str>) -> String {
+    match plan {
+        Some(p) if is_valid_plan(p) => p.to_string(),
+        _ => PLAN_HOBBY.to_string(),
+    }
+}
+
 /// Registration status for new users
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
 #[serde(rename_all = "lowercase")]
@@ -229,7 +250,7 @@ impl UserRegistration {
         let status = RegistrationStatus::Pending.to_string();
         let planned_teams = data.planned_teams.unwrap_or(1);
         let planned_projects = data.planned_projects.unwrap_or(1);
-        let selected_plan = data.selected_plan.clone().unwrap_or_else(|| "hobby".to_string());
+        let selected_plan = validate_plan(data.selected_plan.as_deref());
 
         let row = sqlx::query_as!(
             UserRegistrationRow,
@@ -282,7 +303,7 @@ impl UserRegistration {
         let status = RegistrationStatus::Approved.to_string();
         let planned_teams = data.planned_teams.unwrap_or(1);
         let planned_projects = data.planned_projects.unwrap_or(1);
-        let selected_plan = data.selected_plan.clone().unwrap_or_else(|| "hobby".to_string());
+        let selected_plan = validate_plan(data.selected_plan.as_deref());
         let now = Utc::now();
 
         let row = sqlx::query_as!(
@@ -513,5 +534,15 @@ impl UserRegistration {
     /// Check if user registration is pending
     pub fn is_pending(&self) -> bool {
         self.status == RegistrationStatus::Pending
+    }
+
+    /// Check if the selected plan is a free plan (hobby)
+    pub fn is_free_plan(&self) -> bool {
+        self.selected_plan == PLAN_HOBBY
+    }
+
+    /// Check if the selected plan requires Stripe payment
+    pub fn requires_payment(&self) -> bool {
+        self.selected_plan != PLAN_HOBBY
     }
 }
