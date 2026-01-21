@@ -15,6 +15,7 @@ use tracing::{Level, field};
 use crate::{AppState, auth::require_session};
 
 mod abuse_signals;
+mod admin;
 mod billing;
 mod electric_proxy;
 mod email_verification;
@@ -76,6 +77,7 @@ pub fn router(state: AppState) -> Router {
         .merge(trust_profiles::protected_router())
         .merge(abuse_signals::protected_router())
         .merge(email_verification::protected_router())
+        .merge(admin::protected_router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,
