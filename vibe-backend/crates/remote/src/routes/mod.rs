@@ -12,7 +12,10 @@ use tower_http::{
 };
 use tracing::{Level, field};
 
-use crate::{AppState, auth::require_session};
+use crate::{
+    AppState,
+    auth::{require_session, require_superadmin},
+};
 
 mod abuse_signals;
 mod billing;
@@ -27,6 +30,7 @@ mod organizations;
 mod projects;
 mod review;
 mod stripe;
+mod superadmins;
 pub mod tasks;
 mod tokens;
 mod trust_profiles;
@@ -76,9 +80,18 @@ pub fn router(state: AppState) -> Router {
         .merge(trust_profiles::protected_router())
         .merge(abuse_signals::protected_router())
         .merge(email_verification::protected_router())
+        .merge(superadmins::public_router()) // Check endpoint - any authed user
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,
+        ));
+
+    // Superadmin-only routes (require superadmin status, not just auth)
+    let v1_superadmin = Router::<AppState>::new()
+        .merge(superadmins::protected_router())
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            require_superadmin,
         ));
 
     let static_dir = "/srv/static";
@@ -88,6 +101,7 @@ pub fn router(state: AppState) -> Router {
     Router::<AppState>::new()
         .nest("/v1", v1_public)
         .nest("/v1", v1_protected)
+        .nest("/v1", v1_superadmin)
         .fallback_service(spa)
         .layer(
             CorsLayer::new()
