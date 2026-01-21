@@ -47,7 +47,12 @@ import {
   AdminUsers,
   AdminFlaggedUsers,
 } from '@/pages/admin/';
-import { SuperadminLayout, SuperadminDashboard } from '@/pages/superadmin/';
+import {
+  SuperadminLayout,
+  SuperadminDashboard,
+  RegistrationRequests,
+  SuperadminRegistrationDetail,
+} from '@/pages/superadmin/';
 import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { SearchProvider } from '@/contexts/SearchContext';
@@ -260,6 +265,14 @@ function AppContent() {
                 <Route element={<SuperadminRoute />}>
                   <Route path="/superadmin/*" element={<SuperadminLayout />}>
                     <Route index element={<SuperadminDashboard />} />
+                    <Route
+                      path="registrations"
+                      element={<RegistrationRequests />}
+                    />
+                    <Route
+                      path="registrations/:registrationId"
+                      element={<SuperadminRegistrationDetail />}
+                    />
                   </Route>
                 </Route>
                 <Route
