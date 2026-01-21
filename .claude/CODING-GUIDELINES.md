@@ -556,6 +556,46 @@ return <TaskPanel task={selectedTask} />;
 
 ---
 
+## UI Components (shadcn/ui)
+
+### Tooltip Requires Provider
+
+Tooltip components MUST be wrapped in `TooltipProvider`. Missing this causes a runtime error:
+`'Tooltip' must be used within 'TooltipProvider'`
+
+```typescript
+// BAD - Crashes at runtime with provider error
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+
+<Tooltip>
+  <TooltipTrigger>Hover me</TooltipTrigger>
+  <TooltipContent>Content</TooltipContent>
+</Tooltip>
+
+// GOOD - Always wrap with TooltipProvider
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+<TooltipProvider>
+  <Tooltip>
+    <TooltipTrigger>Hover me</TooltipTrigger>
+    <TooltipContent>Content</TooltipContent>
+  </Tooltip>
+</TooltipProvider>
+```
+
+### Other Provider-Required Components
+
+Some shadcn/ui components require context providers:
+
+| Component | Required Provider | Notes |
+|-----------|------------------|-------|
+| `Tooltip` | `TooltipProvider` | Wrap each tooltip or add globally in App |
+| `Dialog` | None (self-contained) | Uses Radix portal |
+| `DropdownMenu` | None (self-contained) | Uses Radix portal |
+| `Popover` | None (self-contained) | Uses Radix portal |
+
+---
+
 ## File Organization
 
 ### When to Split Files
@@ -615,6 +655,7 @@ components/
 | **Components handle empty/null data** | N/A | Code review |
 | **No unsafe data access (use `?.`)** | N/A | Code review |
 | **URL params resolved before API calls** | N/A | Code review |
+| **Tooltip wrapped in TooltipProvider** | N/A | Code review |
 
 ---
 
@@ -631,6 +672,7 @@ components/
 | **IKA-83** | Retry amplified 429 errors | Use global QueryClient defaults |
 | **IKA-84** | URL slug passed to API | Resolve param to entity first |
 | **IKA-148** | Optimistic update with server-computed data | Invalidate + refetch if server transforms data |
+| **IKA-234** | Tooltip without TooltipProvider | Always wrap Tooltip in TooltipProvider |
 | **VIB-70** | Migration file modified | Never modify existing migrations |
 
 ### Rate Limiting Prevention (IKA-76, IKA-77, IKA-83)
@@ -653,3 +695,9 @@ components/
 2. Always resolve to entity first using `resolveXFromParam()`
 3. Update `enabled` conditions to check resolved entity
 4. Remember: URL params can be slugs OR UUIDs, APIs expect UUIDs
+
+### UI Component Providers (IKA-234)
+
+1. Always wrap `Tooltip` components in `TooltipProvider`
+2. Check shadcn/ui docs for provider requirements when using new components
+3. Runtime errors like "X must be used within Y" indicate missing provider
