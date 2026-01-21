@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id as \"id!: Uuid\",\n                      clerk_user_id,\n                      email,\n                      first_name,\n                      last_name,\n                      workspace_name,\n                      planned_teams,\n                      planned_projects,\n                      status,\n                      reviewed_by as \"reviewed_by: Uuid\",\n                      reviewed_at as \"reviewed_at: DateTime<Utc>\",\n                      rejection_reason,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM user_registrations\n               WHERE clerk_user_id = $1",
+  "query": "SELECT id as \"id!: Uuid\",\n                      clerk_user_id,\n                      email,\n                      first_name,\n                      last_name,\n                      workspace_name,\n                      planned_teams,\n                      planned_projects,\n                      status,\n                      reviewed_by as \"reviewed_by: Uuid\",\n                      reviewed_at as \"reviewed_at: DateTime<Utc>\",\n                      rejection_reason,\n                      selected_plan,\n                      company_name,\n                      use_case,\n                      requested_workspace_name,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM user_registrations\n               WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -65,18 +65,38 @@
       },
       {
         "ordinal": 12,
+        "name": "selected_plan",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "company_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "use_case",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "requested_workspace_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 13,
+        "ordinal": 17,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -92,9 +112,13 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "c9a37e27a609b079fa7a649395cbfd07ca96fb536bca4ece80f6cd6d6a352e95"
+  "hash": "b0338b0e2fedc417e791d0a506383b4d4b4d1824f9eb0cfddf975cc434db1021"
 }

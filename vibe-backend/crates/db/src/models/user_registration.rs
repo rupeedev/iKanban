@@ -66,6 +66,14 @@ pub struct UserRegistration {
     pub reviewed_at: Option<DateTime<Utc>>,
     /// Reason for rejection (if rejected)
     pub rejection_reason: Option<String>,
+    /// Selected plan: hobby, starter, or pro
+    pub selected_plan: String,
+    /// Optional company/organization name
+    pub company_name: Option<String>,
+    /// Optional description of intended use case
+    pub use_case: Option<String>,
+    /// User-requested name for their workspace
+    pub requested_workspace_name: Option<String>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -82,6 +90,14 @@ pub struct CreateUserRegistration {
     pub workspace_name: String,
     pub planned_teams: Option<i32>,
     pub planned_projects: Option<i32>,
+    /// Selected plan: hobby, starter, or pro (defaults to hobby)
+    pub selected_plan: Option<String>,
+    /// Optional company/organization name
+    pub company_name: Option<String>,
+    /// Optional description of intended use case
+    pub use_case: Option<String>,
+    /// User-requested name for their workspace
+    pub requested_workspace_name: Option<String>,
 }
 
 /// Request to review (approve/reject) a user registration
@@ -106,6 +122,10 @@ struct UserRegistrationRow {
     reviewed_by: Option<Uuid>,
     reviewed_at: Option<DateTime<Utc>>,
     rejection_reason: Option<String>,
+    selected_plan: Option<String>,
+    company_name: Option<String>,
+    use_case: Option<String>,
+    requested_workspace_name: Option<String>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -125,6 +145,10 @@ impl From<UserRegistrationRow> for UserRegistration {
             reviewed_by: row.reviewed_by,
             reviewed_at: row.reviewed_at,
             rejection_reason: row.rejection_reason,
+            selected_plan: row.selected_plan.unwrap_or_else(|| "hobby".to_string()),
+            company_name: row.company_name,
+            use_case: row.use_case,
+            requested_workspace_name: row.requested_workspace_name,
             created_at: row.created_at,
             updated_at: row.updated_at,
         }
@@ -151,6 +175,10 @@ impl UserRegistration {
                       reviewed_by as "reviewed_by: Uuid",
                       reviewed_at as "reviewed_at: DateTime<Utc>",
                       rejection_reason,
+                      selected_plan,
+                      company_name,
+                      use_case,
+                      requested_workspace_name,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM user_registrations
@@ -179,6 +207,10 @@ impl UserRegistration {
                       reviewed_by as "reviewed_by: Uuid",
                       reviewed_at as "reviewed_at: DateTime<Utc>",
                       rejection_reason,
+                      selected_plan,
+                      company_name,
+                      use_case,
+                      requested_workspace_name,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM user_registrations
@@ -197,11 +229,12 @@ impl UserRegistration {
         let status = RegistrationStatus::Pending.to_string();
         let planned_teams = data.planned_teams.unwrap_or(1);
         let planned_projects = data.planned_projects.unwrap_or(1);
+        let selected_plan = data.selected_plan.clone().unwrap_or_else(|| "hobby".to_string());
 
         let row = sqlx::query_as!(
             UserRegistrationRow,
-            r#"INSERT INTO user_registrations (id, clerk_user_id, email, first_name, last_name, workspace_name, planned_teams, planned_projects, status)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            r#"INSERT INTO user_registrations (id, clerk_user_id, email, first_name, last_name, workspace_name, planned_teams, planned_projects, status, selected_plan, company_name, use_case, requested_workspace_name)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                RETURNING id as "id!: Uuid",
                          clerk_user_id,
                          email,
@@ -214,6 +247,10 @@ impl UserRegistration {
                          reviewed_by as "reviewed_by: Uuid",
                          reviewed_at as "reviewed_at: DateTime<Utc>",
                          rejection_reason,
+                         selected_plan,
+                         company_name,
+                         use_case,
+                         requested_workspace_name,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -224,7 +261,11 @@ impl UserRegistration {
             data.workspace_name,
             planned_teams,
             planned_projects,
-            status
+            status,
+            selected_plan,
+            data.company_name,
+            data.use_case,
+            data.requested_workspace_name
         )
         .fetch_one(pool)
         .await?;
@@ -241,12 +282,13 @@ impl UserRegistration {
         let status = RegistrationStatus::Approved.to_string();
         let planned_teams = data.planned_teams.unwrap_or(1);
         let planned_projects = data.planned_projects.unwrap_or(1);
+        let selected_plan = data.selected_plan.clone().unwrap_or_else(|| "hobby".to_string());
         let now = Utc::now();
 
         let row = sqlx::query_as!(
             UserRegistrationRow,
-            r#"INSERT INTO user_registrations (id, clerk_user_id, email, first_name, last_name, workspace_name, planned_teams, planned_projects, status, reviewed_at)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            r#"INSERT INTO user_registrations (id, clerk_user_id, email, first_name, last_name, workspace_name, planned_teams, planned_projects, status, reviewed_at, selected_plan, company_name, use_case, requested_workspace_name)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                RETURNING id as "id!: Uuid",
                          clerk_user_id,
                          email,
@@ -259,6 +301,10 @@ impl UserRegistration {
                          reviewed_by as "reviewed_by: Uuid",
                          reviewed_at as "reviewed_at: DateTime<Utc>",
                          rejection_reason,
+                         selected_plan,
+                         company_name,
+                         use_case,
+                         requested_workspace_name,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -270,7 +316,11 @@ impl UserRegistration {
             planned_teams,
             planned_projects,
             status,
-            now
+            now,
+            selected_plan,
+            data.company_name,
+            data.use_case,
+            data.requested_workspace_name
         )
         .fetch_one(pool)
         .await?;
@@ -294,6 +344,10 @@ impl UserRegistration {
                       reviewed_by as "reviewed_by: Uuid",
                       reviewed_at as "reviewed_at: DateTime<Utc>",
                       rejection_reason,
+                      selected_plan,
+                      company_name,
+                      use_case,
+                      requested_workspace_name,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM user_registrations
@@ -327,6 +381,10 @@ impl UserRegistration {
                           reviewed_by as "reviewed_by: Uuid",
                           reviewed_at as "reviewed_at: DateTime<Utc>",
                           rejection_reason,
+                          selected_plan,
+                          company_name,
+                          use_case,
+                          requested_workspace_name,
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>"
                    FROM user_registrations
@@ -351,6 +409,10 @@ impl UserRegistration {
                           reviewed_by as "reviewed_by: Uuid",
                           reviewed_at as "reviewed_at: DateTime<Utc>",
                           rejection_reason,
+                          selected_plan,
+                          company_name,
+                          use_case,
+                          requested_workspace_name,
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>"
                    FROM user_registrations
@@ -384,6 +446,10 @@ impl UserRegistration {
                          reviewed_by as "reviewed_by: Uuid",
                          reviewed_at as "reviewed_at: DateTime<Utc>",
                          rejection_reason,
+                         selected_plan,
+                         company_name,
+                         use_case,
+                         requested_workspace_name,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -422,6 +488,10 @@ impl UserRegistration {
                          reviewed_by as "reviewed_by: Uuid",
                          reviewed_at as "reviewed_at: DateTime<Utc>",
                          rejection_reason,
+                         selected_plan,
+                         company_name,
+                         use_case,
+                         requested_workspace_name,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,

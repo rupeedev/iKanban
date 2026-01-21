@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO user_registrations (id, clerk_user_id, email, first_name, last_name, workspace_name, planned_teams, planned_projects, status, reviewed_at)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n               RETURNING id as \"id!: Uuid\",\n                         clerk_user_id,\n                         email,\n                         first_name,\n                         last_name,\n                         workspace_name,\n                         planned_teams,\n                         planned_projects,\n                         status,\n                         reviewed_by as \"reviewed_by: Uuid\",\n                         reviewed_at as \"reviewed_at: DateTime<Utc>\",\n                         rejection_reason,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id as \"id!: Uuid\",\n                      clerk_user_id,\n                      email,\n                      first_name,\n                      last_name,\n                      workspace_name,\n                      planned_teams,\n                      planned_projects,\n                      status,\n                      reviewed_by as \"reviewed_by: Uuid\",\n                      reviewed_at as \"reviewed_at: DateTime<Utc>\",\n                      rejection_reason,\n                      selected_plan,\n                      company_name,\n                      use_case,\n                      requested_workspace_name,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM user_registrations\n               WHERE status = 'pending'\n               ORDER BY created_at ASC",
   "describe": {
     "columns": [
       {
@@ -65,28 +65,37 @@
       },
       {
         "ordinal": 12,
+        "name": "selected_plan",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "company_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "use_case",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "requested_workspace_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 13,
+        "ordinal": 17,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Int4",
-        "Int4",
-        "Text",
-        "Timestamptz"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -101,9 +110,13 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "f2271b74eab34ff17471c062f33aaf7382511694cc3bc8e9114b77b80f4035d3"
+  "hash": "612ac71095f294143f10b832d961313a2e3e2035b602ff45b0aa557bdff01d69"
 }
