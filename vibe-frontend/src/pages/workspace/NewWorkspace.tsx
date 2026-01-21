@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { Building2, ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,8 +13,9 @@ import type {
   ProjectSetupData,
   InviteSetupData,
   CreateTenantWorkspace,
+  PricingPlan,
 } from '@/types/workspace';
-import { WIZARD_STEPS } from '@/types/workspace';
+import { WIZARD_STEPS, VALID_PLANS } from '@/types/workspace';
 
 import { SetupDetails } from './SetupDetails';
 import { SetupTeams } from './SetupTeams';
@@ -33,11 +34,19 @@ const initialState: WorkspaceSetupState = {
 
 export function NewWorkspace() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   useUser(); // Ensure user is loaded
   const { createWorkspace, isCreating } = useTenantWorkspaces();
   const [state, setState] = useState<WorkspaceSetupState>(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Get the selected plan from URL (passed from SignUpPage via pricing page flow)
+  const planParam = searchParams.get('plan');
+  const selectedPlan: PricingPlan | null =
+    planParam && VALID_PLANS.includes(planParam as PricingPlan)
+      ? (planParam as PricingPlan)
+      : null;
 
   const currentStep = WIZARD_STEPS[state.step];
   const progress = ((state.step + 1) / WIZARD_STEPS.length) * 100;
@@ -103,6 +112,7 @@ export function NewWorkspace() {
           slug,
           icon: icon || null,
           color: color || null,
+          plan: selectedPlan, // Include plan from pricing page
         });
 
         // 2. Create teams (if any)
@@ -169,6 +179,7 @@ export function NewWorkspace() {
     state.projects,
     createWorkspace,
     goToStep,
+    selectedPlan,
   ]);
 
   // Validate current step

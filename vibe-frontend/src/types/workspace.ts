@@ -32,12 +32,23 @@ export interface TenantWorkspaceMember {
   updated_at: string;
 }
 
+// Pricing plan types (from pricing page)
+export type PricingPlan = 'hobby' | 'starter' | 'pro';
+
+// Valid plans constant - used by SignUpPage and NewWorkspace
+export const VALID_PLANS: readonly PricingPlan[] = [
+  'hobby',
+  'starter',
+  'pro',
+] as const;
+
 // Create workspace payload
 export interface CreateTenantWorkspace {
   name: string;
   slug: string;
   icon?: string | null;
   color?: string | null;
+  plan?: PricingPlan | null; // Selected plan from pricing page
 }
 
 // Update workspace payload
