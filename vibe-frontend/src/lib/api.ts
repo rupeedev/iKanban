@@ -2882,6 +2882,23 @@ export const registrationsApi = {
 };
 
 // =============================================================================
+// Superadmin API (IKA-210: App owner access control)
+// =============================================================================
+
+export interface SuperadminCheckResponse {
+  is_superadmin: boolean;
+  email: string;
+}
+
+export const superadminApi = {
+  // Check if current user is a superadmin
+  check: async (): Promise<SuperadminCheckResponse> => {
+    const response = await makeRequest('/api/superadmin/check');
+    return handleApiResponse<SuperadminCheckResponse>(response);
+  },
+};
+
+// =============================================================================
 // Admin API Types
 // =============================================================================
 

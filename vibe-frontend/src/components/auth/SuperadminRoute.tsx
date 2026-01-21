@@ -1,10 +1,8 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
+import { useQuery } from '@tanstack/react-query';
 import { Loader } from '@/components/ui/loader';
-
-// Superadmin emails - app owners who can access /superadmin/* routes
-// TODO: Replace with API call to GET /api/superadmin/check when backend is ready
-const SUPERADMIN_EMAILS = ['rupesh@scho1ar.com', 'rupeshpanwar43@gmail.com'];
+import { superadminApi } from '@/lib/api';
 
 // Check if Clerk is configured (evaluated once at module load)
 const CLERK_ENABLED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -31,13 +29,34 @@ export function SuperadminRoute() {
  * Internal component that uses Clerk hooks (only rendered when Clerk is enabled)
  */
 function ClerkSuperadminRoute() {
-  const { user, isLoaded } = useUser();
+  const { user, isLoaded: isClerkLoaded } = useUser();
+
+  // Query superadmin status from backend API (IKA-210)
+  const {
+    data: superadminCheck,
+    isLoading: isCheckingAccess,
+    isError,
+  } = useQuery({
+    queryKey: ['superadmin', 'check'],
+    queryFn: () => superadminApi.check(),
+    // Only run query if user is signed in
+    enabled: isClerkLoaded && !!user,
+    // Cache for 5 minutes - superadmin status rarely changes
+    staleTime: 5 * 60 * 1000,
+    // Don't retry on 403 (expected for non-superadmins)
+    retry: (failureCount, error) => {
+      if (error && 'status' in error && error.status === 403) {
+        return false;
+      }
+      return failureCount < 2;
+    },
+  });
 
   // Show loader while Clerk is loading
-  if (!isLoaded) {
+  if (!isClerkLoaded) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader message="Checking access..." size={32} />
+        <Loader message="Loading..." size={32} />
       </div>
     );
   }
@@ -47,13 +66,17 @@ function ClerkSuperadminRoute() {
     return <Navigate to="/about" replace />;
   }
 
-  // Check if user is a superadmin by email
-  const userEmail = user.primaryEmailAddress?.emailAddress;
-  const isSuperadmin = userEmail && SUPERADMIN_EMAILS.includes(userEmail);
+  // Show loader while checking superadmin status
+  if (isCheckingAccess) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader message="Checking access..." size={32} />
+      </div>
+    );
+  }
 
-  if (!isSuperadmin) {
-    // Not a superadmin - redirect to home with a message
-    // TODO: Could show a toast notification here
+  // If API call failed or user is not a superadmin, redirect to home
+  if (isError || !superadminCheck?.is_superadmin) {
     return <Navigate to="/" replace />;
   }
 
