@@ -49,6 +49,7 @@ const TIMEZONES = [
   { value: 'Europe/London', label: '(UTC+00:00) London' },
   { value: 'Europe/Paris', label: '(UTC+01:00) Paris' },
   { value: 'Europe/Berlin', label: '(UTC+01:00) Berlin' },
+  { value: 'Asia/Singapore', label: '(UTC+08:00) Singapore' },
   { value: 'Asia/Tokyo', label: '(UTC+09:00) Tokyo' },
   { value: 'Asia/Shanghai', label: '(UTC+08:00) Shanghai' },
   { value: 'Asia/Kolkata', label: '(UTC+05:30) India' },
