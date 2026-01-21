@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT email\n               FROM email_verifications\n               WHERE user_id = $1 AND verified_at IS NOT NULL\n               ORDER BY verified_at DESC\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "email",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "823292e57105f3e0a17a58f493170aa4a0f2c22a57b669cc741a39d2b0c0906b"
+}

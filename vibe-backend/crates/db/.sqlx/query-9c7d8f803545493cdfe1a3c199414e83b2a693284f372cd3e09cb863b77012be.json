@@ -1,3 +1,0 @@
-{"db_name":"PostgreSQL","query":"UPDATE superadmins
-               SET is_active = true, updated_at = NOW()
-               WHERE id = $1","describe":{"columns":[],"parameters":{"Left":["Uuid"]},"nullable":[]},"hash":"9c7d8f803545493cdfe1a3c199414e83b2a693284f372cd3e09cb863b77012be"}
