@@ -11,6 +11,7 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useProjectTaskTags } from '@/hooks/useProjectTaskTags';
 import { ProjectInsightsPanel } from '@/components/projects/ProjectInsightsPanel';
 import { TimelineView } from '@/components/projects/TimelineView';
+import { EpicStoryDashboard } from '@/components/projects/EpicStoryDashboard';
 import { IssueFormDialog } from '@/components/dialogs/issues/IssueFormDialog';
 import {
   IssueFilterDropdown,
@@ -32,7 +33,7 @@ export function TeamProjectDetail() {
 
   const { issues, isLoading: issuesLoading } = useTeamIssues(actualTeamId);
   const { members } = useTeamMembers(actualTeamId);
-  const [activeTab, setActiveTab] = useState('timeline');
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   // Transform members to the format expected by TimelineView
   const teamMembersForTimeline = useMemo(() => {
@@ -133,6 +134,9 @@ export function TeamProjectDetail() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="h-8">
+            <TabsTrigger value="dashboard" className="text-xs px-3 h-7">
+              Dashboard
+            </TabsTrigger>
             <TabsTrigger value="timeline" className="text-xs px-3 h-7">
               Timeline
             </TabsTrigger>
@@ -145,7 +149,16 @@ export function TeamProjectDetail() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {activeTab === 'insights' ? (
+        {activeTab === 'dashboard' ? (
+          <div className="flex-1 overflow-auto">
+            <EpicStoryDashboard
+              tasks={projectIssues}
+              teamIdentifier={team?.identifier || undefined}
+              projectId={project.id}
+              onTaskClick={handleTaskClick}
+            />
+          </div>
+        ) : activeTab === 'insights' ? (
           <ProjectInsightsPanel
             project={project}
             issues={projectIssues}
