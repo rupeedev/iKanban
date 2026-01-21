@@ -42,9 +42,24 @@ const statusConfig: Record<
     color: string;
   }
 > = {
-  pending: { label: 'Pending Review', variant: 'default', icon: Clock, color: 'text-amber-500' },
-  approved: { label: 'Approved', variant: 'secondary', icon: CheckCircle, color: 'text-green-500' },
-  rejected: { label: 'Rejected', variant: 'destructive', icon: XCircle, color: 'text-red-500' },
+  pending: {
+    label: 'Pending Review',
+    variant: 'default',
+    icon: Clock,
+    color: 'text-amber-500',
+  },
+  approved: {
+    label: 'Approved',
+    variant: 'secondary',
+    icon: CheckCircle,
+    color: 'text-green-500',
+  },
+  rejected: {
+    label: 'Rejected',
+    variant: 'destructive',
+    icon: XCircle,
+    color: 'text-red-500',
+  },
 };
 
 export function SuperadminRegistrationDetail() {
@@ -75,7 +90,10 @@ export function SuperadminRegistrationDetail() {
   const approveMutation = useMutation({
     mutationFn: () => registrationsApi.approve(registrationId!),
     onSuccess: (updatedRegistration) => {
-      queryClient.setQueryData(['registration', registrationId], updatedRegistration);
+      queryClient.setQueryData(
+        ['registration', registrationId],
+        updatedRegistration
+      );
       queryClient.invalidateQueries({
         queryKey: registrationsKeys.pending(),
         refetchType: 'none',
@@ -85,9 +103,13 @@ export function SuperadminRegistrationDetail() {
 
   // Reject mutation
   const rejectMutation = useMutation({
-    mutationFn: (reason?: string) => registrationsApi.reject(registrationId!, reason),
+    mutationFn: (reason?: string) =>
+      registrationsApi.reject(registrationId!, reason),
     onSuccess: (updatedRegistration) => {
-      queryClient.setQueryData(['registration', registrationId], updatedRegistration);
+      queryClient.setQueryData(
+        ['registration', registrationId],
+        updatedRegistration
+      );
       queryClient.invalidateQueries({
         queryKey: registrationsKeys.pending(),
         refetchType: 'none',
@@ -133,9 +155,14 @@ export function SuperadminRegistrationDetail() {
               <AlertCircle className="h-8 w-8 mx-auto text-destructive mb-2" />
               <p className="font-medium">Registration Not Found</p>
               <p className="text-sm text-muted-foreground mt-1">
-                {error?.message || 'The requested registration could not be found.'}
+                {error?.message ||
+                  'The requested registration could not be found.'}
               </p>
-              <Button variant="outline" onClick={() => navigate('/superadmin/registrations')} className="mt-4">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/superadmin/registrations')}
+                className="mt-4"
+              >
                 Return to Registrations
               </Button>
             </div>
@@ -184,7 +211,10 @@ export function SuperadminRegistrationDetail() {
             <div className="flex items-center gap-2 mt-1">
               <Badge variant={config.variant}>{config.label}</Badge>
               <span className="text-sm text-muted-foreground">
-                Submitted {formatDistanceToNow(new Date(registration.created_at), { addSuffix: true })}
+                Submitted{' '}
+                {formatDistanceToNow(new Date(registration.created_at), {
+                  addSuffix: true,
+                })}
               </span>
             </div>
           </div>
@@ -225,7 +255,9 @@ export function SuperadminRegistrationDetail() {
               <Mail className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
               <div>
                 <p className="text-sm font-medium">Email</p>
-                <p className="text-sm text-muted-foreground">{registration.email}</p>
+                <p className="text-sm text-muted-foreground">
+                  {registration.email}
+                </p>
               </div>
             </div>
             {(registration.first_name || registration.last_name) && (
@@ -234,7 +266,9 @@ export function SuperadminRegistrationDetail() {
                 <div>
                   <p className="text-sm font-medium">Name</p>
                   <p className="text-sm text-muted-foreground">
-                    {[registration.first_name, registration.last_name].filter(Boolean).join(' ')}
+                    {[registration.first_name, registration.last_name]
+                      .filter(Boolean)
+                      .join(' ')}
                   </p>
                 </div>
               </div>
@@ -264,21 +298,27 @@ export function SuperadminRegistrationDetail() {
               <Building className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
               <div>
                 <p className="text-sm font-medium">Workspace Name</p>
-                <p className="text-sm text-muted-foreground">{registration.workspace_name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {registration.workspace_name}
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <Users className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
               <div>
                 <p className="text-sm font-medium">Planned Teams</p>
-                <p className="text-sm text-muted-foreground">{registration.planned_teams}</p>
+                <p className="text-sm text-muted-foreground">
+                  {registration.planned_teams}
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <FolderKanban className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
               <div>
                 <p className="text-sm font-medium">Planned Projects</p>
-                <p className="text-sm text-muted-foreground">{registration.planned_projects}</p>
+                <p className="text-sm text-muted-foreground">
+                  {registration.planned_projects}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -311,7 +351,9 @@ export function SuperadminRegistrationDetail() {
                 <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
                   <p className="text-sm font-medium">Reviewed By</p>
-                  <p className="text-sm text-muted-foreground">{registration.reviewed_by}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {registration.reviewed_by}
+                  </p>
                 </div>
               </div>
             )}
@@ -320,7 +362,9 @@ export function SuperadminRegistrationDetail() {
                 <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
                 <div>
                   <p className="text-sm font-medium">Rejection Reason</p>
-                  <p className="text-sm text-muted-foreground">{registration.rejection_reason}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {registration.rejection_reason}
+                  </p>
                 </div>
               </div>
             )}
@@ -334,12 +378,15 @@ export function SuperadminRegistrationDetail() {
           <DialogHeader>
             <DialogTitle>Reject Registration</DialogTitle>
             <DialogDescription>
-              Are you sure you want to reject this registration request? You can optionally provide a reason.
+              Are you sure you want to reject this registration request? You can
+              optionally provide a reason.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="rejection-reason">Rejection Reason (optional)</Label>
+              <Label htmlFor="rejection-reason">
+                Rejection Reason (optional)
+              </Label>
               <Textarea
                 id="rejection-reason"
                 placeholder="Enter a reason for rejection..."
@@ -350,11 +397,21 @@ export function SuperadminRegistrationDetail() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRejectDialog(false)} disabled={rejectMutation.isPending}>
+            <Button
+              variant="outline"
+              onClick={() => setShowRejectDialog(false)}
+              disabled={rejectMutation.isPending}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleReject} disabled={rejectMutation.isPending}>
-              {rejectMutation.isPending ? 'Rejecting...' : 'Reject Registration'}
+            <Button
+              variant="destructive"
+              onClick={handleReject}
+              disabled={rejectMutation.isPending}
+            >
+              {rejectMutation.isPending
+                ? 'Rejecting...'
+                : 'Reject Registration'}
             </Button>
           </DialogFooter>
         </DialogContent>

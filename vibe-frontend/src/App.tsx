@@ -17,7 +17,12 @@ import { DocsPage } from '@/pages/DocsPage';
 import { Views } from '@/pages/Views';
 import { LandingPage } from '@/pages/LandingPage';
 import { PricingPage } from '@/pages/PricingPage';
-import { SignInPage, SignUpPage, VerifyEmailPage } from '@/pages/auth';
+import {
+  SignInPage,
+  SignUpPage,
+  VerifyEmailPage,
+  RejectedPage,
+} from '@/pages/auth';
 import { MyIssues } from '@/pages/MyIssues';
 import { Inbox } from '@/pages/Inbox';
 import { NormalLayout } from '@/components/layout/NormalLayout';
@@ -194,6 +199,7 @@ function AppContent() {
               <Route path="/sign-in/*" element={<SignInPage />} />
               <Route path="/sign-up/*" element={<SignUpPage />} />
               <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
+              <Route path="/rejected" element={<RejectedPage />} />
 
               {/* Join team via invite link (standalone page) */}
               <Route path="/join" element={<JoinTeam />} />
