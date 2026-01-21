@@ -167,14 +167,14 @@ impl PlanLimits {
         self.plan_name != PLAN_HOBBY
     }
 
-    /// Check if this plan has unlimited workspaces
-    pub fn has_unlimited_workspaces(&self) -> bool {
-        Self::is_unlimited(self.max_workspaces)
-    }
-
     /// Check if a limit value means unlimited
     pub fn is_unlimited(limit: i64) -> bool {
         limit < 0 || limit == i64::MAX
+    }
+
+    /// Check if this plan has unlimited workspaces
+    pub fn has_unlimited_workspaces(&self) -> bool {
+        Self::is_unlimited(self.max_workspaces)
     }
 
     /// Check if this plan has unlimited teams
