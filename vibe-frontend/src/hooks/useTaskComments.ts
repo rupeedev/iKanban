@@ -92,8 +92,15 @@ export function useTaskComments(taskId: string | null) {
     },
   });
 
+  // Sort comments by created_at descending (newest first)
+  const sortedComments = [...(commentsQuery.data ?? [])].sort((a, b) => {
+    const dateA = new Date(a.created_at).getTime();
+    const dateB = new Date(b.created_at).getTime();
+    return dateB - dateA; // Descending order (newest first)
+  });
+
   return {
-    comments: commentsQuery.data ?? [],
+    comments: sortedComments,
     isLoading: commentsQuery.isLoading,
     isFetching: commentsQuery.isFetching,
     error: commentsQuery.error,
