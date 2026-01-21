@@ -5,7 +5,7 @@ use axum::{
     extract::{Query, State},
     routing::get,
 };
-use db_crate::models::plan_limits::PlanLimits;
+use db_crate::models::plan_limits::{PLAN_HOBBY, PLAN_PRO, PLAN_STARTER, PlanLimits};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -34,12 +34,16 @@ pub struct GetUsageRequest {
 #[derive(Debug, Serialize)]
 pub struct PlanInfo {
     pub plan_name: String,
+    pub max_workspaces: i64,
     pub max_teams: i64,
     pub max_projects: i64,
     pub max_members: i64,
     pub max_storage_gb: i64,
     pub max_ai_requests_per_month: i64,
     pub price_monthly: Option<i32>,
+    pub is_free: bool,
+    pub requires_stripe: bool,
+    pub is_unlimited_workspaces: bool,
     pub is_unlimited_teams: bool,
     pub is_unlimited_projects: bool,
     pub is_unlimited_members: bool,
@@ -51,12 +55,16 @@ impl From<PlanLimits> for PlanInfo {
     fn from(p: PlanLimits) -> Self {
         PlanInfo {
             plan_name: p.plan_name.clone(),
+            max_workspaces: p.max_workspaces,
             max_teams: p.max_teams,
             max_projects: p.max_projects,
             max_members: p.max_members,
             max_storage_gb: p.max_storage_gb,
             max_ai_requests_per_month: p.max_ai_requests_per_month,
             price_monthly: get_plan_price(&p.plan_name),
+            is_free: p.is_free(),
+            requires_stripe: p.requires_stripe(),
+            is_unlimited_workspaces: p.has_unlimited_workspaces(),
             is_unlimited_teams: p.has_unlimited_teams(),
             is_unlimited_projects: p.has_unlimited_projects(),
             is_unlimited_members: p.has_unlimited_members(),
@@ -131,10 +139,9 @@ async fn get_workspace_usage(
 /// Get monthly price for a plan (in cents)
 fn get_plan_price(plan_name: &str) -> Option<i32> {
     match plan_name {
-        "free" => Some(0),
-        "starter" => Some(1200), // $12/month
-        "pro" => Some(2500),     // $25/month
-        "enterprise" => None,    // Custom pricing
+        PLAN_HOBBY => Some(0),      // Free
+        PLAN_STARTER => Some(1900), // $19/month
+        PLAN_PRO => Some(3900),     // $39/month
         _ => None,
     }
 }
