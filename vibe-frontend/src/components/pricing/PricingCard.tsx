@@ -5,7 +5,14 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, ArrowRight, TrendingUp, Building2, Rocket } from 'lucide-react';
+import {
+  Check,
+  ArrowRight,
+  TrendingUp,
+  Building2,
+  Rocket,
+  Sparkles,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface PricingFeature {
@@ -28,7 +35,7 @@ export interface PricingPlan {
   isPopular?: boolean;
   ctaText: string;
   ctaLink: string;
-  icon: 'starter' | 'professional' | 'enterprise';
+  icon: 'hobby' | 'starter' | 'professional' | 'enterprise';
 }
 
 interface PricingCardProps {
@@ -37,6 +44,7 @@ interface PricingCardProps {
 }
 
 const icons = {
+  hobby: Sparkles,
   starter: Rocket,
   professional: TrendingUp,
   enterprise: Building2,
@@ -46,6 +54,7 @@ export function PricingCard({ plan, isYearly }: PricingCardProps) {
   const Icon = icons[plan.icon];
   const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
   const isContactSales = price === null;
+  const isFree = price === 0;
 
   return (
     <div
@@ -76,6 +85,13 @@ export function PricingCard({ plan, isYearly }: PricingCardProps) {
       <div className="text-center mb-6">
         {isContactSales ? (
           <div className="text-3xl font-bold">Contact Sales</div>
+        ) : isFree ? (
+          <>
+            <span className="text-4xl font-bold">Free</span>
+            <p className="mt-1 text-xs text-muted-foreground">
+              No credit card required
+            </p>
+          </>
         ) : (
           <>
             <span className="text-4xl font-bold">${price}</span>
