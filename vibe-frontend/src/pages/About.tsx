@@ -315,7 +315,7 @@ function AboutContent({
             <PricingPreviewCard
               name="Starter"
               price="$19"
-              features={['2 teams', '5 projects', '5 members', 'Email support']}
+              features={['2 teams', '5 projects', '5 users', 'Email support']}
             />
             <PricingPreviewCard
               name="Professional"
@@ -323,8 +323,8 @@ function AboutContent({
               features={[
                 '10 teams',
                 '25 projects',
-                '25 members',
-                'Priority support',
+                '25 users',
+                'Email + Chat support',
               ]}
               highlighted
             />
@@ -334,8 +334,8 @@ function AboutContent({
               features={[
                 'Unlimited teams',
                 'Unlimited projects',
-                'SSO/SAML',
-                '24/7 support',
+                'Unlimited users',
+                '24/7 phone support',
               ]}
             />
           </div>
