@@ -75,7 +75,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Documentation
 
-**Location:** `/Users/rupeshpanwar/Documents/docs/docs-ikanban/`
+**Location:** `/Users/rupeshpanwar/Downloads/docs/docs-ikanban/`
 
 - `INDEX.md` - Documentation navigation
 - `PROJECT-STATUS.md` - Current project state
@@ -150,16 +150,16 @@ When `/full-stack-dev` is invoked, follow all 8 phases in order:
 
 ```bash
 # Create task (ALWAYS include description!)
-python3 /Users/rupeshpanwar/Documents/docs/common-mcp/ikanban.py create IKA "title" -s inprogress -d "what, why, acceptance criteria"
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py create IKA "title" -s inprogress -d "what, why, acceptance criteria"
 
 # List tasks
-python3 /Users/rupeshpanwar/Documents/docs/common-mcp/ikanban.py issues IKA
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py issues IKA
 
 # Add completion summary (use COMMENT, not description update)
-python3 /Users/rupeshpanwar/Documents/docs/common-mcp/ikanban.py comment IKA-XX "Summary: what was done, key changes, test status"
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py comment IKA-XX "Summary: what was done, key changes, test status"
 
 # Mark done (do NOT use -d flag here)
-python3 /Users/rupeshpanwar/Documents/docs/common-mcp/ikanban.py update IKA-XX --status done
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py update IKA-XX --status done
 ```
 
 **Important:** Description is set at creation. Use comments for completion summaries.
@@ -189,7 +189,7 @@ Teams: `IKA` (frontend), `SCH` (backend)
 
 Requires `VIBE_API_TOKEN` from `.env`:
 ```bash
-export VIBE_API_TOKEN=$(grep '^VIBE_API_TOKEN=' /Users/rupeshpanwar/Documents/Projects/iKanban/.env | cut -d'=' -f2)
+export VIBE_API_TOKEN=$(grep '^VIBE_API_TOKEN=' /Users/rupeshpanwar/Downloads/Projects/iKanban/.env | cut -d'=' -f2)
 ```
 
 ### Remote MCP Server (ikanban-remote)

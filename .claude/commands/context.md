@@ -1,8 +1,8 @@
 Load full project context for iKanban development.
 
 ## Step 1: Read project state
-1. /Users/rupeshpanwar/Documents/docs/docs-ikanban/INDEX.md
-2. /Users/rupeshpanwar/Documents/docs/docs-ikanban/PROJECT-STATUS.md
+1. /Users/rupeshpanwar/Downloads/docs/docs-ikanban/INDEX.md
+2. /Users/rupeshpanwar/Downloads/docs/docs-ikanban/PROJECT-STATUS.md
 
 ## Step 2: Read tech context
 3. .claude/TECHSTACK.md (versions, packages)
@@ -21,4 +21,4 @@ python3 mcp/ikanban.py issues IKA --status inprogress
 - Relevant patterns for current work
 
 If $ARGUMENTS provided, also search:
-- /Users/rupeshpanwar/Documents/docs/docs-ikanban/**/*$ARGUMENTS*
+- /Users/rupeshpanwar/Downloads/docs/docs-ikanban/**/*$ARGUMENTS*

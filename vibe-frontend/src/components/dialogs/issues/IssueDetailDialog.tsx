@@ -123,7 +123,8 @@ const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
     } = useTaskComments(issue.id);
 
     // Agent status refresh state
-    const [isRefreshingAgentStatus, setIsRefreshingAgentStatus] = useState(false);
+    const [isRefreshingAgentStatus, setIsRefreshingAgentStatus] =
+      useState(false);
 
     // Handler to refresh agent status (Copilot/Claude assignments)
     const handleRefreshAgentStatus = useCallback(async () => {

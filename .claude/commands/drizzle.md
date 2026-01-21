@@ -24,10 +24,10 @@ Manage database schema changes using Drizzle ORM.
 
 | Item | Path |
 |------|------|
-| Schema File | `/Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/schema/schema.pg.ts` |
-| Drizzle Config | `/Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/schema/drizzle.config.ts` |
-| Migrations Dir | `/Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/drizzle/` |
-| SQLx Cache | `/Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/crates/db/.sqlx/` |
+| Schema File | `/Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/schema/schema.pg.ts` |
+| Drizzle Config | `/Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/schema/drizzle.config.ts` |
+| Migrations Dir | `/Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/drizzle/` |
+| SQLx Cache | `/Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/crates/db/.sqlx/` |
 
 ---
 
@@ -38,13 +38,13 @@ Manage database schema changes using Drizzle ORM.
 Generate a new migration from schema changes:
 
 ```bash
-cd /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/schema
+cd /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/schema
 npm run generate
 ```
 
 Then list new migration files:
 ```bash
-ls -la /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/drizzle/
+ls -la /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/drizzle/
 ```
 
 ### 2. `introspect` - Pull Schema from Database
@@ -52,7 +52,7 @@ ls -la /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/drizzle/
 Pull current database schema into Drizzle:
 
 ```bash
-cd /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/schema
+cd /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/schema
 npm run introspect
 ```
 
@@ -60,14 +60,14 @@ npm run introspect
 
 Read and display the current schema file:
 ```
-Read: /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/schema/schema.pg.ts
+Read: /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/schema/schema.pg.ts
 ```
 
 ### 4. `migrations` - List Migrations
 
 List all migration files:
 ```bash
-ls -la /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/drizzle/*.sql
+ls -la /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/drizzle/*.sql
 ```
 
 ### 5. `add <table_name>` - Add New Table
@@ -79,7 +79,7 @@ Help user add a new table to the schema with proper Drizzle syntax.
 After applying migrations, update the Rust SQLx cache:
 
 ```bash
-cd /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/crates/db
+cd /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/crates/db
 cargo sqlx prepare
 ```
 
@@ -181,13 +181,13 @@ export const myTable = pgTable("my_table", {
 
 ```bash
 # Generate migration
-cd /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/schema && npm run generate
+cd /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/schema && npm run generate
 
 # List migrations
-ls -la /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/drizzle/*.sql
+ls -la /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/drizzle/*.sql
 
 # Update SQLx cache
-cd /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/crates/db && cargo sqlx prepare
+cd /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/crates/db && cargo sqlx prepare
 
 # Commit schema changes
 git add vibe-backend/drizzle/ vibe-backend/crates/db/.sqlx/

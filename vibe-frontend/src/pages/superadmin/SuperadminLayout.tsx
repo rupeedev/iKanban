@@ -6,13 +6,7 @@ import { useHotkeysContext } from 'react-hotkeys-hook';
 import { useKeyExit } from '@/keyboard/hooks';
 import { Scope } from '@/keyboard/registry';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
-import {
-  LayoutDashboard,
-  UserCheck,
-  Crown,
-  X,
-  BarChart3,
-} from 'lucide-react';
+import { LayoutDashboard, UserCheck, Crown, X, BarChart3 } from 'lucide-react';
 
 const superadminNavigation = [
   {

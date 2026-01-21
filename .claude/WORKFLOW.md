@@ -30,7 +30,7 @@
 Create a task in iKanban with a description before starting any work.
 
 ```bash
-cd /Users/rupeshpanwar/Documents/Projects/iKanban/mcp
+cd /Users/rupeshpanwar/Downloads/Projects/iKanban/mcp
 python3 ikanban.py create IKA "Task title" -s inprogress -d "Description of what needs to be done, why, and acceptance criteria"
 ```
 
@@ -56,7 +56,7 @@ python3 ikanban.py create IKA "Task title" -s inprogress -d "Description of what
 
 ### Step 2: Create ASCII Flow Diagram
 
-**Path:** `/Users/rupeshpanwar/Documents/docs/docs-ikanban/<type>/IKA-XX-<feature>-flow.md`
+**Path:** `/Users/rupeshpanwar/Downloads/docs/docs-ikanban/<type>/IKA-XX-<feature>-flow.md`
 
 **Must include:**
 - ASCII diagram showing data/user flow
@@ -82,7 +82,7 @@ python3 ikanban.py create IKA "Task title" -s inprogress -d "Description of what
 
 ### Step 3: Create Implementation Plan
 
-**Path:** `/Users/rupeshpanwar/Documents/docs/docs-ikanban/<type>/IKA-XX-<feature>-plan.md`
+**Path:** `/Users/rupeshpanwar/Downloads/docs/docs-ikanban/<type>/IKA-XX-<feature>-plan.md`
 
 **Must include:**
 - Files to modify/create
@@ -112,28 +112,28 @@ Follow TDD cycle from `PATTERNS.md`:
 
 **IMPORTANT:** All database schema changes MUST be done via Drizzle ORM.
 
-**Schema location:** `/Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/schema/schema.pg.ts`
+**Schema location:** `/Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/schema/schema.pg.ts`
 
-**Migrations output:** `/Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/drizzle/`
+**Migrations output:** `/Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/drizzle/`
 
 #### Steps for Schema Changes:
 
 1. **Edit the schema file:**
    ```bash
    # Edit the Drizzle schema
-   /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/schema/schema.pg.ts
+   /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/schema/schema.pg.ts
    ```
 
 2. **Generate migration:**
    ```bash
-   cd /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/schema
+   cd /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/schema
    npm run generate
    ```
 
 3. **Review generated SQL:**
    ```bash
    # Check the new migration file in drizzle/ directory
-   ls -la /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/drizzle/
+   ls -la /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/drizzle/
    ```
 
 4. **Apply migration to database:**
@@ -142,7 +142,7 @@ Follow TDD cycle from `PATTERNS.md`:
 
 5. **Update SQLx cache (for Rust backend):**
    ```bash
-   cd /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-backend/crates/db
+   cd /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/crates/db
    cargo sqlx prepare
    ```
 
@@ -185,13 +185,13 @@ cd vibe-backend/crates/db && cargo sqlx prepare
 
 ## Phase 5: Write Tests
 
-**Test location:** `/Users/rupeshpanwar/Documents/Projects/iKanban/vibe-testing/`
+**Test location:** `/Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-testing/`
 
 ### Create Test File
 
 ```bash
 # Create test file for the feature
-touch /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-testing/tests/IKA-XX-<feature>.spec.ts
+touch /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-testing/tests/IKA-XX-<feature>.spec.ts
 ```
 
 ### Playwright Test Template
@@ -238,7 +238,7 @@ test.describe('IKA-XX: Feature Name', () => {
 ### Run Playwright Tests
 
 ```bash
-cd /Users/rupeshpanwar/Documents/Projects/iKanban/vibe-testing
+cd /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-testing
 
 # Run all tests
 npx playwright test
@@ -317,7 +317,7 @@ git push origin --delete feature/IKA-XX-<feature-name>
 Add a comment with links to the planning documents:
 
 ```bash
-cd /Users/rupeshpanwar/Documents/Projects/iKanban/mcp
+cd /Users/rupeshpanwar/Downloads/Projects/iKanban/mcp
 python3 ikanban.py comment IKA-XX "Planning docs: <type>/IKA-XX-<feature>-flow.md, <type>/IKA-XX-<feature>-plan.md"
 ```
 
@@ -330,7 +330,7 @@ python3 ikanban.py comment IKA-XX "Planning docs: <type>/IKA-XX-<feature>-flow.m
 ### 8.1 Add Summary Comment (BEFORE marking done)
 
 ```bash
-cd /Users/rupeshpanwar/Documents/Projects/iKanban/mcp
+cd /Users/rupeshpanwar/Downloads/Projects/iKanban/mcp
 
 # Add completion summary as a COMMENT (not description update)
 python3 ikanban.py comment IKA-XX "Summary: <what was implemented>, <key changes made>, <test status>. Example: Renamed Upload button to Upload Files, added drag-drop zone with visual overlay, 6 Playwright tests added."

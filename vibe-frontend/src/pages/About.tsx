@@ -391,7 +391,10 @@ function AboutContent({
             >
               Pricing
             </Link>
-            <Link to="/docs" className="hover:text-foreground transition-colors">
+            <Link
+              to="/docs"
+              className="hover:text-foreground transition-colors"
+            >
               Documentation
             </Link>
             <a
@@ -463,7 +466,9 @@ function PricingPreviewCard({
       <h3 className="font-semibold text-lg mb-1">{name}</h3>
       <p className="text-2xl font-bold mb-4">
         {price}
-        <span className="text-sm font-normal text-muted-foreground">/month</span>
+        <span className="text-sm font-normal text-muted-foreground">
+          /month
+        </span>
       </p>
       <ul className="space-y-2 text-sm text-left">
         {features.map((feature, i) => (

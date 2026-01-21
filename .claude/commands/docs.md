@@ -2,7 +2,7 @@ Search and read project documentation.
 
 Usage: /docs <search-term>
 
-Documentation location: /Users/rupeshpanwar/Documents/docs/docs-ikanban/
+Documentation location: /Users/rupeshpanwar/Downloads/docs/docs-ikanban/
 
 Steps:
 1. Search for files matching: *$ARGUMENTS*

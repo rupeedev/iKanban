@@ -47,10 +47,7 @@ import {
   AdminUsers,
   AdminFlaggedUsers,
 } from '@/pages/admin/';
-import {
-  SuperadminLayout,
-  SuperadminDashboard,
-} from '@/pages/superadmin/';
+import { SuperadminLayout, SuperadminDashboard } from '@/pages/superadmin/';
 import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { SearchProvider } from '@/contexts/SearchContext';

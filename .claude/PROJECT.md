@@ -12,12 +12,12 @@
 
 | Path | Purpose |
 |------|---------|
-| **Project Root** | `/Users/rupeshpanwar/Documents/Projects/iKanban` |
-| **Documentation** | `/Users/rupeshpanwar/Documents/docs/docs-ikanban/` |
+| **Project Root** | `/Users/rupeshpanwar/Downloads/Projects/iKanban` |
+| **Documentation** | `/Users/rupeshpanwar/Downloads/docs/docs-ikanban/` |
 | **Backend** | `vibe-backend/` |
 | **Frontend** | `vibe-frontend/` |
-| **MCP Tools** | `/Users/rupeshpanwar/Documents/docs/common-mcp/` |
-| **Teams Config** | `/Users/rupeshpanwar/Documents/docs/common-mcp/teams-config.json` |
+| **MCP Tools** | `/Users/rupeshpanwar/Downloads/docs/common-mcp/` |
+| **Teams Config** | `/Users/rupeshpanwar/Downloads/docs/common-mcp/teams-config.json` |
 
 ## URLs
 
@@ -65,9 +65,9 @@ cd vibe-backend/crates/db && cargo sqlx prepare
 
 # Task management (requires VIBE_API_TOKEN)
 export VIBE_API_TOKEN=$(grep '^VIBE_API_TOKEN=' .env | cut -d'=' -f2)
-python3 /Users/rupeshpanwar/Documents/docs/common-mcp/ikanban.py create IKA "title" -s inprogress
-python3 /Users/rupeshpanwar/Documents/docs/common-mcp/ikanban.py update IKA-XX --status done
-python3 /Users/rupeshpanwar/Documents/docs/common-mcp/ikanban.py issues IKA
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py create IKA "title" -s inprogress
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py update IKA-XX --status done
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py issues IKA
 ```
 
 ## Documentation Structure
