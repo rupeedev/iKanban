@@ -22,6 +22,7 @@ import { MyIssues } from '@/pages/MyIssues';
 import { Inbox } from '@/pages/Inbox';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { SuperadminRoute } from '@/components/auth/SuperadminRoute';
 import { usePostHog } from 'posthog-js/react';
 import { useAuth } from '@/hooks';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
@@ -259,8 +260,10 @@ function AppContent() {
                   <Route path="flagged-users" element={<AdminFlaggedUsers />} />
                 </Route>
                 {/* Superadmin panel routes (app owner only) */}
-                <Route path="/superadmin/*" element={<SuperadminLayout />}>
-                  <Route index element={<SuperadminDashboard />} />
+                <Route element={<SuperadminRoute />}>
+                  <Route path="/superadmin/*" element={<SuperadminLayout />}>
+                    <Route index element={<SuperadminDashboard />} />
+                  </Route>
                 </Route>
                 <Route
                   path="/mcp-servers"
