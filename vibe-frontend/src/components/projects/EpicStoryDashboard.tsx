@@ -144,7 +144,7 @@ export function EpicStoryDashboard({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">
-            {visibleEpics.length} of {stats.epicCount} epics
+            {visibleEpics.length} of {stats.epicCount} features
           </span>
           {completedEpicCount > 0 && (
             <Button
@@ -201,18 +201,18 @@ export function EpicStoryDashboard({
         ))}
       </div>
 
-      {/* No visible epics message */}
+      {/* No visible features message */}
       {visibleEpics.length === 0 && epicGroups.length > 0 && (
         <div className="text-center py-8 text-muted-foreground">
           <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
-          <p className="text-sm">All epics are completed!</p>
+          <p className="text-sm">All features are completed!</p>
           <Button
             variant="link"
             size="sm"
             onClick={handleToggleCompleted}
             className="mt-2"
           >
-            Show completed epics
+            Show completed features
           </Button>
         </div>
       )}
