@@ -11,8 +11,12 @@ interface CommentListProps {
     isInternal: boolean
   ) => Promise<void>;
   onDelete: (commentId: string) => Promise<void>;
+  /** Callback to refresh agent status for @copilot/@claude comments */
+  onRefreshAgentStatus?: () => void;
   isUpdating?: boolean;
   isDeleting?: boolean;
+  /** Whether an agent status refresh is in progress */
+  isRefreshingAgentStatus?: boolean;
 }
 
 export function CommentList({
@@ -20,8 +24,10 @@ export function CommentList({
   isLoading = false,
   onUpdate,
   onDelete,
+  onRefreshAgentStatus,
   isUpdating = false,
   isDeleting = false,
+  isRefreshingAgentStatus = false,
 }: CommentListProps) {
   if (isLoading) {
     return (
@@ -47,8 +53,10 @@ export function CommentList({
             comment={comment}
             onUpdate={onUpdate}
             onDelete={onDelete}
+            onRefreshAgentStatus={onRefreshAgentStatus}
             isUpdating={isUpdating}
             isDeleting={isDeleting}
+            isRefreshingAgentStatus={isRefreshingAgentStatus}
           />
         </div>
       ))}

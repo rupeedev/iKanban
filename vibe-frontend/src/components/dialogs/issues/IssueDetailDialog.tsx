@@ -1,4 +1,5 @@
 import { useCallback, useState, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,8 @@ import { useTeams } from '@/hooks/useTeams';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useClerkUser } from '@/hooks/auth/useClerkAuth';
 import { useTaskComments } from '@/hooks/useTaskComments';
+import { copilotAssignmentKeys } from '@/hooks/useCopilotAssignment';
+import { claudeAssignmentKeys } from '@/hooks/useClaudeAssignment';
 import { tasksApi } from '@/lib/api';
 import { CommentEditor, CommentList } from '@/components/comments';
 import { cn } from '@/lib/utils';
@@ -72,6 +75,7 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
 const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
   ({ issue, teamId, issueKey, onUpdate }) => {
     const modal = useModal();
+    const queryClient = useQueryClient();
     const { teamsById } = useTeams();
     const team = teamId ? teamsById[teamId] : null;
 
@@ -117,6 +121,31 @@ const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
       isUpdating,
       isDeleting,
     } = useTaskComments(issue.id);
+
+    // Agent status refresh state
+    const [isRefreshingAgentStatus, setIsRefreshingAgentStatus] = useState(false);
+
+    // Handler to refresh agent status (Copilot/Claude assignments)
+    const handleRefreshAgentStatus = useCallback(async () => {
+      setIsRefreshingAgentStatus(true);
+      try {
+        // Invalidate both Copilot and Claude assignment queries to fetch fresh data
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: copilotAssignmentKeys.list(issue.id),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: claudeAssignmentKeys.list(issue.id),
+          }),
+          // Also refresh comments in case the backend updated them
+          queryClient.invalidateQueries({
+            queryKey: ['task-comments', issue.id],
+          }),
+        ]);
+      } finally {
+        setIsRefreshingAgentStatus(false);
+      }
+    }, [queryClient, issue.id]);
 
     const handleClose = () => {
       modal.resolve('closed' as IssueDetailDialogResult);
@@ -443,8 +472,10 @@ const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
                     isLoading={commentsLoading}
                     onUpdate={handleUpdateComment}
                     onDelete={handleDeleteComment}
+                    onRefreshAgentStatus={handleRefreshAgentStatus}
                     isUpdating={isUpdating}
                     isDeleting={isDeleting}
+                    isRefreshingAgentStatus={isRefreshingAgentStatus}
                   />
 
                   {/* Comment editor */}

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +15,8 @@ import {
 } from 'lucide-react';
 import { useTeams } from '@/hooks/useTeams';
 import { useIssueCommentHandlers } from '@/hooks/useIssueCommentHandlers';
+import { copilotAssignmentKeys } from '@/hooks/useCopilotAssignment';
+import { claudeAssignmentKeys } from '@/hooks/useClaudeAssignment';
 import { tasksApi } from '@/lib/api';
 import { CommentList } from '@/components/comments';
 import { IssueAttemptsSection } from '@/components/tasks/IssueAttemptsSection';
@@ -73,6 +76,7 @@ export function IssueDetailPanel({
   onClose,
   onUpdate,
 }: IssueDetailPanelProps) {
+  const queryClient = useQueryClient();
   const { teamsById } = useTeams();
   const team = teamId ? teamsById[teamId] : null;
 
@@ -93,6 +97,31 @@ export function IssueDetailPanel({
     handleUpdateComment,
     handleDeleteComment,
   } = useIssueCommentHandlers({ issue, teamId, onUpdate });
+
+  // Agent status refresh state
+  const [isRefreshingAgentStatus, setIsRefreshingAgentStatus] = useState(false);
+
+  // Handler to refresh agent status (Copilot/Claude assignments)
+  const handleRefreshAgentStatus = useCallback(async () => {
+    setIsRefreshingAgentStatus(true);
+    try {
+      // Invalidate both Copilot and Claude assignment queries to fetch fresh data
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: copilotAssignmentKeys.list(issue.id),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: claudeAssignmentKeys.list(issue.id),
+        }),
+        // Also refresh comments in case the backend updated them
+        queryClient.invalidateQueries({
+          queryKey: ['task-comments', issue.id],
+        }),
+      ]);
+    } finally {
+      setIsRefreshingAgentStatus(false);
+    }
+  }, [queryClient, issue.id]);
 
   const handleSaveTitle = async () => {
     if (!title.trim() || title === issue.title) {
@@ -375,8 +404,10 @@ export function IssueDetailPanel({
                 isLoading={showCommentsLoading}
                 onUpdate={handleUpdateComment}
                 onDelete={handleDeleteComment}
+                onRefreshAgentStatus={handleRefreshAgentStatus}
                 isUpdating={isUpdating}
                 isDeleting={isDeleting}
+                isRefreshingAgentStatus={isRefreshingAgentStatus}
               />
               {/* CommentEditor removed - comments are created via InlinePromptInput in ATTEMPTS section */}
             </TabsContent>

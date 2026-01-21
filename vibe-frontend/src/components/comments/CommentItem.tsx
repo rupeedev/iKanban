@@ -7,9 +7,37 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, Trash2, Lock, Loader2 } from 'lucide-react';
+import {
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Lock,
+  Loader2,
+  RefreshCw,
+} from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { TaskComment } from 'shared/types';
+
+/**
+ * Detect if a comment is an agent status comment (from @copilot or @claude)
+ * These comments have specific author names or content patterns
+ */
+function isAgentStatusComment(comment: TaskComment): boolean {
+  const agentAuthors = ['GitHub Actions', 'GitHub Integration'];
+  if (agentAuthors.includes(comment.author_name)) {
+    return true;
+  }
+  // Also check content pattern: Agent: / Status: / Issue:
+  const hasAgentPattern =
+    comment.content.includes('Agent:') &&
+    (comment.content.includes('Status:') || comment.content.includes('Issue:'));
+  return hasAgentPattern;
+}
 
 interface CommentItemProps {
   comment: TaskComment;
@@ -19,16 +47,22 @@ interface CommentItemProps {
     isInternal: boolean
   ) => Promise<void>;
   onDelete: (commentId: string) => Promise<void>;
+  /** Callback to refresh agent status for @copilot/@claude comments */
+  onRefreshAgentStatus?: () => void;
   isUpdating?: boolean;
   isDeleting?: boolean;
+  /** Whether an agent status refresh is in progress */
+  isRefreshingAgentStatus?: boolean;
 }
 
 export function CommentItem({
   comment,
   onUpdate,
   onDelete,
+  onRefreshAgentStatus,
   isUpdating = false,
   isDeleting = false,
+  isRefreshingAgentStatus = false,
 }: CommentItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
@@ -110,6 +144,30 @@ export function CommentItem({
                 <Lock className="h-3 w-3" />
                 Internal
               </span>
+            )}
+            {/* Refresh button for agent status comments */}
+            {isAgentStatusComment(comment) && onRefreshAgentStatus && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={onRefreshAgentStatus}
+                    disabled={isRefreshingAgentStatus}
+                  >
+                    <RefreshCw
+                      className={cn(
+                        'h-3 w-3',
+                        isRefreshingAgentStatus && 'animate-spin'
+                      )}
+                    />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Refresh agent status</p>
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
 
