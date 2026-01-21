@@ -1,4 +1,4 @@
-//! Billing API routes for plan limits and usage (IKA-182)
+//! Billing API routes for plan limits and usage (IKA-182, IKA-238)
 
 use axum::{
     Extension, Json, Router,
@@ -14,6 +14,11 @@ use crate::{
     auth::RequestContext,
     middleware::usage_limits::{WorkspaceUsageSummary, get_usage_summary},
 };
+
+/// Public routes - no authentication required (IKA-238)
+pub fn public_router() -> Router<AppState> {
+    Router::new().route("/plan-limits", get(get_plan_limits))
+}
 
 /// Protected routes - require authentication
 pub fn protected_router() -> Router<AppState> {
@@ -87,6 +92,47 @@ pub struct UsageResponse {
 }
 
 // ============================================================================
+// Public API Types (IKA-238) - For unauthenticated PricingPage
+// ============================================================================
+
+/// Feature item for pricing display
+#[derive(Debug, Serialize)]
+pub struct PlanFeature {
+    pub text: String,
+    pub included: bool,
+}
+
+/// Public plan information for PricingPage
+#[derive(Debug, Serialize)]
+pub struct PublicPlanInfo {
+    pub name: String,
+    pub description: String,
+    pub monthly_price: i32,
+    pub yearly_price: i32,
+    pub icon: String,
+    pub is_popular: bool,
+    pub cta_text: String,
+    pub cta_link: String,
+    pub limits: PublicPlanLimits,
+    pub features: Vec<PlanFeature>,
+}
+
+/// Plan limits formatted for display
+#[derive(Debug, Serialize)]
+pub struct PublicPlanLimits {
+    pub teams: String,
+    pub projects: String,
+    pub members: String,
+    pub support: String,
+}
+
+/// Response for /plan-limits endpoint
+#[derive(Debug, Serialize)]
+pub struct PlanLimitsResponse {
+    pub plans: Vec<PublicPlanInfo>,
+}
+
+// ============================================================================
 // Route Handlers
 // ============================================================================
 
@@ -144,6 +190,135 @@ fn get_plan_price(plan_name: &str) -> Option<i32> {
         PLAN_PRO => Some(3900),     // $39/month
         _ => None,
     }
+}
+
+/// Get yearly price for a plan (in dollars, with 17% discount)
+fn get_yearly_price(plan_name: &str) -> i32 {
+    match plan_name {
+        PLAN_HOBBY => 0,
+        PLAN_STARTER => 16, // ~17% off $19/month
+        PLAN_PRO => 32,     // ~17% off $39/month
+        _ => 0,
+    }
+}
+
+/// Build public plan info from database plan limits (IKA-238)
+fn build_public_plan_info(plan: &PlanLimits) -> PublicPlanInfo {
+    let (description, icon, is_popular, cta_text, features) = match plan.plan_name.as_str() {
+        PLAN_HOBBY => (
+            "Perfect for personal projects and learning iKanban".to_string(),
+            "hobby".to_string(),
+            false,
+            "Get Started Free".to_string(),
+            vec![
+                PlanFeature { text: "Basic kanban boards".to_string(), included: true },
+                PlanFeature { text: "Task management".to_string(), included: true },
+                PlanFeature { text: "Document storage (500MB)".to_string(), included: true },
+                PlanFeature { text: format!("AI task updates ({}/month)", plan.max_ai_requests_per_month), included: true },
+                PlanFeature { text: "Email support".to_string(), included: true },
+                PlanFeature { text: "6 month data retention".to_string(), included: true },
+                PlanFeature { text: "GitHub integration".to_string(), included: false },
+                PlanFeature { text: "MCP server access".to_string(), included: false },
+            ],
+        ),
+        PLAN_STARTER => (
+            "For small teams and startups getting serious".to_string(),
+            "starter".to_string(),
+            true,
+            "Start Free Trial".to_string(),
+            vec![
+                PlanFeature { text: "Everything in Hobby".to_string(), included: true },
+                PlanFeature { text: "GitHub integration".to_string(), included: true },
+                PlanFeature { text: format!("Document management ({}GB)", plan.max_storage_gb), included: true },
+                PlanFeature { text: "MCP server access".to_string(), included: true },
+                PlanFeature { text: format!("AI task updates ({}/month)", plan.max_ai_requests_per_month), included: true },
+                PlanFeature { text: "1 year data retention".to_string(), included: true },
+                PlanFeature { text: "Advanced analytics".to_string(), included: false },
+                PlanFeature { text: "Team permissions".to_string(), included: false },
+            ],
+        ),
+        PLAN_PRO => (
+            "Advanced features for growing development teams".to_string(),
+            "professional".to_string(),
+            false,
+            "Start Free Trial".to_string(),
+            vec![
+                PlanFeature { text: "Everything in Starter".to_string(), included: true },
+                PlanFeature { text: "Advanced analytics dashboard".to_string(), included: true },
+                PlanFeature { text: "Multiple AI agent support".to_string(), included: true },
+                PlanFeature { text: "Custom project templates".to_string(), included: true },
+                PlanFeature { text: format!("AI task updates ({}/month)", plan.max_ai_requests_per_month), included: true },
+                PlanFeature { text: "Priority email + chat support".to_string(), included: true },
+                PlanFeature { text: "Team roles & permissions".to_string(), included: true },
+                PlanFeature { text: "2 year data retention".to_string(), included: true },
+            ],
+        ),
+        _ => (
+            "Custom plan".to_string(),
+            "custom".to_string(),
+            false,
+            "Contact Us".to_string(),
+            vec![],
+        ),
+    };
+
+    let support = match plan.plan_name.as_str() {
+        PLAN_HOBBY => "Email",
+        PLAN_STARTER => "Email",
+        PLAN_PRO => "Priority",
+        _ => "Standard",
+    };
+
+    let display_name = match plan.plan_name.as_str() {
+        PLAN_HOBBY => "Hobby",
+        PLAN_STARTER => "Starter",
+        PLAN_PRO => "Professional",
+        name => name,
+    };
+
+    PublicPlanInfo {
+        name: display_name.to_string(),
+        description,
+        monthly_price: get_plan_price(&plan.plan_name).unwrap_or(0) / 100,
+        yearly_price: get_yearly_price(&plan.plan_name),
+        icon,
+        is_popular,
+        cta_text,
+        cta_link: format!("/sign-up?plan={}", plan.plan_name),
+        limits: PublicPlanLimits {
+            teams: format_limit(plan.max_teams, "teams"),
+            projects: format_limit(plan.max_projects, "projects"),
+            members: format_limit(plan.max_members, "users"),
+            support: support.to_string(),
+        },
+        features,
+    }
+}
+
+/// Format limit value for display (handles -1 = unlimited)
+fn format_limit(limit: i64, unit: &str) -> String {
+    if PlanLimits::is_unlimited(limit) {
+        format!("Unlimited {}", unit)
+    } else {
+        format!("{} {}", limit, unit)
+    }
+}
+
+// ============================================================================
+// Public Route Handlers (IKA-238)
+// ============================================================================
+
+/// Get all plan limits (public endpoint, no auth required)
+async fn get_plan_limits(
+    State(state): State<AppState>,
+) -> Result<Json<PlanLimitsResponse>, BillingRouteError> {
+    let plans = PlanLimits::find_all(state.pool())
+        .await
+        .map_err(|e| BillingRouteError::Database(e.to_string()))?;
+
+    let public_plans: Vec<PublicPlanInfo> = plans.iter().map(build_public_plan_info).collect();
+
+    Ok(Json(PlanLimitsResponse { plans: public_plans }))
 }
 
 // ============================================================================

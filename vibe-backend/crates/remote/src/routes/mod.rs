@@ -64,7 +64,8 @@ pub fn router(state: AppState) -> Router {
         .merge(review::public_router())
         .merge(github_app::public_router())
         .merge(stripe::public_router())
-        .merge(email_verification::public_router());
+        .merge(email_verification::public_router())
+        .merge(billing::public_router());
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
