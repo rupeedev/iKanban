@@ -65,6 +65,10 @@ export function isClaudeMention(agent: AgentMention | null): boolean {
   return (agent?.executor as unknown as string) === 'CLAUDE';
 }
 
+// Whitelist of allowed agents for @mentions
+// Only these agents will appear in the mention dropdown
+const ALLOWED_PROFILE_AGENTS = new Set(['GEMINI', 'CODEX']);
+
 // Map of common @mention triggers to executor profiles
 function buildAgentMentions(
   profiles: Record<string, ExecutorConfig> | null
@@ -83,7 +87,10 @@ function buildAgentMentions(
     // Skip COPILOT and CLAUDE since we handle them specially
     if (executor === 'COPILOT' || executor === 'CLAUDE') continue;
 
-    // Add base agent mention (e.g., @claude, @gemini)
+    // Only include whitelisted agents
+    if (!ALLOWED_PROFILE_AGENTS.has(executor)) continue;
+
+    // Add base agent mention (e.g., @gemini, @codex)
     const baseTrigger = `@${executor.toLowerCase().replace(/_/g, '-')}`;
     mentions.push({
       trigger: baseTrigger,
@@ -93,7 +100,7 @@ function buildAgentMentions(
       available: true,
     });
 
-    // Add variant mentions if available (e.g., @claude-opus, @gemini-pro)
+    // Add variant mentions if available (e.g., @gemini-pro)
     if (config && typeof config === 'object' && 'configs' in config) {
       const configs = config.configs as Record<string, unknown> | undefined;
       if (configs) {
