@@ -18,6 +18,7 @@ import {
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -147,27 +148,29 @@ export function CommentItem({
             )}
             {/* Refresh button for agent status comments */}
             {isAgentStatusComment(comment) && onRefreshAgentStatus && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
-                    onClick={onRefreshAgentStatus}
-                    disabled={isRefreshingAgentStatus}
-                  >
-                    <RefreshCw
-                      className={cn(
-                        'h-3 w-3',
-                        isRefreshingAgentStatus && 'animate-spin'
-                      )}
-                    />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p>Refresh agent status</p>
-                </TooltipContent>
-              </Tooltip>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                      onClick={onRefreshAgentStatus}
+                      disabled={isRefreshingAgentStatus}
+                    >
+                      <RefreshCw
+                        className={cn(
+                          'h-3 w-3',
+                          isRefreshingAgentStatus && 'animate-spin'
+                        )}
+                      />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p>Refresh agent status</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
 
