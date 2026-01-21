@@ -1,100 +1,69 @@
 /**
- * Public Pricing Page (IKA-208)
+ * Public Pricing Page (IKA-208, IKA-238)
  * Displays pricing plans with Monthly/Annual toggle
- * Design inspired by modern SaaS pricing pages
+ * Fetches plan data from the public /v1/plan-limits API
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Layers } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Layers, AlertCircle } from 'lucide-react';
 import { PricingCard, type PricingPlan } from '@/components/pricing';
+import { planLimitsApi, type PublicPlanInfo } from '@/lib/api';
 
-// Plan data - in production, this could come from an API
-const plans: PricingPlan[] = [
-  {
-    name: 'Hobby',
-    description: 'Perfect for personal projects and learning iKanban',
-    monthlyPrice: 0,
-    yearlyPrice: 0,
-    icon: 'hobby',
-    isPopular: false,
-    ctaText: 'Get Started Free',
-    ctaLink: '/sign-up?plan=hobby',
-    limits: {
-      teams: '7 teams',
-      projects: '3 projects',
-      members: '5 users',
-      support: 'Email',
-    },
-    features: [
-      { text: 'Basic kanban boards', included: true },
-      { text: 'Task management', included: true },
-      { text: 'Document storage (500MB)', included: true },
-      { text: 'AI task updates (50/month)', included: true },
-      { text: 'Email support', included: true },
-      { text: '6 month data retention', included: true },
-      { text: 'GitHub integration', included: false },
-      { text: 'MCP server access', included: false },
-    ],
-  },
-  {
-    name: 'Starter',
-    description: 'For small teams and startups getting serious',
-    monthlyPrice: 19,
-    yearlyPrice: 16,
-    icon: 'starter',
-    isPopular: true,
-    ctaText: 'Start Free Trial',
-    ctaLink: '/sign-up?plan=starter',
-    limits: {
-      teams: '5 teams',
-      projects: '10 projects',
-      members: '10 users',
-      support: 'Email',
-    },
-    features: [
-      { text: 'Everything in Hobby', included: true },
-      { text: 'GitHub integration', included: true },
-      { text: 'Document management (5GB)', included: true },
-      { text: 'MCP server access', included: true },
-      { text: 'AI task updates (100/month)', included: true },
-      { text: '1 year data retention', included: true },
-      { text: 'Advanced analytics', included: false },
-      { text: 'Team permissions', included: false },
-    ],
-  },
-  {
-    name: 'Professional',
-    description: 'Advanced features for growing development teams',
-    monthlyPrice: 39,
-    yearlyPrice: 32,
-    icon: 'professional',
-    isPopular: false,
-    ctaText: 'Start Free Trial',
-    ctaLink: '/sign-up?plan=pro',
-    limits: {
-      teams: '10 teams',
-      projects: '25 projects',
-      members: '25 users',
-      support: 'Priority',
-    },
-    features: [
-      { text: 'Everything in Starter', included: true },
-      { text: 'Advanced analytics dashboard', included: true },
-      { text: 'Multiple AI agent support', included: true },
-      { text: 'Custom project templates', included: true },
-      { text: 'AI task updates (1000/month)', included: true },
-      { text: 'Priority email + chat support', included: true },
-      { text: 'Team roles & permissions', included: true },
-      { text: '2 year data retention', included: true },
-    ],
-  },
-];
+// Transform API data to component format
+function transformPlanData(apiPlan: PublicPlanInfo): PricingPlan {
+  return {
+    name: apiPlan.name,
+    description: apiPlan.description,
+    monthlyPrice: apiPlan.monthly_price,
+    yearlyPrice: apiPlan.yearly_price,
+    icon: apiPlan.icon as PricingPlan['icon'],
+    isPopular: apiPlan.is_popular,
+    ctaText: apiPlan.cta_text,
+    ctaLink: apiPlan.cta_link,
+    limits: apiPlan.limits,
+    features: apiPlan.features,
+  };
+}
 
 export function PricingPage() {
   const [isYearly, setIsYearly] = useState(false);
+  const [plans, setPlans] = useState<PricingPlan[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchPlans() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const response = await planLimitsApi.getPlans();
+        if (!cancelled) {
+          setPlans(response.plans.map(transformPlanData));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : 'Failed to load pricing plans'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    fetchPlans();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -152,11 +121,52 @@ export function PricingPage() {
 
         {/* Pricing Cards */}
         <div className="container mx-auto">
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto items-start">
-            {plans.map((plan) => (
-              <PricingCard key={plan.name} plan={plan} isYearly={isYearly} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto items-start">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="rounded-2xl border bg-card p-6">
+                  <div className="text-center mb-6">
+                    <Skeleton className="mx-auto mb-4 h-12 w-12 rounded-full" />
+                    <Skeleton className="h-6 w-24 mx-auto mb-2" />
+                    <Skeleton className="h-4 w-48 mx-auto" />
+                  </div>
+                  <Skeleton className="h-12 w-32 mx-auto mb-6" />
+                  <div className="grid grid-cols-2 gap-3 mb-6 p-4">
+                    {[1, 2, 3, 4].map((j) => (
+                      <Skeleton key={j} className="h-8 w-full" />
+                    ))}
+                  </div>
+                  {[1, 2, 3, 4, 5].map((k) => (
+                    <Skeleton key={k} className="h-5 w-full mb-3" />
+                  ))}
+                  <Skeleton className="h-10 w-full mt-6" />
+                </div>
+              ))}
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+              <h3 className="text-lg font-semibold mb-2">
+                Failed to load pricing plans
+              </h3>
+              <p className="text-muted-foreground mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()}>
+                Try Again
+              </Button>
+            </div>
+          ) : plans.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">
+                No pricing plans available at this time.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto items-start">
+              {plans.map((plan) => (
+                <PricingCard key={plan.name} plan={plan} isYearly={isYearly} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

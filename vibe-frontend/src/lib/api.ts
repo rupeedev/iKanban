@@ -3525,6 +3525,47 @@ export const billingApi = {
 };
 
 // ============================================================================
+// Public Plan Limits API (IKA-238: Public pricing page data)
+// ============================================================================
+
+export interface PlanFeature {
+  text: string;
+  included: boolean;
+}
+
+export interface PublicPlanLimits {
+  teams: string;
+  projects: string;
+  members: string;
+  support: string;
+}
+
+export interface PublicPlanInfo {
+  name: string;
+  description: string;
+  monthly_price: number;
+  yearly_price: number;
+  icon: string;
+  is_popular: boolean;
+  cta_text: string;
+  cta_link: string;
+  limits: PublicPlanLimits;
+  features: PlanFeature[];
+}
+
+export interface PlanLimitsResponse {
+  plans: PublicPlanInfo[];
+}
+
+export const planLimitsApi = {
+  // Get all plan limits (public endpoint, no auth required)
+  getPlans: async (): Promise<PlanLimitsResponse> => {
+    const response = await makeRequest('/v1/plan-limits');
+    return handleApiResponse<PlanLimitsResponse>(response);
+  },
+};
+
+// ============================================================================
 // Trust & Safety API (IKA-190: Admin Flagged Users Dashboard)
 // ============================================================================
 
