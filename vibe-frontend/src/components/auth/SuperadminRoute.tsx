@@ -4,7 +4,7 @@ import { Loader } from '@/components/ui/loader';
 
 // Superadmin emails - app owners who can access /superadmin/* routes
 // TODO: Replace with API call to GET /api/superadmin/check when backend is ready
-const SUPERADMIN_EMAILS = ['rupesh@scho1ar.com'];
+const SUPERADMIN_EMAILS = ['rupesh@scho1ar.com', 'rupeshpanwar43@gmail.com'];
 
 // Check if Clerk is configured (evaluated once at module load)
 const CLERK_ENABLED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
