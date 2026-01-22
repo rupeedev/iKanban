@@ -1,5 +1,4 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
-import * as Sentry from '@sentry/react';
 import { RefreshCw } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +28,7 @@ interface State {
  * FeatureErrorBoundary isolates errors to specific features/sections.
  *
  * When a child component throws, this boundary catches the error and:
- * 1. Logs to Sentry with feature context
+ * 1. Logs to console with feature context
  * 2. Shows an error card with retry option
  * 3. Allows the rest of the app to continue working
  *
@@ -59,16 +58,6 @@ export class FeatureErrorBoundary extends Component<
     // Log to console in development
     console.error(`[${featureName}] Error:`, error);
     console.error('Component stack:', errorInfo.componentStack);
-
-    // Log to Sentry with feature context
-    Sentry.withScope((scope) => {
-      scope.setTag('feature', featureName);
-      scope.setTag('errorBoundary', 'FeatureErrorBoundary');
-      scope.setContext('componentStack', {
-        stack: errorInfo.componentStack,
-      });
-      Sentry.captureException(error);
-    });
 
     // Call optional error callback
     onError?.(error, errorInfo);

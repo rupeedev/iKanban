@@ -6,8 +6,6 @@ import { ClickToComponent } from 'click-to-react-component';
 import { VibeKanbanWebCompanion } from 'vibe-kanban-web-companion';
 import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
-import * as Sentry from '@sentry/react';
-import i18n from './i18n';
 import posthog from 'posthog-js';
 import { PostHogProvider } from 'posthog-js/react';
 import { ClerkProvider } from '@clerk/clerk-react';
@@ -27,29 +25,7 @@ if (!CLERK_PUBLISHABLE_KEY) {
   );
 }
 
-import {
-  useLocation,
-  useNavigationType,
-  createRoutesFromChildren,
-  matchRoutes,
-} from 'react-router-dom';
-
-Sentry.init({
-  dsn: 'https://1065a1d276a581316999a07d5dffee26@o4509603705192449.ingest.de.sentry.io/4509605576441937',
-  tracesSampleRate: 1.0,
-  environment: import.meta.env.MODE === 'development' ? 'dev' : 'production',
-  integrations: [
-    Sentry.reactRouterV6BrowserTracingIntegration({
-      useEffect: React.useEffect,
-      useLocation,
-      useNavigationType,
-      createRoutesFromChildren,
-      matchRoutes,
-    }),
-  ],
-});
-Sentry.setTag('source', 'frontend');
-
+// Initialize PostHog analytics (only if configured)
 if (
   import.meta.env.VITE_POSTHOG_API_KEY &&
   import.meta.env.VITE_POSTHOG_API_ENDPOINT
@@ -62,11 +38,8 @@ if (
     autocapture: false,
     opt_out_capturing_by_default: true,
   });
-} else {
-  console.warn(
-    'PostHog API key or endpoint not set. Analytics will be disabled.'
-  );
 }
+// Note: Analytics disabled when PostHog env vars are not set
 
 // Helper to check if error is a rate limit (429)
 function isRateLimitError(error: unknown): boolean {
@@ -116,16 +89,9 @@ const AppWithProviders = () => (
       <ConnectionProvider>
         <SyncQueueProvider>
           <PostHogProvider client={posthog}>
-            <Sentry.ErrorBoundary
-              fallback={<p>{i18n.t('common:states.error')}</p>}
-              showDialog
-            >
-              <ClickToComponent />
-              <VibeKanbanWebCompanion />
-              <App />
-              {/*<TanStackDevtools plugins={[FormDevtoolsPlugin()]} />*/}
-              {/* <ReactQueryDevtools initialIsOpen={false} /> */}
-            </Sentry.ErrorBoundary>
+            <ClickToComponent />
+            <VibeKanbanWebCompanion />
+            <App />
           </PostHogProvider>
         </SyncQueueProvider>
       </ConnectionProvider>

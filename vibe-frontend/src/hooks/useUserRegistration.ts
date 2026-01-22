@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks';
 import { registrationsApi } from '@/lib/api';
 import type { UserRegistration, CreateUserRegistration } from 'shared/types';
 
@@ -23,6 +24,7 @@ export interface UseUserRegistrationResult {
 
 export function useUserRegistration(): UseUserRegistrationResult {
   const queryClient = useQueryClient();
+  const { isSignedIn } = useAuth();
 
   const {
     data: registration = null,
@@ -35,6 +37,8 @@ export function useUserRegistration(): UseUserRegistrationResult {
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
+    // Only fetch registration when user is signed in to avoid 401 errors
+    enabled: isSignedIn,
   });
 
   const refresh = useCallback(async () => {

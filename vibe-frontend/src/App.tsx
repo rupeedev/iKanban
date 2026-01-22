@@ -69,7 +69,6 @@ import { HotkeysProvider } from 'react-hotkeys-hook';
 import { ProjectProvider } from '@/contexts/ProjectContext';
 import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
 import { ThemeMode } from 'shared/types';
-import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
 import { BackendErrorState } from '@/components/ui/backend-error-state';
 import { ConnectionStatusBar } from '@/components/ui/connection-status-bar';
@@ -85,7 +84,6 @@ import { UsageLimitProvider } from '@/contexts/UsageLimitContext';
 import { GlobalLimitBanner } from '@/components/subscription';
 import NiceModal from '@ebay/nice-modal-react';
 
-const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
   const {
@@ -190,7 +188,7 @@ function AppContent() {
           {/* Usage limit warning banner (IKA-185) */}
           <GlobalLimitBanner />
           <div className="h-screen flex flex-col bg-background">
-            <SentryRoutes>
+            <Routes>
               {/* Public routes - no authentication required */}
               <Route path="/" element={<Navigate to="/about" replace />} />
               <Route path="/about" element={<About />} />
@@ -338,7 +336,7 @@ function AppContent() {
                 />
                 <Route path="/teams/:teamId/views" element={<Views />} />
               </Route>
-            </SentryRoutes>
+            </Routes>
           </div>
         </SearchProvider>
       </ThemeProvider>
