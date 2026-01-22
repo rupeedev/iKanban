@@ -86,17 +86,17 @@ export function PricingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-16 px-4 text-center">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">
+      <section className="py-8 px-4 text-center">
+        <h1 className="text-3xl md:text-4xl font-bold mb-2">
           Simple, Transparent Pricing
         </h1>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
+        <p className="text-sm text-muted-foreground max-w-2xl mx-auto mb-4">
           Choose the perfect plan to supercharge your AI-assisted development
           workflow. All plans include a 14-day free trial.
         </p>
 
         {/* Billing Toggle */}
-        <div className="flex items-center justify-center gap-3 mb-12">
+        <div className="flex items-center justify-center gap-3 mb-6">
           <Label
             htmlFor="billing-toggle"
             className={!isYearly ? 'font-semibold' : 'text-muted-foreground'}
@@ -122,7 +122,7 @@ export function PricingPage() {
         {/* Pricing Cards */}
         <div className="container mx-auto">
           {isLoading ? (
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto items-start">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto items-start">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="rounded-2xl border bg-card p-6">
                   <div className="text-center mb-6">
@@ -161,7 +161,7 @@ export function PricingPage() {
               </p>
             </div>
           ) : (
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto items-start">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto items-start">
               {plans.map((plan) => (
                 <PricingCard key={plan.name} plan={plan} isYearly={isYearly} />
               ))}
