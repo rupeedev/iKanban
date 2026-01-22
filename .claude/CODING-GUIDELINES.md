@@ -829,3 +829,153 @@ components/
 - [ ] Server starts locally without panics
 - [ ] New endpoints respond correctly after deploy
 - [ ] Frontend can reach all expected endpoints
+
+---
+
+## Backend API Design (CRITICAL)
+
+**These rules prevent frontend/backend integration failures. Learned from IKA-216 (full day debugging auth + API mismatches).**
+
+### Rule 1: Consistent Naming - Use `workspace_id` Everywhere
+
+```rust
+// BAD - Mixed terminology causes 400 Bad Request
+struct ProjectsQuery {
+    organization_id: Uuid,  // Frontend sends workspace_id!
+}
+
+// GOOD - Match frontend terminology
+struct ProjectsQuery {
+    workspace_id: Uuid,
+}
+```
+
+**iKanban uses `workspace`, NOT `organization`:**
+- Database: `tenant_workspaces` table
+- Frontend: `workspace_id` parameter
+- Backend: Must accept `workspace_id`
+
+### Rule 2: API Contract First - Define Before Frontend Uses
+
+**Never assume an endpoint exists. Define it explicitly:**
+
+```rust
+// BAD - Frontend calls /registrations/me but it doesn't exist
+// Result: 404 or 403 errors, confused debugging
+
+// GOOD - Define endpoint BEFORE frontend implements the call
+/// User's own registration status (not superadmin)
+pub fn user_router() -> Router<AppState> {
+    Router::new()
+        .route("/registrations/me", get(get_my_registration))
+}
+```
+
+**Workflow:**
+1. Frontend needs data → Document the endpoint contract
+2. Backend implements endpoint → Test with curl
+3. Frontend implements call → Integration works
+
+### Rule 3: Auth Tested End-to-End
+
+**Unit tests are not enough. Test the full auth flow:**
+
+```bash
+# Test public endpoints
+curl https://api.scho1ar.com/v1/billing/plans
+# Should return 200
+
+# Test protected endpoints (with token)
+curl -H "Authorization: Bearer $TOKEN" https://api.scho1ar.com/api/projects?workspace_id=xxx
+# Should return 200
+
+# Test protected endpoints (without token)
+curl https://api.scho1ar.com/api/projects?workspace_id=xxx
+# Should return 401
+```
+
+**Auth checklist:**
+- [ ] Token validation works (correct algorithm: RS256 for Clerk)
+- [ ] JWKS/secrets configured in production env vars
+- [ ] Public endpoints accessible without auth
+- [ ] Protected endpoints return 401 without token
+- [ ] User context injected correctly into handlers
+
+### Rule 4: Public vs Protected Clearly Separated
+
+```rust
+// BAD - Mixed in same router, confusing which needs auth
+pub fn router() -> Router<AppState> {
+    Router::new()
+        .route("/plans", get(get_plans))           // Should be public
+        .route("/usage", get(get_usage))           // Needs auth
+        .route("/registrations", get(list_all))    // Superadmin only
+}
+
+// GOOD - Explicit separation
+pub fn public_router() -> Router<AppState> {
+    Router::new()
+        .route("/billing/plans", get(get_plans))  // No auth needed
+}
+
+pub fn protected_router() -> Router<AppState> {
+    Router::new()
+        .route("/billing/usage", get(get_usage))  // Requires auth
+}
+
+pub fn superadmin_router() -> Router<AppState> {
+    Router::new()
+        .route("/registrations", get(list_all))   // Requires superadmin
+}
+```
+
+**In routes/mod.rs:**
+```rust
+let v1_public = Router::new()
+    .merge(billing::public_router());    // No middleware
+
+let v1_protected = Router::new()
+    .merge(billing::protected_router())
+    .layer(middleware::from_fn_with_state(state.clone(), require_clerk_session));
+
+let v1_superadmin = Router::new()
+    .merge(registrations::router())
+    .layer(middleware::from_fn_with_state(state.clone(), require_superadmin));
+```
+
+### Rule 5: Frontend/Backend Developed Together
+
+**Never make assumptions about what the other side sends/expects:**
+
+| Scenario | Problem | Prevention |
+|----------|---------|------------|
+| Frontend assumes endpoint exists | 404/403 errors | Define contract first |
+| Backend expects `organization_id` | 400 Bad Request | Check frontend code |
+| Auth changed on frontend (Clerk) | 401 InvalidAlgorithm | Update backend auth |
+| Endpoint needs auth but called before login | 401 on page load | Make it public or guard in frontend |
+
+**Integration checklist before deploying:**
+- [ ] All endpoints frontend calls exist in backend
+- [ ] Parameter names match (workspace_id, not organization_id)
+- [ ] Auth method matches (Clerk RS256, not HS256)
+- [ ] Public pages don't call protected endpoints
+- [ ] Error responses have consistent format
+
+### Quick Reference: Endpoint Categories
+
+| Category | Auth Required | Example Routes | Router |
+|----------|---------------|----------------|--------|
+| **Public** | No | `/billing/plans`, `/health` | `public_router()` |
+| **Protected** | User token | `/projects`, `/tasks`, `/registrations/me` | `protected_router()` |
+| **Superadmin** | Superadmin check | `/registrations` (list all), `/users/manage` | `superadmin_router()` |
+
+### IKA-216 Incident Summary
+
+**Full day of debugging caused by:**
+1. Auth mismatch: Frontend sent Clerk RS256 tokens, backend expected HS256
+2. Missing endpoint: `/registrations/me` didn't exist
+3. Wrong router: Registrations in superadmin-only routes
+4. Parameter mismatch: Backend expected `organization_id`, frontend sent `workspace_id`
+5. Public endpoint in protected router: `/billing/plans` required auth but called on landing page
+
+**All preventable with these 5 rules.**
