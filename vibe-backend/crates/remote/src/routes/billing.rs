@@ -20,13 +20,14 @@ use crate::{
 
 /// Public routes - no authentication required (IKA-238)
 pub fn public_router() -> Router<AppState> {
-    Router::new().route("/plan-limits", get(get_plan_limits))
+    Router::new()
+        .route("/plan-limits", get(get_plan_limits))
+        .route("/billing/plans", get(get_all_plans)) // Public - plans don't need auth
 }
 
 /// Protected routes - require authentication
 pub fn protected_router() -> Router<AppState> {
     Router::new()
-        .route("/billing/plans", get(get_all_plans))
         .route("/billing/usage", get(get_workspace_usage))
         .route(
             "/billing/workspace-creation-check",
@@ -143,10 +144,9 @@ pub struct PlanLimitsResponse {
 // Route Handlers
 // ============================================================================
 
-/// Get all available plans and their limits
+/// Get all available plans and their limits (public - no auth required)
 async fn get_all_plans(
     State(state): State<AppState>,
-    Extension(_ctx): Extension<RequestContext>,
 ) -> Result<Json<PlansResponse>, BillingRouteError> {
     let plans = PlanLimits::find_all(state.pool())
         .await
