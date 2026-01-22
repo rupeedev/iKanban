@@ -58,6 +58,82 @@ pub trait Mailer: Send + Sync {
     async fn send_registration_rejected(&self, email: &str, user_name: &str, reason: Option<&str>);
 }
 
+/// No-op mailer for when LOOPS_EMAIL_API_KEY is not configured.
+/// Logs email attempts but doesn't actually send them.
+pub struct NoOpMailer;
+
+impl NoOpMailer {
+    pub fn new() -> Self {
+        tracing::warn!("NoOpMailer initialized - emails will be logged but not sent");
+        Self
+    }
+}
+
+#[async_trait]
+impl Mailer for NoOpMailer {
+    async fn send_org_invitation(
+        &self,
+        org_name: &str,
+        email: &str,
+        accept_url: &str,
+        role: MemberRole,
+        _invited_by: Option<&str>,
+    ) {
+        tracing::info!(
+            "[NoOpMailer] Would send invitation to {email} for org {org_name} (role: {:?}, url: {accept_url})",
+            role
+        );
+    }
+
+    async fn send_review_ready(&self, email: &str, review_url: &str, pr_name: &str) {
+        tracing::info!(
+            "[NoOpMailer] Would send review ready to {email} for PR {pr_name} (url: {review_url})"
+        );
+    }
+
+    async fn send_review_failed(&self, email: &str, pr_name: &str, review_id: &str) {
+        tracing::info!(
+            "[NoOpMailer] Would send review failed to {email} for PR {pr_name} (review: {review_id})"
+        );
+    }
+
+    async fn send_email_verification(&self, email: &str, verify_url: &str) {
+        tracing::info!("[NoOpMailer] Would send verification to {email} (url: {verify_url})");
+    }
+
+    async fn send_registration_submitted_to_admin(
+        &self,
+        admin_email: &str,
+        user_email: &str,
+        user_name: &str,
+        workspace_name: &str,
+        review_url: &str,
+    ) {
+        tracing::info!(
+            "[NoOpMailer] Would notify admin {admin_email} of registration from {user_name} ({user_email}) for {workspace_name} (url: {review_url})"
+        );
+    }
+
+    async fn send_registration_approved(
+        &self,
+        email: &str,
+        user_name: &str,
+        workspace_name: &str,
+        login_url: &str,
+    ) {
+        tracing::info!(
+            "[NoOpMailer] Would send approval to {email} ({user_name}) for {workspace_name} (url: {login_url})"
+        );
+    }
+
+    async fn send_registration_rejected(&self, email: &str, user_name: &str, reason: Option<&str>) {
+        tracing::info!(
+            "[NoOpMailer] Would send rejection to {email} ({user_name}), reason: {:?}",
+            reason
+        );
+    }
+}
+
 pub struct LoopsMailer {
     client: reqwest::Client,
     api_key: String,

@@ -13,7 +13,7 @@ use crate::{
     config::RemoteServerConfig,
     db,
     github_app::GitHubAppService,
-    mail::LoopsMailer,
+    mail::{LoopsMailer, Mailer, NoOpMailer},
     r2::R2Service,
     routes,
     stripe::StripeService,
@@ -77,9 +77,14 @@ impl Server {
         let oauth_token_validator =
             Arc::new(OAuthTokenValidator::new(pool.clone(), registry.clone()));
 
-        let api_key = std::env::var("LOOPS_EMAIL_API_KEY")
-            .context("LOOPS_EMAIL_API_KEY environment variable is required")?;
-        let mailer = Arc::new(LoopsMailer::new(api_key));
+        // Use real mailer if API key is set, otherwise use no-op mailer
+        let mailer: Arc<dyn Mailer> = match std::env::var("LOOPS_EMAIL_API_KEY") {
+            Ok(api_key) => Arc::new(LoopsMailer::new(api_key)),
+            Err(_) => {
+                tracing::warn!("LOOPS_EMAIL_API_KEY not set, using NoOpMailer");
+                Arc::new(NoOpMailer::new())
+            }
+        };
 
         let server_public_base_url = config.server_public_base_url.clone().ok_or_else(|| {
             anyhow::anyhow!(
