@@ -87,6 +87,7 @@ pub fn router(state: AppState) -> Router {
         .merge(email_verification::protected_router())
         .merge(tenant_workspaces::protected_router())
         .merge(superadmins::public_router()) // Check endpoint - any authed user
+        .merge(registrations::user_router()) // User's own registration status
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_clerk_session,

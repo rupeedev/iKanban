@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::{AppState, auth::RequestContext, db::superadmins::SuperadminRepository};
+use crate::{AppState, auth::{RequestContext, ClerkRequestContext}, db::superadmins::SuperadminRepository};
 
 /// Response wrapper for API responses
 #[derive(Debug, Serialize)]
@@ -53,6 +53,11 @@ pub struct RejectRequest {
     pub reason: Option<String>,
 }
 
+/// Router for user-accessible registration routes (requires auth, not superadmin)
+pub fn user_router() -> Router<AppState> {
+    Router::new().route("/registrations/me", get(get_my_registration))
+}
+
 /// Router for superadmin registration routes (requires superadmin auth)
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -66,6 +71,23 @@ pub fn router() -> Router<AppState> {
             "/registrations/{registration_id}/reject",
             post(reject_registration),
         )
+}
+
+/// Get current user's registration status
+#[instrument(name = "registrations.me", skip(state, ctx), fields(clerk_user_id = %ctx.clerk_user_id))]
+async fn get_my_registration(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<ClerkRequestContext>,
+) -> Json<ApiResponse<Option<UserRegistration>>> {
+    let pool = state.pool();
+
+    match UserRegistration::find_by_clerk_id(pool, &ctx.clerk_user_id).await {
+        Ok(registration) => Json(ApiResponse::success(registration)),
+        Err(e) => {
+            tracing::error!(?e, "Failed to get user's registration");
+            Json(ApiResponse::error("Failed to get registration status".into()))
+        }
+    }
 }
 
 /// List all registrations with optional status filter
