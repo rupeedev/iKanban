@@ -85,7 +85,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Backend:** `cd vibe-backend && cargo run --bin server`
 **Frontend:** `cd vibe-frontend && pnpm dev`
-**SQLx cache:** `cd vibe-backend/crates/db && cargo sqlx prepare`
+**SQLx cache:** `cd vibe-backend/crates/remote && cargo sqlx prepare`
 **Lint:** `cd vibe-frontend && pnpm lint`
 
 ## Core Rules
@@ -106,15 +106,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 vibe-backend/crates/remote/migrations/   ← CORRECT (Production PostgreSQL)
-vibe-backend/crates/db/migrations/       ← WRONG (Local SQLite only)
+vibe-backend/crates/db/migrations/       ← WRONG (Not used - legacy)
 ```
 
 ### Migration Directory Reference
 
-| Directory | Database | Server | When to Use |
+| Directory | Database | Status | When to Use |
 |-----------|----------|--------|-------------|
-| `crates/remote/migrations/` | **PostgreSQL** | Remote (Railway) | **ALL production migrations** |
-| `crates/db/migrations/` | SQLite | Local desktop app | Legacy local-only features |
+| `crates/remote/migrations/` | **PostgreSQL** | **Active** | **ALL production migrations** |
+| `crates/db/migrations/` | PostgreSQL | Legacy | Do NOT use - migrations here won't run |
 
 ### Creating a New Migration
 
@@ -215,11 +215,44 @@ Teams: `IKA` (frontend), `SCH` (backend)
 
 ## Architecture
 
-**Backend crates:** `server`, `db`, `services`, `executors`, `deployment`, `local-deployment`, `remote`, `review`
+### System Overview
 
-**Frontend:** React 18, Vite, TailwindCSS v4, Zustand, TanStack Query v5
+```
+┌─────────────────────────────────────────────────────┐
+│  vibe-frontend (React + Vite)                       │
+│  Deployed to: ikanban.scho1ar.com                   │
+└─────────────────────┬───────────────────────────────┘
+                      │ API calls (HTTPS)
+                      ▼
+┌─────────────────────────────────────────────────────┐
+│  vibe-backend/crates/remote (Axum + PostgreSQL)     │
+│  Deployed to: api.scho1ar.com (Railway)             │
+└─────────────────────────────────────────────────────┘
+```
 
-**Deploy:** GitHub Actions → Docker Hub → Railway
+### Backend Crates
+
+| Crate | Database | Purpose |
+|-------|----------|---------|
+| `remote` | **PostgreSQL** | **Main API server** - all web endpoints, auth, MCP |
+| `server` | PostgreSQL | Server binary, combines remote + local features |
+| `db` | PostgreSQL | Shared database utilities (legacy, mostly unused) |
+| `local-deployment` | SQLite | Local agent execution for AI coding tasks |
+| `services` | - | Business logic services |
+| `executors` | - | Task/command execution |
+| `deployment` | - | Deployment orchestration |
+| `review` | - | Code review features |
+| `utils` | - | Shared utilities and types |
+
+**Note:** There is no Tauri desktop app. The `local-deployment` crate with SQLite is for running AI coding agents locally, not a GUI app.
+
+### Frontend Stack
+
+React 18, Vite, TailwindCSS v4, Zustand, TanStack Query v5
+
+### Deployment Pipeline
+
+GitHub Actions → Docker Hub → Railway
 
 ## MCP Server Configuration
 
