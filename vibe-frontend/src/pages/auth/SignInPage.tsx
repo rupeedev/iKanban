@@ -1,8 +1,10 @@
-import { SignIn } from '@clerk/clerk-react';
+import { SignIn, useUser } from '@clerk/clerk-react';
 import { Link } from 'react-router-dom';
 import { Layers, ArrowLeft } from 'lucide-react';
 
 export function SignInPage() {
+  const { isSignedIn, user } = useUser();
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-zinc-900 to-zinc-950 px-4">
       {/* Branding */}
@@ -13,6 +15,15 @@ export function SignInPage() {
         </div>
         <p className="text-zinc-400">Your AI Task Tracker</p>
       </div>
+
+      {/* Personalized welcome for signed-in users */}
+      {isSignedIn && user?.firstName && (
+        <div className="mb-6 text-center">
+          <p className="text-xl text-white">
+            Welcome Back, <span className="font-semibold">{user.firstName}</span>!
+          </p>
+        </div>
+      )}
 
       {/* Clerk SignIn Component */}
       <SignIn
