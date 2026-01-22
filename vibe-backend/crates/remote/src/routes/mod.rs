@@ -33,6 +33,7 @@ mod review;
 mod stripe;
 mod superadmins;
 pub mod tasks;
+mod tenant_workspaces;
 mod tokens;
 mod trust_profiles;
 
@@ -59,6 +60,7 @@ pub fn router(state: AppState) -> Router {
 
     let v1_public = Router::<AppState>::new()
         .route("/health", get(health))
+        .route("/info", get(server_info))
         .merge(oauth::public_router())
         .merge(organization_members::public_router())
         .merge(tokens::public_router())
@@ -66,7 +68,8 @@ pub fn router(state: AppState) -> Router {
         .merge(github_app::public_router())
         .merge(stripe::public_router())
         .merge(email_verification::public_router())
-        .merge(billing::public_router());
+        .merge(billing::public_router())
+        .merge(tenant_workspaces::public_router());
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
@@ -82,6 +85,7 @@ pub fn router(state: AppState) -> Router {
         .merge(trust_profiles::protected_router())
         .merge(abuse_signals::protected_router())
         .merge(email_verification::protected_router())
+        .merge(tenant_workspaces::protected_router())
         .merge(superadmins::public_router()) // Check endpoint - any authed user
         .layer(middleware::from_fn_with_state(
             state.clone(),
@@ -101,10 +105,20 @@ pub fn router(state: AppState) -> Router {
     let spa =
         ServeDir::new(static_dir).fallback(ServeFile::new(format!("{static_dir}/index.html")));
 
+    // Clone routers for /api prefix alias (frontend compatibility)
+    let api_public = v1_public.clone();
+    let api_protected = v1_protected.clone();
+    let api_superadmin = v1_superadmin.clone();
+
     Router::<AppState>::new()
+        // Primary routes under /v1
         .nest("/v1", v1_public)
         .nest("/v1", v1_protected)
         .nest("/v1", v1_superadmin)
+        // Alias under /api for frontend compatibility
+        .nest("/api", api_public)
+        .nest("/api", api_protected)
+        .nest("/api", api_superadmin)
         .fallback_service(spa)
         .layer(
             CorsLayer::new()
@@ -126,4 +140,13 @@ pub fn router(state: AppState) -> Router {
 
 async fn health() -> &'static str {
     "ok"
+}
+
+/// Server info endpoint
+async fn server_info() -> axum::Json<serde_json::Value> {
+    axum::Json(serde_json::json!({
+        "name": "iKanban API",
+        "version": env!("CARGO_PKG_VERSION"),
+        "status": "operational"
+    }))
 }
