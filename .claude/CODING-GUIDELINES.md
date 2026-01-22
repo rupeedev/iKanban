@@ -18,6 +18,114 @@ Standards to follow for all code changes. These are based on actual issues caugh
 
 ---
 
+## System Consolidation (CRITICAL)
+
+**iKanban has multiple parallel systems from different development phases. Use ONLY the systems marked as CURRENT.**
+
+### Authentication Systems
+
+| System | Status | Algorithm | When Used |
+|--------|--------|-----------|-----------|
+| **Clerk Direct JWT** | **CURRENT** | RS256 | All new code |
+| Session-based OAuth | DEPRECATED | HS256 | Legacy - do not use |
+
+**Implementation:**
+- Frontend: Use `@clerk/clerk-react` hooks (`useAuth`, `useUser`)
+- Backend: Use `require_clerk_session` middleware (verifies RS256 tokens)
+- Never use HS256 validation or session-based auth
+
+```rust
+// GOOD - Clerk auth middleware
+.layer(middleware::from_fn_with_state(state.clone(), require_clerk_session))
+
+// BAD - Old session-based auth (do not use)
+// .layer(middleware::from_fn_with_state(state.clone(), require_session))
+```
+
+### Workspace/Tenant Systems
+
+| Table | Status | Purpose |
+|-------|--------|---------|
+| **`tenant_workspaces`** | **CURRENT** | Workspace definitions |
+| **`tenant_workspace_members`** | **CURRENT** | User membership in workspaces |
+| `organizations` | DEPRECATED | Legacy org definitions |
+| `organization_member_metadata` | DEPRECATED | Legacy membership |
+
+**Always use `workspace_id` parameter, NOT `organization_id`:**
+
+```rust
+// GOOD - Use workspace_id
+#[derive(Deserialize)]
+struct Query {
+    workspace_id: Uuid,
+}
+
+// BAD - Frontend sends workspace_id, not organization_id
+#[derive(Deserialize)]
+struct Query {
+    organization_id: Uuid,  // Will cause 400 Bad Request!
+}
+```
+
+**Membership checks:**
+```rust
+// GOOD - Check tenant_workspace_members
+let is_member = sqlx::query_scalar::<_, bool>(
+    "SELECT EXISTS(SELECT 1 FROM tenant_workspace_members WHERE workspace_id = $1 AND user_id = $2)"
+)
+.bind(workspace_id)
+.bind(user_id)
+.fetch_one(pool)
+.await?;
+
+// BAD - Do not check organization_member_metadata
+```
+
+### API Response Format
+
+**All API responses MUST use the `ApiResponse<T>` wrapper:**
+
+```rust
+use crate::routes::error::ApiResponse;
+
+// GOOD - Frontend expects { success: true, data: {...} }
+async fn get_data() -> Json<ApiResponse<MyData>> {
+    ApiResponse::success(MyData { ... })
+}
+
+// BAD - Raw response breaks frontend
+async fn get_data() -> Json<MyData> {
+    Json(MyData { ... })  // Frontend shows blank page!
+}
+```
+
+**Response format expected by frontend:**
+```json
+// Success
+{ "success": true, "data": { ... } }
+
+// Error
+{ "success": false, "message": "Error description" }
+```
+
+### Quick Reference Table
+
+| Aspect | Use This | NOT This |
+|--------|----------|----------|
+| **Auth** | Clerk RS256 | Session HS256 |
+| **Middleware** | `require_clerk_session` | `require_session` |
+| **Workspaces table** | `tenant_workspaces` | `organizations` |
+| **Membership table** | `tenant_workspace_members` | `organization_member_metadata` |
+| **Parameter name** | `workspace_id` | `organization_id` |
+| **API response** | `ApiResponse::success(data)` | `Json(data)` directly |
+| **Route syntax** | `{param}` | `:param` |
+
+### CLI Configuration Note
+
+The file `teams-config.json` in docs/common-mcp contains team/project IDs for CLI tools. These are **separate** from database IDs - they map to Jira/external systems, not to `tenant_workspaces`.
+
+---
+
 ## Backend (Rust)
 
 ### Axum Route Syntax (v0.7+)

@@ -58,15 +58,19 @@ pub async fn is_member<'a, E>(
 where
     E: Executor<'a, Database = Postgres>,
 {
+    // Check both tenant_workspace_members (current) and organization_member_metadata (deprecated)
     let exists = sqlx::query_scalar!(
         r#"
         SELECT EXISTS(
-            SELECT 1
-            FROM organization_member_metadata
-            WHERE organization_id = $1 AND user_id = $2
+            SELECT 1 FROM tenant_workspace_members
+            WHERE tenant_workspace_id = $1 AND user_id = $2
+        ) OR EXISTS(
+            SELECT 1 FROM organization_member_metadata
+            WHERE organization_id = $1 AND user_id = $3
         ) AS "exists!"
         "#,
         organization_id,
+        user_id.to_string(),
         user_id
     )
     .fetch_one(executor)
