@@ -14,10 +14,10 @@ CREATE TABLE IF NOT EXISTS workspace_subscriptions (
 );
 
 -- Indexes for efficient queries
-CREATE INDEX idx_workspace_subscriptions_workspace_id ON workspace_subscriptions(workspace_id);
-CREATE INDEX idx_workspace_subscriptions_status ON workspace_subscriptions(status);
-CREATE INDEX idx_workspace_subscriptions_stripe_customer_id ON workspace_subscriptions(stripe_customer_id);
-CREATE INDEX idx_workspace_subscriptions_stripe_subscription_id ON workspace_subscriptions(stripe_subscription_id);
+CREATE INDEX IF NOT EXISTS idx_workspace_subscriptions_workspace_id ON workspace_subscriptions(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_workspace_subscriptions_status ON workspace_subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_workspace_subscriptions_stripe_customer_id ON workspace_subscriptions(stripe_customer_id);
+CREATE INDEX IF NOT EXISTS idx_workspace_subscriptions_stripe_subscription_id ON workspace_subscriptions(stripe_subscription_id);
 
 -- Comment on table
 COMMENT ON TABLE workspace_subscriptions IS 'Tracks Stripe subscription data for tenant workspaces';

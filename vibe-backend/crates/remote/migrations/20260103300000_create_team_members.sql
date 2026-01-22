@@ -1,5 +1,5 @@
 -- Create team_members table for storing team membership with roles
-CREATE TABLE team_members (
+CREATE TABLE IF NOT EXISTS team_members (
     id          BLOB PRIMARY KEY,
     team_id     BLOB NOT NULL,
     email       TEXT NOT NULL,
@@ -14,5 +14,5 @@ CREATE TABLE team_members (
 );
 
 -- Create indexes for faster lookups
-CREATE INDEX idx_team_members_team_id ON team_members(team_id);
-CREATE INDEX idx_team_members_email ON team_members(email);
+CREATE INDEX IF NOT EXISTS idx_team_members_team_id ON team_members(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_members_email ON team_members(email);

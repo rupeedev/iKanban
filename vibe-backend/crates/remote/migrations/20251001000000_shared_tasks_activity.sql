@@ -107,7 +107,7 @@ CREATE INDEX IF NOT EXISTS idx_shared_tasks_org_deleted_at
     WHERE deleted_at IS NOT NULL;
 
 -- Partitioned activity feed (24-hour range partitions on created_at).
-CREATE TABLE activity (
+CREATE TABLE IF NOT EXISTS activity (
     seq               BIGINT NOT NULL,
     event_id          UUID NOT NULL DEFAULT gen_random_uuid(),
     project_id        UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,

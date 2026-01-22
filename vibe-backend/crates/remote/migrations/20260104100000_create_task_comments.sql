@@ -1,5 +1,5 @@
 -- Task comments for Jira-style commenting functionality
-CREATE TABLE task_comments (
+CREATE TABLE IF NOT EXISTS task_comments (
     id TEXT PRIMARY KEY NOT NULL,
     task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
     author_id TEXT REFERENCES team_members(id) ON DELETE SET NULL,
@@ -11,6 +11,6 @@ CREATE TABLE task_comments (
     updated_at TEXT NOT NULL
 );
 
-CREATE INDEX idx_task_comments_task_id ON task_comments(task_id);
-CREATE INDEX idx_task_comments_author_id ON task_comments(author_id);
-CREATE INDEX idx_task_comments_created_at ON task_comments(task_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_task_comments_task_id ON task_comments(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_comments_author_id ON task_comments(author_id);
+CREATE INDEX IF NOT EXISTS idx_task_comments_created_at ON task_comments(task_id, created_at);

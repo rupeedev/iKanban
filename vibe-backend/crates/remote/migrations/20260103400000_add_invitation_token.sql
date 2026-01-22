@@ -4,4 +4,4 @@
 ALTER TABLE team_invitations ADD COLUMN token TEXT;
 
 -- Create unique index for faster token lookups and uniqueness constraint
-CREATE UNIQUE INDEX idx_team_invitations_token ON team_invitations(token) WHERE token IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_team_invitations_token ON team_invitations(token) WHERE token IS NOT NULL;

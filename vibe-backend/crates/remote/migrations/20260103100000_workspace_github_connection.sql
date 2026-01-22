@@ -2,7 +2,7 @@
 -- A workspace-level connection has team_id = NULL
 
 -- Step 1: Create new table with nullable team_id
-CREATE TABLE github_connections_new (
+CREATE TABLE IF NOT EXISTS github_connections_new (
     id              BLOB PRIMARY KEY,
     team_id         BLOB,  -- NULL for workspace-level connection
     access_token    TEXT NOT NULL,
@@ -23,8 +23,8 @@ DROP TABLE github_connections;
 ALTER TABLE github_connections_new RENAME TO github_connections;
 
 -- Step 4: Recreate indexes
-CREATE INDEX idx_github_connections_team_id ON github_connections(team_id);
+CREATE INDEX IF NOT EXISTS idx_github_connections_team_id ON github_connections(team_id);
 
 -- Step 5: Add unique constraint for workspace-level connection (only one NULL team_id)
 -- SQLite doesn't enforce unique on NULL, so we use a partial index
-CREATE UNIQUE INDEX idx_github_connections_workspace ON github_connections(team_id) WHERE team_id IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_github_connections_workspace ON github_connections(team_id) WHERE team_id IS NULL;

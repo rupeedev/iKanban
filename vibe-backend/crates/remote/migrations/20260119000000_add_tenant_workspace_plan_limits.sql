@@ -11,4 +11,4 @@ ALTER TABLE tenant_workspaces ADD COLUMN max_members BIGINT NOT NULL DEFAULT 3;
 ALTER TABLE tenant_workspaces ADD COLUMN max_storage_gb BIGINT NOT NULL DEFAULT 1;
 
 -- Add index for plan column (useful for filtering by subscription tier)
-CREATE INDEX idx_tenant_workspaces_plan ON tenant_workspaces(plan);
+CREATE INDEX IF NOT EXISTS idx_tenant_workspaces_plan ON tenant_workspaces(plan);

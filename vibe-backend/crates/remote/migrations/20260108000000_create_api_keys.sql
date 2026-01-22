@@ -1,5 +1,5 @@
 -- API keys for programmatic access (MCP servers, CLI tools, etc.)
-CREATE TABLE api_keys (
+CREATE TABLE IF NOT EXISTS api_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id TEXT NOT NULL,           -- Clerk user ID
     name TEXT NOT NULL,              -- Human-readable name for the key
@@ -14,10 +14,10 @@ CREATE TABLE api_keys (
 );
 
 -- Index for looking up keys by hash (primary lookup path)
-CREATE INDEX idx_api_keys_key_hash ON api_keys(key_hash) WHERE NOT is_revoked;
+CREATE INDEX IF NOT EXISTS idx_api_keys_key_hash ON api_keys(key_hash) WHERE NOT is_revoked;
 
 -- Index for listing user's keys
-CREATE INDEX idx_api_keys_user_id ON api_keys(user_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id);
 
 -- Trigger to update updated_at
 CREATE OR REPLACE FUNCTION update_api_keys_updated_at()

@@ -2,7 +2,7 @@
 ALTER TABLE documents ADD COLUMN slug TEXT;
 
 -- Create index for fast slug lookups within a team
-CREATE INDEX idx_documents_team_slug ON documents(team_id, slug);
+CREATE INDEX IF NOT EXISTS idx_documents_team_slug ON documents(team_id, slug);
 
 -- Backfill existing documents with slugs generated from titles
 -- Slug format: lowercase, spaces to hyphens, remove special chars

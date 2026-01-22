@@ -1,5 +1,5 @@
 -- Create team_invitations table for pending invitations
-CREATE TABLE team_invitations (
+CREATE TABLE IF NOT EXISTS team_invitations (
     id          BLOB PRIMARY KEY,
     team_id     BLOB NOT NULL,
     email       TEXT NOT NULL,
@@ -12,9 +12,9 @@ CREATE TABLE team_invitations (
 );
 
 -- Create indexes for faster lookups
-CREATE INDEX idx_team_invitations_team_id ON team_invitations(team_id);
-CREATE INDEX idx_team_invitations_email ON team_invitations(email);
-CREATE INDEX idx_team_invitations_status ON team_invitations(status);
+CREATE INDEX IF NOT EXISTS idx_team_invitations_team_id ON team_invitations(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_invitations_email ON team_invitations(email);
+CREATE INDEX IF NOT EXISTS idx_team_invitations_status ON team_invitations(status);
 
 -- Unique constraint: only one pending invitation per email per team
-CREATE UNIQUE INDEX idx_team_invitations_pending ON team_invitations(team_id, email) WHERE status = 'pending';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_team_invitations_pending ON team_invitations(team_id, email) WHERE status = 'pending';

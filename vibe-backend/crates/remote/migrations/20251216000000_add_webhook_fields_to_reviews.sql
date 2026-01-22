@@ -11,5 +11,5 @@ ADD COLUMN pr_repo TEXT,
 ADD COLUMN pr_number INTEGER;
 
 -- Index for webhook reviews
-CREATE INDEX idx_reviews_webhook ON reviews (github_installation_id)
+CREATE INDEX IF NOT EXISTS idx_reviews_webhook ON reviews (github_installation_id)
 WHERE github_installation_id IS NOT NULL;

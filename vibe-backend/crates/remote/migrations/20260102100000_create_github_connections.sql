@@ -1,5 +1,5 @@
 -- Create github_connections table for storing GitHub PAT connections
-CREATE TABLE github_connections (
+CREATE TABLE IF NOT EXISTS github_connections (
     id              BLOB PRIMARY KEY,
     team_id         BLOB NOT NULL,
     access_token    TEXT NOT NULL,  -- GitHub Personal Access Token (should be encrypted in production)
@@ -10,7 +10,7 @@ CREATE TABLE github_connections (
 );
 
 -- Create github_repositories table for linked repos
-CREATE TABLE github_repositories (
+CREATE TABLE IF NOT EXISTS github_repositories (
     id                  BLOB PRIMARY KEY,
     connection_id       BLOB NOT NULL,
     repo_full_name      TEXT NOT NULL,  -- e.g., "owner/repo"
@@ -24,6 +24,6 @@ CREATE TABLE github_repositories (
 );
 
 -- Create indexes for faster lookups
-CREATE INDEX idx_github_connections_team_id ON github_connections(team_id);
-CREATE INDEX idx_github_repositories_connection_id ON github_repositories(connection_id);
-CREATE UNIQUE INDEX idx_github_repositories_unique ON github_repositories(connection_id, repo_full_name);
+CREATE INDEX IF NOT EXISTS idx_github_connections_team_id ON github_connections(team_id);
+CREATE INDEX IF NOT EXISTS idx_github_repositories_connection_id ON github_repositories(connection_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_github_repositories_unique ON github_repositories(connection_id, repo_full_name);
