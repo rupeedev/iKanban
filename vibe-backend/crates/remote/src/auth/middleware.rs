@@ -26,6 +26,7 @@ pub struct RequestContext {
     pub access_token_expires_at: DateTime<Utc>,
 }
 
+#[allow(dead_code)] // Legacy - kept for OAuth token flow, now using Clerk auth
 pub async fn require_session(
     State(state): State<AppState>,
     mut req: Request<Body>,

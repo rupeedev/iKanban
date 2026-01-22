@@ -14,7 +14,7 @@ use tracing::{Level, field};
 
 use crate::{
     AppState,
-    auth::{require_session, require_superadmin},
+    auth::{require_clerk_session, require_superadmin},
 };
 
 mod abuse_signals;
@@ -89,7 +89,7 @@ pub fn router(state: AppState) -> Router {
         .merge(superadmins::public_router()) // Check endpoint - any authed user
         .layer(middleware::from_fn_with_state(
             state.clone(),
-            require_session,
+            require_clerk_session,
         ));
 
     // Superadmin-only routes (require superadmin status, not just auth)
@@ -145,8 +145,11 @@ async fn health() -> &'static str {
 /// Server info endpoint
 async fn server_info() -> axum::Json<serde_json::Value> {
     axum::Json(serde_json::json!({
-        "name": "iKanban API",
-        "version": env!("CARGO_PKG_VERSION"),
-        "status": "operational"
+        "success": true,
+        "data": {
+            "name": "iKanban API",
+            "version": env!("CARGO_PKG_VERSION"),
+            "status": "operational"
+        }
     }))
 }

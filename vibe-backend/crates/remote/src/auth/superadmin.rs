@@ -1,3 +1,5 @@
+//! Superadmin middleware for protected admin routes.
+
 use axum::{
     body::Body,
     extract::State,
@@ -6,25 +8,26 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use axum_extra::headers::{Authorization, HeaderMapExt, authorization::Bearer};
-use chrono::Utc;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
+use uuid::Uuid;
 
 use super::middleware::RequestContext;
 use crate::{
-    AppState,
+    AppState, configure_user_scope,
     db::{
-        auth::{AuthSessionError, AuthSessionRepository, MAX_SESSION_INACTIVITY_DURATION},
         identity_errors::IdentityError,
+        oauth_accounts::OAuthAccountRepository,
         superadmins::SuperadminRepository,
-        users::UserRepository,
+        users::{UpsertUser, UserRepository},
     },
 };
 
 /// Middleware that requires the user to be an authenticated superadmin.
 /// This middleware:
-/// 1. Validates the session (same as require_session)
-/// 2. Checks if the user's email or user_id exists in superadmins table
-/// 3. Returns 403 Forbidden if not a superadmin
+/// 1. Validates the Clerk JWT token
+/// 2. Looks up or creates the database user
+/// 3. Checks if the user's email exists in superadmins table
+/// 4. Returns 403 Forbidden if not a superadmin
 ///
 /// Use this middleware to protect /superadmin/* routes.
 #[allow(dead_code)]
@@ -39,76 +42,80 @@ pub async fn require_superadmin(
         None => return StatusCode::UNAUTHORIZED.into_response(),
     };
 
-    // 2. Decode JWT
-    let jwt = state.jwt();
-    let identity = match jwt.decode_access_token(&bearer) {
-        Ok(details) => details,
-        Err(error) => {
-            warn!(?error, "superadmin: failed to decode access token");
-            return StatusCode::UNAUTHORIZED.into_response();
-        }
-    };
-
-    // 3. Validate session
-    let pool = state.pool();
-    let session_repo = AuthSessionRepository::new(pool);
-    let session = match session_repo.get(identity.session_id).await {
-        Ok(session) => session,
-        Err(AuthSessionError::NotFound) => {
-            warn!("superadmin: session `{}` not found", identity.session_id);
-            return StatusCode::UNAUTHORIZED.into_response();
-        }
-        Err(AuthSessionError::Database(error)) => {
-            warn!(?error, "superadmin: failed to load session");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
-        Err(_) => {
-            warn!("superadmin: failed to load session for unknown reason");
-            return StatusCode::UNAUTHORIZED.into_response();
-        }
-    };
-
-    if session.revoked_at.is_some() {
-        warn!(
-            "superadmin: session `{}` rejected (revoked)",
-            identity.session_id
-        );
-        return StatusCode::UNAUTHORIZED.into_response();
-    }
-
-    if session.inactivity_duration(Utc::now()) > MAX_SESSION_INACTIVITY_DURATION {
-        warn!(
-            "superadmin: session `{}` expired due to inactivity",
-            identity.session_id
-        );
-        if let Err(error) = session_repo.revoke(session.id).await {
-            warn!(?error, "superadmin: failed to revoke inactive session");
-        }
-        return StatusCode::UNAUTHORIZED.into_response();
-    }
-
-    // 4. Load user
-    let user_repo = UserRepository::new(pool);
-    let user = match user_repo.fetch_user(identity.user_id).await {
+    // 2. Validate Clerk token
+    let clerk_auth = state.clerk_auth();
+    let clerk_user = match clerk_auth.validate_token(&bearer).await {
         Ok(user) => user,
-        Err(IdentityError::NotFound) => {
-            warn!("superadmin: user `{}` not found", identity.user_id);
+        Err(error) => {
+            warn!(?error, "superadmin: failed to validate Clerk token");
             return StatusCode::UNAUTHORIZED.into_response();
         }
-        Err(IdentityError::Database(error)) => {
-            warn!(?error, "superadmin: failed to load user");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+
+    // 3. Look up or create database user
+    let pool = state.pool();
+    let oauth_repo = OAuthAccountRepository::new(pool);
+    let user_repo = UserRepository::new(pool);
+
+    let db_user = match oauth_repo.get_by_provider_user("clerk", &clerk_user.user_id).await {
+        Ok(Some(oauth_account)) => {
+            match user_repo.fetch_user(oauth_account.user_id).await {
+                Ok(user) => user,
+                Err(e) => {
+                    warn!(?e, "superadmin: failed to fetch user");
+                    return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+                }
+            }
         }
-        Err(_) => {
-            warn!("superadmin: unexpected error loading user");
+        Ok(None) => {
+            // New user - auto-create them
+            debug!(clerk_user_id = %clerk_user.user_id, "superadmin: creating new user from Clerk");
+
+            let new_user_id = Uuid::new_v4();
+            let email = clerk_user.email.as_deref().unwrap_or("unknown@clerk.user");
+
+            let upsert = UpsertUser {
+                id: new_user_id,
+                email,
+                first_name: None,
+                last_name: None,
+                username: None,
+            };
+
+            let user = match user_repo.upsert_user(upsert).await {
+                Ok(u) => u,
+                Err(e) => {
+                    warn!(?e, "superadmin: failed to create user");
+                    return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+                }
+            };
+
+            // Create the oauth_account link
+            let oauth_insert = crate::db::oauth_accounts::OAuthAccountInsert {
+                user_id: user.id,
+                provider: "clerk",
+                provider_user_id: &clerk_user.user_id,
+                email: clerk_user.email.as_deref(),
+                username: None,
+                display_name: None,
+                avatar_url: None,
+            };
+
+            if let Err(e) = oauth_repo.upsert(oauth_insert).await {
+                warn!(?e, "superadmin: failed to create oauth_account link");
+            }
+
+            user
+        }
+        Err(e) => {
+            warn!(?e, "superadmin: database error looking up oauth_account");
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
 
-    // 5. Check superadmin status by email (superadmins table uses Clerk user_id as TEXT)
-    // We match by email since that's what we have from our users table
+    // 4. Check superadmin status by email
     let superadmin_repo = SuperadminRepository::new(pool);
-    let is_superadmin = match superadmin_repo.find_by_email(&user.email).await {
+    let is_superadmin = match superadmin_repo.find_by_email(&db_user.email).await {
         Ok(Some(superadmin)) => superadmin.is_active,
         Ok(None) => false,
         Err(IdentityError::Database(error)) => {
@@ -126,32 +133,26 @@ pub async fn require_superadmin(
 
     if !is_superadmin {
         info!(
-            user_id = %user.id,
-            email = %user.email,
+            user_id = %db_user.id,
+            email = %db_user.email,
             "superadmin: access denied - not a superadmin"
         );
         return StatusCode::FORBIDDEN.into_response();
     }
 
-    tracing::debug!(
-        user_id = %user.id,
+    debug!(
+        user_id = %db_user.id,
         "superadmin: access granted"
     );
 
-    // 6. Insert request context
-    req.extensions_mut().insert(RequestContext {
-        user,
-        session_id: session.id,
-        access_token_expires_at: identity.expires_at,
-    });
+    configure_user_scope(db_user.id, db_user.username.as_deref(), Some(db_user.email.as_str()));
 
-    // 7. Touch session to update last-used timestamp
-    if let Err(error) = session_repo.touch(session.id).await {
-        warn!(
-            ?error,
-            "superadmin: failed to update session last-used timestamp"
-        );
-    }
+    // 5. Insert request context (compatible with existing routes)
+    req.extensions_mut().insert(RequestContext {
+        user: db_user,
+        session_id: Uuid::nil(), // Placeholder - no session with Clerk auth
+        access_token_expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
+    });
 
     next.run(req).await
 }

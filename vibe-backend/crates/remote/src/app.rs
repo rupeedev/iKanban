@@ -7,7 +7,7 @@ use tracing::instrument;
 use crate::{
     AppState,
     auth::{
-        GitHubOAuthProvider, GoogleOAuthProvider, JwtService, OAuthHandoffService,
+        ClerkAuthState, GitHubOAuthProvider, GoogleOAuthProvider, JwtService, OAuthHandoffService,
         OAuthTokenValidator, ProviderRegistry,
     },
     config::RemoteServerConfig,
@@ -141,6 +141,10 @@ impl Server {
             );
         }
 
+        // Initialize Clerk auth for direct JWT verification
+        let clerk_auth = Arc::new(ClerkAuthState::new());
+        tracing::info!("Clerk authentication service initialized");
+
         let state = AppState::new(
             pool.clone(),
             config.clone(),
@@ -153,6 +157,7 @@ impl Server {
             r2,
             github_app,
             stripe,
+            clerk_auth,
         );
 
         let router = routes::router(state);

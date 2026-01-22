@@ -3,7 +3,7 @@ use std::sync::Arc;
 use sqlx::PgPool;
 
 use crate::{
-    auth::{JwtService, OAuthHandoffService, OAuthTokenValidator, ProviderRegistry},
+    auth::{ClerkAuthState, JwtService, OAuthHandoffService, OAuthTokenValidator, ProviderRegistry},
     cache::AppCache,
     config::RemoteServerConfig,
     github_app::GitHubAppService,
@@ -26,6 +26,7 @@ pub struct AppState {
     github_app: Option<Arc<GitHubAppService>>,
     stripe: Option<Arc<StripeService>>,
     cache: Arc<AppCache>,
+    clerk_auth: Arc<ClerkAuthState>,
 }
 
 impl AppState {
@@ -42,6 +43,7 @@ impl AppState {
         r2: Option<R2Service>,
         github_app: Option<Arc<GitHubAppService>>,
         stripe: Option<Arc<StripeService>>,
+        clerk_auth: Arc<ClerkAuthState>,
     ) -> Self {
         Self {
             pool,
@@ -56,6 +58,7 @@ impl AppState {
             github_app,
             stripe,
             cache: Arc::new(AppCache::new()),
+            clerk_auth,
         }
     }
 
@@ -97,5 +100,9 @@ impl AppState {
 
     pub fn cache(&self) -> Arc<AppCache> {
         Arc::clone(&self.cache)
+    }
+
+    pub fn clerk_auth(&self) -> Arc<ClerkAuthState> {
+        Arc::clone(&self.clerk_auth)
     }
 }
