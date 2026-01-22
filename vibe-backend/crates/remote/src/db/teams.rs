@@ -358,6 +358,59 @@ impl TeamRepository {
             })
             .collect())
     }
+
+    /// Get team invitations
+    pub async fn get_invitations(pool: &PgPool, team_id: Uuid) -> Result<Vec<TeamInvitation>, TeamError> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                id           AS "id!: Uuid",
+                team_id      AS "team_id!: Uuid",
+                email        AS "email!",
+                role         AS "role!",
+                status       AS "status!",
+                invited_by,
+                token,
+                expires_at   AS "expires_at!: DateTime<Utc>",
+                created_at   AS "created_at!: DateTime<Utc>"
+            FROM team_invitations
+            WHERE team_id = $1
+            ORDER BY created_at DESC
+            "#,
+            team_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| TeamInvitation {
+                id: r.id,
+                team_id: r.team_id,
+                email: r.email,
+                role: r.role,
+                status: r.status,
+                invited_by: r.invited_by,
+                token: r.token,
+                expires_at: r.expires_at,
+                created_at: r.created_at,
+            })
+            .collect())
+    }
+
+    /// Get team documents
+    /// NOTE: team_documents table does not exist yet - returns empty for now
+    pub async fn get_documents(_pool: &PgPool, _team_id: Uuid) -> Result<Vec<TeamDocument>, TeamError> {
+        // TODO: Create team_documents table and implement query
+        Ok(vec![])
+    }
+
+    /// Get team folders
+    /// NOTE: team_folders table does not exist yet - returns empty for now
+    pub async fn get_folders(_pool: &PgPool, _team_id: Uuid) -> Result<Vec<TeamFolder>, TeamError> {
+        // TODO: Create team_folders table and implement query
+        Ok(vec![])
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -387,6 +440,43 @@ pub struct TeamIssue {
     pub due_date: Option<DateTime<Utc>>,
     pub assignee_id: Option<Uuid>,
     pub issue_number: Option<i32>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TeamInvitation {
+    pub id: Uuid,
+    pub team_id: Uuid,
+    pub email: String,
+    pub role: String,
+    pub status: String,
+    pub invited_by: Option<Uuid>,
+    pub token: Option<String>,
+    pub expires_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TeamDocument {
+    pub id: Uuid,
+    pub team_id: Uuid,
+    pub folder_id: Option<Uuid>,
+    pub name: String,
+    pub slug: Option<String>,
+    pub content: Option<String>,
+    pub storage_path: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TeamFolder {
+    pub id: Uuid,
+    pub team_id: Uuid,
+    pub parent_id: Option<Uuid>,
+    pub name: String,
+    pub local_path: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

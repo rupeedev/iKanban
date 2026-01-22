@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::{
     AppState,
     auth::RequestContext,
-    db::teams::{Team, TeamIssue, TeamMember, TeamRepository},
+    db::teams::{Team, TeamDocument, TeamFolder, TeamInvitation, TeamIssue, TeamMember, TeamRepository},
     db::projects::{Project, ProjectRepository},
 };
 use super::error::{ApiResponse, ErrorResponse};
@@ -77,6 +77,11 @@ pub fn router() -> Router<AppState> {
             "/teams/{team_id}/projects",
             get(get_team_projects).post(assign_project),
         )
+        .route("/teams/{team_id}/issues", get(get_team_issues))
+        .route("/teams/{team_id}/members", get(get_team_members))
+        .route("/teams/{team_id}/invitations", get(get_team_invitations))
+        .route("/teams/{team_id}/documents", get(get_team_documents))
+        .route("/teams/{team_id}/folders", get(get_team_folders))
 }
 
 /// List teams - returns teams from database
@@ -257,14 +262,50 @@ async fn delete_team(
     Err(ErrorResponse::new(StatusCode::NOT_IMPLEMENTED, "delete team not implemented"))
 }
 
-/// Get team projects - returns empty array (not implemented yet)
+/// Get team projects
 async fn get_team_projects(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(team_id): Path<String>,
-) -> Json<ApiResponse<Vec<String>>> {
-    tracing::debug!(user_id = %ctx.user.id, %team_id, "get_team_projects returning empty");
-    ApiResponse::success(vec![])
+) -> Result<Json<ApiResponse<Vec<Project>>>, ErrorResponse> {
+    let pool = state.pool();
+
+    // Get team by ID or slug
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    // Verify user has access to team's workspace
+    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team workspace");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    // Get project IDs and fetch projects
+    let project_ids = TeamRepository::get_project_ids(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team project IDs");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team projects")
+        })?;
+
+    let mut projects = Vec::new();
+    for project_id in &project_ids {
+        if let Ok(Some(project)) = ProjectRepository::fetch_by_id(pool, *project_id).await {
+            projects.push(project);
+        }
+    }
+
+    Ok(ApiResponse::success(projects))
 }
 
 /// Assign project to team - not implemented yet
@@ -276,4 +317,184 @@ async fn assign_project(
 ) -> Result<Json<ApiResponse<TeamProject>>, ErrorResponse> {
     tracing::warn!(user_id = %ctx.user.id, %team_id, "assign_project not implemented");
     Err(ErrorResponse::new(StatusCode::NOT_IMPLEMENTED, "assign project not implemented"))
+}
+
+/// Get team issues
+async fn get_team_issues(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<String>,
+) -> Result<Json<ApiResponse<Vec<TeamIssue>>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team workspace");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let issues = TeamRepository::get_issues(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team issues");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team issues")
+        })?;
+
+    Ok(ApiResponse::success(issues))
+}
+
+/// Get team members
+async fn get_team_members(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<String>,
+) -> Result<Json<ApiResponse<Vec<TeamMember>>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team workspace");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let members = TeamRepository::get_members(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team members");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team members")
+        })?;
+
+    Ok(ApiResponse::success(members))
+}
+
+/// Get team invitations
+async fn get_team_invitations(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<String>,
+) -> Result<Json<ApiResponse<Vec<TeamInvitation>>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team workspace");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let invitations = TeamRepository::get_invitations(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team invitations");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team invitations")
+        })?;
+
+    Ok(ApiResponse::success(invitations))
+}
+
+/// Get team documents
+async fn get_team_documents(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<String>,
+) -> Result<Json<ApiResponse<Vec<TeamDocument>>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team workspace");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let documents = TeamRepository::get_documents(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team documents");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team documents")
+        })?;
+
+    Ok(ApiResponse::success(documents))
+}
+
+/// Get team folders
+async fn get_team_folders(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<String>,
+) -> Result<Json<ApiResponse<Vec<TeamFolder>>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team workspace");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let folders = TeamRepository::get_folders(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team folders");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team folders")
+        })?;
+
+    Ok(ApiResponse::success(folders))
 }
