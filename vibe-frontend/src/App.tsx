@@ -30,6 +30,7 @@ import { Inbox } from '@/pages/Inbox';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { SuperadminRoute } from '@/components/auth/SuperadminRoute';
+import { LandingRedirect } from '@/components/auth/LandingRedirect';
 import { usePostHog } from 'posthog-js/react';
 import { useAuth } from '@/hooks';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
@@ -207,6 +208,16 @@ function AppContent() {
                 element={<PendingApprovalPage />}
               />
               <Route path="/rejected" element={<RejectedPage />} />
+
+              {/* Landing redirect - determines where to send user after sign-in */}
+              <Route
+                path="/landing"
+                element={
+                  <ProtectedRoute>
+                    <LandingRedirect />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Join team via invite link (standalone page) */}
               <Route path="/join" element={<JoinTeam />} />

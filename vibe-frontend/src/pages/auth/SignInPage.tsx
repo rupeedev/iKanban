@@ -19,7 +19,7 @@ export function SignInPage() {
         routing="path"
         path="/sign-in"
         signUpUrl="/sign-up"
-        fallbackRedirectUrl="/projects"
+        fallbackRedirectUrl="/landing"
       />
 
       {/* Back link */}
