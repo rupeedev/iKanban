@@ -18,6 +18,8 @@ use crate::{
     },
 };
 
+use super::error::ApiResponse;
+
 /// Public routes - no authentication required (IKA-238)
 pub fn public_router() -> Router<AppState> {
     Router::new()
@@ -147,14 +149,14 @@ pub struct PlanLimitsResponse {
 /// Get all available plans and their limits (public - no auth required)
 async fn get_all_plans(
     State(state): State<AppState>,
-) -> Result<Json<PlansResponse>, BillingRouteError> {
+) -> Result<Json<ApiResponse<PlansResponse>>, BillingRouteError> {
     let plans = PlanLimits::find_all(state.pool())
         .await
         .map_err(|e| BillingRouteError::Database(e.to_string()))?;
 
     let plan_infos: Vec<PlanInfo> = plans.into_iter().map(|p| p.into()).collect();
 
-    Ok(Json(PlansResponse { plans: plan_infos }))
+    Ok(ApiResponse::success(PlansResponse { plans: plan_infos }))
 }
 
 /// Get current usage for a workspace
@@ -162,7 +164,7 @@ async fn get_workspace_usage(
     State(state): State<AppState>,
     Extension(_ctx): Extension<RequestContext>,
     Query(query): Query<GetUsageRequest>,
-) -> Result<Json<UsageResponse>, BillingRouteError> {
+) -> Result<Json<ApiResponse<UsageResponse>>, BillingRouteError> {
     // Get workspace plan
     let workspace = sqlx::query_as::<_, (Uuid, String)>(
         r#"SELECT id, plan FROM tenant_workspaces WHERE id = $1"#,
@@ -178,7 +180,7 @@ async fn get_workspace_usage(
         .await
         .map_err(|e| BillingRouteError::UsageError(e.to_string()))?;
 
-    Ok(Json(UsageResponse {
+    Ok(ApiResponse::success(UsageResponse {
         workspace_id: query.workspace_id,
         plan: workspace.1,
         usage,
@@ -189,12 +191,12 @@ async fn get_workspace_usage(
 async fn check_workspace_creation(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-) -> Result<Json<WorkspaceCreationCheck>, BillingRouteError> {
+) -> Result<Json<ApiResponse<WorkspaceCreationCheck>>, BillingRouteError> {
     let check = check_workspace_creation_limit_by_uuid(state.pool(), ctx.user.id)
         .await
         .map_err(|e| BillingRouteError::UsageError(e.to_string()))?;
 
-    Ok(Json(check))
+    Ok(ApiResponse::success(check))
 }
 
 // ============================================================================
@@ -402,14 +404,14 @@ fn format_limit(limit: i64, unit: &str) -> String {
 /// Get all plan limits (public endpoint, no auth required)
 async fn get_plan_limits(
     State(state): State<AppState>,
-) -> Result<Json<PlanLimitsResponse>, BillingRouteError> {
+) -> Result<Json<ApiResponse<PlanLimitsResponse>>, BillingRouteError> {
     let plans = PlanLimits::find_all(state.pool())
         .await
         .map_err(|e| BillingRouteError::Database(e.to_string()))?;
 
     let public_plans: Vec<PublicPlanInfo> = plans.iter().map(build_public_plan_info).collect();
 
-    Ok(Json(PlanLimitsResponse {
+    Ok(ApiResponse::success(PlanLimitsResponse {
         plans: public_plans,
     }))
 }

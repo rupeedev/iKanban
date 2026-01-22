@@ -3,12 +3,42 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use serde::{Serialize, Deserialize};
 use serde_json::json;
 
 use crate::{
     db::{identity_errors::IdentityError, projects::ProjectError, tasks::SharedTaskError},
     middleware::usage_limits::UsageLimitError,
 };
+
+/// Standard API response wrapper for frontend compatibility
+/// Frontend expects: { "success": true, "data": ... } or { "success": false, "message": "..." }
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ApiResponse<T> {
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<T>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+impl<T: Serialize> ApiResponse<T> {
+    pub fn success(data: T) -> Json<Self> {
+        Json(Self {
+            success: true,
+            data: Some(data),
+            message: None,
+        })
+    }
+
+    pub fn error(message: impl Into<String>) -> Json<Self> {
+        Json(Self {
+            success: false,
+            data: None,
+            message: Some(message.into()),
+        })
+    }
+}
 
 #[derive(Debug)]
 pub struct ErrorResponse {
