@@ -213,6 +213,7 @@ impl IntoResponse for ClerkAuthError {
 
 /// Request context with the database user, compatible with existing routes
 #[derive(Clone)]
+#[allow(dead_code)] // user field kept for API consistency with RequestContext
 pub struct ClerkRequestContext {
     pub user: crate::db::users::User,
     pub clerk_user_id: String,

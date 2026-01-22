@@ -18,6 +18,7 @@ use crate::{
 };
 
 mod abuse_signals;
+mod admin;
 mod billing;
 mod electric_proxy;
 mod email_verification;
@@ -33,6 +34,7 @@ mod review;
 mod stripe;
 mod superadmins;
 pub mod tasks;
+mod teams;
 mod tenant_workspaces;
 mod tokens;
 mod trust_profiles;
@@ -75,6 +77,8 @@ pub fn router(state: AppState) -> Router {
         .merge(identity::router())
         .merge(projects::router())
         .merge(tasks::router())
+        .merge(teams::router())
+        .merge(admin::router())
         .merge(organizations::router())
         .merge(organization_members::protected_router())
         .merge(oauth::protected_router())
