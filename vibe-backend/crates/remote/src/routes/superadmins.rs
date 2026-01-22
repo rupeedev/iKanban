@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
 use crate::{AppState, auth::RequestContext, db::superadmins::SuperadminRepository};
+use super::error::ApiResponse;
 
 /// Response for the superadmin check endpoint
 #[derive(Debug, Serialize, Deserialize)]
@@ -56,7 +57,7 @@ pub fn protected_router() -> Router<AppState> {
 async fn check_superadmin_status(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-) -> Json<SuperadminCheckResponse> {
+) -> Json<ApiResponse<SuperadminCheckResponse>> {
     let pool = state.pool();
     let repo = SuperadminRepository::new(pool);
 
@@ -69,7 +70,7 @@ async fn check_superadmin_status(
         }
     };
 
-    Json(SuperadminCheckResponse {
+    ApiResponse::success(SuperadminCheckResponse {
         is_superadmin,
         email: ctx.user.email,
     })
@@ -81,7 +82,7 @@ async fn check_superadmin_status(
 async fn get_stats(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-) -> Json<SuperadminStatsResponse> {
+) -> Json<ApiResponse<SuperadminStatsResponse>> {
     let pool = state.pool();
 
     // Get total users count
@@ -108,7 +109,7 @@ async fn get_stats(
         "Superadmin stats retrieved"
     );
 
-    Json(SuperadminStatsResponse {
+    ApiResponse::success(SuperadminStatsResponse {
         pending_registrations,
         approved_today,
         total_users,
@@ -122,7 +123,7 @@ async fn get_stats(
 async fn list_superadmins(
     State(state): State<AppState>,
     Extension(_ctx): Extension<RequestContext>,
-) -> Json<Vec<SuperadminInfo>> {
+) -> Json<ApiResponse<Vec<SuperadminInfo>>> {
     let pool = state.pool();
     let repo = SuperadminRepository::new(pool);
 
@@ -143,5 +144,5 @@ async fn list_superadmins(
         }
     };
 
-    Json(superadmins)
+    ApiResponse::success(superadmins)
 }
