@@ -7,10 +7,11 @@ use axum::{
 use serde::Deserialize;
 use serde_json::Value;
 use tracing::instrument;
-use utils::api::projects::{ListProjectsResponse, RemoteProject};
+use utils::api::projects::RemoteProject;
 use uuid::Uuid;
 
-use super::{error::ErrorResponse, organization_members::ensure_member_access};
+use super::error::{ApiResponse, ErrorResponse};
+use super::organization_members::ensure_member_access;
 use crate::{
     AppState,
     auth::RequestContext,
@@ -45,11 +46,11 @@ async fn list_projects(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(params): Query<ProjectsQuery>,
-) -> Result<Json<ListProjectsResponse>, ErrorResponse> {
+) -> Result<Json<ApiResponse<Vec<RemoteProject>>>, ErrorResponse> {
     let workspace_id = params.workspace_id;
     ensure_member_access(state.pool(), workspace_id, ctx.user.id).await?;
 
-    let projects = match ProjectRepository::list_by_organization(state.pool(), workspace_id).await {
+    let projects: Vec<RemoteProject> = match ProjectRepository::list_by_organization(state.pool(), workspace_id).await {
         Ok(rows) => rows.into_iter().map(to_remote_project).collect(),
         Err(error) => {
             tracing::error!(?error, workspace_id = %workspace_id, "failed to list remote projects");
@@ -60,7 +61,7 @@ async fn list_projects(
         }
     };
 
-    Ok(Json(ListProjectsResponse { projects }))
+    Ok(ApiResponse::success(projects))
 }
 
 #[instrument(
@@ -72,7 +73,7 @@ async fn get_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
-) -> Result<Json<RemoteProject>, ErrorResponse> {
+) -> Result<Json<ApiResponse<RemoteProject>>, ErrorResponse> {
     let record = ProjectRepository::fetch_by_id(state.pool(), project_id)
         .await
         .map_err(|error| {
@@ -83,7 +84,7 @@ async fn get_project(
 
     ensure_member_access(state.pool(), record.organization_id, ctx.user.id).await?;
 
-    Ok(Json(to_remote_project(record)))
+    Ok(ApiResponse::success(to_remote_project(record)))
 }
 
 #[instrument(
@@ -95,7 +96,7 @@ async fn create_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateProjectRequest>,
-) -> Result<Json<RemoteProject>, ErrorResponse> {
+) -> Result<Json<ApiResponse<RemoteProject>>, ErrorResponse> {
     let CreateProjectRequest {
         workspace_id,
         name,
@@ -151,7 +152,7 @@ async fn create_project(
         ));
     }
 
-    Ok(Json(to_remote_project(project)))
+    Ok(ApiResponse::success(to_remote_project(project)))
 }
 
 fn to_remote_project(project: Project) -> RemoteProject {
