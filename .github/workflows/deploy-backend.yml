@@ -38,9 +38,22 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Setup sccache
-        id: sccache
+        id: sccache-setup
         uses: mozilla-actions/sccache-action@v0.0.4
         continue-on-error: true
+
+      - name: Test sccache connectivity
+        id: sccache
+        if: steps.sccache-setup.outcome == 'success'
+        continue-on-error: true
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+        run: |
+          # Test if sccache can actually connect to the GHA cache
+          # This catches transient GHA cache outages that the setup step misses
+          timeout 10 sccache --start-server 2>&1 || exit 1
+          sccache --show-stats 2>&1 || exit 1
+          echo "sccache connectivity OK"
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
@@ -54,12 +67,14 @@ jobs:
         working-directory: vibe-backend
         env:
           SQLX_OFFLINE: "true"
-          # Only use sccache if setup succeeded - prevents transient GHA cache failures from breaking builds
+          # Only use sccache if BOTH setup AND connectivity test passed
           SCCACHE_GHA_ENABLED: ${{ steps.sccache.outcome == 'success' && 'true' || 'false' }}
           RUSTC_WRAPPER: ${{ steps.sccache.outcome == 'success' && 'sccache' || '' }}
         run: |
           if [ "${{ steps.sccache.outcome }}" != "success" ]; then
-            echo "::warning::sccache setup failed, building without cache acceleration"
+            echo "::warning::sccache unavailable (setup: ${{ steps.sccache-setup.outcome }}, test: ${{ steps.sccache.outcome }}), building without cache acceleration"
+          else
+            echo "Building with sccache acceleration"
           fi
           cargo build --release --bin server
 
