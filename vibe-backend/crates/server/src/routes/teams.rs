@@ -22,9 +22,11 @@ use db::{
             CreateTeamInvitation, CreateTeamMember, SyncClerkMember, TeamInvitation,
             TeamInvitationWithTeam, TeamMember, UpdateTeamInvitation, UpdateTeamMemberRole,
         },
+        workspace_usage::UsageAction,
     },
 };
 use deployment::Deployment;
+use remote::middleware::{UsageLimitError, enforce_usage_limit};
 use serde::{Deserialize, Serialize};
 use services::services::document_storage::DocumentStorageService;
 use ts_rs::TS;
@@ -153,6 +155,41 @@ pub async fn create_team(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTeam>,
 ) -> Result<ResponseJson<ApiResponse<Team>>, ApiError> {
+    // Check team limit if workspace is specified (IKA-240)
+    if let Some(workspace_id) = payload.tenant_workspace_id
+        && let Err(e) =
+            enforce_usage_limit(&deployment.db().pool, workspace_id, UsageAction::CreateTeam).await
+    {
+        match e {
+            UsageLimitError::HardLimitExceeded {
+                resource,
+                current,
+                limit,
+                ..
+            } => {
+                tracing::warn!(
+                    workspace_id = %workspace_id,
+                    current = current,
+                    limit = limit,
+                    "Team creation blocked: {} limit exceeded",
+                    resource
+                );
+                return Err(ApiError::TooManyRequests(format!(
+                    "Team limit reached ({}/{}). Upgrade your plan to create more teams.",
+                    current, limit
+                )));
+            }
+            _ => {
+                // Log but don't block on non-limit errors
+                tracing::warn!(
+                    workspace_id = %workspace_id,
+                    error = %e,
+                    "Error checking team limits, allowing creation"
+                );
+            }
+        }
+    }
+
     // Create team in main database
     let team = Team::create(&deployment.db().pool, &payload).await?;
 

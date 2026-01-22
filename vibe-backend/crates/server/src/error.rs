@@ -78,8 +78,8 @@ pub enum ApiError {
     Forbidden(String),
     #[error("Not found: {0}")]
     NotFound(String),
-    #[error("Too many requests")]
-    TooManyRequests,
+    #[error("Too many requests: {0}")]
+    TooManyRequests(String),
 }
 
 impl From<&'static str> for ApiError {
@@ -182,7 +182,7 @@ impl IntoResponse for ApiError {
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
             ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "ForbiddenError"),
             ApiError::NotFound(_) => (StatusCode::NOT_FOUND, "NotFoundError"),
-            ApiError::TooManyRequests => (StatusCode::TOO_MANY_REQUESTS, "TooManyRequests"),
+            ApiError::TooManyRequests(_) => (StatusCode::TOO_MANY_REQUESTS, "TooManyRequests"),
         };
 
         let error_message = match &self {
@@ -260,7 +260,7 @@ impl IntoResponse for ApiError {
             ApiError::Conflict(msg) => msg.clone(),
             ApiError::Forbidden(msg) => msg.clone(),
             ApiError::NotFound(msg) => msg.clone(),
-            ApiError::TooManyRequests => "Too many requests. Please try again later.".to_string(),
+            ApiError::TooManyRequests(msg) => msg.clone(),
             _ => format!("{}: {}", error_type, self),
         };
         let response = ApiResponse::<()>::error(&error_message);

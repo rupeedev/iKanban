@@ -5,13 +5,18 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, put},
 };
-use db::models::tenant_workspace::{
-    AddWorkspaceMember, CreateTenantWorkspace, TenantWorkspace, TenantWorkspaceError,
-    TenantWorkspaceMember, UpdateTenantWorkspace, UpdateWorkspaceMemberRole, WorkspaceMemberRole,
+use db::models::{
+    tenant_workspace::{
+        AddWorkspaceMember, CreateTenantWorkspace, TenantWorkspace, TenantWorkspaceError,
+        TenantWorkspaceMember, UpdateTenantWorkspace, UpdateWorkspaceMemberRole,
+        WorkspaceMemberRole,
+    },
+    workspace_usage::UsageAction,
 };
 use deployment::Deployment;
 use remote::middleware::usage_limits::{
-    check_workspace_creation_limit, track_member_invitation, track_member_removal,
+    check_workspace_creation_limit, enforce_usage_limit, track_member_invitation,
+    track_member_removal,
 };
 use serde::Deserialize;
 use tracing::warn;
@@ -287,9 +292,28 @@ pub async fn add_member(
         }
     }
 
+    // Enforce member limit before adding (IKA-231)
+    enforce_usage_limit(
+        &deployment.db().pool,
+        workspace_id,
+        UsageAction::InviteMember,
+    )
+    .await
+    .map_err(|e| match e {
+        remote::middleware::usage_limits::UsageLimitError::HardLimitExceeded {
+            current,
+            limit,
+            ..
+        } => ApiError::TooManyRequests(format!(
+            "Member limit reached ({}/{}). Upgrade your plan to add more members.",
+            current, limit
+        )),
+        _ => ApiError::BadRequest(format!("Failed to check member limit: {}", e)),
+    })?;
+
     let member = TenantWorkspaceMember::add(&deployment.db().pool, workspace_id, &payload).await?;
 
-    // Track member addition - soft limits (allow but log warnings)
+    // Track member addition - increment usage counter
     if let Err(e) = track_member_invitation(&deployment.db().pool, workspace_id).await {
         warn!(workspace_id = %workspace_id, error = %e, "Failed to track member invitation");
     }
