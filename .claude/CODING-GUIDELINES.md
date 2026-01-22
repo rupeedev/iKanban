@@ -20,6 +20,53 @@ Standards to follow for all code changes. These are based on actual issues caugh
 
 ## Backend (Rust)
 
+### Axum Route Syntax (v0.7+)
+
+**Route parameters use `{param}` not `:param`** - This changed in Axum 0.7.
+
+```rust
+// BAD - Old Axum syntax (causes panic on startup)
+.route("/users/:id", get(get_user))
+.route("/teams/:team_id/members/:member_id", get(get_member))
+
+// GOOD - Current Axum 0.7+ syntax
+.route("/users/{id}", get(get_user))
+.route("/teams/{team_id}/members/{member_id}", get(get_member))
+```
+
+**Error if wrong:** Server panics at startup with:
+`Path segments must not start with ':'. For capture groups, use '{capture}'`
+
+### Multi-Crate Route Parity
+
+**If a route exists in `server` crate, it MUST also exist in `remote` crate** (and vice versa for production routes).
+
+| Crate | Purpose | Routes Needed |
+|-------|---------|---------------|
+| `server` | Local Tauri app | All routes for desktop use |
+| `remote` | Railway production | All routes frontend calls |
+
+**Checklist when adding routes:**
+- [ ] Route added to `server/src/routes/` (if needed locally)
+- [ ] Route added to `remote/src/routes/` (if called by frontend)
+- [ ] Route prefix matches frontend expectations (`/api/` or `/v1/`)
+
+### Route Prefix Consistency
+
+Frontend calls `/api/*` endpoints. Backend must serve them.
+
+```rust
+// GOOD - Serve routes under both prefixes for compatibility
+let api_public = v1_public.clone();
+let api_protected = v1_protected.clone();
+
+Router::new()
+    .nest("/v1", v1_public)
+    .nest("/v1", v1_protected)
+    .nest("/api", api_public)      // Frontend compatibility
+    .nest("/api", api_protected)
+```
+
 ### Imports
 ```rust
 // BAD - unused imports cause warnings
@@ -66,6 +113,58 @@ async fn helper_function() { ... }
 // OPTION 2: Prefix with underscore if needed for future
 #[allow(dead_code)]
 async fn _helper_function() { ... }
+```
+
+### PostgreSQL Migration Idempotency (CRITICAL)
+
+**All migrations MUST be idempotent** - they should succeed whether run once or multiple times.
+
+```sql
+-- BAD - Fails if run twice
+CREATE TABLE users (...);
+CREATE INDEX idx_users_email ON users(email);
+ALTER TABLE users ADD CONSTRAINT valid_email CHECK (...);
+CREATE TRIGGER users_updated_at ...;
+
+-- GOOD - Idempotent patterns
+CREATE TABLE IF NOT EXISTS users (...);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+-- For constraints (no IF NOT EXISTS in Postgres)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'valid_email' AND table_name = 'users'
+    ) THEN
+        ALTER TABLE users ADD CONSTRAINT valid_email CHECK (...);
+    END IF;
+END
+$$;
+
+-- For triggers
+DROP TRIGGER IF EXISTS users_updated_at ON users;
+CREATE TRIGGER users_updated_at ...;
+```
+
+**Common idempotent patterns:**
+
+| DDL Operation | Idempotent Pattern |
+|---------------|-------------------|
+| CREATE TABLE | `CREATE TABLE IF NOT EXISTS` |
+| CREATE INDEX | `CREATE INDEX IF NOT EXISTS` |
+| ADD COLUMN | `ALTER TABLE x ADD COLUMN IF NOT EXISTS` |
+| ADD CONSTRAINT | Wrap in DO block with existence check |
+| CREATE TRIGGER | `DROP TRIGGER IF EXISTS` then `CREATE TRIGGER` |
+| INSERT data | Use `ON CONFLICT DO UPDATE` or `ON CONFLICT DO NOTHING` |
+
+**Never use CONCURRENTLY with IF NOT EXISTS** - PostgreSQL doesn't support it:
+```sql
+-- BAD - Syntax error
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_name ON table(col);
+
+-- GOOD - Use regular CREATE INDEX with IF NOT EXISTS
+CREATE INDEX IF NOT EXISTS idx_name ON table(col);
 ```
 
 ### Pre-Commit Checklist
@@ -646,6 +745,10 @@ components/
 | File under 400 lines | Manual | Manual |
 | Linter passes | `cargo clippy` | `pnpm lint` |
 | Types pass | `cargo check` | `pnpm check` |
+| **Route uses `{param}` not `:param`** | Code review | N/A |
+| **Routes in both server + remote crates** | Code review | N/A |
+| **Route prefix matches frontend (`/api/`)** | Code review | N/A |
+| **Migrations use idempotent patterns** | Code review | N/A |
 | **No direct API calls in useEffect** | N/A | Code review |
 | **useQuery uses global defaults (don't override)** | N/A | Code review |
 | **invalidateQueries uses refetchType: 'none'** | N/A | Code review |
@@ -674,6 +777,10 @@ components/
 | **IKA-148** | Optimistic update with server-computed data | Invalidate + refetch if server transforms data |
 | **IKA-234** | Tooltip without TooltipProvider | Always wrap Tooltip in TooltipProvider |
 | **VIB-70** | Migration file modified | Never modify existing migrations |
+| **IKA-215** | Non-idempotent migrations | Use IF NOT EXISTS, DO blocks, DROP IF EXISTS |
+| **IKA-215** | Axum `:param` syntax panic | Use `{param}` syntax (Axum 0.7+) |
+| **IKA-215** | Route prefix mismatch (`/v1/` vs `/api/`) | Serve under both prefixes |
+| **IKA-215** | Routes missing in remote crate | Ensure parity between server/remote crates |
 
 ### Rate Limiting Prevention (IKA-76, IKA-77, IKA-83)
 
@@ -701,3 +808,24 @@ components/
 1. Always wrap `Tooltip` components in `TooltipProvider`
 2. Check shadcn/ui docs for provider requirements when using new components
 3. Runtime errors like "X must be used within Y" indicate missing provider
+
+### Backend Deployment Prevention (IKA-215)
+
+**Migration Idempotency:**
+1. All migrations MUST use idempotent patterns
+2. Use `IF NOT EXISTS` for tables, indexes, columns
+3. Use DO blocks with existence checks for constraints
+4. Use `DROP TRIGGER IF EXISTS` before `CREATE TRIGGER`
+5. Use `ON CONFLICT` for INSERT statements
+
+**Route Configuration:**
+1. Use `{param}` not `:param` for route parameters (Axum 0.7+)
+2. Serve routes under both `/v1/` and `/api/` prefixes
+3. Ensure route modules exist in both `server` and `remote` crates
+4. Verify new endpoints work after deployment: `curl https://api.scho1ar.com/api/your-endpoint`
+
+**Deployment Verification Checklist:**
+- [ ] `cargo check --workspace` passes
+- [ ] Server starts locally without panics
+- [ ] New endpoints respond correctly after deploy
+- [ ] Frontend can reach all expected endpoints
