@@ -457,6 +457,119 @@ Added "Context Compaction Recovery" section to `.claude/WORKFLOW.md`:
 
 ---
 
+## Incident: IKA-229 Slow Implementation Due to Avoidable Errors (2026-01-22)
+
+### What Happened
+
+A task that should have taken 15-20 minutes took 43 minutes due to:
+1. Multiple compile errors from incorrect type/field assumptions
+2. Running slow clippy instead of faster cargo check
+3. Rust toolchain compile times
+4. Context gathering that could have been avoided
+
+### Root Causes
+
+#### 1. Wrong ApiError Variant
+**Assumed `ApiError::Internal` existed, but it doesn't.**
+
+```rust
+// BROKEN - ApiError::Internal doesn't exist:
+return Err(ApiError::Internal("message".to_string()));
+
+// FIXED - Use BadRequest or map to existing variant:
+return Err(ApiError::BadRequest("message".to_string()));
+```
+
+**Prevention:** Check `crates/server/src/error.rs` for available `ApiError` variants before using them.
+
+#### 2. Wrong RequestContext Field Access
+**Assumed `ctx.user_id` existed, but it's actually `ctx.user.id` (a UUID, not String).**
+
+```rust
+// BROKEN - user_id doesn't exist on RequestContext:
+let user_id = ctx.user_id;
+
+// FIXED - Access nested user.id (which is UUID):
+let user_id = ctx.user.id;  // This is a Uuid, not a String!
+```
+
+**Additional issue:** The user.id is a UUID, but workspace members use `clerk_user_id` (String). Had to create a UUID variant function that looks up clerk_user_id via oauth_accounts table.
+
+**Prevention:**
+- Check `crates/remote/src/auth.rs` for `RequestContext` structure
+- Remember: `ctx.user.id` = internal UUID, need oauth_accounts lookup for clerk_user_id
+
+#### 3. Running Clippy Instead of Cargo Check
+**Clippy takes 3-5x longer than cargo check.**
+
+| Command | Time | Use Case |
+|---------|------|----------|
+| `cargo check -p crate` | ~1 min | Verify code compiles |
+| `cargo clippy --all-targets` | 5+ min | Full lint (run once at end) |
+
+**Prevention:** Use `cargo check -p <crate>` during iteration. Run clippy only once before commit.
+
+#### 4. SQLx Cache Regeneration
+**Each crate takes 3-4 minutes. Run in parallel.**
+
+```bash
+# SLOW - Sequential:
+cd crates/db && cargo sqlx prepare
+cd crates/remote && cargo sqlx prepare
+
+# FAST - Parallel (use background tasks):
+# Run both simultaneously, check notifications for completion
+```
+
+**Prevention:** Always run SQLx prepare for multiple crates in parallel using background tasks.
+
+#### 5. Excessive Context Gathering
+**Read 6+ files when FILE-MAP.md had the paths.**
+
+**Prevention:**
+- Read FILE-MAP.md first - it has exact paths
+- Use targeted reads, not exploration
+- For billing/limits code: `crates/remote/src/middleware/usage_limits.rs`
+
+### Quick Reference - Remote Crate Types
+
+| Type | Location | Notes |
+|------|----------|-------|
+| `RequestContext` | `crates/remote/src/auth.rs` | Has `user: User` not `user_id` |
+| `User` | `crates/remote/src/auth.rs` | Has `id: Uuid`, `clerk_id: String` |
+| `AppState` | `crates/remote/src/lib.rs` | Use `state.pool()` for database |
+| `UsageLimitError` | `crates/remote/src/middleware/usage_limits.rs` | For limit check errors |
+
+### Quick Reference - Server Crate Types
+
+| Type | Location | Notes |
+|------|----------|-------|
+| `ApiError` | `crates/server/src/error.rs` | Variants: BadRequest, NotFound, Forbidden, Database, etc. (NO Internal!) |
+| `DeploymentImpl` | `crates/server/src/lib.rs` | Use `deployment.db().pool` for database |
+
+### Prevention Checklist
+
+Before implementing billing/limits features:
+
+- [ ] **Check ApiError variants** in `crates/server/src/error.rs`
+- [ ] **Check RequestContext structure** in `crates/remote/src/auth.rs`
+- [ ] **Use `cargo check -p <crate>`** not clippy during iteration
+- [ ] **Run SQLx prepare in parallel** for multiple crates
+- [ ] **Read FILE-MAP.md** instead of exploring codebase
+
+### Time Breakdown (What Went Wrong)
+
+| Activity | Time | Should Be |
+|----------|------|-----------|
+| Context gathering | 10 min | 2 min (use FILE-MAP.md) |
+| Implementation | 8 min | 8 min |
+| Error fixes (ApiError, ctx.user) | 8 min | 0 min (know the types) |
+| Cargo check/clippy | 10 min | 3 min (use check, not clippy) |
+| SQLx cache | 7 min | 4 min (run parallel) |
+| **Total** | **43 min** | **17 min** |
+
+---
+
 ## Template for Future Incidents
 
 ### Incident: [Title] (Date)
