@@ -1,9 +1,23 @@
-CREATE ROLE electric_sync WITH LOGIN REPLICATION;
+-- Create role if not exists (PostgreSQL doesn't have CREATE ROLE IF NOT EXISTS)
+DO $$
+BEGIN
+    CREATE ROLE electric_sync WITH LOGIN REPLICATION;
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
 
 GRANT CONNECT ON DATABASE remote TO electric_sync;
 GRANT USAGE ON SCHEMA public TO electric_sync;
 
-CREATE PUBLICATION electric_publication_default;
+-- Create publication if not exists
+DO $$
+BEGIN
+    CREATE PUBLICATION electric_publication_default;
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
 
 CREATE OR REPLACE FUNCTION electric_sync_table(p_schema text, p_table text)
 RETURNS void
