@@ -20,20 +20,10 @@ CREATE TABLE IF NOT EXISTS plan_limits (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Insert default plan limits
-INSERT INTO plan_limits (plan_name, max_teams, max_projects, max_members, max_storage_gb, max_ai_requests_per_month)
-VALUES
-    ('free', 2, 5, 3, 1, 50),
-    ('starter', 5, 20, 10, 10, 500),
-    ('pro', 20, 100, 50, 100, 5000),
-    ('enterprise', -1, -1, -1, -1, -1)
-ON CONFLICT (plan_name) DO UPDATE SET
-    max_teams = EXCLUDED.max_teams,
-    max_projects = EXCLUDED.max_projects,
-    max_members = EXCLUDED.max_members,
-    max_storage_gb = EXCLUDED.max_storage_gb,
-    max_ai_requests_per_month = EXCLUDED.max_ai_requests_per_month,
-    updated_at = NOW();
+-- NOTE: Not inserting default plan limits here
+-- The table already has data with plan names: 'hobby', 'starter', 'pro'
+-- These were inserted by migration 20260119000000
+-- The CHECK constraint valid_plan_name only allows these values
 
 -- Index for plan lookups
 CREATE INDEX IF NOT EXISTS idx_plan_limits_plan_name ON plan_limits(plan_name);

@@ -44,8 +44,19 @@ ON CONFLICT (plan_name) DO UPDATE SET
     updated_at = NOW();
 
 -- Step 6: Add new constraint for valid plan names (hobby, starter, pro)
-ALTER TABLE plan_limits ADD CONSTRAINT valid_plan_name
-    CHECK (plan_name IN ('hobby', 'starter', 'pro'));
+-- Use DO block to check if constraint exists first (idempotent)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'valid_plan_name'
+        AND table_name = 'plan_limits'
+    ) THEN
+        ALTER TABLE plan_limits ADD CONSTRAINT valid_plan_name
+            CHECK (plan_name IN ('hobby', 'starter', 'pro'));
+    END IF;
+END
+$$;
 
 -- Step 7: Add comment for new column
 COMMENT ON COLUMN plan_limits.max_workspaces IS 'Maximum workspaces allowed per plan';

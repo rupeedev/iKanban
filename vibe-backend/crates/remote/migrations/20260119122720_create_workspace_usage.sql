@@ -47,6 +47,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if exists to make migration idempotent
+DROP TRIGGER IF EXISTS workspace_usage_updated_at ON workspace_usage;
+
 CREATE TRIGGER workspace_usage_updated_at
     BEFORE UPDATE ON workspace_usage
     FOR EACH ROW
