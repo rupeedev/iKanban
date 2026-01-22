@@ -76,7 +76,7 @@ jobs:
           else
             echo "Building with sccache acceleration"
           fi
-          cargo build --release --bin server
+          cargo build --release --bin remote-server
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -91,7 +91,7 @@ jobs:
         working-directory: vibe-backend
         run: |
           mkdir -p docker-build
-          cp target/release/server docker-build/
+          cp target/release/remote-server docker-build/server
           cp docker-entrypoint.sh docker-build/
           cp Dockerfile.runtime docker-build/Dockerfile
 

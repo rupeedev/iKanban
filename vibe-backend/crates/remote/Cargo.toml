@@ -4,6 +4,10 @@ version = "0.0.142"
 edition = "2024"
 publish = false
 
+[[bin]]
+name = "remote-server"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = { workspace = true }
 # Use db_crate alias to avoid shadowing local pub mod db (see lib.rs line 5)
