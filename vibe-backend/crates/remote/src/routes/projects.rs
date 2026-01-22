@@ -19,12 +19,12 @@ use crate::{
 
 #[derive(Debug, Deserialize)]
 struct ProjectsQuery {
-    organization_id: Uuid,
+    workspace_id: Uuid,
 }
 
 #[derive(Debug, Deserialize)]
 struct CreateProjectRequest {
-    organization_id: Uuid,
+    workspace_id: Uuid,
     name: String,
     #[serde(default)]
     metadata: Value,
@@ -39,20 +39,20 @@ pub fn router() -> Router<AppState> {
 #[instrument(
     name = "projects.list_projects",
     skip(state, ctx, params),
-    fields(org_id = %params.organization_id, user_id = %ctx.user.id)
+    fields(workspace_id = %params.workspace_id, user_id = %ctx.user.id)
 )]
 async fn list_projects(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(params): Query<ProjectsQuery>,
 ) -> Result<Json<ListProjectsResponse>, ErrorResponse> {
-    let target_org = params.organization_id;
-    ensure_member_access(state.pool(), target_org, ctx.user.id).await?;
+    let workspace_id = params.workspace_id;
+    ensure_member_access(state.pool(), workspace_id, ctx.user.id).await?;
 
-    let projects = match ProjectRepository::list_by_organization(state.pool(), target_org).await {
+    let projects = match ProjectRepository::list_by_organization(state.pool(), workspace_id).await {
         Ok(rows) => rows.into_iter().map(to_remote_project).collect(),
         Err(error) => {
-            tracing::error!(?error, org_id = %target_org, "failed to list remote projects");
+            tracing::error!(?error, workspace_id = %workspace_id, "failed to list remote projects");
             return Err(ErrorResponse::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "failed to list projects",
@@ -89,7 +89,7 @@ async fn get_project(
 #[instrument(
     name = "projects.create_project",
     skip(state, ctx, payload),
-    fields(user_id = %ctx.user.id, org_id = %payload.organization_id)
+    fields(user_id = %ctx.user.id, workspace_id = %payload.workspace_id)
 )]
 async fn create_project(
     State(state): State<AppState>,
@@ -97,10 +97,11 @@ async fn create_project(
     Json(payload): Json<CreateProjectRequest>,
 ) -> Result<Json<RemoteProject>, ErrorResponse> {
     let CreateProjectRequest {
-        organization_id,
+        workspace_id,
         name,
         metadata,
     } = payload;
+    let organization_id = workspace_id; // Alias for existing infrastructure
 
     ensure_member_access(state.pool(), organization_id, ctx.user.id).await?;
 
