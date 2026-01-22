@@ -194,6 +194,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS trg_activity_notify ON activity;
 CREATE TRIGGER trg_activity_notify
     AFTER INSERT ON activity
     FOR EACH ROW
@@ -286,31 +287,37 @@ CREATE INDEX IF NOT EXISTS idx_oauth_handoffs_status
 CREATE INDEX IF NOT EXISTS idx_oauth_handoffs_user
     ON oauth_handoffs (user_id);
 
+DROP TRIGGER IF EXISTS trg_organizations_updated_at ON organizations;
 CREATE TRIGGER trg_organizations_updated_at
     BEFORE UPDATE ON organizations
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
+DROP TRIGGER IF EXISTS trg_users_updated_at ON users;
 CREATE TRIGGER trg_users_updated_at
     BEFORE UPDATE ON users
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
+DROP TRIGGER IF EXISTS trg_shared_tasks_updated_at ON shared_tasks;
 CREATE TRIGGER trg_shared_tasks_updated_at
     BEFORE UPDATE ON shared_tasks
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
+DROP TRIGGER IF EXISTS trg_org_invites_updated_at ON organization_invitations;
 CREATE TRIGGER trg_org_invites_updated_at
     BEFORE UPDATE ON organization_invitations
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
+DROP TRIGGER IF EXISTS trg_oauth_accounts_updated_at ON oauth_accounts;
 CREATE TRIGGER trg_oauth_accounts_updated_at
     BEFORE UPDATE ON oauth_accounts
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
+DROP TRIGGER IF EXISTS trg_oauth_handoffs_updated_at ON oauth_handoffs;
 CREATE TRIGGER trg_oauth_handoffs_updated_at
     BEFORE UPDATE ON oauth_handoffs
     FOR EACH ROW
@@ -326,6 +333,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_auth_sessions_last_used_at ON auth_sessions;
 CREATE TRIGGER trg_auth_sessions_last_used_at
 BEFORE UPDATE ON auth_sessions
 FOR EACH ROW
