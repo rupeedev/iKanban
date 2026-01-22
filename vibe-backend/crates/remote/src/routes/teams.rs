@@ -1,9 +1,4 @@
-//! Teams routes - Stub implementation for frontend compatibility
-//!
-//! These endpoints return empty/default data to prevent 404 errors.
-//! TODO: Implement actual team management when the feature is needed.
-
-#![allow(dead_code)] // Stub implementation - fields used for API contract
+//! Teams routes - Real implementation using database
 
 use axum::{
     Extension, Json, Router,
@@ -12,19 +7,12 @@ use axum::{
     routing::get,
 };
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 use uuid::Uuid;
 
-use crate::{AppState, auth::RequestContext};
-use super::error::ApiResponse;
-
-#[derive(Debug, Serialize)]
-pub struct Team {
-    pub id: Uuid,
-    pub workspace_id: Uuid,
-    pub name: String,
-    pub description: Option<String>,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-}
+use crate::{AppState, auth::RequestContext, db::teams::{Team, TeamRepository}};
+use super::error::{ApiResponse, ErrorResponse};
+use super::organization_members::ensure_member_access;
 
 #[derive(Debug, Deserialize)]
 pub struct ListTeamsQuery {
@@ -32,16 +20,23 @@ pub struct ListTeamsQuery {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct CreateTeamRequest {
     pub workspace_id: Uuid,
     pub name: String,
-    pub description: Option<String>,
+    pub slug: String,
+    pub identifier: Option<String>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateTeamRequest {
     pub name: Option<String>,
-    pub description: Option<String>,
+    pub identifier: Option<String>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+    pub document_storage_path: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -68,74 +63,125 @@ pub fn router() -> Router<AppState> {
         )
 }
 
-/// List teams - returns empty array (stub)
+/// List teams - returns teams from database
+#[instrument(
+    name = "teams.list_teams",
+    skip(state, ctx, params),
+    fields(user_id = %ctx.user.id)
+)]
 async fn list_teams(
-    State(_state): State<AppState>,
-    Extension(_ctx): Extension<RequestContext>,
-    Query(_params): Query<ListTeamsQuery>,
-) -> Json<ApiResponse<Vec<Team>>> {
-    // Stub: return empty array
-    ApiResponse::success(vec![])
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Query(params): Query<ListTeamsQuery>,
+) -> Result<Json<ApiResponse<Vec<Team>>>, ErrorResponse> {
+    let teams = match params.workspace_id {
+        Some(workspace_id) => {
+            // Verify user has access to this workspace
+            ensure_member_access(state.pool(), workspace_id, ctx.user.id).await?;
+
+            TeamRepository::list_by_workspace(state.pool(), workspace_id)
+                .await
+                .map_err(|error| {
+                    tracing::error!(?error, %workspace_id, "failed to list teams");
+                    ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list teams")
+                })?
+        }
+        None => {
+            // No workspace filter - return all teams (for now)
+            // In production, this should probably be restricted
+            TeamRepository::list_all(state.pool())
+                .await
+                .map_err(|error| {
+                    tracing::error!(?error, "failed to list all teams");
+                    ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list teams")
+                })?
+        }
+    };
+
+    Ok(ApiResponse::success(teams))
 }
 
-/// Get a specific team - returns 404 (stub)
+/// Get a specific team
+#[instrument(
+    name = "teams.get_team",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, team_id = %team_id)
+)]
 async fn get_team(
-    State(_state): State<AppState>,
-    Extension(_ctx): Extension<RequestContext>,
-    Path(_team_id): Path<Uuid>,
-) -> Result<Json<ApiResponse<Team>>, StatusCode> {
-    // Stub: team not found
-    Err(StatusCode::NOT_FOUND)
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<Team>>, ErrorResponse> {
+    let team = TeamRepository::get_by_id(state.pool(), team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    // Verify user has access to team's workspace
+    if let Some(workspace_id) = TeamRepository::workspace_id(state.pool(), team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team workspace");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+    {
+        ensure_member_access(state.pool(), workspace_id, ctx.user.id).await?;
+    }
+
+    Ok(ApiResponse::success(team))
 }
 
-/// Create a team - not implemented (stub)
+/// Create a team - not implemented yet
 async fn create_team(
     State(_state): State<AppState>,
-    Extension(_ctx): Extension<RequestContext>,
+    Extension(ctx): Extension<RequestContext>,
     Json(_payload): Json<CreateTeamRequest>,
-) -> Result<Json<ApiResponse<Team>>, StatusCode> {
-    // Stub: not implemented
-    Err(StatusCode::NOT_IMPLEMENTED)
+) -> Result<Json<ApiResponse<Team>>, ErrorResponse> {
+    tracing::warn!(user_id = %ctx.user.id, "create_team not implemented");
+    Err(ErrorResponse::new(StatusCode::NOT_IMPLEMENTED, "create team not implemented"))
 }
 
-/// Update a team - not implemented (stub)
+/// Update a team - not implemented yet
 async fn update_team(
     State(_state): State<AppState>,
-    Extension(_ctx): Extension<RequestContext>,
-    Path(_team_id): Path<Uuid>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<Uuid>,
     Json(_payload): Json<UpdateTeamRequest>,
-) -> Result<Json<ApiResponse<Team>>, StatusCode> {
-    // Stub: not implemented
-    Err(StatusCode::NOT_IMPLEMENTED)
+) -> Result<Json<ApiResponse<Team>>, ErrorResponse> {
+    tracing::warn!(user_id = %ctx.user.id, %team_id, "update_team not implemented");
+    Err(ErrorResponse::new(StatusCode::NOT_IMPLEMENTED, "update team not implemented"))
 }
 
-/// Delete a team - not implemented (stub)
+/// Delete a team - not implemented yet
 async fn delete_team(
     State(_state): State<AppState>,
-    Extension(_ctx): Extension<RequestContext>,
-    Path(_team_id): Path<Uuid>,
-) -> Result<StatusCode, StatusCode> {
-    // Stub: not implemented
-    Err(StatusCode::NOT_IMPLEMENTED)
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<Uuid>,
+) -> Result<StatusCode, ErrorResponse> {
+    tracing::warn!(user_id = %ctx.user.id, %team_id, "delete_team not implemented");
+    Err(ErrorResponse::new(StatusCode::NOT_IMPLEMENTED, "delete team not implemented"))
 }
 
-/// Get team projects - returns empty array (stub)
+/// Get team projects - returns empty array (not implemented yet)
 async fn get_team_projects(
     State(_state): State<AppState>,
-    Extension(_ctx): Extension<RequestContext>,
-    Path(_team_id): Path<Uuid>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<Uuid>,
 ) -> Json<ApiResponse<Vec<String>>> {
-    // Stub: return empty array
+    tracing::debug!(user_id = %ctx.user.id, %team_id, "get_team_projects returning empty");
     ApiResponse::success(vec![])
 }
 
-/// Assign project to team - not implemented (stub)
+/// Assign project to team - not implemented yet
 async fn assign_project(
     State(_state): State<AppState>,
-    Extension(_ctx): Extension<RequestContext>,
-    Path(_team_id): Path<Uuid>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<Uuid>,
     Json(_payload): Json<TeamProjectAssignment>,
-) -> Result<Json<ApiResponse<TeamProject>>, StatusCode> {
-    // Stub: not implemented
-    Err(StatusCode::NOT_IMPLEMENTED)
+) -> Result<Json<ApiResponse<TeamProject>>, ErrorResponse> {
+    tracing::warn!(user_id = %ctx.user.id, %team_id, "assign_project not implemented");
+    Err(ErrorResponse::new(StatusCode::NOT_IMPLEMENTED, "assign project not implemented"))
 }
