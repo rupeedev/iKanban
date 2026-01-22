@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{AppState, auth::RequestContext};
+use super::error::ApiResponse;
 
 #[derive(Debug, Serialize)]
 pub struct Team {
@@ -72,9 +73,9 @@ async fn list_teams(
     State(_state): State<AppState>,
     Extension(_ctx): Extension<RequestContext>,
     Query(_params): Query<ListTeamsQuery>,
-) -> Json<Vec<Team>> {
+) -> Json<ApiResponse<Vec<Team>>> {
     // Stub: return empty array
-    Json(vec![])
+    ApiResponse::success(vec![])
 }
 
 /// Get a specific team - returns 404 (stub)
@@ -82,7 +83,7 @@ async fn get_team(
     State(_state): State<AppState>,
     Extension(_ctx): Extension<RequestContext>,
     Path(_team_id): Path<Uuid>,
-) -> Result<Json<Team>, StatusCode> {
+) -> Result<Json<ApiResponse<Team>>, StatusCode> {
     // Stub: team not found
     Err(StatusCode::NOT_FOUND)
 }
@@ -92,7 +93,7 @@ async fn create_team(
     State(_state): State<AppState>,
     Extension(_ctx): Extension<RequestContext>,
     Json(_payload): Json<CreateTeamRequest>,
-) -> Result<Json<Team>, StatusCode> {
+) -> Result<Json<ApiResponse<Team>>, StatusCode> {
     // Stub: not implemented
     Err(StatusCode::NOT_IMPLEMENTED)
 }
@@ -103,7 +104,7 @@ async fn update_team(
     Extension(_ctx): Extension<RequestContext>,
     Path(_team_id): Path<Uuid>,
     Json(_payload): Json<UpdateTeamRequest>,
-) -> Result<Json<Team>, StatusCode> {
+) -> Result<Json<ApiResponse<Team>>, StatusCode> {
     // Stub: not implemented
     Err(StatusCode::NOT_IMPLEMENTED)
 }
@@ -123,9 +124,9 @@ async fn get_team_projects(
     State(_state): State<AppState>,
     Extension(_ctx): Extension<RequestContext>,
     Path(_team_id): Path<Uuid>,
-) -> Json<Vec<String>> {
+) -> Json<ApiResponse<Vec<String>>> {
     // Stub: return empty array
-    Json(vec![])
+    ApiResponse::success(vec![])
 }
 
 /// Assign project to team - not implemented (stub)
@@ -134,7 +135,7 @@ async fn assign_project(
     Extension(_ctx): Extension<RequestContext>,
     Path(_team_id): Path<Uuid>,
     Json(_payload): Json<TeamProjectAssignment>,
-) -> Result<Json<TeamProject>, StatusCode> {
+) -> Result<Json<ApiResponse<TeamProject>>, StatusCode> {
     // Stub: not implemented
     Err(StatusCode::NOT_IMPLEMENTED)
 }
