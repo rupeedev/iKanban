@@ -17,7 +17,7 @@ use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header, jw
 use reqwest::Client;
 use serde::Deserialize;
 use tokio::sync::RwLock;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -70,11 +70,21 @@ impl ClerkAuthState {
         let clerk_domain =
             std::env::var("CLERK_DOMAIN").unwrap_or_else(|_| "clerk.accounts.dev".to_string());
 
+        let issuer = format!("https://{}", clerk_domain);
+        let jwks_url = format!("https://{}/.well-known/jwks.json", clerk_domain);
+
+        info!(
+            clerk_domain = %clerk_domain,
+            issuer = %issuer,
+            jwks_url = %jwks_url,
+            "Clerk auth initialized"
+        );
+
         Self {
             http_client: Client::new(),
             jwks_cache: RwLock::new(None),
-            clerk_issuer: format!("https://{}", clerk_domain),
-            jwks_url: format!("https://{}/.well-known/jwks.json", clerk_domain),
+            clerk_issuer: issuer,
+            jwks_url,
             cache_duration: Duration::from_secs(3600), // 1 hour cache
         }
     }
@@ -124,25 +134,27 @@ impl ClerkAuthState {
     pub async fn validate_token(&self, token: &str) -> Result<ClerkUser, ClerkAuthError> {
         // Decode header to get the key ID (kid)
         let header = decode_header(token).map_err(|e| {
-            debug!("Invalid JWT header: {}", e);
+            warn!("Clerk: Invalid JWT header: {}", e);
             ClerkAuthError::InvalidToken
         })?;
 
         let kid = header.kid.ok_or_else(|| {
-            debug!("JWT missing kid");
+            warn!("Clerk: JWT missing kid header");
             ClerkAuthError::InvalidToken
         })?;
+
+        debug!(kid = %kid, "Clerk: Validating token with kid");
 
         // Get JWKS and find the matching key
         let jwks = self.get_jwks().await?;
         let jwk = jwks.find(&kid).ok_or_else(|| {
-            debug!("Key {} not found in JWKS", kid);
+            warn!(kid = %kid, "Clerk: Key not found in JWKS");
             ClerkAuthError::KeyNotFound
         })?;
 
         // Build decoding key from JWK
         let decoding_key = DecodingKey::from_jwk(jwk).map_err(|e| {
-            error!("Failed to create decoding key: {}", e);
+            error!("Clerk: Failed to create decoding key: {}", e);
             ClerkAuthError::InvalidKey
         })?;
 
@@ -153,7 +165,11 @@ impl ClerkAuthState {
 
         // Decode and validate token
         let token_data = decode::<ClerkClaims>(token, &decoding_key, &validation).map_err(|e| {
-            debug!("Token validation failed: {}", e);
+            warn!(
+                expected_issuer = %self.clerk_issuer,
+                error = %e,
+                "Clerk: Token validation failed"
+            );
             ClerkAuthError::InvalidToken
         })?;
 
