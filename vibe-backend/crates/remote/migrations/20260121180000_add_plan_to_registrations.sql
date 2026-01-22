@@ -12,10 +12,20 @@ ADD COLUMN IF NOT EXISTS requested_workspace_name TEXT;
 CREATE INDEX IF NOT EXISTS idx_user_registrations_selected_plan
 ON user_registrations(selected_plan);
 
--- Add constraint for valid plan names (matches plan_limits table)
-ALTER TABLE user_registrations
-ADD CONSTRAINT valid_registration_plan
-CHECK (selected_plan IN ('hobby', 'starter', 'pro'));
+-- Add constraint for valid plan names (idempotent)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'valid_registration_plan'
+        AND table_name = 'user_registrations'
+    ) THEN
+        ALTER TABLE user_registrations
+        ADD CONSTRAINT valid_registration_plan
+        CHECK (selected_plan IN ('hobby', 'starter', 'pro'));
+    END IF;
+END
+$$;
 
 -- Add comments for documentation
 COMMENT ON COLUMN user_registrations.selected_plan IS 'Plan selected during registration: hobby, starter, or pro';
