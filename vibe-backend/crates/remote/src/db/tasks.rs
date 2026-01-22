@@ -361,7 +361,8 @@ impl<'a> SharedTaskRepository<'a> {
         task_ids: &[Uuid],
         user_id: Uuid,
     ) -> Result<Vec<Uuid>, SharedTaskError> {
-        // Check membership in both tenant_workspace_members (current) and organization_member_metadata (deprecated)
+        // Check membership using email as the common key between users table and tenant_workspace_members
+        // tenant_workspace_members stores Clerk IDs, but we receive database UUIDs from auth
         let tasks = sqlx::query!(
             r#"
             SELECT t.id
@@ -371,18 +372,18 @@ impl<'a> SharedTaskRepository<'a> {
               AND (
                 EXISTS (
                     SELECT 1 FROM tenant_workspace_members twm
+                    JOIN users u ON twm.email = u.email
                     WHERE twm.tenant_workspace_id = t.organization_id
-                      AND twm.user_id = $2
+                      AND u.id = $2
                 )
                 OR EXISTS (
                     SELECT 1 FROM organization_member_metadata om
                     WHERE om.organization_id = t.organization_id
-                      AND om.user_id = $3
+                      AND om.user_id = $2
                 )
               )
             "#,
             task_ids,
-            user_id.to_string(),
             user_id
         )
         .fetch_all(self.pool)

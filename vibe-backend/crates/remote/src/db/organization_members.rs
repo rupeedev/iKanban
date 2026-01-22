@@ -58,19 +58,21 @@ pub async fn is_member<'a, E>(
 where
     E: Executor<'a, Database = Postgres>,
 {
-    // Check both tenant_workspace_members (current) and organization_member_metadata (deprecated)
+    // Check membership using email as the common key between users table and tenant_workspace_members
+    // tenant_workspace_members stores Clerk IDs, but we receive database UUIDs from auth
+    // So we join on email to find the correct membership
     let exists = sqlx::query_scalar!(
         r#"
         SELECT EXISTS(
-            SELECT 1 FROM tenant_workspace_members
-            WHERE tenant_workspace_id = $1 AND user_id = $2
+            SELECT 1 FROM tenant_workspace_members twm
+            JOIN users u ON twm.email = u.email
+            WHERE twm.tenant_workspace_id = $1 AND u.id = $2
         ) OR EXISTS(
             SELECT 1 FROM organization_member_metadata
-            WHERE organization_id = $1 AND user_id = $3
+            WHERE organization_id = $1 AND user_id = $2
         ) AS "exists!"
         "#,
         organization_id,
-        user_id.to_string(),
         user_id
     )
     .fetch_one(executor)
