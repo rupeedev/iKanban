@@ -86,7 +86,10 @@ async fn proxy_table(
     electric_params: &[String],
 ) -> Result<Response, ProxyError> {
     // Build the Electric URL
-    let mut origin_url = url::Url::parse(&state.config.electric_url)
+    let electric_url = state.config.electric_url.as_ref().ok_or_else(|| {
+        ProxyError::InvalidConfig("ELECTRIC_URL not configured".to_string())
+    })?;
+    let mut origin_url = url::Url::parse(electric_url)
         .map_err(|e| ProxyError::InvalidConfig(format!("invalid electric_url: {e}")))?;
 
     origin_url.set_path("/v1/shape");
