@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE email_verifications\n               SET verified_at = NULL\n               WHERE user_id = $1 AND email = $2 AND verified_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dfe6904487584db46a175713489262367a0867f1e2eb9a0a0a01274c7b84df52"
+}

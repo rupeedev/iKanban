@@ -1,0 +1,124 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_trust_profiles\n               SET members_invited = members_invited + 1,\n                   updated_at = NOW()\n               WHERE user_id = $1\n               RETURNING id as \"id!: Uuid\",\n                         user_id,\n                         trust_level,\n                         email_verified,\n                         email_verified_at as \"email_verified_at: DateTime<Utc>\",\n                         account_age_days,\n                         total_tasks_created,\n                         members_invited,\n                         is_flagged,\n                         flagged_reason,\n                         flagged_at as \"flagged_at: DateTime<Utc>\",\n                         flagged_by,\n                         is_banned,\n                         banned_at as \"banned_at: DateTime<Utc>\",\n                         banned_by,\n                         ban_reason,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "trust_level",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "email_verified",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "email_verified_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "account_age_days",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "total_tasks_created",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "members_invited",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "is_flagged",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "flagged_reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "flagged_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "flagged_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "is_banned",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 13,
+        "name": "banned_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "banned_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "ban_reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 17,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "3d093ec8d2ad217295b4e1711fd5a3094870d612c0a1f1539d63d1fff406b292"
+}

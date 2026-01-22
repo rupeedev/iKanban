@@ -1,7 +1,7 @@
 /**
- * Billing hooks for subscription management (IKA-182, IKA-206)
+ * Billing hooks for subscription management (IKA-182, IKA-206, IKA-229)
  * TanStack Query hooks for plan limits, usage, and subscription management
- * With upgrade/downgrade flow support
+ * With upgrade/downgrade flow support and workspace creation limit check
  */
 import { useCallback, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -17,6 +17,7 @@ import {
   type CreatePortalSessionResponse,
   type ProrationPreview,
   type SubscriptionChangeResult,
+  type WorkspaceCreationCheck,
 } from '@/lib/api';
 
 // Query key factory for billing
@@ -27,6 +28,8 @@ export const billingKeys = {
     [...billingKeys.all, 'usage', workspaceId] as const,
   subscription: (workspaceId: string) =>
     [...billingKeys.all, 'subscription', workspaceId] as const,
+  workspaceCreationCheck: () =>
+    [...billingKeys.all, 'workspace-creation-check'] as const,
 };
 
 // Helper to check if error is a rate limit (429)
@@ -68,6 +71,57 @@ export function usePlans(): UsePlansResult {
     plans: data?.plans ?? [],
     isLoading,
     error,
+  };
+}
+
+// ============================================================================
+// Workspace Creation Check Hook (IKA-229)
+// ============================================================================
+
+export interface UseWorkspaceCreationCheckResult {
+  canCreate: boolean;
+  currentCount: number;
+  maxAllowed: number;
+  message: string | null;
+  isLoading: boolean;
+  error: Error | null;
+  refetch: () => void;
+}
+
+/**
+ * Hook to check if the current user can create a new workspace
+ * based on their plan limits (IKA-229)
+ */
+export function useWorkspaceCreationCheck(): UseWorkspaceCreationCheckResult {
+  const {
+    data,
+    isLoading,
+    error,
+    refetch: refetchQuery,
+  } = useQuery<WorkspaceCreationCheck, Error>({
+    queryKey: billingKeys.workspaceCreationCheck(),
+    queryFn: () => billingApi.checkWorkspaceCreation(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes cache retention
+    refetchOnWindowFocus: false,
+    retry: (failureCount, err) => {
+      if (isRateLimitError(err)) return false;
+      return failureCount < 1;
+    },
+  });
+
+  const refetch = useCallback(() => {
+    refetchQuery();
+  }, [refetchQuery]);
+
+  return {
+    canCreate: data?.allowed ?? true, // Default to allowed if loading/error
+    currentCount: data?.current_count ?? 0,
+    maxAllowed: data?.max_allowed ?? -1,
+    message: data?.message ?? null,
+    isLoading,
+    error,
+    refetch,
   };
 }
 

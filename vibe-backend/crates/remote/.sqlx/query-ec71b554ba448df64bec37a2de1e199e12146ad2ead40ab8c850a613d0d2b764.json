@@ -21,7 +21,7 @@
       {
         "ordinal": 3,
         "name": "metadata!: Value",
-        "type_info": "Jsonb"
+        "type_info": "Text"
       },
       {
         "ordinal": 4,
@@ -36,9 +36,9 @@
     },
     "nullable": [
       false,
+      true,
       false,
-      false,
-      false,
+      true,
       false
     ]
   },

@@ -21,7 +21,7 @@
       {
         "ordinal": 3,
         "name": "metadata!: Value",
-        "type_info": "Jsonb"
+        "type_info": "Text"
       },
       {
         "ordinal": 4,
@@ -33,14 +33,14 @@
       "Left": [
         "Uuid",
         "Text",
-        "Jsonb"
+        "Text"
       ]
     },
     "nullable": [
       false,
+      true,
       false,
-      false,
-      false,
+      true,
       false
     ]
   },

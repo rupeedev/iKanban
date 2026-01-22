@@ -502,6 +502,142 @@ pub async fn track_storage_deletion(
 }
 
 // ============================================================================
+// Workspace Creation Limit Check (IKA-229)
+// ============================================================================
+
+/// Result of checking if user can create a new workspace
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct WorkspaceCreationCheck {
+    /// Whether the user can create a new workspace
+    pub allowed: bool,
+    /// Current number of workspaces the user owns
+    pub current_count: i64,
+    /// Maximum workspaces allowed by the plan
+    pub max_allowed: i64,
+    /// Message explaining the result
+    pub message: Option<String>,
+}
+
+/// Check if a user can create a new workspace based on their plan limits (IKA-229)
+///
+/// This function accepts clerk_user_id (string):
+/// 1. Gets the user's registration to find their selected plan
+/// 2. Gets the plan limits for that plan
+/// 3. Counts the user's current owned workspaces
+/// 4. Returns whether they can create another workspace
+pub async fn check_workspace_creation_limit(
+    pool: &PgPool,
+    clerk_user_id: &str,
+) -> Result<WorkspaceCreationCheck, UsageLimitError> {
+    use db_crate::models::user_registration::UserRegistration;
+
+    // Get user's registration to find their plan
+    let registration = UserRegistration::find_by_clerk_id(pool, clerk_user_id)
+        .await
+        .map_err(UsageLimitError::Database)?;
+
+    let plan_name = match registration {
+        Some(reg) => reg.selected_plan,
+        None => "hobby".to_string(), // Default to hobby plan if no registration
+    };
+
+    // Get plan limits
+    let limits = PlanLimits::find_by_plan_name(pool, &plan_name)
+        .await?
+        .unwrap_or_else(PlanLimits::default_hobby);
+
+    // Count user's current workspaces (where they are the owner)
+    let current_count = count_user_owned_workspaces(pool, clerk_user_id).await?;
+
+    // Check if unlimited
+    if PlanLimits::is_unlimited(limits.max_workspaces) {
+        return Ok(WorkspaceCreationCheck {
+            allowed: true,
+            current_count,
+            max_allowed: -1,
+            message: None,
+        });
+    }
+
+    // Check if under limit
+    let allowed = current_count < limits.max_workspaces;
+    let message = if allowed {
+        None
+    } else {
+        Some(format!(
+            "You have reached the maximum of {} workspace{} for your {} plan. Upgrade to create more workspaces.",
+            limits.max_workspaces,
+            if limits.max_workspaces == 1 { "" } else { "s" },
+            plan_name
+        ))
+    };
+
+    if !allowed {
+        warn!(
+            clerk_user_id = %clerk_user_id,
+            current = current_count,
+            limit = limits.max_workspaces,
+            plan = plan_name,
+            "Workspace creation limit reached"
+        );
+    }
+
+    Ok(WorkspaceCreationCheck {
+        allowed,
+        current_count,
+        max_allowed: limits.max_workspaces,
+        message,
+    })
+}
+
+/// Check if a user can create a new workspace by internal user UUID (IKA-229)
+///
+/// This function accepts the internal user UUID and looks up the clerk_user_id
+/// from oauth_accounts before checking the limit.
+pub async fn check_workspace_creation_limit_by_uuid(
+    pool: &PgPool,
+    user_id: Uuid,
+) -> Result<WorkspaceCreationCheck, UsageLimitError> {
+    // Look up clerk_user_id from oauth_accounts
+    let clerk_user_id = sqlx::query_scalar!(
+        r#"SELECT provider_user_id FROM oauth_accounts WHERE user_id = $1 AND provider = 'clerk' LIMIT 1"#,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(UsageLimitError::Database)?;
+
+    match clerk_user_id {
+        Some(cid) => check_workspace_creation_limit(pool, &cid).await,
+        None => {
+            // No clerk account found - default to hobby plan limits
+            warn!(user_id = %user_id, "No clerk account found for user, using default limits");
+            Ok(WorkspaceCreationCheck {
+                allowed: true, // Allow creation but with default limits
+                current_count: 0,
+                max_allowed: 1,
+                message: None,
+            })
+        }
+    }
+}
+
+/// Count the number of workspaces a user owns
+async fn count_user_owned_workspaces(pool: &PgPool, user_id: &str) -> Result<i64, UsageLimitError> {
+    let count = sqlx::query_scalar!(
+        r#"SELECT COUNT(*) as "count!"
+           FROM tenant_workspace_members
+           WHERE user_id = $1 AND role = 'owner'"#,
+        user_id
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(UsageLimitError::Database)?;
+
+    Ok(count)
+}
+
+// ============================================================================
 // Helper: Get Workspace Usage Summary
 // ============================================================================
 

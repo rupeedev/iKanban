@@ -3522,7 +3522,21 @@ export const billingApi = {
     });
     return handleApiResponse<SubscriptionChangeResult>(response);
   },
+
+  // IKA-229: Check if user can create a new workspace
+  checkWorkspaceCreation: async (): Promise<WorkspaceCreationCheck> => {
+    const response = await makeRequest('/v1/billing/workspace-creation-check');
+    return handleApiResponse<WorkspaceCreationCheck>(response);
+  },
 };
+
+// IKA-229: Workspace creation check response
+export interface WorkspaceCreationCheck {
+  allowed: boolean;
+  current_count: number;
+  max_allowed: number;
+  message: string | null;
+}
 
 // ============================================================================
 // Public Plan Limits API (IKA-238: Public pricing page data)

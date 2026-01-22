@@ -10,7 +10,9 @@ use db::models::tenant_workspace::{
     TenantWorkspaceMember, UpdateTenantWorkspace, UpdateWorkspaceMemberRole, WorkspaceMemberRole,
 };
 use deployment::Deployment;
-use remote::middleware::usage_limits::{track_member_invitation, track_member_removal};
+use remote::middleware::usage_limits::{
+    check_workspace_creation_limit, track_member_invitation, track_member_removal,
+};
 use serde::Deserialize;
 use tracing::warn;
 use utils::response::ApiResponse;
@@ -97,6 +99,22 @@ pub async fn create_workspace(
     axum::extract::Query(params): axum::extract::Query<CreateWorkspaceQuery>,
     axum::extract::Json(payload): axum::extract::Json<CreateTenantWorkspace>,
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<TenantWorkspace>>), ApiError> {
+    // Check workspace creation limit before creating (IKA-229)
+    let limit_check = check_workspace_creation_limit(&deployment.db().pool, &params.user_id)
+        .await
+        .map_err(|e| {
+            warn!(user_id = %params.user_id, error = %e, "Failed to check workspace limit");
+            ApiError::BadRequest(format!("Failed to check workspace limit: {}", e))
+        })?;
+
+    if !limit_check.allowed {
+        return Err(ApiError::BadRequest(
+            limit_check
+                .message
+                .unwrap_or_else(|| "Workspace limit reached".to_string()),
+        ));
+    }
+
     let workspace = TenantWorkspace::create(
         &deployment.db().pool,
         &payload,

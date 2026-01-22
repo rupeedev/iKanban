@@ -1,0 +1,96 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO copilot_deployment_config\n               (repository_id, auto_merge_enabled, merge_method, deploy_workflow_enabled,\n                deploy_workflow_name, deploy_workflow_ref, required_ci_checks,\n                wait_for_all_checks, auto_mark_task_done, created_at, updated_at)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())\n               ON CONFLICT (repository_id) DO UPDATE SET\n                   auto_merge_enabled = $2,\n                   merge_method = $3,\n                   deploy_workflow_enabled = $4,\n                   deploy_workflow_name = $5,\n                   deploy_workflow_ref = $6,\n                   required_ci_checks = $7,\n                   wait_for_all_checks = $8,\n                   auto_mark_task_done = $9,\n                   updated_at = NOW()\n               RETURNING id as \"id!: Uuid\",\n                         repository_id as \"repository_id!: Uuid\",\n                         auto_merge_enabled,\n                         merge_method,\n                         deploy_workflow_enabled,\n                         deploy_workflow_name,\n                         deploy_workflow_ref,\n                         required_ci_checks,\n                         wait_for_all_checks,\n                         auto_mark_task_done,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "repository_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "auto_merge_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "merge_method",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "deploy_workflow_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "deploy_workflow_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "deploy_workflow_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "required_ci_checks",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 8,
+        "name": "wait_for_all_checks",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "auto_mark_task_done",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Text",
+        "TextArray",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d6aca3fb7eb3659a962a0a3c232176d9a4282d5372b499ca10645694f6d22b73"
+}

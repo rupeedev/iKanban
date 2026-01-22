@@ -1,4 +1,4 @@
-//! Billing API routes for plan limits and usage (IKA-182, IKA-238)
+//! Billing API routes for plan limits and usage (IKA-182, IKA-238, IKA-229)
 
 use axum::{
     Extension, Json, Router,
@@ -12,7 +12,10 @@ use uuid::Uuid;
 use crate::{
     AppState,
     auth::RequestContext,
-    middleware::usage_limits::{WorkspaceUsageSummary, get_usage_summary},
+    middleware::usage_limits::{
+        WorkspaceCreationCheck, WorkspaceUsageSummary, check_workspace_creation_limit_by_uuid,
+        get_usage_summary,
+    },
 };
 
 /// Public routes - no authentication required (IKA-238)
@@ -25,6 +28,10 @@ pub fn protected_router() -> Router<AppState> {
     Router::new()
         .route("/billing/plans", get(get_all_plans))
         .route("/billing/usage", get(get_workspace_usage))
+        .route(
+            "/billing/workspace-creation-check",
+            get(check_workspace_creation),
+        )
 }
 
 // ============================================================================
@@ -178,6 +185,18 @@ async fn get_workspace_usage(
     }))
 }
 
+/// Check if the current user can create a new workspace (IKA-229)
+async fn check_workspace_creation(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+) -> Result<Json<WorkspaceCreationCheck>, BillingRouteError> {
+    let check = check_workspace_creation_limit_by_uuid(state.pool(), ctx.user.id)
+        .await
+        .map_err(|e| BillingRouteError::UsageError(e.to_string()))?;
+
+    Ok(Json(check))
+}
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -211,14 +230,38 @@ fn build_public_plan_info(plan: &PlanLimits) -> PublicPlanInfo {
             false,
             "Get Started Free".to_string(),
             vec![
-                PlanFeature { text: "Basic kanban boards".to_string(), included: true },
-                PlanFeature { text: "Task management".to_string(), included: true },
-                PlanFeature { text: "Document storage (500MB)".to_string(), included: true },
-                PlanFeature { text: format!("AI task updates ({}/month)", plan.max_ai_requests_per_month), included: true },
-                PlanFeature { text: "Email support".to_string(), included: true },
-                PlanFeature { text: "6 month data retention".to_string(), included: true },
-                PlanFeature { text: "GitHub integration".to_string(), included: false },
-                PlanFeature { text: "MCP server access".to_string(), included: false },
+                PlanFeature {
+                    text: "Basic kanban boards".to_string(),
+                    included: true,
+                },
+                PlanFeature {
+                    text: "Task management".to_string(),
+                    included: true,
+                },
+                PlanFeature {
+                    text: "Document storage (500MB)".to_string(),
+                    included: true,
+                },
+                PlanFeature {
+                    text: format!("AI task updates ({}/month)", plan.max_ai_requests_per_month),
+                    included: true,
+                },
+                PlanFeature {
+                    text: "Email support".to_string(),
+                    included: true,
+                },
+                PlanFeature {
+                    text: "6 month data retention".to_string(),
+                    included: true,
+                },
+                PlanFeature {
+                    text: "GitHub integration".to_string(),
+                    included: false,
+                },
+                PlanFeature {
+                    text: "MCP server access".to_string(),
+                    included: false,
+                },
             ],
         ),
         PLAN_STARTER => (
@@ -227,14 +270,38 @@ fn build_public_plan_info(plan: &PlanLimits) -> PublicPlanInfo {
             true,
             "Start Free Trial".to_string(),
             vec![
-                PlanFeature { text: "Everything in Hobby".to_string(), included: true },
-                PlanFeature { text: "GitHub integration".to_string(), included: true },
-                PlanFeature { text: format!("Document management ({}GB)", plan.max_storage_gb), included: true },
-                PlanFeature { text: "MCP server access".to_string(), included: true },
-                PlanFeature { text: format!("AI task updates ({}/month)", plan.max_ai_requests_per_month), included: true },
-                PlanFeature { text: "1 year data retention".to_string(), included: true },
-                PlanFeature { text: "Advanced analytics".to_string(), included: false },
-                PlanFeature { text: "Team permissions".to_string(), included: false },
+                PlanFeature {
+                    text: "Everything in Hobby".to_string(),
+                    included: true,
+                },
+                PlanFeature {
+                    text: "GitHub integration".to_string(),
+                    included: true,
+                },
+                PlanFeature {
+                    text: format!("Document management ({}GB)", plan.max_storage_gb),
+                    included: true,
+                },
+                PlanFeature {
+                    text: "MCP server access".to_string(),
+                    included: true,
+                },
+                PlanFeature {
+                    text: format!("AI task updates ({}/month)", plan.max_ai_requests_per_month),
+                    included: true,
+                },
+                PlanFeature {
+                    text: "1 year data retention".to_string(),
+                    included: true,
+                },
+                PlanFeature {
+                    text: "Advanced analytics".to_string(),
+                    included: false,
+                },
+                PlanFeature {
+                    text: "Team permissions".to_string(),
+                    included: false,
+                },
             ],
         ),
         PLAN_PRO => (
@@ -243,14 +310,38 @@ fn build_public_plan_info(plan: &PlanLimits) -> PublicPlanInfo {
             false,
             "Start Free Trial".to_string(),
             vec![
-                PlanFeature { text: "Everything in Starter".to_string(), included: true },
-                PlanFeature { text: "Advanced analytics dashboard".to_string(), included: true },
-                PlanFeature { text: "Multiple AI agent support".to_string(), included: true },
-                PlanFeature { text: "Custom project templates".to_string(), included: true },
-                PlanFeature { text: format!("AI task updates ({}/month)", plan.max_ai_requests_per_month), included: true },
-                PlanFeature { text: "Priority email + chat support".to_string(), included: true },
-                PlanFeature { text: "Team roles & permissions".to_string(), included: true },
-                PlanFeature { text: "2 year data retention".to_string(), included: true },
+                PlanFeature {
+                    text: "Everything in Starter".to_string(),
+                    included: true,
+                },
+                PlanFeature {
+                    text: "Advanced analytics dashboard".to_string(),
+                    included: true,
+                },
+                PlanFeature {
+                    text: "Multiple AI agent support".to_string(),
+                    included: true,
+                },
+                PlanFeature {
+                    text: "Custom project templates".to_string(),
+                    included: true,
+                },
+                PlanFeature {
+                    text: format!("AI task updates ({}/month)", plan.max_ai_requests_per_month),
+                    included: true,
+                },
+                PlanFeature {
+                    text: "Priority email + chat support".to_string(),
+                    included: true,
+                },
+                PlanFeature {
+                    text: "Team roles & permissions".to_string(),
+                    included: true,
+                },
+                PlanFeature {
+                    text: "2 year data retention".to_string(),
+                    included: true,
+                },
             ],
         ),
         _ => (
@@ -318,7 +409,9 @@ async fn get_plan_limits(
 
     let public_plans: Vec<PublicPlanInfo> = plans.iter().map(build_public_plan_info).collect();
 
-    Ok(Json(PlanLimitsResponse { plans: public_plans }))
+    Ok(Json(PlanLimitsResponse {
+        plans: public_plans,
+    }))
 }
 
 // ============================================================================

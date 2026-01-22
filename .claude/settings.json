@@ -11,5 +11,32 @@
     "type": "command",
     "command": "/Users/rupeshpanwar/.claude/statusline.sh",
     "padding": 0
-  }
+  },
+  "allowedTools": [
+    "Bash(git status*)",
+    "Bash(git diff*)",
+    "Bash(git log*)",
+    "Bash(git branch*)",
+    "Bash(git checkout*)",
+    "Bash(git add*)",
+    "Bash(git commit*)",
+    "Bash(git push*)",
+    "Bash(git pull*)",
+    "Bash(git merge*)",
+    "Bash(git stash*)",
+    "Bash(wc -l*)",
+    "Bash(ls*)",
+    "Bash(tail*)",
+    "Bash(export VIBE_API_TOKEN=* && python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py*)",
+    "Bash(cd vibe-frontend && pnpm*)",
+    "Bash(cd vibe-backend && cargo*)",
+    "Bash(cd /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-backend/crates/db && cargo*)",
+    "Bash(python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py*)",
+    "Edit",
+    "Write",
+    "Read",
+    "Glob",
+    "Grep",
+    "Task"
+  ]
 }

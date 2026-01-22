@@ -1,11 +1,19 @@
 import { useState, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
-import { Building2, ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react';
+import {
+  Building2,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Loader2,
+  AlertTriangle,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { useTenantWorkspaces } from '@/hooks/useTenantWorkspaces';
+import { useWorkspaceCreationCheck } from '@/hooks/useBilling';
 import { teamsApi, projectsApi } from '@/lib/api';
 import type {
   WorkspaceSetupState,
@@ -37,6 +45,13 @@ export function NewWorkspace() {
   const [searchParams] = useSearchParams();
   useUser(); // Ensure user is loaded
   const { createWorkspace, isCreating } = useTenantWorkspaces();
+  const {
+    canCreate,
+    currentCount,
+    maxAllowed,
+    message: limitMessage,
+    isLoading: isCheckingLimit,
+  } = useWorkspaceCreationCheck();
   const [state, setState] = useState<WorkspaceSetupState>(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -309,6 +324,27 @@ export function NewWorkspace() {
 
       {/* Content */}
       <main className="flex-1 container max-w-3xl mx-auto py-8 px-4">
+        {/* Workspace limit reached warning (IKA-229) */}
+        {!isCheckingLimit && !canCreate && (
+          <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-700 dark:text-amber-400">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium">Workspace Limit Reached</p>
+                <p className="text-sm mt-1">
+                  {limitMessage ||
+                    `You have ${currentCount} of ${maxAllowed} workspace${maxAllowed !== 1 ? 's' : ''} on your current plan.`}
+                </p>
+                <Link
+                  to="/pricing"
+                  className="inline-block mt-2 text-sm font-medium text-primary hover:underline"
+                >
+                  Upgrade your plan to create more workspaces →
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
         {error && (
           <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
             {error}
@@ -327,7 +363,13 @@ export function NewWorkspace() {
             </Button>
             <Button
               onClick={goNext}
-              disabled={!isCurrentStepValid() || isSubmitting || isCreating}
+              disabled={
+                !isCurrentStepValid() ||
+                isSubmitting ||
+                isCreating ||
+                isCheckingLimit ||
+                !canCreate
+              }
             >
               {isSubmitting || isCreating ? (
                 <>
