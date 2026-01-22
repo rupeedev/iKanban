@@ -28,6 +28,7 @@ mod oauth;
 pub(crate) mod organization_members;
 mod organizations;
 mod projects;
+pub mod registrations;
 mod review;
 mod stripe;
 mod superadmins;
@@ -90,6 +91,7 @@ pub fn router(state: AppState) -> Router {
     // Superadmin-only routes (require superadmin status, not just auth)
     let v1_superadmin = Router::<AppState>::new()
         .merge(superadmins::protected_router())
+        .merge(registrations::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_superadmin,
