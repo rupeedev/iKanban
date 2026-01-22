@@ -37,11 +37,14 @@ jobs:
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.4
+
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: "vibe-backend -> target"
-          prefix-key: "ikanban-v1"
+          prefix-key: "ikanban-v2"
           cache-on-failure: true
           cache-all-crates: true
 
@@ -49,6 +52,8 @@ jobs:
         working-directory: vibe-backend
         env:
           SQLX_OFFLINE: "true"
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
         run: cargo build --release --bin server
 
       - name: Set up Docker Buildx
