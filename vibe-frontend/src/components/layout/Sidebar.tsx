@@ -6,6 +6,9 @@ import { useTeams } from '@/hooks/useTeams';
 import { useProjectTeamMap } from '@/hooks/useProjectTeamMap';
 import { Button } from '@/components/ui/button';
 import { getTeamSlug, getProjectSlug } from '@/lib/urlUtils';
+import { useQuery } from '@tanstack/react-query';
+import { useUser } from '@clerk/clerk-react';
+import { superadminApi } from '@/lib/api';
 import {
   Tooltip,
   TooltipContent,
@@ -18,6 +21,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ShieldCheck,
+  Crown,
   ListTodo,
   FolderKanban,
   Layers,
@@ -365,6 +369,24 @@ export function Sidebar() {
   const { projects } = useProjects();
   const { teams } = useTeams();
   const { getTeamForProject } = useProjectTeamMap(teams);
+  const { user, isLoaded: isClerkLoaded } = useUser();
+
+  // Check if user is superadmin (for showing Superadmin link)
+  const { data: superadminCheck } = useQuery({
+    queryKey: ['superadmin', 'check'],
+    queryFn: () => superadminApi.check(),
+    enabled: isClerkLoaded && !!user,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: (failureCount, error) => {
+      // Don't retry on 403 (expected for non-superadmins)
+      if (error && 'status' in error && error.status === 403) {
+        return false;
+      }
+      return failureCount < 2;
+    },
+  });
+
+  const isSuperadmin = superadminCheck?.is_superadmin ?? false;
 
   const handleCreateProject = async () => {
     try {
@@ -439,6 +461,16 @@ export function Sidebar() {
       <div className="flex-1 overflow-y-auto py-2">
         {/* Top Items */}
         <div className="px-2 space-y-0.5">
+          {/* Superadmin link - only visible to superadmins */}
+          {isSuperadmin && (
+            <SidebarItem
+              icon={Crown}
+              label="Superadmin"
+              to="/superadmin/registrations"
+              isActive={location.pathname.startsWith('/superadmin')}
+              isCollapsed={isCollapsed}
+            />
+          )}
           <SidebarItem
             icon={ShieldCheck}
             label="Admin"
