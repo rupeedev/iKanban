@@ -24,10 +24,10 @@ pub fn protected_router() -> Router<AppState> {
         .route("/abuse-signals/me", get(get_my_abuse_signals))
         // Admin routes for managing abuse signals
         .route("/admin/abuse-signals", get(list_unresolved_signals))
-        .route("/admin/abuse-signals/user/:user_id", get(get_user_signals))
+        .route("/admin/abuse-signals/user/{user_id}", get(get_user_signals))
         .route("/admin/abuse-signals", post(create_signal))
         .route(
-            "/admin/abuse-signals/:signal_id/resolve",
+            "/admin/abuse-signals/{signal_id}/resolve",
             post(resolve_signal),
         )
 }

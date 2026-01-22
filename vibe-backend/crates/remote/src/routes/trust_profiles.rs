@@ -25,14 +25,14 @@ pub fn protected_router() -> Router<AppState> {
         // Admin routes for managing trust profiles
         .route("/admin/trust-profiles/flagged", get(list_flagged_users))
         .route(
-            "/admin/trust-profiles/:user_id",
+            "/admin/trust-profiles/{user_id}",
             get(get_user_trust_profile),
         )
-        .route("/admin/trust-profiles/:user_id/flag", post(flag_user))
-        .route("/admin/trust-profiles/:user_id/unflag", post(unflag_user))
-        .route("/admin/trust-profiles/:user_id/ban", post(ban_user))
+        .route("/admin/trust-profiles/{user_id}/flag", post(flag_user))
+        .route("/admin/trust-profiles/{user_id}/unflag", post(unflag_user))
+        .route("/admin/trust-profiles/{user_id}/ban", post(ban_user))
         .route(
-            "/admin/trust-profiles/:user_id/trust-level",
+            "/admin/trust-profiles/{user_id}/trust-level",
             post(update_trust_level),
         )
 }
