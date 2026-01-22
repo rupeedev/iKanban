@@ -570,6 +570,74 @@ Before implementing billing/limits features:
 
 ---
 
+## Incident: Migrations in Wrong Directory (2026-01-22)
+
+### What Happened
+
+The superadmin link wasn't appearing in the sidebar even though the user was supposed to be a superadmin. Investigation revealed:
+
+1. The `superadmins` table didn't exist on production
+2. 37 migrations from January 2026 were never run on production
+3. Many features (tenant workspaces, billing, trust profiles, API keys, etc.) were broken
+
+### Root Cause
+
+**Migrations were added to the wrong directory.**
+
+The codebase has two migration directories:
+- `crates/db/migrations/` - **NOT used by the server** (contains old local SQLite migrations)
+- `crates/remote/migrations/` - **USED by the server** (PostgreSQL migrations for remote deployment)
+
+The server's migration code in `crates/remote/src/db/mod.rs`:
+```rust
+pub(crate) async fn migrate(pool: &PgPool) -> Result<(), MigrateError> {
+    sqlx::migrate!("./migrations").run(pool).await  // <- Relative to crates/remote/
+}
+```
+
+All 2026 migrations were added to `crates/db/migrations/` instead of `crates/remote/migrations/`, so they never ran on the production PostgreSQL database.
+
+### How It Was Fixed
+
+Moved all 37 migrations from `crates/db/migrations/` to `crates/remote/migrations/`:
+
+```bash
+for f in vibe-backend/crates/db/migrations/20260*.sql; do
+  mv "$f" vibe-backend/crates/remote/migrations/
+done
+```
+
+### Prevention
+
+**When creating PostgreSQL migrations for the remote server:**
+
+- [ ] **ALWAYS place migrations in `crates/remote/migrations/`** - NOT `crates/db/migrations/`
+- [ ] **The `crates/db/` crate is for local SQLite** - different database entirely
+- [ ] **Check deployment** - After adding migrations, verify they run on production
+- [ ] **Add to FILE-MAP.md** - Document the correct migration path
+
+### Migration Directory Reference
+
+| Directory | Database | Server | Usage |
+|-----------|----------|--------|-------|
+| `crates/remote/migrations/` | PostgreSQL | Remote (Railway) | Production migrations |
+| `crates/db/migrations/` | SQLite | Local | Local desktop app (not remote server) |
+
+### Tables That Were Missing on Production
+
+Due to this bug, the following tables didn't exist on production:
+- `superadmins` - App-level admins
+- `tenant_workspaces` - Multi-tenant workspace support
+- `api_keys` - User API keys for MCP auth
+- `plan_limits` - Billing plan constraints
+- `workspace_usage` - Usage tracking
+- `trust_profiles`, `abuse_signals` - Trust & safety
+- `chat_messages`, `chat_sessions` - Chat feature
+- `agent_configs` - Agent configuration
+- And ~25 more tables
+
+---
+
 ## Template for Future Incidents
 
 ### Incident: [Title] (Date)
