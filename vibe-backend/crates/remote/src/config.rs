@@ -182,8 +182,10 @@ impl RemoteServerConfig {
             .or_else(|_| env::var("DATABASE_URL"))
             .map_err(|_| ConfigError::MissingVar("SERVER_DATABASE_URL"))?;
 
-        let listen_addr =
-            env::var("SERVER_LISTEN_ADDR").unwrap_or_else(|_| "0.0.0.0:8081".to_string());
+        // Support Railway's PORT env var, with fallbacks
+        let listen_addr = env::var("SERVER_LISTEN_ADDR")
+            .or_else(|_| env::var("PORT").map(|port| format!("0.0.0.0:{}", port)))
+            .unwrap_or_else(|_| "0.0.0.0:8081".to_string());
 
         let server_public_base_url = env::var("SERVER_PUBLIC_BASE_URL").ok();
 
