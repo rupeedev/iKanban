@@ -109,9 +109,9 @@ export function AdminLayout() {
                     className={({ isActive }) =>
                       cn(
                         'flex items-start gap-3 px-3 py-2.5 text-sm transition-colors rounded-md',
-                        'hover:bg-muted',
+                        'hover:bg-muted focus:outline-none',
                         isActive
-                          ? 'bg-primary/10 text-primary'
+                          ? 'bg-muted text-foreground font-medium'
                           : 'text-muted-foreground hover:text-foreground'
                       )
                     }
