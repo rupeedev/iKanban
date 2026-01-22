@@ -3,7 +3,7 @@
 # Do NOT add [build] section here - it conflicts with Docker Image mode
 
 [deploy]
-healthcheckPath = "/"
+healthcheckPath = "/v1/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
