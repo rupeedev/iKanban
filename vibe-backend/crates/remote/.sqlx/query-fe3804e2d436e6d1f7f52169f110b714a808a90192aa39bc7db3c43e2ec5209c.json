@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO projects (\n                organization_id,\n                name,\n                metadata\n            )\n            VALUES ($1, $2, $3)\n            RETURNING\n                id               AS \"id!: Uuid\",\n                organization_id  AS \"organization_id!: Uuid\",\n                name             AS \"name!\",\n                metadata         AS \"metadata!: Value\",\n                created_at       AS \"created_at!: DateTime<Utc>\"\n            ",
+  "query": "\n            SELECT\n                id               AS \"id!: Uuid\",\n                COALESCE(tenant_workspace_id, organization_id) AS \"organization_id!: Uuid\",\n                name             AS \"name!\",\n                metadata         AS \"metadata!: Value\",\n                created_at       AS \"created_at!: DateTime<Utc>\"\n            FROM projects\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -31,18 +31,16 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
       false,
-      true,
+      null,
       false,
       true,
       false
     ]
   },
-  "hash": "5c2b33e0128b6584090c09ebe18761532c0e5a3e233f316591ebdcd5c1fcd42d"
+  "hash": "fe3804e2d436e6d1f7f52169f110b714a808a90192aa39bc7db3c43e2ec5209c"
 }

@@ -41,7 +41,7 @@ impl ProjectRepository {
             r#"
             SELECT
                 id               AS "id!: Uuid",
-                organization_id  AS "organization_id!: Uuid",
+                COALESCE(tenant_workspace_id, organization_id) AS "organization_id!: Uuid",
                 name             AS "name!",
                 metadata         AS "metadata!: Value",
                 created_at       AS "created_at!: DateTime<Utc>"
@@ -77,17 +77,18 @@ impl ProjectRepository {
             metadata
         };
 
+        // Insert using tenant_workspace_id (current system)
         let record = sqlx::query!(
             r#"
             INSERT INTO projects (
-                organization_id,
+                tenant_workspace_id,
                 name,
                 metadata
             )
             VALUES ($1, $2, $3)
             RETURNING
                 id               AS "id!: Uuid",
-                organization_id  AS "organization_id!: Uuid",
+                tenant_workspace_id AS "organization_id!: Uuid",
                 name             AS "name!",
                 metadata         AS "metadata!: Value",
                 created_at       AS "created_at!: DateTime<Utc>"
@@ -113,16 +114,17 @@ impl ProjectRepository {
         pool: &PgPool,
         organization_id: Uuid,
     ) -> Result<Vec<Project>, ProjectError> {
+        // Check both tenant_workspace_id (current) and organization_id (deprecated)
         let rows = sqlx::query!(
             r#"
             SELECT
                 id               AS "id!: Uuid",
-                organization_id  AS "organization_id!: Uuid",
+                COALESCE(tenant_workspace_id, organization_id) AS "organization_id!: Uuid",
                 name             AS "name!",
                 metadata         AS "metadata!: Value",
                 created_at       AS "created_at!: DateTime<Utc>"
             FROM projects
-            WHERE organization_id = $1
+            WHERE tenant_workspace_id = $1 OR organization_id = $1
             ORDER BY created_at DESC
             "#,
             organization_id
@@ -150,7 +152,7 @@ impl ProjectRepository {
             r#"
             SELECT
                 id               AS "id!: Uuid",
-                organization_id  AS "organization_id!: Uuid",
+                COALESCE(tenant_workspace_id, organization_id) AS "organization_id!: Uuid",
                 name             AS "name!",
                 metadata         AS "metadata!: Value",
                 created_at       AS "created_at!: DateTime<Utc>"
@@ -175,11 +177,13 @@ impl ProjectRepository {
         pool: &PgPool,
         project_id: Uuid,
     ) -> Result<Option<Uuid>, ProjectError> {
-        // Use runtime type checking since SQLx cache may not be available
-        sqlx::query_scalar::<_, Uuid>(r#"SELECT organization_id FROM projects WHERE id = $1"#)
-            .bind(project_id)
-            .fetch_optional(pool)
-            .await
-            .map_err(ProjectError::from)
+        // Use tenant_workspace_id (current) with fallback to organization_id (deprecated)
+        sqlx::query_scalar::<_, Uuid>(
+            r#"SELECT COALESCE(tenant_workspace_id, organization_id) FROM projects WHERE id = $1"#,
+        )
+        .bind(project_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(ProjectError::from)
     }
 }

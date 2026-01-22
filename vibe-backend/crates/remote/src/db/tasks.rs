@@ -361,16 +361,28 @@ impl<'a> SharedTaskRepository<'a> {
         task_ids: &[Uuid],
         user_id: Uuid,
     ) -> Result<Vec<Uuid>, SharedTaskError> {
+        // Check membership in both tenant_workspace_members (current) and organization_member_metadata (deprecated)
         let tasks = sqlx::query!(
             r#"
             SELECT t.id
             FROM shared_tasks t
-            INNER JOIN organization_member_metadata om ON t.organization_id = om.organization_id
             WHERE t.id = ANY($1)
               AND t.deleted_at IS NULL
-              AND om.user_id = $2
+              AND (
+                EXISTS (
+                    SELECT 1 FROM tenant_workspace_members twm
+                    WHERE twm.tenant_workspace_id = t.organization_id
+                      AND twm.user_id = $2
+                )
+                OR EXISTS (
+                    SELECT 1 FROM organization_member_metadata om
+                    WHERE om.organization_id = t.organization_id
+                      AND om.user_id = $3
+                )
+              )
             "#,
             task_ids,
+            user_id.to_string(),
             user_id
         )
         .fetch_all(self.pool)

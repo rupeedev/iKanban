@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT t.id\n            FROM shared_tasks t\n            WHERE t.id = ANY($1)\n              AND t.deleted_at IS NULL\n              AND (\n                EXISTS (\n                    SELECT 1 FROM tenant_workspace_members twm\n                    WHERE twm.tenant_workspace_id = t.organization_id\n                      AND twm.user_id = $2\n                )\n                OR EXISTS (\n                    SELECT 1 FROM organization_member_metadata om\n                    WHERE om.organization_id = t.organization_id\n                      AND om.user_id = $3\n                )\n              )\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6754aa160dc91b0e8c95013458fbea8ad2e38d57a9da346ce18386a6b8fe7183"
+}
