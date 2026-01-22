@@ -98,6 +98,49 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **SQLx types**: `DateTime<Utc>` → `TIMESTAMPTZ`, `i64` → `bigint`
 - **CI**: Commit `.sqlx/` cache files (CI uses `SQLX_OFFLINE=true`)
 
+---
+
+## ⚠️ DATABASE MIGRATIONS - CRITICAL
+
+**ALWAYS create PostgreSQL migrations in `crates/remote/migrations/`**
+
+```
+vibe-backend/crates/remote/migrations/   ← CORRECT (Production PostgreSQL)
+vibe-backend/crates/db/migrations/       ← WRONG (Local SQLite only)
+```
+
+### Migration Directory Reference
+
+| Directory | Database | Server | When to Use |
+|-----------|----------|--------|-------------|
+| `crates/remote/migrations/` | **PostgreSQL** | Remote (Railway) | **ALL production migrations** |
+| `crates/db/migrations/` | SQLite | Local desktop app | Legacy local-only features |
+
+### Creating a New Migration
+
+```bash
+# 1. Generate timestamp
+date +%Y%m%d%H%M%S
+
+# 2. Create migration file in CORRECT directory
+touch vibe-backend/crates/remote/migrations/20260122XXXXXX_your_migration.sql
+
+# 3. After writing SQL, regenerate SQLx cache
+cd vibe-backend/crates/remote && cargo sqlx prepare
+```
+
+### Why This Matters
+
+On 2026-01-22, we discovered **37 migrations were in the wrong directory** and never ran on production. This caused:
+- `superadmins` table missing → superadmin features broken
+- `tenant_workspaces` table missing → multi-tenancy broken
+- `api_keys` table missing → MCP authentication broken
+- 25+ other tables missing
+
+**See `.claude/lessons-learned.md` → "Migrations in Wrong Directory" for full incident details.**
+
+---
+
 ## Progress Tracking (Automated)
 
 **Files:** `SCRATCHPAD.md` (notes) and `plan.md` (implementation plans)
@@ -229,10 +272,12 @@ The remote MCP server at `https://mcp.scho1ar.com/sse` requires API key authenti
 
 | Issue Type | Reference |
 |------------|-----------|
+| **Migration not running on prod** | **Use `crates/remote/migrations/` NOT `crates/db/migrations/`** |
 | Backend deployment not working | `.claude/lessons-learned.md` → IKA-87 (Railway image pull) |
 | New API endpoint returns 404 | `.claude/lessons-learned.md` → IKA-87 (Railway image pull) |
 | SQLx migration errors | `.claude/lessons-learned.md` → VIB-70 (SQLx migrations) |
 | API returns 400 Bad Request | `.claude/lessons-learned.md` → IKA-84 (URL slug vs UUID) |
+| New table missing on production | `.claude/lessons-learned.md` → Migrations in Wrong Directory |
 
 **Quick deployment fix:**
 ```bash
