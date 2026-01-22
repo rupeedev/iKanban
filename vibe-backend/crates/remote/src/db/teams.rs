@@ -176,4 +176,142 @@ impl TeamRepository {
         .map(|opt| opt.flatten())
         .map_err(TeamError::from)
     }
+
+    /// Get team members
+    pub async fn get_members(pool: &PgPool, team_id: Uuid) -> Result<Vec<TeamMember>, TeamError> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                tm.id            AS "id!: Uuid",
+                tm.team_id       AS "team_id!: Uuid",
+                tm.email         AS "email!",
+                tm.display_name,
+                tm.role          AS "role!",
+                tm.invited_by,
+                tm.clerk_user_id,
+                tm.avatar_url,
+                tm.joined_at     AS "joined_at!: DateTime<Utc>",
+                tm.created_at    AS "created_at!: DateTime<Utc>",
+                tm.updated_at    AS "updated_at!: DateTime<Utc>",
+                COALESCE(
+                    (SELECT COUNT(*) FROM tasks t WHERE t.assignee_id = tm.id)::integer,
+                    0
+                ) AS "assigned_task_count!: i32"
+            FROM team_members tm
+            WHERE tm.team_id = $1
+            ORDER BY tm.display_name ASC NULLS LAST, tm.email ASC
+            "#,
+            team_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| TeamMember {
+                id: r.id,
+                team_id: r.team_id,
+                email: r.email,
+                display_name: r.display_name,
+                role: r.role,
+                invited_by: r.invited_by,
+                clerk_user_id: r.clerk_user_id,
+                avatar_url: r.avatar_url,
+                assigned_task_count: r.assigned_task_count,
+                joined_at: r.joined_at,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+            })
+            .collect())
+    }
+
+    /// Get project IDs for a team
+    pub async fn get_project_ids(pool: &PgPool, team_id: Uuid) -> Result<Vec<Uuid>, TeamError> {
+        let rows = sqlx::query_scalar!(
+            r#"
+            SELECT project_id AS "project_id!: Uuid"
+            FROM team_projects
+            WHERE team_id = $1
+            "#,
+            team_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    /// Get issues (tasks) for a team
+    pub async fn get_issues(pool: &PgPool, team_id: Uuid) -> Result<Vec<TeamIssue>, TeamError> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                t.id             AS "id!: Uuid",
+                t.project_id     AS "project_id!: Uuid",
+                t.title          AS "title!",
+                t.description,
+                t.status         AS "status!",
+                t.priority,
+                t.due_date,
+                t.assignee_id,
+                t.issue_number,
+                t.created_at     AS "created_at!: DateTime<Utc>",
+                t.updated_at     AS "updated_at!: DateTime<Utc>"
+            FROM tasks t
+            WHERE t.team_id = $1
+            ORDER BY t.created_at DESC
+            "#,
+            team_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| TeamIssue {
+                id: r.id,
+                project_id: Some(r.project_id),
+                title: r.title,
+                description: r.description,
+                status: r.status,
+                priority: r.priority,
+                due_date: r.due_date,
+                assignee_id: r.assignee_id,
+                issue_number: r.issue_number,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+            })
+            .collect())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TeamMember {
+    pub id: Uuid,
+    pub team_id: Uuid,
+    pub email: String,
+    pub display_name: Option<String>,
+    pub role: String,
+    pub invited_by: Option<Uuid>,
+    pub clerk_user_id: Option<String>,
+    pub avatar_url: Option<String>,
+    pub assigned_task_count: i32,
+    pub joined_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TeamIssue {
+    pub id: Uuid,
+    pub project_id: Option<Uuid>,
+    pub title: String,
+    pub description: Option<String>,
+    pub status: String,
+    pub priority: Option<i32>,
+    pub due_date: Option<DateTime<Utc>>,
+    pub assignee_id: Option<Uuid>,
+    pub issue_number: Option<i32>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }

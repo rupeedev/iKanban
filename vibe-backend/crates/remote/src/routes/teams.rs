@@ -10,7 +10,12 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::{AppState, auth::RequestContext, db::teams::{Team, TeamRepository}};
+use crate::{
+    AppState,
+    auth::RequestContext,
+    db::teams::{Team, TeamIssue, TeamMember, TeamRepository},
+    db::projects::{Project, ProjectRepository},
+};
 use super::error::{ApiResponse, ErrorResponse};
 use super::organization_members::ensure_member_access;
 
@@ -50,6 +55,16 @@ pub struct TeamProject {
     pub project_id: Uuid,
 }
 
+/// Team dashboard response with all aggregated data
+#[derive(Debug, Serialize)]
+pub struct TeamDashboard {
+    pub team: Team,
+    pub members: Vec<TeamMember>,
+    pub project_ids: Vec<Uuid>,
+    pub projects: Vec<Project>,
+    pub issues: Vec<TeamIssue>,
+}
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/teams", get(list_teams).post(create_team))
@@ -57,6 +72,7 @@ pub fn router() -> Router<AppState> {
             "/teams/{team_id}",
             get(get_team).put(update_team).delete(delete_team),
         )
+        .route("/teams/{team_id}/dashboard", get(get_team_dashboard))
         .route(
             "/teams/{team_id}/projects",
             get(get_team_projects).post(assign_project),
@@ -132,6 +148,80 @@ async fn get_team(
     }
 
     Ok(ApiResponse::success(team))
+}
+
+/// Get team dashboard - aggregated team data
+#[instrument(
+    name = "teams.get_team_dashboard",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, team_id = %team_id)
+)]
+async fn get_team_dashboard(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<TeamDashboard>>, ErrorResponse> {
+    let pool = state.pool();
+
+    // Get team
+    let team = TeamRepository::get_by_id(pool, team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    // Verify user has access to team's workspace
+    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team workspace");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    // Get members
+    let members = TeamRepository::get_members(pool, team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team members");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team members")
+        })?;
+
+    // Get project IDs
+    let project_ids = TeamRepository::get_project_ids(pool, team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team project IDs");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team projects")
+        })?;
+
+    // Get projects (fetch all by their IDs)
+    let mut projects = Vec::new();
+    for project_id in &project_ids {
+        if let Ok(Some(project)) = ProjectRepository::fetch_by_id(pool, *project_id).await {
+            projects.push(project);
+        }
+    }
+
+    // Get issues
+    let issues = TeamRepository::get_issues(pool, team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team issues");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team issues")
+        })?;
+
+    Ok(ApiResponse::success(TeamDashboard {
+        team,
+        members,
+        project_ids,
+        projects,
+        issues,
+    }))
 }
 
 /// Create a team - not implemented yet
