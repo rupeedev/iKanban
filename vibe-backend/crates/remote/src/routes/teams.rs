@@ -117,7 +117,7 @@ async fn list_teams(
     Ok(ApiResponse::success(teams))
 }
 
-/// Get a specific team
+/// Get a specific team by ID or slug
 #[instrument(
     name = "teams.get_team",
     skip(state, ctx),
@@ -126,9 +126,9 @@ async fn list_teams(
 async fn get_team(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Path(team_id): Path<Uuid>,
+    Path(team_id): Path<String>,
 ) -> Result<Json<ApiResponse<Team>>, ErrorResponse> {
-    let team = TeamRepository::get_by_id(state.pool(), team_id)
+    let team = TeamRepository::get_by_id_or_slug(state.pool(), &team_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team");
@@ -137,7 +137,7 @@ async fn get_team(
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
 
     // Verify user has access to team's workspace
-    if let Some(workspace_id) = TeamRepository::workspace_id(state.pool(), team_id)
+    if let Some(workspace_id) = TeamRepository::workspace_id(state.pool(), team.id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team workspace");
@@ -150,7 +150,7 @@ async fn get_team(
     Ok(ApiResponse::success(team))
 }
 
-/// Get team dashboard - aggregated team data
+/// Get team dashboard - aggregated team data (accepts ID or slug)
 #[instrument(
     name = "teams.get_team_dashboard",
     skip(state, ctx),
@@ -159,12 +159,12 @@ async fn get_team(
 async fn get_team_dashboard(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Path(team_id): Path<Uuid>,
+    Path(team_id): Path<String>,
 ) -> Result<Json<ApiResponse<TeamDashboard>>, ErrorResponse> {
     let pool = state.pool();
 
-    // Get team
-    let team = TeamRepository::get_by_id(pool, team_id)
+    // Get team by ID or slug
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team");
@@ -172,8 +172,10 @@ async fn get_team_dashboard(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
 
+    let team_uuid = team.id;
+
     // Verify user has access to team's workspace
-    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team_id)
+    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team_uuid)
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team workspace");
@@ -184,7 +186,7 @@ async fn get_team_dashboard(
     }
 
     // Get members
-    let members = TeamRepository::get_members(pool, team_id)
+    let members = TeamRepository::get_members(pool, team_uuid)
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team members");
@@ -192,7 +194,7 @@ async fn get_team_dashboard(
         })?;
 
     // Get project IDs
-    let project_ids = TeamRepository::get_project_ids(pool, team_id)
+    let project_ids = TeamRepository::get_project_ids(pool, team_uuid)
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team project IDs");
@@ -208,7 +210,7 @@ async fn get_team_dashboard(
     }
 
     // Get issues
-    let issues = TeamRepository::get_issues(pool, team_id)
+    let issues = TeamRepository::get_issues(pool, team_uuid)
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team issues");
@@ -238,7 +240,7 @@ async fn create_team(
 async fn update_team(
     State(_state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Path(team_id): Path<Uuid>,
+    Path(team_id): Path<String>,
     Json(_payload): Json<UpdateTeamRequest>,
 ) -> Result<Json<ApiResponse<Team>>, ErrorResponse> {
     tracing::warn!(user_id = %ctx.user.id, %team_id, "update_team not implemented");
@@ -249,7 +251,7 @@ async fn update_team(
 async fn delete_team(
     State(_state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Path(team_id): Path<Uuid>,
+    Path(team_id): Path<String>,
 ) -> Result<StatusCode, ErrorResponse> {
     tracing::warn!(user_id = %ctx.user.id, %team_id, "delete_team not implemented");
     Err(ErrorResponse::new(StatusCode::NOT_IMPLEMENTED, "delete team not implemented"))
@@ -259,7 +261,7 @@ async fn delete_team(
 async fn get_team_projects(
     State(_state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Path(team_id): Path<Uuid>,
+    Path(team_id): Path<String>,
 ) -> Json<ApiResponse<Vec<String>>> {
     tracing::debug!(user_id = %ctx.user.id, %team_id, "get_team_projects returning empty");
     ApiResponse::success(vec![])
@@ -269,7 +271,7 @@ async fn get_team_projects(
 async fn assign_project(
     State(_state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Path(team_id): Path<Uuid>,
+    Path(team_id): Path<String>,
     Json(_payload): Json<TeamProjectAssignment>,
 ) -> Result<Json<ApiResponse<TeamProject>>, ErrorResponse> {
     tracing::warn!(user_id = %ctx.user.id, %team_id, "assign_project not implemented");

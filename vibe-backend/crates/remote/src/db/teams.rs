@@ -165,6 +165,81 @@ impl TeamRepository {
         }))
     }
 
+    /// Get a team by slug
+    pub async fn get_by_slug(pool: &PgPool, slug: &str) -> Result<Option<Team>, TeamError> {
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                id               AS "id!: Uuid",
+                name             AS "name!",
+                slug,
+                identifier,
+                icon,
+                color,
+                document_storage_path,
+                created_at       AS "created_at!: DateTime<Utc>",
+                updated_at       AS "updated_at!: DateTime<Utc>"
+            FROM teams
+            WHERE slug = $1
+            "#,
+            slug
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(row.map(|r| Team {
+            id: r.id,
+            name: r.name,
+            slug: r.slug,
+            identifier: r.identifier,
+            icon: r.icon,
+            color: r.color,
+            document_storage_path: r.document_storage_path,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+        }))
+    }
+
+    /// Get a team by ID, slug, or identifier
+    pub async fn get_by_id_or_slug(pool: &PgPool, id_or_slug: &str) -> Result<Option<Team>, TeamError> {
+        // Try parsing as UUID first
+        if let Ok(uuid) = Uuid::parse_str(id_or_slug) {
+            return Self::get_by_id(pool, uuid).await;
+        }
+        // Try slug or identifier lookup
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                id               AS "id!: Uuid",
+                name             AS "name!",
+                slug,
+                identifier,
+                icon,
+                color,
+                document_storage_path,
+                created_at       AS "created_at!: DateTime<Utc>",
+                updated_at       AS "updated_at!: DateTime<Utc>"
+            FROM teams
+            WHERE slug = $1 OR identifier = $1
+            "#,
+            id_or_slug
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(row.map(|r| Team {
+            id: r.id,
+            name: r.name,
+            slug: r.slug,
+            identifier: r.identifier,
+            icon: r.icon,
+            color: r.color,
+            document_storage_path: r.document_storage_path,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+        }))
+    }
+
     /// Get a team's workspace ID
     pub async fn workspace_id(pool: &PgPool, team_id: Uuid) -> Result<Option<Uuid>, TeamError> {
         sqlx::query_scalar::<_, Option<Uuid>>(
