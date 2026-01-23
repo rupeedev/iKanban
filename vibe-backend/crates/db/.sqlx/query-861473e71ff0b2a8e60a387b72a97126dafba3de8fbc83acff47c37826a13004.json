@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO inbox_items (id, notification_type, title, message, task_id, project_id, workspace_id, is_read)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE)\n            RETURNING\n                id as \"id!: Uuid\",\n                notification_type as \"notification_type!: InboxNotificationType\",\n                title,\n                message,\n                task_id as \"task_id: Uuid\",\n                project_id as \"project_id: Uuid\",\n                workspace_id as \"workspace_id: Uuid\",\n                is_read as \"is_read!: bool\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "INSERT INTO inbox_items (id, notification_type, title, message, task_id, project_id, workspace_id, is_read)\n            SELECT $1, t.n::inbox_notification_type, $3, $4, $5, $6, $7, FALSE\n            FROM (SELECT $2::TEXT AS n) t\n            RETURNING\n                id as \"id!: Uuid\",\n                notification_type as \"notification_type!: InboxNotificationType\",\n                title,\n                message,\n                task_id as \"task_id: Uuid\",\n                project_id as \"project_id: Uuid\",\n                workspace_id as \"workspace_id: Uuid\",\n                is_read as \"is_read!: bool\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -11,7 +11,22 @@
       {
         "ordinal": 1,
         "name": "notification_type!: InboxNotificationType",
-        "type_info": "Text"
+        "type_info": {
+          "Custom": {
+            "name": "inbox_notification_type",
+            "kind": {
+              "Enum": [
+                "task_assigned",
+                "task_mentioned",
+                "task_comment",
+                "task_status_changed",
+                "task_completed",
+                "workspace_created",
+                "system_notification"
+              ]
+            }
+          }
+        }
       },
       {
         "ordinal": 2,
@@ -78,5 +93,5 @@
       false
     ]
   },
-  "hash": "352a764ee4622555506a399f88fa000bd3d45039c2457d7c8c6e8b04a6ecc847"
+  "hash": "861473e71ff0b2a8e60a387b72a97126dafba3de8fbc83acff47c37826a13004"
 }
