@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO team_invitations (id, team_id, email, role, status, invited_by, token, expires_at)\n            VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7)\n            RETURNING\n                id           AS \"id!: Uuid\",\n                team_id      AS \"team_id!: Uuid\",\n                email        AS \"email!\",\n                role         AS \"role!\",\n                status       AS \"status!\",\n                invited_by,\n                token,\n                expires_at   AS \"expires_at!: DateTime<Utc>\",\n                created_at   AS \"created_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "email!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "role!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "status!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "invited_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "expires_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "05430c9da26f4ba8a9980d6fd3ed08c49cf7067815daf8e19dc5cdea94c0ba3f"
+}

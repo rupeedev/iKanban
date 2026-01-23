@@ -38,6 +38,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { aiProviderKeysApi, AiProviderKeyInfo } from '@/lib/api';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 type AiProvider = 'anthropic' | 'google' | 'openai';
 
@@ -71,6 +72,7 @@ const PROVIDERS: Record<AiProvider, ProviderConfig> = {
 
 export function AiProviderKeysSettings() {
   const { t } = useTranslation('settings');
+  const { currentWorkspaceId } = useWorkspace();
   const [providerKeys, setProviderKeys] = useState<AiProviderKeyInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,10 +96,12 @@ export function AiProviderKeysSettings() {
   const [testingProvider, setTestingProvider] = useState<string | null>(null);
 
   const loadProviderKeys = useCallback(async () => {
+    if (!currentWorkspaceId) return;
+
     try {
       setLoading(true);
       setError(null);
-      const keys = await aiProviderKeysApi.list();
+      const keys = await aiProviderKeysApi.list(currentWorkspaceId);
       setProviderKeys(keys);
     } catch (err) {
       setError(t('settings.aiProviderKeys.errors.loadFailed'));
@@ -105,7 +109,7 @@ export function AiProviderKeysSettings() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, currentWorkspaceId]);
 
   // Load provider keys
   useEffect(() => {
@@ -113,12 +117,13 @@ export function AiProviderKeysSettings() {
   }, [loadProviderKeys]);
 
   const handleSaveKey = async () => {
-    if (!apiKey.trim()) return;
+    if (!apiKey.trim() || !currentWorkspaceId) return;
 
     try {
       setSaving(true);
       setError(null);
       await aiProviderKeysApi.upsert({
+        workspace_id: currentWorkspaceId,
         provider: selectedProvider,
         api_key: apiKey.trim(),
       });
@@ -137,10 +142,12 @@ export function AiProviderKeysSettings() {
   };
 
   const handleDeleteKey = async (provider: string) => {
+    if (!currentWorkspaceId) return;
+
     try {
       setDeleting(true);
       setError(null);
-      await aiProviderKeysApi.delete(provider);
+      await aiProviderKeysApi.delete(currentWorkspaceId, provider);
       setSuccess(t('settings.aiProviderKeys.deleteSuccess'));
       setTimeout(() => setSuccess(null), 3000);
       await loadProviderKeys();
@@ -154,10 +161,15 @@ export function AiProviderKeysSettings() {
   };
 
   const handleTestKey = async (provider: string) => {
+    if (!currentWorkspaceId) return;
+
     try {
       setTestingProvider(provider);
       setError(null);
-      const isValid = await aiProviderKeysApi.test(provider);
+      const isValid = await aiProviderKeysApi.test(
+        currentWorkspaceId,
+        provider
+      );
       if (isValid) {
         setSuccess(
           t('settings.aiProviderKeys.testSuccess', {
@@ -220,6 +232,16 @@ export function AiProviderKeysSettings() {
     setShowApiKey(false);
     setShowAddDialog(true);
   };
+
+  if (!currentWorkspaceId) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <span className="text-muted-foreground">
+          {t('settings.aiProviderKeys.noWorkspace')}
+        </span>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

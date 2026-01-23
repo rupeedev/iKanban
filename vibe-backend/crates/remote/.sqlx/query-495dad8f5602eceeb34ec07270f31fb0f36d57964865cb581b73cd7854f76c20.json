@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                tm.id            AS \"id!: Uuid\",\n                tm.team_id       AS \"team_id!: Uuid\",\n                tm.email         AS \"email!\",\n                tm.display_name,\n                tm.role          AS \"role!\",\n                tm.invited_by,\n                tm.clerk_user_id,\n                tm.avatar_url,\n                tm.joined_at     AS \"joined_at!: DateTime<Utc>\",\n                tm.created_at    AS \"created_at!: DateTime<Utc>\",\n                tm.updated_at    AS \"updated_at!: DateTime<Utc>\",\n                COALESCE(\n                    (SELECT COUNT(*) FROM tasks t WHERE t.assignee_id = tm.id)::integer,\n                    0\n                ) AS \"assigned_task_count!: i32\"\n            FROM team_members tm\n            WHERE tm.team_id = $1\n            ORDER BY tm.display_name ASC NULLS LAST, tm.email ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "email!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "display_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "role!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "invited_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "clerk_user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "avatar_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "joined_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "assigned_task_count!: i32",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "495dad8f5602eceeb34ec07270f31fb0f36d57964865cb581b73cd7854f76c20"
+}

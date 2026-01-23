@@ -573,6 +573,7 @@
       "title": "AI Provider Keys",
       "description": "Configure API keys for AI providers (Claude, Gemini, OpenAI) to enable AI-powered features in the application.",
       "loading": "Loading AI provider keys...",
+      "noWorkspace": "Please select a workspace to manage AI provider keys.",
       "addButton": "Add Key",
       "updateButton": "Update",
       "deleteButton": "Delete",

@@ -23,24 +23,27 @@ import {
   getProviderDisplayName,
   SUPPORTED_PROVIDERS,
 } from '@/lib/mcpKeyReference';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 export function McpKeyReferenceHelp() {
   const { t } = useTranslation('settings');
+  const { currentWorkspaceId } = useWorkspace();
   const [providerKeys, setProviderKeys] = useState<AiProviderKeyInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedProvider, setCopiedProvider] = useState<string | null>(null);
 
   const loadProviderKeys = useCallback(async () => {
+    if (!currentWorkspaceId) return;
     try {
       setLoading(true);
-      const keys = await aiProviderKeysApi.list();
+      const keys = await aiProviderKeysApi.list(currentWorkspaceId);
       setProviderKeys(keys);
     } catch (err) {
       console.error('Failed to load AI provider keys:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentWorkspaceId]);
 
   useEffect(() => {
     loadProviderKeys();

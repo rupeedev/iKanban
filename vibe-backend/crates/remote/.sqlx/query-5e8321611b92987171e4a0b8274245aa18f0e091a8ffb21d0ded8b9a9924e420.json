@@ -1,0 +1,60 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO gitlab_connections (team_id, access_token, gitlab_username, gitlab_url)\n            VALUES (NULL, $1, $2, $3)\n            RETURNING\n                id AS \"id!: Uuid\",\n                team_id AS \"team_id: Uuid\",\n                access_token AS \"access_token!\",\n                gitlab_username,\n                gitlab_url AS \"gitlab_url!\",\n                connected_at AS \"connected_at!: DateTime<Utc>\",\n                updated_at AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "access_token!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "gitlab_username",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "gitlab_url!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "connected_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5e8321611b92987171e4a0b8274245aa18f0e091a8ffb21d0ded8b9a9924e420"
+}

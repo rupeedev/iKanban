@@ -213,6 +213,7 @@ export interface AiProviderKeyInfo {
 }
 
 export interface UpsertAiProviderKey {
+  workspace_id: string;
   provider: string;
   api_key: string;
 }
@@ -2652,8 +2653,10 @@ export const apiKeysApi = {
 
 // AI Provider Keys API (for Claude, Gemini, OpenAI)
 export const aiProviderKeysApi = {
-  list: async (): Promise<AiProviderKeyInfo[]> => {
-    const response = await makeRequest('/api/ai-keys');
+  list: async (workspaceId: string): Promise<AiProviderKeyInfo[]> => {
+    const response = await makeRequest(
+      `/api/ai-keys?workspace_id=${encodeURIComponent(workspaceId)}`
+    );
     return handleApiResponse<AiProviderKeyInfo[]>(response);
   },
 
@@ -2665,17 +2668,23 @@ export const aiProviderKeysApi = {
     return handleApiResponse<AiProviderKeyInfo>(response);
   },
 
-  delete: async (provider: string): Promise<void> => {
-    const response = await makeRequest(`/api/ai-keys/${provider}`, {
-      method: 'DELETE',
-    });
+  delete: async (workspaceId: string, provider: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/ai-keys/${provider}?workspace_id=${encodeURIComponent(workspaceId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
-  test: async (provider: string): Promise<boolean> => {
-    const response = await makeRequest(`/api/ai-keys/${provider}/test`, {
-      method: 'POST',
-    });
+  test: async (workspaceId: string, provider: string): Promise<boolean> => {
+    const response = await makeRequest(
+      `/api/ai-keys/${provider}/test?workspace_id=${encodeURIComponent(workspaceId)}`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<boolean>(response);
   },
 };

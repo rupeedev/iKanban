@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { BaseCodingAgent } from 'shared/types';
 import { configApi, aiProviderKeysApi, AiProviderKeyInfo } from '../lib/api';
 import type { AvailabilityMode } from '@/components/AgentModeBadge';
+import { useWorkspaceOptional } from '@/contexts/WorkspaceContext';
 
 export type CliStatus = 'login_detected' | 'installation_found' | 'not_found';
 
@@ -34,6 +35,8 @@ const AGENT_TO_PROVIDER: Record<string, string | null> = {
 export function useEnhancedAgentAvailability(
   agent: BaseCodingAgent | null | undefined
 ): EnhancedAvailabilityInfo | null {
+  const workspaceContext = useWorkspaceOptional();
+  const currentWorkspaceId = workspaceContext?.currentWorkspaceId;
   const [cliStatus, setCliStatus] = useState<CliStatus | null>(null);
   const [lastAuthTimestamp, setLastAuthTimestamp] = useState<
     number | undefined
@@ -81,10 +84,15 @@ export function useEnhancedAgentAvailability(
 
   // Load API provider keys
   useEffect(() => {
+    if (!currentWorkspaceId) {
+      setProviderKeys([]);
+      return;
+    }
+
     const loadProviderKeys = async () => {
       setIsLoadingApi(true);
       try {
-        const keys = await aiProviderKeysApi.list();
+        const keys = await aiProviderKeysApi.list(currentWorkspaceId);
         setProviderKeys(keys);
       } catch (error) {
         console.error('Failed to load provider keys:', error);
@@ -95,7 +103,7 @@ export function useEnhancedAgentAvailability(
     };
 
     loadProviderKeys();
-  }, []);
+  }, [currentWorkspaceId]);
 
   // Compute enhanced availability
   const enhancedInfo = useMemo((): EnhancedAvailabilityInfo | null => {

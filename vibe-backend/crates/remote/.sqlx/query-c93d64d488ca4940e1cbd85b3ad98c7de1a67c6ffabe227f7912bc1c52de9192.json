@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO github_connections (team_id, access_token, github_username)\n            VALUES (NULL, $1, $2)\n            RETURNING\n                id AS \"id!: Uuid\",\n                team_id AS \"team_id: Uuid\",\n                access_token AS \"access_token!\",\n                github_username,\n                connected_at AS \"connected_at!: DateTime<Utc>\",\n                updated_at AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "access_token!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "github_username",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "connected_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "c93d64d488ca4940e1cbd85b3ad98c7de1a67c6ffabe227f7912bc1c52de9192"
+}
