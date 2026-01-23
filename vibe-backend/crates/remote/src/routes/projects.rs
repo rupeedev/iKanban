@@ -17,7 +17,11 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::projects::{CreateProjectData, Project, ProjectError, ProjectRepository},
+    db::{
+        project_repos::{CreateProjectRepo, ProjectRepoRepository, UpdateProjectRepo},
+        projects::{CreateProjectData, Project, ProjectError, ProjectRepository},
+        repos::{CreateRepo, Repo, RepoRepository},
+    },
 };
 
 #[derive(Debug, Deserialize)]
@@ -55,6 +59,17 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/projects", get(list_projects).post(create_project))
         .route("/projects/{project_id}", get(get_project))
+        // Repository routes
+        .route(
+            "/projects/{project_id}/repositories",
+            get(list_project_repositories).post(add_project_repository),
+        )
+        .route(
+            "/projects/{project_id}/repositories/{repo_id}",
+            get(get_project_repository)
+                .put(update_project_repository)
+                .delete(delete_project_repository),
+        )
 }
 
 #[instrument(
@@ -196,6 +211,240 @@ async fn create_project(
     }
 
     Ok(ApiResponse::success(to_remote_project(project)))
+}
+
+// ============================================================================
+// Project Repository Endpoints
+// ============================================================================
+
+/// List repositories linked to a project
+#[instrument(
+    name = "projects.list_repositories",
+    skip(state, ctx),
+    fields(project_id = %project_id, user_id = %ctx.user.id)
+)]
+async fn list_project_repositories(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<Vec<Repo>>>, ErrorResponse> {
+    // Verify project exists and user has access
+    let project = ProjectRepository::fetch_by_id(state.pool(), project_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, "failed to load project");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load project")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
+
+    ensure_member_access(state.pool(), project.organization_id, ctx.user.id).await?;
+
+    let repos = ProjectRepoRepository::list_by_project(state.pool(), project_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, "failed to list project repositories");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to list repositories",
+            )
+        })?;
+
+    Ok(ApiResponse::success(repos))
+}
+
+/// Add a repository to a project
+#[instrument(
+    name = "projects.add_repository",
+    skip(state, ctx, payload),
+    fields(project_id = %project_id, user_id = %ctx.user.id)
+)]
+async fn add_project_repository(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+    Json(payload): Json<CreateProjectRepo>,
+) -> Result<Json<ApiResponse<Repo>>, ErrorResponse> {
+    // Verify project exists and user has access
+    let project = ProjectRepository::fetch_by_id(state.pool(), project_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, "failed to load project");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load project")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
+
+    ensure_member_access(state.pool(), project.organization_id, ctx.user.id).await?;
+
+    // Create or find the repo
+    let repo = RepoRepository::create_or_find(
+        state.pool(),
+        &CreateRepo {
+            path: payload.git_repo_path.clone(),
+            name: payload
+                .display_name
+                .split('/')
+                .last()
+                .unwrap_or(&payload.display_name)
+                .to_string(),
+            display_name: payload.display_name.clone(),
+        },
+    )
+    .await
+    .map_err(|error| {
+        tracing::error!(?error, %project_id, "failed to create repo");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to create repository")
+    })?;
+
+    // Link repo to project
+    ProjectRepoRepository::link(state.pool(), project_id, repo.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, repo_id = %repo.id, "failed to link repo to project");
+            match error {
+                crate::db::project_repos::ProjectRepoError::AlreadyLinked => {
+                    ErrorResponse::new(StatusCode::CONFLICT, "repository already linked to project")
+                }
+                _ => ErrorResponse::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "failed to link repository",
+                ),
+            }
+        })?;
+
+    tracing::info!(%project_id, repo_id = %repo.id, "linked repository to project");
+
+    Ok(ApiResponse::success(repo))
+}
+
+/// Get a specific repository link for a project
+#[instrument(
+    name = "projects.get_repository",
+    skip(state, ctx),
+    fields(project_id = %project_id, repo_id = %repo_id, user_id = %ctx.user.id)
+)]
+async fn get_project_repository(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((project_id, repo_id)): Path<(Uuid, Uuid)>,
+) -> Result<Json<ApiResponse<Repo>>, ErrorResponse> {
+    // Verify project exists and user has access
+    let project = ProjectRepository::fetch_by_id(state.pool(), project_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, "failed to load project");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load project")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
+
+    ensure_member_access(state.pool(), project.organization_id, ctx.user.id).await?;
+
+    // Verify the link exists
+    ProjectRepoRepository::get(state.pool(), project_id, repo_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, %repo_id, "failed to get project repo link");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "repository not found in project"))?;
+
+    // Get the repo details
+    let repo = RepoRepository::find_by_id(state.pool(), repo_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %repo_id, "failed to load repo");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load repository")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "repository not found"))?;
+
+    Ok(ApiResponse::success(repo))
+}
+
+/// Update a project repository configuration
+#[instrument(
+    name = "projects.update_repository",
+    skip(state, ctx, payload),
+    fields(project_id = %project_id, repo_id = %repo_id, user_id = %ctx.user.id)
+)]
+async fn update_project_repository(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((project_id, repo_id)): Path<(Uuid, Uuid)>,
+    Json(payload): Json<UpdateProjectRepo>,
+) -> Result<Json<ApiResponse<Repo>>, ErrorResponse> {
+    // Verify project exists and user has access
+    let project = ProjectRepository::fetch_by_id(state.pool(), project_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, "failed to load project");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load project")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
+
+    ensure_member_access(state.pool(), project.organization_id, ctx.user.id).await?;
+
+    // Update the project repo configuration
+    ProjectRepoRepository::update(state.pool(), project_id, repo_id, &payload)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, %repo_id, "failed to update project repo");
+            match error {
+                crate::db::project_repos::ProjectRepoError::NotFound => {
+                    ErrorResponse::new(StatusCode::NOT_FOUND, "repository not found in project")
+                }
+                _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error"),
+            }
+        })?;
+
+    // Return the repo details
+    let repo = RepoRepository::find_by_id(state.pool(), repo_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %repo_id, "failed to load repo");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load repository")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "repository not found"))?;
+
+    Ok(ApiResponse::success(repo))
+}
+
+/// Remove a repository from a project
+#[instrument(
+    name = "projects.delete_repository",
+    skip(state, ctx),
+    fields(project_id = %project_id, repo_id = %repo_id, user_id = %ctx.user.id)
+)]
+async fn delete_project_repository(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((project_id, repo_id)): Path<(Uuid, Uuid)>,
+) -> Result<Json<ApiResponse<()>>, ErrorResponse> {
+    // Verify project exists and user has access
+    let project = ProjectRepository::fetch_by_id(state.pool(), project_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, "failed to load project");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load project")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
+
+    ensure_member_access(state.pool(), project.organization_id, ctx.user.id).await?;
+
+    // Unlink the repo from the project
+    ProjectRepoRepository::unlink(state.pool(), project_id, repo_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, %repo_id, "failed to unlink repo from project");
+            match error {
+                crate::db::project_repos::ProjectRepoError::NotFound => {
+                    ErrorResponse::new(StatusCode::NOT_FOUND, "repository not found in project")
+                }
+                _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error"),
+            }
+        })?;
+
+    tracing::info!(%project_id, %repo_id, "unlinked repository from project");
+
+    Ok(ApiResponse::success(()))
 }
 
 fn to_remote_project(project: Project) -> RemoteProject {

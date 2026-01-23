@@ -29,15 +29,8 @@ pub fn router() -> Router<AppState> {
             "/task-attempts/{attempt_id}/branch-status",
             get(get_branch_status),
         )
-        // Project repositories - local-only feature for linking to local git repos
-        .route(
-            "/projects/{project_id}/repositories",
-            get(list_project_repositories),
-        )
-        .route(
-            "/projects/{project_id}/repositories/{repo_id}",
-            get(get_project_repository),
-        )
+    // NOTE: Project repository routes have been moved to routes/projects.rs
+    // They now properly store GitHub/GitLab repo links in the database
 }
 
 #[derive(Debug, Deserialize)]
@@ -94,21 +87,4 @@ async fn get_branch_status(
     Path(_attempt_id): Path<Uuid>,
 ) -> Json<ApiResponse<Vec<Value>>> {
     ApiResponse::success(vec![])
-}
-
-/// List project repositories - returns empty array (local-only feature)
-async fn list_project_repositories(
-    Extension(_ctx): Extension<RequestContext>,
-    Path(_project_id): Path<Uuid>,
-) -> Json<ApiResponse<Vec<Value>>> {
-    // Project repositories link projects to local git repos - not applicable for remote
-    ApiResponse::success(vec![])
-}
-
-/// Get a single project repository - returns not found (local-only feature)
-async fn get_project_repository(
-    Extension(_ctx): Extension<RequestContext>,
-    Path((_project_id, _repo_id)): Path<(Uuid, Uuid)>,
-) -> Json<ApiResponse<()>> {
-    ApiResponse::error("Project repositories are only available in the local desktop app")
 }
