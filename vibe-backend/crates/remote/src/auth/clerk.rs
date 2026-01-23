@@ -23,6 +23,7 @@ use uuid::Uuid;
 use crate::{
     AppState, configure_user_scope,
     db::{
+        api_keys::ApiKeyRepository,
         oauth_accounts::OAuthAccountRepository,
         users::{UpsertUser, UserRepository},
     },
@@ -219,7 +220,11 @@ pub struct ClerkRequestContext {
     pub clerk_user_id: String,
 }
 
-/// Middleware that verifies Clerk tokens and injects ClerkRequestContext
+/// Middleware that verifies Clerk tokens or API keys and injects RequestContext
+///
+/// Authentication methods (checked in order):
+/// 1. API Key: Bearer token starting with "vk_" - validated against api_keys table
+/// 2. Clerk JWT: Standard Clerk authentication token
 pub async fn require_clerk_session(
     State(state): State<AppState>,
     mut req: Request<Body>,
@@ -233,6 +238,70 @@ pub async fn require_clerk_session(
         }
     };
 
+    let pool = state.pool();
+    let user_repo = UserRepository::new(pool);
+
+    // Check if this is an API key (starts with "vk_")
+    if bearer.starts_with("vk_") {
+        debug!("Authenticating with API key");
+
+        // Validate API key and get user_id
+        let user_id = match ApiKeyRepository::validate_key(pool, &bearer).await {
+            Ok(Some(user_id)) => user_id,
+            Ok(None) => {
+                warn!("Invalid or expired API key");
+                return StatusCode::UNAUTHORIZED.into_response();
+            }
+            Err(e) => {
+                error!(?e, "Database error validating API key");
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
+        };
+
+        // Parse user_id as UUID and fetch user
+        let user_uuid = match Uuid::parse_str(&user_id) {
+            Ok(id) => id,
+            Err(e) => {
+                error!(?e, "Invalid user_id format in API key");
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
+        };
+
+        let db_user = match user_repo.fetch_user(user_uuid).await {
+            Ok(user) => user,
+            Err(e) => {
+                error!(?e, "Failed to fetch user for API key");
+                return StatusCode::UNAUTHORIZED.into_response();
+            }
+        };
+
+        debug!(user_id = %db_user.id, "API key authenticated");
+
+        configure_user_scope(
+            db_user.id,
+            db_user.username.as_deref(),
+            Some(db_user.email.as_str()),
+        );
+
+        // Insert ClerkRequestContext with placeholder clerk_user_id for API key auth
+        let ctx = ClerkRequestContext {
+            user: db_user.clone(),
+            clerk_user_id: format!("api_key:{}", user_id),
+        };
+        req.extensions_mut().insert(ctx);
+
+        // Insert legacy RequestContext for compatibility
+        let legacy_ctx = super::middleware::RequestContext {
+            user: db_user,
+            session_id: Uuid::nil(),
+            access_token_expires_at: chrono::Utc::now() + chrono::Duration::hours(24),
+        };
+        req.extensions_mut().insert(legacy_ctx);
+
+        return next.run(req).await;
+    }
+
+    // Standard Clerk JWT authentication
     let clerk_auth = state.clerk_auth();
     let clerk_user = match clerk_auth.validate_token(&bearer).await {
         Ok(user) => user,
@@ -249,9 +318,7 @@ pub async fn require_clerk_session(
     );
 
     // Look up the database user by Clerk user ID
-    let pool = state.pool();
     let oauth_repo = OAuthAccountRepository::new(pool);
-    let user_repo = UserRepository::new(pool);
 
     // Try to find existing user by Clerk ID
     let db_user = match oauth_repo
