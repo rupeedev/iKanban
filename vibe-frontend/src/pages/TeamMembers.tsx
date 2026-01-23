@@ -103,6 +103,15 @@ function getAvatarPattern(str: string | undefined | null): string {
   return colors[hash % colors.length];
 }
 
+// Safe date parsing - returns valid Date or null for invalid/missing values
+function safeParseDate(
+  value: Date | string | null | undefined
+): Date | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return isNaN(date.getTime()) ? null : date;
+}
+
 interface MemberTableRowProps {
   teamId: string;
   member: TeamMember;
@@ -156,8 +165,8 @@ function MemberTableRow({
     member.display_name || member.email?.split('@')[0] || 'Unknown';
   const username = member.email?.split('@')[0] || 'unknown';
   const avatarColor = getAvatarPattern(member.email || member.id);
-  const joinedDate = new Date(member.joined_at);
-  const updatedDate = new Date(member.updated_at);
+  const joinedDate = safeParseDate(member.joined_at);
+  const updatedDate = safeParseDate(member.updated_at);
   const taskCount = member.assigned_task_count || 0;
 
   return (
@@ -245,7 +254,9 @@ function MemberTableRow({
 
       {/* Joined */}
       <td className="py-4 px-4">
-        <span className="text-sm">{format(joinedDate, 'MMM dd, yyyy')}</span>
+        <span className="text-sm">
+          {joinedDate ? format(joinedDate, 'MMM dd, yyyy') : '—'}
+        </span>
       </td>
 
       {/* Activity */}
@@ -253,15 +264,19 @@ function MemberTableRow({
         <div className="text-sm space-y-0.5">
           <div className="flex items-center gap-2 text-muted-foreground">
             <UserPlus2 className="h-3.5 w-3.5" />
-            <span>{format(joinedDate, 'MMM dd, yyyy')}</span>
+            <span>{joinedDate ? format(joinedDate, 'MMM dd, yyyy') : '—'}</span>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            <span>{format(updatedDate, 'MMM dd, yyyy')}</span>
+            <span>
+              {updatedDate ? format(updatedDate, 'MMM dd, yyyy') : '—'}
+            </span>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <Hourglass className="h-3.5 w-3.5" />
-            <span>{format(updatedDate, 'MMM dd, yyyy')}</span>
+            <span>
+              {updatedDate ? format(updatedDate, 'MMM dd, yyyy') : '—'}
+            </span>
           </div>
         </div>
       </td>
