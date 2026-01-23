@@ -133,7 +133,7 @@ function MemberTableRow({
   const handleRemove = async () => {
     const confirmed = await ConfirmDialog.show({
       title: 'Remove member',
-      message: `Are you sure you want to remove ${member.display_name || member.email} from this team? They will lose access to all team resources.`,
+      message: `Are you sure you want to remove ${member.display_name || member.email || 'this member'} from this team? They will lose access to all team resources.`,
       confirmText: 'Remove',
       variant: 'destructive',
     });
@@ -146,13 +146,14 @@ function MemberTableRow({
     await MemberProjectsDialog.show({
       teamId,
       memberId: member.id,
-      memberName: member.display_name || member.email,
+      memberName: member.display_name || member.email || 'Unknown',
     });
   };
 
-  const displayName = member.display_name || member.email.split('@')[0];
-  const username = member.email.split('@')[0];
-  const avatarColor = getAvatarPattern(member.email);
+  const displayName =
+    member.display_name || member.email?.split('@')[0] || 'Unknown';
+  const username = member.email?.split('@')[0] || 'unknown';
+  const avatarColor = getAvatarPattern(member.email || member.id);
   const joinedDate = new Date(member.joined_at);
   const updatedDate = new Date(member.updated_at);
   const taskCount = member.assigned_task_count || 0;
