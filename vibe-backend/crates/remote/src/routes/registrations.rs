@@ -8,7 +8,7 @@ use axum::{
     extract::State,
     routing::{get, post},
 };
-use db_crate::models::user_registration::{RegistrationStatus, UserRegistration};
+use db_crate::models::user_registration::{CreateUserRegistration, RegistrationStatus, UserRegistration};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
@@ -59,7 +59,9 @@ pub struct RejectRequest {
 
 /// Router for user-accessible registration routes (requires auth, not superadmin)
 pub fn user_router() -> Router<AppState> {
-    Router::new().route("/registrations/me", get(get_my_registration))
+    Router::new()
+        .route("/registrations/me", get(get_my_registration))
+        .route("/registrations", post(create_registration))
 }
 
 /// Router for superadmin registration routes (requires superadmin auth)
@@ -92,6 +94,56 @@ async fn get_my_registration(
             Json(ApiResponse::error(
                 "Failed to get registration status".into(),
             ))
+        }
+    }
+}
+
+/// Create a new user registration
+#[instrument(name = "registrations.create", skip(state, ctx, payload), fields(clerk_user_id = %ctx.clerk_user_id))]
+async fn create_registration(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<ClerkRequestContext>,
+    Json(mut payload): Json<CreateUserRegistration>,
+) -> Json<ApiResponse<UserRegistration>> {
+    let pool = state.pool();
+
+    // Ensure the clerk_user_id matches the authenticated user
+    payload.clerk_user_id = ctx.clerk_user_id.clone();
+
+    // Check if user already has a registration
+    match UserRegistration::find_by_clerk_id(pool, &ctx.clerk_user_id).await {
+        Ok(Some(_)) => {
+            return Json(ApiResponse::error(
+                "User already has a registration".into(),
+            ));
+        }
+        Ok(None) => {} // No existing registration, continue
+        Err(e) => {
+            tracing::error!(?e, "Failed to check existing registration");
+            return Json(ApiResponse::error(
+                "Failed to check registration status".into(),
+            ));
+        }
+    }
+
+    // Create the registration
+    match UserRegistration::create(pool, &payload).await {
+        Ok(registration) => {
+            tracing::info!(
+                registration_id = %registration.id,
+                clerk_user_id = %ctx.clerk_user_id,
+                email = %registration.email,
+                "Created new user registration"
+            );
+
+            // Notify superadmins about the new registration
+            notify_superadmins_of_new_registration(&state, &registration).await;
+
+            Json(ApiResponse::success(registration))
+        }
+        Err(e) => {
+            tracing::error!(?e, "Failed to create registration");
+            Json(ApiResponse::error("Failed to create registration".into()))
         }
     }
 }
