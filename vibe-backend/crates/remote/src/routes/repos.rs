@@ -98,16 +98,28 @@ pub async fn get_repo_branches(
     };
 
     // 3. Call GitHub API
-    let parts: Vec<&str> = repo.path.split('/').collect();
-    if parts.len() != 2 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"success": false, "message": "Invalid repo path format"})),
-        )
+    let (owner, name) = if repo.path.starts_with("http") {
+        let parts: Vec<&str> = repo.path.split('/').collect();
+        if parts.len() >= 2 {
+            (parts[parts.len() - 2].to_string(), parts[parts.len() - 1].to_string())
+        } else {
+             return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"success": false, "message": format!("Invalid repo URL format: {}", repo.path)})),
+            )
             .into_response();
-    }
-    let owner = parts[0];
-    let name = parts[1];
+        }
+    } else {
+        let parts: Vec<&str> = repo.path.split('/').collect();
+        if parts.len() != 2 {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"success": false, "message": format!("Invalid repo path format: {}", repo.path)})),
+            )
+            .into_response();
+        }
+        (parts[0].to_string(), parts[1].to_string())
+    };
 
     let url = format!("https://api.github.com/repos/{}/{}/branches", owner, name);
     let client = reqwest::Client::new();

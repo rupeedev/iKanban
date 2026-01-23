@@ -552,7 +552,7 @@ pub async fn create_task_comment(
             tracing::error!(?e, "failed to create task comment");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"success": false, "message": "failed to create task comment"})),
+                Json(json!({"success": false, "message": format!("failed to create task comment: {}", e)})),
             )
                 .into_response()
         }
