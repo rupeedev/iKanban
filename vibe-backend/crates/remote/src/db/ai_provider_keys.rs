@@ -167,10 +167,8 @@ impl AiProviderKeyRepository {
             10 // Anthropic: sk-ant-XXX...
         } else if key.starts_with("AIza") {
             8 // Google: AIzaXXXX...
-        } else if key.starts_with("sk-") {
-            6 // OpenAI: sk-XXX...
         } else {
-            6 // Default
+            6 // OpenAI: sk-XXX... or Default
         };
 
         let prefix: String = key.chars().take(prefix_len).collect();

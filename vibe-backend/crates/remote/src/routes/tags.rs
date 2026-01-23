@@ -10,12 +10,17 @@ use serde::Deserialize;
 use tracing::instrument;
 use uuid::Uuid;
 
-use super::{error::{ApiResponse, ErrorResponse}, organization_members::ensure_member_access};
+use super::{
+    error::{ApiResponse, ErrorResponse},
+    organization_members::ensure_member_access,
+};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::tags::{CreateTag, Tag, TagRepository, UpdateTag},
-    db::teams::TeamRepository,
+    db::{
+        tags::{CreateTag, Tag, TagRepository, UpdateTag},
+        teams::TeamRepository,
+    },
 };
 
 #[derive(Debug, Deserialize)]
@@ -26,7 +31,10 @@ pub struct ListTagsQuery {
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/tags", get(list_tags).post(create_tag))
-        .route("/tags/{tag_id}", get(get_tag).put(update_tag).delete(delete_tag))
+        .route(
+            "/tags/{tag_id}",
+            get(get_tag).put(update_tag).delete(delete_tag),
+        )
 }
 
 /// List tags - returns tags filtered by team_id
@@ -40,9 +48,9 @@ async fn list_tags(
     Extension(ctx): Extension<RequestContext>,
     Query(params): Query<ListTagsQuery>,
 ) -> Result<Json<ApiResponse<Vec<Tag>>>, ErrorResponse> {
-    let team_id = params.team_id.ok_or_else(|| {
-        ErrorResponse::new(StatusCode::BAD_REQUEST, "team_id is required")
-    })?;
+    let team_id = params
+        .team_id
+        .ok_or_else(|| ErrorResponse::new(StatusCode::BAD_REQUEST, "team_id is required"))?;
 
     // Verify user has access to team's workspace
     if let Some(workspace_id) = TeamRepository::workspace_id(state.pool(), team_id)
@@ -87,16 +95,15 @@ async fn get_tag(
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "tag not found"))?;
 
     // Verify user has access to tag's team's workspace
-    if let Some(team_id) = tag.team_id {
-        if let Some(workspace_id) = TeamRepository::workspace_id(state.pool(), team_id)
+    if let Some(team_id) = tag.team_id
+        && let Some(workspace_id) = TeamRepository::workspace_id(state.pool(), team_id)
             .await
             .map_err(|error| {
                 tracing::error!(?error, %team_id, "failed to get team workspace");
                 ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get tag")
             })?
-        {
-            ensure_member_access(state.pool(), workspace_id, ctx.user.id).await?;
-        }
+    {
+        ensure_member_access(state.pool(), workspace_id, ctx.user.id).await?;
     }
 
     Ok(ApiResponse::success(tag))
@@ -161,16 +168,15 @@ async fn update_tag(
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "tag not found"))?;
 
     // Verify user has access to tag's team's workspace
-    if let Some(team_id) = existing.team_id {
-        if let Some(workspace_id) = TeamRepository::workspace_id(state.pool(), team_id)
+    if let Some(team_id) = existing.team_id
+        && let Some(workspace_id) = TeamRepository::workspace_id(state.pool(), team_id)
             .await
             .map_err(|error| {
                 tracing::error!(?error, %team_id, "failed to get team workspace");
                 ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to update tag")
             })?
-        {
-            ensure_member_access(state.pool(), workspace_id, ctx.user.id).await?;
-        }
+    {
+        ensure_member_access(state.pool(), workspace_id, ctx.user.id).await?;
     }
 
     let tag = TagRepository::update(state.pool(), tag_id, &payload)
@@ -205,16 +211,15 @@ async fn delete_tag(
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "tag not found"))?;
 
     // Verify user has access to tag's team's workspace
-    if let Some(team_id) = existing.team_id {
-        if let Some(workspace_id) = TeamRepository::workspace_id(state.pool(), team_id)
+    if let Some(team_id) = existing.team_id
+        && let Some(workspace_id) = TeamRepository::workspace_id(state.pool(), team_id)
             .await
             .map_err(|error| {
                 tracing::error!(?error, %team_id, "failed to get team workspace");
                 ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to delete tag")
             })?
-        {
-            ensure_member_access(state.pool(), workspace_id, ctx.user.id).await?;
-        }
+    {
+        ensure_member_access(state.pool(), workspace_id, ctx.user.id).await?;
     }
 
     let deleted = TagRepository::delete(state.pool(), tag_id)

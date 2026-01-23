@@ -1,7 +1,11 @@
 //! OAuth settings routes - Handle GitHub/GitLab OAuth for workspace integrations
+//!
+//! NOTE: The authorize endpoints are PUBLIC because they are opened in popup windows
+//! which don't automatically include authentication cookies/headers from the parent window.
+//! The connection is workspace-level (not user-specific), so we don't need user auth.
 
 use axum::{
-    Extension, Router,
+    Router,
     extract::{Query, State},
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
@@ -10,25 +14,28 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use url::Url;
+
 use crate::{
     AppState,
-    auth::RequestContext,
-    db::github_connections::{CreateGitHubConnection, GitHubConnectionRepository},
-    db::gitlab_connections::{CreateGitLabConnection, GitLabConnectionRepository},
+    db::{
+        github_connections::{CreateGitHubConnection, GitHubConnectionRepository},
+        gitlab_connections::{CreateGitLabConnection, GitLabConnectionRepository},
+    },
 };
 
-/// Public routes (OAuth callbacks - no auth required as they're redirects from GitHub/GitLab)
+/// Public routes - OAuth authorize and callbacks
+/// NOTE: Authorize endpoints must be public because popup windows don't include auth tokens
 pub fn public_router() -> Router<AppState> {
     Router::new()
+        .route("/oauth/github/authorize", get(github_authorize))
+        .route("/oauth/gitlab/authorize", get(gitlab_authorize))
         .route("/oauth/github/settings/callback", get(github_callback))
         .route("/oauth/gitlab/settings/callback", get(gitlab_callback))
 }
 
-/// Protected routes (OAuth authorize - requires auth to know which user is connecting)
+/// Protected routes - none currently needed
 pub fn protected_router() -> Router<AppState> {
     Router::new()
-        .route("/oauth/github/authorize", get(github_authorize))
-        .route("/oauth/gitlab/authorize", get(gitlab_authorize))
 }
 
 #[derive(Debug, Deserialize)]
@@ -78,13 +85,14 @@ struct GitLabUserResponse {
 }
 
 /// GET /oauth/github/authorize - Start GitHub OAuth flow for settings
-#[instrument(name = "oauth_settings.github_authorize", skip(_state, ctx))]
+/// NOTE: This endpoint is PUBLIC because it's opened in a popup window which doesn't
+/// include auth cookies/headers. The connection is workspace-level, not user-specific.
+#[instrument(name = "oauth_settings.github_authorize", skip(_state))]
 async fn github_authorize(
     State(_state): State<AppState>,
-    Extension(ctx): Extension<RequestContext>,
     Query(query): Query<AuthorizeQuery>,
 ) -> Response {
-    tracing::info!(user_id = %ctx.user.id, "starting GitHub OAuth for settings");
+    tracing::info!("starting GitHub OAuth for settings");
 
     let client_id = match std::env::var("GITHUB_OAUTH_CLIENT_ID") {
         Ok(id) => id,
@@ -98,7 +106,8 @@ async fn github_authorize(
         }
     };
 
-    let api_base = std::env::var("API_BASE_URL").unwrap_or_else(|_| "https://api.scho1ar.com".to_string());
+    let api_base =
+        std::env::var("API_BASE_URL").unwrap_or_else(|_| "https://api.scho1ar.com".to_string());
     let redirect_uri = format!("{}/api/oauth/github/settings/callback", api_base);
 
     // Encode callback_url in state parameter
@@ -127,12 +136,16 @@ async fn github_callback(
     // Decode the callback URL from state
     let callback_url = match &query.state {
         Some(state_param) => {
-            match base64::Engine::decode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, state_param) {
+            match base64::Engine::decode(
+                &base64::engine::general_purpose::URL_SAFE_NO_PAD,
+                state_param,
+            ) {
                 Ok(bytes) => match String::from_utf8(bytes) {
                     Ok(url) => url,
                     Err(_) => {
                         tracing::error!("invalid state parameter encoding");
-                        return (StatusCode::BAD_REQUEST, "Invalid state parameter").into_response();
+                        return (StatusCode::BAD_REQUEST, "Invalid state parameter")
+                            .into_response();
                     }
                 },
                 Err(_) => {
@@ -149,7 +162,10 @@ async fn github_callback(
 
     // Check for errors from GitHub
     if let Some(error) = &query.error {
-        let error_desc = query.error_description.as_deref().unwrap_or("Unknown error");
+        let error_desc = query
+            .error_description
+            .as_deref()
+            .unwrap_or("Unknown error");
         tracing::error!(%error, %error_desc, "GitHub OAuth error");
         return redirect_with_error(&callback_url, &format!("{}: {}", error, error_desc));
     }
@@ -173,7 +189,8 @@ async fn github_callback(
         Err(_) => return redirect_with_error(&callback_url, "GitHub OAuth not configured"),
     };
 
-    let api_base = std::env::var("API_BASE_URL").unwrap_or_else(|_| "https://api.scho1ar.com".to_string());
+    let api_base =
+        std::env::var("API_BASE_URL").unwrap_or_else(|_| "https://api.scho1ar.com".to_string());
     let redirect_uri = format!("{}/api/oauth/github/settings/callback", api_base);
 
     let client = reqwest::Client::new();
@@ -213,7 +230,10 @@ async fn github_callback(
     // Get GitHub username
     let user_response = client
         .get("https://api.github.com/user")
-        .header("Authorization", format!("Bearer {}", token_data.access_token))
+        .header(
+            "Authorization",
+            format!("Bearer {}", token_data.access_token),
+        )
         .header("User-Agent", "ikanban")
         .send()
         .await;
@@ -246,14 +266,19 @@ async fn github_callback(
                 access_token: Some(payload.access_token),
                 github_username: payload.github_username,
             };
-            if let Err(e) = GitHubConnectionRepository::update(state.pool(), existing.id, &update_payload).await {
+            if let Err(e) =
+                GitHubConnectionRepository::update(state.pool(), existing.id, &update_payload).await
+            {
                 tracing::error!(?e, "failed to update GitHub connection");
                 return redirect_with_error(&callback_url, "Failed to save connection");
             }
         }
         Ok(None) => {
             // Create new connection
-            if let Err(e) = GitHubConnectionRepository::create_workspace_connection(state.pool(), &payload).await {
+            if let Err(e) =
+                GitHubConnectionRepository::create_workspace_connection(state.pool(), &payload)
+                    .await
+            {
                 tracing::error!(?e, "failed to create GitHub connection");
                 return redirect_with_error(&callback_url, "Failed to save connection");
             }
@@ -269,13 +294,14 @@ async fn github_callback(
 }
 
 /// GET /oauth/gitlab/authorize - Start GitLab OAuth flow for settings
-#[instrument(name = "oauth_settings.gitlab_authorize", skip(_state, ctx))]
+/// NOTE: This endpoint is PUBLIC because it's opened in a popup window which doesn't
+/// include auth cookies/headers. The connection is workspace-level, not user-specific.
+#[instrument(name = "oauth_settings.gitlab_authorize", skip(_state))]
 async fn gitlab_authorize(
     State(_state): State<AppState>,
-    Extension(ctx): Extension<RequestContext>,
     Query(query): Query<AuthorizeQuery>,
 ) -> Response {
-    tracing::info!(user_id = %ctx.user.id, "starting GitLab OAuth for settings");
+    tracing::info!("starting GitLab OAuth for settings");
 
     let client_id = match std::env::var("GITLAB_OAUTH_CLIENT_ID") {
         Ok(id) => id,
@@ -289,8 +315,10 @@ async fn gitlab_authorize(
         }
     };
 
-    let gitlab_url = std::env::var("GITLAB_URL").unwrap_or_else(|_| "https://gitlab.com".to_string());
-    let api_base = std::env::var("API_BASE_URL").unwrap_or_else(|_| "https://api.scho1ar.com".to_string());
+    let gitlab_url =
+        std::env::var("GITLAB_URL").unwrap_or_else(|_| "https://gitlab.com".to_string());
+    let api_base =
+        std::env::var("API_BASE_URL").unwrap_or_else(|_| "https://api.scho1ar.com".to_string());
     let redirect_uri = format!("{}/api/oauth/gitlab/settings/callback", api_base);
 
     // Encode callback_url in state parameter
@@ -320,12 +348,16 @@ async fn gitlab_callback(
     // Decode the callback URL from state
     let callback_url = match &query.state {
         Some(state_param) => {
-            match base64::Engine::decode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, state_param) {
+            match base64::Engine::decode(
+                &base64::engine::general_purpose::URL_SAFE_NO_PAD,
+                state_param,
+            ) {
                 Ok(bytes) => match String::from_utf8(bytes) {
                     Ok(url) => url,
                     Err(_) => {
                         tracing::error!("invalid state parameter encoding");
-                        return (StatusCode::BAD_REQUEST, "Invalid state parameter").into_response();
+                        return (StatusCode::BAD_REQUEST, "Invalid state parameter")
+                            .into_response();
                     }
                 },
                 Err(_) => {
@@ -342,7 +374,10 @@ async fn gitlab_callback(
 
     // Check for errors from GitLab
     if let Some(error) = &query.error {
-        let error_desc = query.error_description.as_deref().unwrap_or("Unknown error");
+        let error_desc = query
+            .error_description
+            .as_deref()
+            .unwrap_or("Unknown error");
         tracing::error!(%error, %error_desc, "GitLab OAuth error");
         return redirect_with_error(&callback_url, &format!("{}: {}", error, error_desc));
     }
@@ -366,8 +401,10 @@ async fn gitlab_callback(
         Err(_) => return redirect_with_error(&callback_url, "GitLab OAuth not configured"),
     };
 
-    let gitlab_url = std::env::var("GITLAB_URL").unwrap_or_else(|_| "https://gitlab.com".to_string());
-    let api_base = std::env::var("API_BASE_URL").unwrap_or_else(|_| "https://api.scho1ar.com".to_string());
+    let gitlab_url =
+        std::env::var("GITLAB_URL").unwrap_or_else(|_| "https://gitlab.com".to_string());
+    let api_base =
+        std::env::var("API_BASE_URL").unwrap_or_else(|_| "https://api.scho1ar.com".to_string());
     let redirect_uri = format!("{}/api/oauth/gitlab/settings/callback", api_base);
 
     let client = reqwest::Client::new();
@@ -408,7 +445,10 @@ async fn gitlab_callback(
     // Get GitLab username
     let user_response = client
         .get(format!("{}/api/v4/user", gitlab_url))
-        .header("Authorization", format!("Bearer {}", token_data.access_token))
+        .header(
+            "Authorization",
+            format!("Bearer {}", token_data.access_token),
+        )
         .send()
         .await;
 
@@ -442,14 +482,19 @@ async fn gitlab_callback(
                 gitlab_username: payload.gitlab_username,
                 gitlab_url: payload.gitlab_url,
             };
-            if let Err(e) = GitLabConnectionRepository::update(state.pool(), existing.id, &update_payload).await {
+            if let Err(e) =
+                GitLabConnectionRepository::update(state.pool(), existing.id, &update_payload).await
+            {
                 tracing::error!(?e, "failed to update GitLab connection");
                 return redirect_with_error(&callback_url, "Failed to save connection");
             }
         }
         Ok(None) => {
             // Create new connection
-            if let Err(e) = GitLabConnectionRepository::create_workspace_connection(state.pool(), &payload).await {
+            if let Err(e) =
+                GitLabConnectionRepository::create_workspace_connection(state.pool(), &payload)
+                    .await
+            {
                 tracing::error!(?e, "failed to create GitLab connection");
                 return redirect_with_error(&callback_url, "Failed to save connection");
             }
