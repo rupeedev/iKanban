@@ -20,6 +20,10 @@ use crate::{
     auth::RequestContext,
     db::{
         organization_members,
+        tags::TagRepository,
+        task_comments::{CreateTaskComment, TaskCommentRepository},
+        task_document_links::TaskDocumentLinkRepository,
+        task_tags::TaskTagRepository,
         tasks::{
             AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTask, SharedTaskError,
             SharedTaskRepository, SharedTaskWithUser, TaskStatus, UpdateSharedTaskData,
@@ -36,6 +40,12 @@ pub fn router() -> Router<AppState> {
         .route("/tasks/{task_id}", patch(update_shared_task))
         .route("/tasks/{task_id}", delete(delete_shared_task))
         .route("/tasks/{task_id}/assign", post(assign_task))
+        .route("/tasks/{task_id}/comments", get(get_task_comments).post(create_task_comment))
+        .route("/tasks/{task_id}/comments/{comment_id}", delete(delete_task_comment))
+        .route("/tasks/{task_id}/tags", get(get_task_tags).post(add_task_tag))
+        .route("/tasks/{task_id}/tags/{tag_id}", delete(remove_task_tag))
+        .route("/tasks/{task_id}/links", get(get_task_links).post(add_task_link))
+        .route("/tasks/{task_id}/links/{document_id}", delete(remove_task_link))
         .route("/tasks/assignees", get(get_task_assignees_by_project))
 }
 
@@ -368,6 +378,436 @@ impl From<SharedTaskWithUser> for SharedTaskResponse {
         Self {
             task: v.task,
             user: v.user,
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task Comments Handlers
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateTaskCommentRequest {
+    pub content: String,
+    #[serde(default)]
+    pub is_internal: bool,
+}
+
+#[instrument(
+    name = "tasks.get_task_comments",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, task_id = %task_id, org_id = tracing::field::Empty)
+)]
+pub async fn get_task_comments(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(task_id): Path<Uuid>,
+) -> Response {
+    let pool = state.pool();
+
+    let _organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
+
+    match TaskCommentRepository::find_by_task_id(pool, task_id).await {
+        Ok(comments) => (StatusCode::OK, Json(comments)).into_response(),
+        Err(e) => {
+            tracing::error!(?e, "failed to load task comments");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "failed to load task comments"})),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[instrument(
+    name = "tasks.create_task_comment",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, task_id = %task_id, org_id = tracing::field::Empty)
+)]
+pub async fn create_task_comment(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(task_id): Path<Uuid>,
+    Json(payload): Json<CreateTaskCommentRequest>,
+) -> Response {
+    let pool = state.pool();
+
+    let _organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
+
+    let user_repo = UserRepository::new(pool);
+    let user = match user_repo.fetch_user(ctx.user.id).await {
+        Ok(u) => u,
+        Err(e) => {
+            tracing::error!(?e, "failed to fetch user for comment");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "failed to fetch user"})),
+            )
+                .into_response();
+        }
+    };
+
+    // Construct author name from first_name and last_name
+    let author_name = match (&user.first_name, &user.last_name) {
+        (Some(first), Some(last)) => format!("{} {}", first, last),
+        (Some(first), None) => first.clone(),
+        (None, Some(last)) => last.clone(),
+        (None, None) => user.email.clone(),
+    };
+
+    let create_data = CreateTaskComment {
+        content: payload.content,
+        is_internal: payload.is_internal,
+        author_name,
+        author_email: Some(user.email),
+        author_id: Some(ctx.user.id),
+    };
+
+    match TaskCommentRepository::create(pool, task_id, &create_data).await {
+        Ok(comment) => (StatusCode::CREATED, Json(comment)).into_response(),
+        Err(e) => {
+            tracing::error!(?e, "failed to create task comment");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "failed to create task comment"})),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[instrument(
+    name = "tasks.delete_task_comment",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, task_id = %task_id, comment_id = %comment_id, org_id = tracing::field::Empty)
+)]
+pub async fn delete_task_comment(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((task_id, comment_id)): Path<(Uuid, Uuid)>,
+) -> Response {
+    let pool = state.pool();
+
+    let _organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
+
+    // Check if comment exists and belongs to this task
+    let comment = match TaskCommentRepository::find_by_id(pool, comment_id).await {
+        Ok(Some(c)) => c,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "comment not found"})),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(?e, "failed to find comment");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "failed to find comment"})),
+            )
+                .into_response();
+        }
+    };
+
+    if comment.task_id != task_id {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "comment does not belong to this task"})),
+        )
+            .into_response();
+    }
+
+    // Only allow author or task assignee to delete
+    if comment.author_id != Some(ctx.user.id) {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "only comment author can delete"})),
+        )
+            .into_response();
+    }
+
+    match TaskCommentRepository::delete(pool, comment_id).await {
+        Ok(true) => (StatusCode::NO_CONTENT, ()).into_response(),
+        Ok(false) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": "comment not found"})),
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!(?e, "failed to delete comment");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "failed to delete comment"})),
+            )
+                .into_response()
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task Tags Handlers
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AddTagRequest {
+    pub tag_id: Uuid,
+}
+
+#[instrument(
+    name = "tasks.get_task_tags",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, task_id = %task_id, org_id = tracing::field::Empty)
+)]
+pub async fn get_task_tags(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(task_id): Path<Uuid>,
+) -> Response {
+    let pool = state.pool();
+
+    let _organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
+
+    match TaskTagRepository::find_by_task_id(pool, task_id).await {
+        Ok(tags) => (StatusCode::OK, Json(tags)).into_response(),
+        Err(e) => {
+            tracing::error!(?e, "failed to load task tags");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "failed to load task tags"})),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[instrument(
+    name = "tasks.add_task_tag",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, task_id = %task_id, org_id = tracing::field::Empty)
+)]
+pub async fn add_task_tag(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(task_id): Path<Uuid>,
+    Json(payload): Json<AddTagRequest>,
+) -> Response {
+    let pool = state.pool();
+
+    let _organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
+
+    // Verify tag exists
+    match TagRepository::find_by_id(pool, payload.tag_id).await {
+        Ok(Some(_)) => {}
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "tag not found"})),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(?e, "failed to find tag");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "failed to find tag"})),
+            )
+                .into_response();
+        }
+    }
+
+    match TaskTagRepository::add_tag(pool, task_id, payload.tag_id).await {
+        Ok(task_tag) => (StatusCode::CREATED, Json(task_tag)).into_response(),
+        Err(e) => {
+            tracing::error!(?e, "failed to add tag to task");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "failed to add tag to task"})),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[instrument(
+    name = "tasks.remove_task_tag",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, task_id = %task_id, tag_id = %tag_id, org_id = tracing::field::Empty)
+)]
+pub async fn remove_task_tag(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((task_id, tag_id)): Path<(Uuid, Uuid)>,
+) -> Response {
+    let pool = state.pool();
+
+    let _organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
+
+    match TaskTagRepository::remove_tag(pool, task_id, tag_id).await {
+        Ok(true) => (StatusCode::NO_CONTENT, ()).into_response(),
+        Ok(false) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": "tag not found on task"})),
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!(?e, "failed to remove tag from task");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "failed to remove tag from task"})),
+            )
+                .into_response()
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task Document Links Handlers
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AddDocumentLinkRequest {
+    pub document_id: Uuid,
+}
+
+#[instrument(
+    name = "tasks.get_task_links",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, task_id = %task_id, org_id = tracing::field::Empty)
+)]
+pub async fn get_task_links(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(task_id): Path<Uuid>,
+) -> Response {
+    let pool = state.pool();
+
+    let _organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
+
+    match TaskDocumentLinkRepository::find_by_task_id(pool, task_id).await {
+        Ok(links) => (StatusCode::OK, Json(links)).into_response(),
+        Err(e) => {
+            tracing::error!(?e, "failed to load task document links");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "failed to load task document links"})),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[instrument(
+    name = "tasks.add_task_link",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, task_id = %task_id, org_id = tracing::field::Empty)
+)]
+pub async fn add_task_link(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(task_id): Path<Uuid>,
+    Json(payload): Json<AddDocumentLinkRequest>,
+) -> Response {
+    let pool = state.pool();
+
+    let _organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
+
+    match TaskDocumentLinkRepository::link_document(pool, task_id, payload.document_id).await {
+        Ok(link) => (StatusCode::CREATED, Json(link)).into_response(),
+        Err(e) => {
+            tracing::error!(?e, "failed to link document to task");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "failed to link document to task"})),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[instrument(
+    name = "tasks.remove_task_link",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, task_id = %task_id, document_id = %document_id, org_id = tracing::field::Empty)
+)]
+pub async fn remove_task_link(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((task_id, document_id)): Path<(Uuid, Uuid)>,
+) -> Response {
+    let pool = state.pool();
+
+    let _organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
+
+    match TaskDocumentLinkRepository::unlink_document(pool, task_id, document_id).await {
+        Ok(true) => (StatusCode::NO_CONTENT, ()).into_response(),
+        Ok(false) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": "document link not found"})),
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!(?e, "failed to unlink document from task");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "failed to unlink document from task"})),
+            )
+                .into_response()
         }
     }
 }
