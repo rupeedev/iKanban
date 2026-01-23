@@ -191,23 +191,73 @@ When `/full-stack-dev` is invoked, follow all 8 phases in order:
 
 ## Task Management
 
+### CLI Script Setup
+
+The `ikanban.py` CLI manages tasks via the production API at `api.scho1ar.com`.
+
+**Location:** `/Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py`
+
+**Required:** Set `VIBE_API_TOKEN` before running any commands:
+```bash
+export VIBE_API_TOKEN=$(grep '^VIBE_API_TOKEN=' /Users/rupeshpanwar/Downloads/Projects/iKanban/.env | cut -d'=' -f2)
+```
+
+### Available Commands
+
 ```bash
 # Create task (ALWAYS include description!)
-python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py create IKA "title" -s inprogress -d "what, why, acceptance criteria"
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py create IKA "title" -s inprogress -d "description"
+
+# Create with all options
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py create IKA "title" \
+  -s todo \                    # Status: todo, inprogress, done
+  -d "description" \           # Task description
+  -p 1 \                       # Priority: 1 (high) to 4 (low)
+  --assignee <user-id> \       # Assignee UUID
+  --due-date 2026-02-01        # Due date (ISO format)
 
 # List tasks
 python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py issues IKA
 
-# Add completion summary (use COMMENT, not description update)
-python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py comment IKA-XX "Summary: what was done, key changes, test status"
+# View single task
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py get IKA-243
 
-# Mark done (do NOT use -d flag here)
+# Update task status
 python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py update IKA-XX --status done
+
+# Add comment (use for completion summaries)
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py comment IKA-XX "Summary: what was done"
+
+# List teams
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py teams
+
+# List projects
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py projects IKA
+```
+
+### API Endpoints Used
+
+| Command | Endpoint | Method |
+|---------|----------|--------|
+| `create` | `/teams/{team_id}/issues` | POST |
+| `issues` | `/teams/{team_id}/issues` | GET |
+| `get` | `/tasks/{task_id}` | GET |
+| `update` | `/tasks/{task_id}` | PUT |
+| `comment` | `/tasks/{task_id}/comments` | POST |
+| `teams` | `/teams` | GET |
+| `projects` | `/teams/{team_id}/projects` | GET |
+
+### MCP Fallback
+
+If MCP servers (ikanban-local/ikanban-remote) are unavailable, **always use the CLI**:
+```bash
+export VIBE_API_TOKEN=$(grep '^VIBE_API_TOKEN=' /Users/rupeshpanwar/Downloads/Projects/iKanban/.env | cut -d'=' -f2)
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py create IKA "title" -s inprogress -d "description"
 ```
 
 **Important:** Description is set at creation. Use comments for completion summaries.
 
-Teams: `IKA` (frontend), `SCH` (backend)
+**Teams:** `IKA` (iKanban project), `SCH` (Scho1ar project)
 
 ## Detailed Rules (read when needed)
 
