@@ -79,6 +79,7 @@ pub fn router() -> Router<AppState> {
         )
         .route("/teams/{team_id}/issues", get(get_team_issues))
         .route("/teams/{team_id}/members", get(get_team_members))
+        .route("/teams/{team_id}/members/sync", axum::routing::post(sync_team_members))
         .route("/teams/{team_id}/invitations", get(get_team_invitations))
         .route("/teams/{team_id}/documents", get(get_team_documents))
         .route("/teams/{team_id}/folders", get(get_team_folders))
@@ -308,15 +309,47 @@ async fn get_team_projects(
     Ok(ApiResponse::success(projects))
 }
 
-/// Assign project to team - not implemented yet
+/// Assign project to team
 async fn assign_project(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(team_id): Path<String>,
-    Json(_payload): Json<TeamProjectAssignment>,
+    Json(payload): Json<TeamProjectAssignment>,
 ) -> Result<Json<ApiResponse<TeamProject>>, ErrorResponse> {
-    tracing::warn!(user_id = %ctx.user.id, %team_id, "assign_project not implemented");
-    Err(ErrorResponse::new(StatusCode::NOT_IMPLEMENTED, "assign project not implemented"))
+    let pool = state.pool();
+
+    // Get team by ID or slug
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    // Verify user has access to team's workspace
+    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team workspace");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    // Assign project to team
+    let team_project = TeamRepository::assign_project(pool, team.id, payload.project_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, project_id = %payload.project_id, "failed to assign project");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to assign project")
+        })?;
+
+    Ok(ApiResponse::success(TeamProject {
+        team_id: team_project.team_id,
+        project_id: team_project.project_id,
+    }))
 }
 
 /// Get team issues
@@ -386,6 +419,44 @@ async fn get_team_members(
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team members");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team members")
+        })?;
+
+    Ok(ApiResponse::success(members))
+}
+
+/// Sync team members - refreshes member list and returns updated members
+async fn sync_team_members(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<String>,
+) -> Result<Json<ApiResponse<Vec<TeamMember>>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team workspace");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    // For now, sync just returns current members
+    // In future, this could sync from Clerk or other external source
+    let members = TeamRepository::get_members(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to sync team members");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to sync team members")
         })?;
 
     Ok(ApiResponse::success(members))

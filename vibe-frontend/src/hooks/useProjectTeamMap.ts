@@ -60,10 +60,10 @@ export function useProjectTeamMap(teams: Team[]): UseProjectTeamMapResult {
     teamProjectQueries.forEach((query, index) => {
       if (query.data) {
         const team = teams[index];
-        const projectIds = query.data;
+        const projects = query.data;
 
-        projectIds.forEach((projectId) => {
-          map.set(projectId, {
+        projects.forEach((project) => {
+          map.set(project.id, {
             team,
             teamId: team.id,
             teamName: team.name,

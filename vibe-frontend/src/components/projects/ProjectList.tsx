@@ -37,10 +37,10 @@ export function ProjectList() {
   const projectToTeam = useMemo(() => {
     const map: Record<string, Team> = {};
     teams.forEach((team, index) => {
-      const projectIds = teamProjectQueries[index]?.data ?? [];
-      projectIds.forEach((projectId: string) => {
-        if (!map[projectId]) {
-          map[projectId] = team;
+      const teamProjects = teamProjectQueries[index]?.data ?? [];
+      teamProjects.forEach((project) => {
+        if (!map[project.id]) {
+          map[project.id] = team;
         }
       });
     });

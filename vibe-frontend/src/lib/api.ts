@@ -1806,9 +1806,9 @@ export const teamsApi = {
     return handleApiResponse<void>(response);
   },
 
-  getProjects: async (teamId: string): Promise<string[]> => {
+  getProjects: async (teamId: string): Promise<Project[]> => {
     const response = await makeRequest(`/api/teams/${teamId}/projects`);
-    return handleApiResponse<string[]>(response);
+    return handleApiResponse<Project[]>(response);
   },
 
   assignProject: async (

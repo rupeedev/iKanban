@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { teamsApi, projectsApi } from '../lib/api';
+import { teamsApi } from '../lib/api';
 import type { Project } from 'shared/types';
 
 // Helper to check if error is a rate limit (429)
@@ -15,7 +15,7 @@ function isRateLimitError(error: unknown): boolean {
 
 export function useTeamProjects(teamId: string | undefined) {
   // Fetch full project data for this team directly from API
-  // This ensures refresh button works properly
+  // The backend returns full Project objects, not just IDs
   const {
     data: projects = [],
     isLoading,
@@ -26,12 +26,9 @@ export function useTeamProjects(teamId: string | undefined) {
     queryKey: ['teams', teamId, 'projects', 'full'],
     queryFn: async () => {
       if (!teamId) return [];
-      // Get project IDs for this team
-      const projectIds = await teamsApi.getProjects(teamId);
-      if (projectIds.length === 0) return [];
-
-      // Fetch all projects from API
-      const fetched = await projectsApi.getMany(projectIds);
+      // Get projects for this team - backend returns full Project objects
+      const fetched = await teamsApi.getProjects(teamId);
+      if (fetched.length === 0) return [];
 
       // Sort by creation date descending
       return fetched.sort(

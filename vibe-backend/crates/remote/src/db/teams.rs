@@ -30,6 +30,13 @@ pub struct CreateTeamData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TeamProject {
+    pub team_id: Uuid,
+    pub project_id: Uuid,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateTeamData {
     pub name: Option<String>,
     pub identifier: Option<String>,
@@ -300,7 +307,7 @@ impl TeamRepository {
             .collect())
     }
 
-    /// Get project IDs for a team
+    /// Get project IDs for a team via the team_projects junction table
     pub async fn get_project_ids(pool: &PgPool, team_id: Uuid) -> Result<Vec<Uuid>, TeamError> {
         let rows = sqlx::query_scalar!(
             r#"
@@ -314,6 +321,82 @@ impl TeamRepository {
         .await?;
 
         Ok(rows)
+    }
+
+    /// Assign a project to a team (creates the team_projects relationship)
+    pub async fn assign_project(
+        pool: &PgPool,
+        team_id: Uuid,
+        project_id: Uuid,
+    ) -> Result<TeamProject, TeamError> {
+        let row = sqlx::query!(
+            r#"
+            INSERT INTO team_projects (team_id, project_id)
+            VALUES ($1, $2)
+            ON CONFLICT (team_id, project_id) DO UPDATE SET team_id = team_projects.team_id
+            RETURNING
+                team_id AS "team_id!: Uuid",
+                project_id AS "project_id!: Uuid",
+                created_at AS "created_at!: DateTime<Utc>"
+            "#,
+            team_id,
+            project_id
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(TeamProject {
+            team_id: row.team_id,
+            project_id: row.project_id,
+            created_at: row.created_at,
+        })
+    }
+
+    /// Remove a project from a team
+    pub async fn remove_project(
+        pool: &PgPool,
+        team_id: Uuid,
+        project_id: Uuid,
+    ) -> Result<bool, TeamError> {
+        let result = sqlx::query!(
+            r#"DELETE FROM team_projects WHERE team_id = $1 AND project_id = $2"#,
+            team_id,
+            project_id
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Get projects for a team (full project objects)
+    pub async fn get_projects(pool: &PgPool, team_id: Uuid) -> Result<Vec<TeamProjectInfo>, TeamError> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                p.id AS "id!: Uuid",
+                p.name AS "name!",
+                p.metadata AS "metadata!: serde_json::Value",
+                p.created_at AS "created_at!: DateTime<Utc>"
+            FROM projects p
+            INNER JOIN team_projects tp ON p.id = tp.project_id
+            WHERE tp.team_id = $1
+            ORDER BY p.name ASC
+            "#,
+            team_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| TeamProjectInfo {
+                id: r.id,
+                name: r.name,
+                metadata: r.metadata,
+                created_at: r.created_at,
+            })
+            .collect())
     }
 
     /// Get issues (tasks) for a team
@@ -479,4 +562,12 @@ pub struct TeamFolder {
     pub local_path: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TeamProjectInfo {
+    pub id: Uuid,
+    pub name: String,
+    pub metadata: serde_json::Value,
+    pub created_at: DateTime<Utc>,
 }

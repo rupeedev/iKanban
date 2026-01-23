@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                p.id AS \"id!: Uuid\",\n                p.name AS \"name!\",\n                p.metadata AS \"metadata!: serde_json::Value\",\n                p.created_at AS \"created_at!: DateTime<Utc>\"\n            FROM projects p\n            INNER JOIN team_projects tp ON p.id = tp.project_id\n            WHERE tp.team_id = $1\n            ORDER BY p.name ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "metadata!: serde_json::Value",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "e96fa733f07112d4c01d063414c0e96727113140f448f17bd0830dc3c257c7b8"
+}
