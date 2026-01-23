@@ -14,6 +14,8 @@ interface UseProjectMutationsOptions {
   onCreateError?: (err: unknown) => void;
   onUpdateSuccess?: (project: Project) => void;
   onUpdateError?: (err: unknown) => void;
+  onDeleteSuccess?: (projectId: string) => void;
+  onDeleteError?: (err: unknown) => void;
   onLinkSuccess?: (project: Project) => void;
   onLinkError?: (err: unknown) => void;
   onUnlinkSuccess?: (project: Project) => void;
@@ -87,6 +89,43 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
     onError: (err) => {
       console.error('Failed to update project:', err);
       options?.onUpdateError?.(err);
+    },
+  });
+
+  const deleteProject = useMutation({
+    mutationKey: ['deleteProject'],
+    mutationFn: (projectId: string) => projectsApi.delete(projectId),
+    onSuccess: (_, projectId) => {
+      // Remove from single project cache
+      queryClient.removeQueries({ queryKey: ['project', projectId] });
+
+      // Remove from projects list cache (optimistic update)
+      queryClient.setQueryData<Project[]>(['projects'], (old) => {
+        if (!old) return old;
+        return old.filter((p) => p.id !== projectId);
+      });
+
+      // Remove from team projects cache (used by TeamProjects page)
+      // Key format: ['teams', teamId, 'projects', 'full']
+      queryClient.setQueriesData<Project[]>(
+        {
+          predicate: (query) =>
+            query.queryKey.length === 4 &&
+            query.queryKey[0] === 'teams' &&
+            query.queryKey[2] === 'projects' &&
+            query.queryKey[3] === 'full',
+        },
+        (old) => {
+          if (!old) return old;
+          return old.filter((p) => p.id !== projectId);
+        }
+      );
+
+      options?.onDeleteSuccess?.(projectId);
+    },
+    onError: (err) => {
+      console.error('Failed to delete project:', err);
+      options?.onDeleteError?.(err);
     },
   });
 
@@ -227,6 +266,7 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
   return {
     createProject,
     updateProject,
+    deleteProject,
     linkToExisting,
     createAndLink,
     unlinkProject,

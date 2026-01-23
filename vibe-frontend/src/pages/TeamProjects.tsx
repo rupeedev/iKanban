@@ -9,6 +9,8 @@ import {
   RefreshCw,
   UserX,
   Pencil,
+  MoreVertical,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -30,6 +32,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
+import { ConfirmDialog } from '@/components/dialogs/shared/ConfirmDialog';
 import { TargetDateCell } from '@/components/projects/TargetDateCell';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useTeamProjects } from '@/hooks/useTeamProjects';
@@ -320,7 +323,7 @@ export function TeamProjects() {
     useTeamProjects(actualTeamId);
   const { issues } = useTeamIssues(actualTeamId);
   const { members } = useTeamMembers(actualTeamId);
-  const { updateProject } = useProjectMutations();
+  const { updateProject, deleteProject } = useProjectMutations();
 
   // Column widths state for resizable columns
   const [columnWidths, setColumnWidths] = useState(DEFAULT_COLUMN_WIDTHS);
@@ -434,6 +437,23 @@ export function TeamProjects() {
         icon: project.icon,
       },
     });
+  };
+
+  // Delete project handler with confirmation
+  const handleDeleteProject = async (project: Project) => {
+    const confirmed = await ConfirmDialog.show({
+      title: 'Delete project',
+      message: `Are you sure you want to delete "${project.name}"? This action cannot be undone and will remove all associated tasks.`,
+      confirmText: 'Delete',
+      variant: 'destructive',
+    });
+    if (confirmed === 'confirmed') {
+      try {
+        await deleteProject.mutateAsync(project.id);
+      } catch {
+        // Error already logged by mutation onError
+      }
+    }
   };
 
   useKeyCreate(handleCreateProject, { scope: Scope.PROJECTS });
@@ -551,6 +571,7 @@ export function TeamProjects() {
                 >
                   Status
                 </ResizableTableHeaderCell>
+                <th className="py-2 px-4 w-10" />
               </TableRow>
             </TableHead>
             <TableBody>
@@ -713,6 +734,39 @@ export function TeamProjects() {
                           {projectStats[project.id]?.percentage || 0}%
                         </span>
                       </div>
+                    </TableCell>
+
+                    {/* Actions */}
+                    <TableCell
+                      className="w-10"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            disabled={deleteProject.isPending}
+                          >
+                            {deleteProject.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <MoreVertical className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteProject(project)}
+                            className="text-destructive focus:text-destructive"
+                            disabled={deleteProject.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete project
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );
