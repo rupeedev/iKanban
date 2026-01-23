@@ -1,12 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
-  Layers,
-  Plus,
-  ExternalLink,
-  Filter,
-  SlidersHorizontal,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   ChevronDown,
   ChevronRight,
   Circle,
@@ -16,6 +16,11 @@ import {
   XCircle,
   MoreHorizontal,
   Calendar,
+  Plus,
+  List,
+  LayoutGrid,
+  SlidersHorizontal,
+  Filter,
 } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useTeams } from '@/hooks/useTeams';
@@ -24,19 +29,45 @@ import { Loader } from '@/components/ui/loader';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus } from 'shared/types';
 
+// Display mode type
+type DisplayMode = 'list' | 'board';
+
+// localStorage key for display mode persistence
+const DISPLAY_MODE_STORAGE_KEY = 'ikanban-views-display-mode';
+
+function loadDisplayMode(): DisplayMode {
+  try {
+    const stored = localStorage.getItem(DISPLAY_MODE_STORAGE_KEY);
+    if (stored === 'list' || stored === 'board') {
+      return stored;
+    }
+  } catch {
+    // localStorage not available
+  }
+  return 'list'; // Default to list view
+}
+
+function saveDisplayMode(mode: DisplayMode): void {
+  try {
+    localStorage.setItem(DISPLAY_MODE_STORAGE_KEY, mode);
+  } catch {
+    // localStorage not available
+  }
+}
+
 // Status configuration
 const STATUS_CONFIG: Record<
   string,
   { icon: typeof Circle; label: string; color: string }
 > = {
-  todo: { icon: Circle, label: 'Todo', color: 'text-muted-foreground' },
+  todo: { icon: Circle, label: 'Backlog', color: 'text-muted-foreground' },
   inprogress: {
     icon: PlayCircle,
     label: 'In Progress',
     color: 'text-yellow-500',
   },
-  inreview: { icon: CircleDot, label: 'In Review', color: 'text-blue-500' },
-  done: { icon: CheckCircle2, label: 'Done', color: 'text-green-500' },
+  inreview: { icon: CircleDot, label: 'In Review', color: 'text-green-500' },
+  done: { icon: CheckCircle2, label: 'Done', color: 'text-blue-500' },
   cancelled: {
     icon: XCircle,
     label: 'Cancelled',
@@ -44,72 +75,59 @@ const STATUS_CONFIG: Record<
   },
 };
 
-function EmptyState() {
-  const navigate = useNavigate();
+// Order of status groups to display
+const STATUS_ORDER = ['inreview', 'inprogress', 'todo', 'done', 'cancelled'];
 
+interface DisplayModeToggleProps {
+  mode: DisplayMode;
+  onModeChange: (mode: DisplayMode) => void;
+}
+
+function DisplayModeToggle({ mode, onModeChange }: DisplayModeToggleProps) {
   return (
-    <div className="flex-1 flex items-center justify-center">
-      <div className="max-w-md text-center px-4">
-        {/* Icon */}
-        <div className="mb-6 flex justify-center">
-          <div className="w-24 h-24 text-muted-foreground/30">
-            <svg
-              viewBox="0 0 100 100"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              {/* Layered boxes icon similar to Linear */}
-              <rect x="20" y="35" width="40" height="30" rx="2" />
-              <rect x="30" y="25" width="40" height="30" rx="2" />
-              <rect x="40" y="15" width="40" height="30" rx="2" />
-              {/* Filter lines */}
-              <line x1="25" y1="45" x2="45" y2="45" strokeWidth="2" />
-              <line x1="25" y1="52" x2="40" y2="52" strokeWidth="2" />
-            </svg>
-          </div>
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-foreground gap-1.5"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Display
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        className="w-56 bg-background border-border text-foreground p-2"
+      >
+        <div className="flex gap-1 p-1 bg-muted/50 rounded-md">
+          <button
+            onClick={() => onModeChange('list')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded text-sm font-medium transition-colors',
+              mode === 'list'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <List className="h-4 w-4" />
+            List
+          </button>
+          <button
+            onClick={() => onModeChange('board')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded text-sm font-medium transition-colors',
+              mode === 'board'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <LayoutGrid className="h-4 w-4" />
+            Board
+          </button>
         </div>
-
-        {/* Title */}
-        <h1 className="text-xl font-semibold mb-3">Views</h1>
-
-        {/* Description */}
-        <p className="text-muted-foreground text-sm mb-2">
-          Create custom views using filters to show only the issues you want to
-          see. You can save, share, and favorite these views for easy access and
-          faster team collaboration.
-        </p>
-        <p className="text-muted-foreground text-sm mb-6">
-          You can also save any existing view by clicking the{' '}
-          <Filter className="inline w-3.5 h-3.5" /> icon or by pressing{' '}
-          <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">
-            Cmd
-          </kbd>{' '}
-          <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">
-            V
-          </kbd>
-          .
-        </p>
-
-        {/* Actions */}
-        <div className="flex items-center justify-center gap-3">
-          <Button onClick={() => navigate('/views/new')}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create new view
-          </Button>
-          <Button variant="outline" asChild>
-            <a
-              href="https://docs.vibe-kanban.dev/features/views"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Documentation
-              <ExternalLink className="w-3.5 h-3.5 ml-2" />
-            </a>
-          </Button>
-        </div>
-      </div>
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -136,18 +154,18 @@ function IssueRow({ issue, projectName }: IssueRowProps) {
 
   return (
     <div
-      className="group flex items-center gap-3 px-4 py-2 hover:bg-muted/50 cursor-pointer border-b border-border/50 last:border-b-0"
+      className="group flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 cursor-pointer border-b border-border/30 last:border-b-0"
       onClick={() =>
         navigate(`/projects/${issue.project_id}/tasks/${issue.id}`)
       }
     >
-      {/* More menu */}
-      <button className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground">
-        <MoreHorizontal className="w-4 h-4" />
-      </button>
+      {/* Priority indicator */}
+      <div className="w-4 text-muted-foreground">
+        <MoreHorizontal className="w-4 h-4 opacity-0 group-hover:opacity-100" />
+      </div>
 
       {/* Issue ID */}
-      <span className="text-xs text-muted-foreground font-mono w-16 shrink-0">
+      <span className="text-xs text-muted-foreground font-mono w-20 shrink-0">
         {shortId}
       </span>
 
@@ -159,10 +177,13 @@ function IssueRow({ issue, projectName }: IssueRowProps) {
 
       {/* Project tag */}
       {projectName && (
-        <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+        <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground shrink-0 max-w-[200px] truncate">
           {projectName}
         </span>
       )}
+
+      {/* Assignee avatar placeholder */}
+      <div className="w-6 h-6 rounded-full bg-muted shrink-0" />
 
       {/* Due date */}
       {issue.due_date && (
@@ -193,10 +214,10 @@ function StatusGroup({
   const StatusIcon = statusConfig.icon;
 
   return (
-    <div className="mb-2">
+    <div className="mb-1">
       {/* Group header */}
       <button
-        className="flex items-center gap-2 px-4 py-2 w-full hover:bg-muted/50 text-left"
+        className="group flex items-center gap-2 px-4 py-2 w-full hover:bg-muted/50 text-left"
         onClick={() => setExpanded(!expanded)}
       >
         {expanded ? (
@@ -206,14 +227,14 @@ function StatusGroup({
         )}
         <StatusIcon className={cn('w-4 h-4', statusConfig.color)} />
         <span className="font-medium text-sm">{statusConfig.label}</span>
-        <span className="text-xs text-muted-foreground">{issues.length}</span>
+        <span className="text-sm text-muted-foreground">{issues.length}</span>
         <div className="flex-1" />
         <Plus className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100" />
       </button>
 
       {/* Issues */}
       {expanded && (
-        <div className="ml-6">
+        <div className="ml-2">
           {issues.map((issue) => (
             <IssueRow
               key={issue.id}
@@ -223,6 +244,137 @@ function StatusGroup({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+interface BoardColumnProps {
+  status: string;
+  issues: TaskWithAttemptStatus[];
+  projectNamesById: Record<string, string>;
+}
+
+function BoardColumn({ status, issues, projectNamesById }: BoardColumnProps) {
+  const navigate = useNavigate();
+  const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.todo;
+  const StatusIcon = statusConfig.icon;
+
+  return (
+    <div className="flex flex-col min-w-[300px] max-w-[300px] h-full border-r border-border last:border-r-0">
+      {/* Column Header */}
+      <div className="flex items-center gap-2 px-3 py-3 border-b border-border bg-muted/30">
+        <StatusIcon className={cn('w-4 h-4', statusConfig.color)} />
+        <span className="font-medium text-sm">{statusConfig.label}</span>
+        <span className="text-sm text-muted-foreground">{issues.length}</span>
+        <div className="flex-1" />
+        <Button variant="ghost" size="icon" className="h-6 w-6">
+          <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-6 w-6">
+          <Plus className="h-4 w-4 text-muted-foreground" />
+        </Button>
+      </div>
+
+      {/* Cards Container */}
+      <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex flex-col gap-2">
+          {issues.map((issue) => {
+            const shortId =
+              (issue as { identifier?: string }).identifier ||
+              issue.id.slice(0, 8);
+            const projectName = projectNamesById[issue.project_id];
+
+            return (
+              <div
+                key={issue.id}
+                className="group bg-background border border-border rounded-lg p-3 hover:border-border/80 cursor-pointer shadow-sm"
+                onClick={() =>
+                  navigate(`/projects/${issue.project_id}/tasks/${issue.id}`)
+                }
+              >
+                {/* Card header */}
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {shortId}
+                  </span>
+                  <div className="w-6 h-6 rounded-full bg-muted shrink-0" />
+                </div>
+
+                {/* Status + Title */}
+                <div className="flex items-start gap-2 mb-2">
+                  <StatusIcon
+                    className={cn('w-4 h-4 mt-0.5 shrink-0', statusConfig.color)}
+                  />
+                  <span className="text-sm font-medium line-clamp-2">
+                    {issue.title}
+                  </span>
+                </div>
+
+                {/* Priority indicator */}
+                <div className="flex items-center gap-2 mb-2">
+                  <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                </div>
+
+                {/* Project tag */}
+                {projectName && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Circle className="w-3 h-3" />
+                    <span className="truncate">{projectName}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface ViewsHeaderProps {
+  activeTab: 'issues' | 'projects';
+  displayMode: DisplayMode;
+  onTabChange: (tab: 'issues' | 'projects') => void;
+  onDisplayModeChange: (mode: DisplayMode) => void;
+}
+
+function ViewsHeader({
+  activeTab,
+  displayMode,
+  onTabChange,
+  onDisplayModeChange,
+}: ViewsHeaderProps) {
+  return (
+    <div className="shrink-0 border-b border-border px-4 py-2 flex items-center gap-2">
+      {/* Left side: Issues/Projects tabs and Filter */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant={activeTab === 'issues' ? 'secondary' : 'ghost'}
+          size="sm"
+          className="text-sm"
+          onClick={() => onTabChange('issues')}
+        >
+          Issues
+        </Button>
+        <Button
+          variant={activeTab === 'projects' ? 'secondary' : 'ghost'}
+          size="sm"
+          className="text-sm"
+          onClick={() => onTabChange('projects')}
+        >
+          Projects
+        </Button>
+        <div className="w-px h-5 bg-border mx-2" />
+        <Button variant="ghost" size="sm" className="text-sm gap-1.5">
+          <Filter className="h-4 w-4" />
+          Filter
+        </Button>
+      </div>
+
+      <div className="flex-1" />
+
+      {/* Right side: Display toggle */}
+      <DisplayModeToggle mode={displayMode} onModeChange={onDisplayModeChange} />
     </div>
   );
 }
@@ -239,6 +391,15 @@ function AllIssuesView() {
 
   // Fetch issues for the active team
   const { issues, isLoading } = useTeamIssues(activeTeamId);
+
+  // Display mode state with localStorage persistence
+  const [displayMode, setDisplayMode] = useState<DisplayMode>(loadDisplayMode);
+  const [activeTab, setActiveTab] = useState<'issues' | 'projects'>('issues');
+
+  const handleDisplayModeChange = useCallback((mode: DisplayMode) => {
+    setDisplayMode(mode);
+    saveDisplayMode(mode);
+  }, []);
 
   // Project names lookup
   const projectNamesById = useMemo(() => {
@@ -271,9 +432,6 @@ function AllIssuesView() {
     return groups;
   }, [issues]);
 
-  // Order of status groups to display
-  const statusOrder = ['inprogress', 'todo', 'inreview', 'done', 'cancelled'];
-
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -283,109 +441,66 @@ function AllIssuesView() {
   }
 
   return (
-    <div className="flex-1 overflow-auto">
-      {/* View header */}
-      <div className="border-b border-border px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="All issues"
-              className="bg-transparent border-none outline-none text-lg font-medium placeholder:text-foreground"
-              defaultValue="All issues"
-            />
+    <div className="flex-1 flex flex-col min-h-0">
+      {/* Header with tabs and display toggle */}
+      <ViewsHeader
+        activeTab={activeTab}
+        displayMode={displayMode}
+        onTabChange={setActiveTab}
+        onDisplayModeChange={handleDisplayModeChange}
+      />
+
+      {/* Content area */}
+      {displayMode === 'list' ? (
+        /* List View */
+        <div className="flex-1 overflow-auto">
+          <div className="py-2">
+            {STATUS_ORDER.map((status) => {
+              const statusIssues = groupedIssues[status] || [];
+              if (statusIssues.length === 0) return null;
+              return (
+                <StatusGroup
+                  key={status}
+                  status={status}
+                  issues={statusIssues}
+                  projectNamesById={projectNamesById}
+                />
+              );
+            })}
+
+            {/* Empty state if no issues */}
+            {issues.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <p>No issues found</p>
+              </div>
+            )}
           </div>
-          <div className="flex-1" />
-          <Button variant="ghost" size="sm">
-            Save to
-          </Button>
-          <Button variant="ghost" size="sm">
-            Cancel
-          </Button>
-          <Button size="sm">Save</Button>
         </div>
-        <p className="text-sm text-muted-foreground mt-1">
-          Description (optional)
-        </p>
-      </div>
-
-      {/* Filter bar */}
-      <div className="border-b border-border px-4 py-2 flex items-center gap-2">
-        <Button variant="ghost" size="sm" className="text-xs">
-          Issues
-        </Button>
-        <Button variant="ghost" size="sm" className="text-xs">
-          Projects
-        </Button>
-        <div className="flex-1" />
-        <Button variant="ghost" size="sm" className="text-xs">
-          <Filter className="w-3 h-3 mr-1" />
-          Filter
-        </Button>
-        <Button variant="ghost" size="sm" className="text-xs">
-          <SlidersHorizontal className="w-3 h-3 mr-1" />
-          Display
-        </Button>
-      </div>
-
-      {/* Issues list grouped by status */}
-      <div className="py-2">
-        {statusOrder.map((status) => {
-          const statusIssues = groupedIssues[status] || [];
-          if (statusIssues.length === 0) return null;
-          return (
-            <StatusGroup
-              key={status}
-              status={status}
-              issues={statusIssues}
-              projectNamesById={projectNamesById}
-            />
-          );
-        })}
-
-        {/* Empty state if no issues */}
-        {issues.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            <p>No issues found</p>
+      ) : (
+        /* Board View - horizontal scrollable */
+        <div className="flex-1 overflow-x-auto overflow-y-hidden">
+          <div className="flex h-full">
+            {STATUS_ORDER.map((status) => {
+              const statusIssues = groupedIssues[status] || [];
+              return (
+                <BoardColumn
+                  key={status}
+                  status={status}
+                  issues={statusIssues}
+                  projectNamesById={projectNamesById}
+                />
+              );
+            })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export function Views() {
-  // For now, show the All Issues view by default
-  // In the future, this would check for saved views and show empty state if none exist
-  const showAllIssues = true;
-
-  if (!showAllIssues) {
-    return <EmptyState />;
-  }
-
   return (
     <div className="h-full flex flex-col">
-      {/* Page header */}
-      <div className="border-b border-border px-6 py-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <Layers className="w-5 h-5 text-muted-foreground" />
-          <h1 className="text-lg font-semibold">Views</h1>
-          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          <span className="text-lg">All issues</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <SlidersHorizontal className="w-4 h-4 mr-2" />
-            Display
-          </Button>
-          <Button size="sm">
-            <Plus className="w-4 h-4 mr-2" />
-            New view
-          </Button>
-        </div>
-      </div>
-
       <AllIssuesView />
     </div>
   );
