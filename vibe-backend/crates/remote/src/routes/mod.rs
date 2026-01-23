@@ -34,6 +34,7 @@ mod projects;
 pub mod registrations;
 mod review;
 mod stripe;
+mod stubs;
 mod superadmins;
 pub mod tasks;
 mod teams;
@@ -96,6 +97,7 @@ pub fn router(state: AppState) -> Router {
         .merge(tenant_workspaces::protected_router())
         .merge(superadmins::public_router()) // Check endpoint - any authed user
         .merge(registrations::user_router()) // User's own registration status
+        .merge(stubs::router()) // Stub endpoints for local-only features
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_clerk_session,

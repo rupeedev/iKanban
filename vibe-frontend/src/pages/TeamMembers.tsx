@@ -86,7 +86,7 @@ function getRoleColor(role: TeamMemberRole): string {
 }
 
 // Generate a deterministic pattern for avatar based on email/name
-function getAvatarPattern(str: string): string {
+function getAvatarPattern(str: string | undefined | null): string {
   const colors = [
     'bg-blue-500',
     'bg-green-500',
@@ -97,7 +97,9 @@ function getAvatarPattern(str: string): string {
     'bg-indigo-500',
     'bg-cyan-500',
   ];
-  const hash = str.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  // Handle undefined/null/empty string - use default color
+  const safeStr = str || 'default';
+  const hash = safeStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colors[hash % colors.length];
 }
 
