@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/hooks';
+import { useAuth } from '@clerk/clerk-react';
 import { registrationsApi } from '@/lib/api';
 import type { UserRegistration, CreateUserRegistration } from 'shared/types';
 
