@@ -597,6 +597,65 @@ impl TeamRepository {
         })
     }
 
+    /// Update an existing team issue
+    pub async fn update_issue(
+        pool: &PgPool,
+        team_id: Uuid,
+        issue_id: Uuid,
+        data: UpdateTeamIssue,
+    ) -> Result<Option<TeamIssue>, TeamError> {
+        let row = sqlx::query!(
+            r#"
+            UPDATE tasks
+            SET
+                title = COALESCE($3, title),
+                description = COALESCE($4, description),
+                status = COALESCE($5, status),
+                priority = COALESCE($6, priority),
+                due_date = COALESCE($7, due_date),
+                assignee_id = COALESCE($8, assignee_id),
+                updated_at = NOW()
+            WHERE id = $1 AND team_id = $2
+            RETURNING
+                id             AS "id!: Uuid",
+                project_id     AS "project_id!: Uuid",
+                title          AS "title!",
+                description,
+                status         AS "status!",
+                priority,
+                due_date,
+                assignee_id,
+                issue_number,
+                created_at     AS "created_at!: DateTime<Utc>",
+                updated_at     AS "updated_at!: DateTime<Utc>"
+            "#,
+            issue_id,
+            team_id,
+            data.title,
+            data.description,
+            data.status,
+            data.priority,
+            data.due_date,
+            data.assignee_id
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(row.map(|r| TeamIssue {
+            id: r.id,
+            project_id: Some(r.project_id),
+            title: r.title,
+            description: r.description,
+            status: r.status,
+            priority: r.priority,
+            due_date: r.due_date,
+            assignee_id: r.assignee_id,
+            issue_number: r.issue_number,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+        }))
+    }
+
     /// Get team invitations
     pub async fn get_invitations(
         pool: &PgPool,
@@ -941,6 +1000,118 @@ impl TeamRepository {
             updated_at: r.updated_at,
         }))
     }
+
+    /// Sync a Clerk user to team members (upsert by clerk_user_id)
+    /// If the user exists, updates their info. If not, creates a new member.
+    pub async fn sync_clerk_member(
+        pool: &PgPool,
+        team_id: Uuid,
+        clerk_user_id: &str,
+        email: &str,
+        display_name: Option<&str>,
+        avatar_url: Option<&str>,
+    ) -> Result<TeamMember, TeamError> {
+        // First, try to find existing member by clerk_user_id for this team
+        let existing = sqlx::query!(
+            r#"
+            SELECT id AS "id!: Uuid"
+            FROM team_members
+            WHERE team_id = $1 AND clerk_user_id = $2
+            "#,
+            team_id,
+            clerk_user_id
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        let member_id = if let Some(row) = existing {
+            // Update existing member
+            sqlx::query!(
+                r#"
+                UPDATE team_members
+                SET
+                    email = $3,
+                    display_name = COALESCE($4, display_name),
+                    avatar_url = COALESCE($5, avatar_url),
+                    updated_at = NOW()
+                WHERE id = $1 AND team_id = $2
+                "#,
+                row.id,
+                team_id,
+                email,
+                display_name,
+                avatar_url
+            )
+            .execute(pool)
+            .await?;
+            row.id
+        } else {
+            // Create new member
+            let new_id = Uuid::new_v4();
+            sqlx::query!(
+                r#"
+                INSERT INTO team_members (id, team_id, clerk_user_id, email, display_name, avatar_url, role, joined_at, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, 'contributor', NOW(), NOW(), NOW())
+                "#,
+                new_id,
+                team_id,
+                clerk_user_id,
+                email,
+                display_name,
+                avatar_url
+            )
+            .execute(pool)
+            .await?;
+            new_id
+        };
+
+        // Fetch the complete member record
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                id            AS "id!: Uuid",
+                team_id       AS "team_id!: Uuid",
+                email         AS "email!",
+                display_name,
+                role          AS "role!",
+                invited_by,
+                clerk_user_id,
+                avatar_url,
+                joined_at     AS "joined_at!: DateTime<Utc>",
+                created_at    AS "created_at!: DateTime<Utc>",
+                updated_at    AS "updated_at!: DateTime<Utc>"
+            FROM team_members
+            WHERE id = $1
+            "#,
+            member_id
+        )
+        .fetch_one(pool)
+        .await?;
+
+        // Get assigned task count
+        let task_count = sqlx::query_scalar!(
+            r#"SELECT COUNT(*)::integer AS "count!" FROM tasks WHERE assignee_id = $1"#,
+            row.id
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap_or(0);
+
+        Ok(TeamMember {
+            id: row.id,
+            team_id: row.team_id,
+            email: row.email,
+            display_name: row.display_name,
+            role: row.role,
+            invited_by: row.invited_by,
+            clerk_user_id: row.clerk_user_id,
+            avatar_url: row.avatar_url,
+            assigned_task_count: task_count,
+            joined_at: row.joined_at,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -990,6 +1161,17 @@ pub struct TeamIssue {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateTeamIssue {
     pub title: String,
+    pub description: Option<String>,
+    pub status: Option<String>,
+    pub priority: Option<i32>,
+    pub due_date: Option<DateTime<Utc>>,
+    pub assignee_id: Option<Uuid>,
+}
+
+/// Request payload for updating a team issue
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateTeamIssue {
+    pub title: Option<String>,
     pub description: Option<String>,
     pub status: Option<String>,
     pub priority: Option<i32>,

@@ -9,22 +9,17 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 /// Attempt status enum
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
 #[serde(rename_all = "snake_case")]
 #[ts(export)]
 pub enum AttemptStatus {
+    #[default]
     Pending,
     Running,
     Completed,
     Failed,
     Cancelled,
     Timeout,
-}
-
-impl Default for AttemptStatus {
-    fn default() -> Self {
-        Self::Pending
-    }
 }
 
 /// Execution attempt record
@@ -193,10 +188,10 @@ impl ExecutionAttemptRepository {
         .fetch_one(pool)
         .await
         .map_err(|e| {
-            if let sqlx::Error::Database(ref db_err) = e {
-                if db_err.constraint() == Some("uq_execution_attempt") {
-                    return ExecutionAttemptError::DuplicateAttempt;
-                }
+            if let sqlx::Error::Database(ref db_err) = e
+                && db_err.constraint() == Some("uq_execution_attempt")
+            {
+                return ExecutionAttemptError::DuplicateAttempt;
             }
             ExecutionAttemptError::Database(e)
         })?;

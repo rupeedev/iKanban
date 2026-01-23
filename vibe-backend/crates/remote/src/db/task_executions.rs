@@ -9,11 +9,12 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 /// Execution status enum matching the database constraint
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, TS, Default)]
 #[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "VARCHAR", rename_all = "snake_case")]
 #[ts(export)]
 pub enum ExecutionStatus {
+    #[default]
     Pending,
     Queued,
     Running,
@@ -24,28 +25,17 @@ pub enum ExecutionStatus {
     Timeout,
 }
 
-impl Default for ExecutionStatus {
-    fn default() -> Self {
-        Self::Pending
-    }
-}
-
 /// Execution mode enum
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, TS, Default)]
 #[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "VARCHAR", rename_all = "snake_case")]
 #[ts(export)]
 pub enum ExecutionMode {
+    #[default]
     Standard,
     Fast,
     Thorough,
     Custom,
-}
-
-impl Default for ExecutionMode {
-    fn default() -> Self {
-        Self::Standard
-    }
 }
 
 /// Task execution record

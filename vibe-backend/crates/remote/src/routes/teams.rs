@@ -4,7 +4,7 @@ use axum::{
     Extension, Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
-    routing::get,
+    routing::{get, patch},
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -22,7 +22,7 @@ use crate::{
         projects::{Project, ProjectRepository},
         teams::{
             CreateTeamIssue, Team, TeamDocument, TeamFolder, TeamInvitation, TeamIssue, TeamMember,
-            TeamRepository,
+            TeamRepository, UpdateTeamIssue,
         },
     },
 };
@@ -74,6 +74,14 @@ pub struct UpdateInvitationRoleRequest {
     pub role: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct SyncClerkMemberRequest {
+    pub clerk_user_id: String,
+    pub email: String,
+    pub display_name: Option<String>,
+    pub avatar_url: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct TeamProject {
     pub team_id: Uuid,
@@ -105,6 +113,10 @@ pub fn router() -> Router<AppState> {
         .route(
             "/teams/{team_id}/issues",
             get(get_team_issues).post(create_team_issue),
+        )
+        .route(
+            "/teams/{team_id}/issues/{issue_id}",
+            patch(update_team_issue),
         )
         .route("/teams/{team_id}/members", get(get_team_members))
         .route(
@@ -469,6 +481,17 @@ pub struct CreateTeamIssueRequest {
     pub assignee_id: Option<Uuid>,
 }
 
+/// Request payload for updating a team issue
+#[derive(Debug, Deserialize)]
+pub struct UpdateTeamIssueRequest {
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub status: Option<String>,
+    pub priority: Option<i32>,
+    pub due_date: Option<DateTime<Utc>>,
+    pub assignee_id: Option<Uuid>,
+}
+
 /// Create a new team issue
 async fn create_team_issue(
     State(state): State<AppState>,
@@ -537,6 +560,66 @@ async fn create_team_issue(
         issue_id = %issue.id,
         issue_number = ?issue.issue_number,
         "created team issue"
+    );
+
+    Ok(ApiResponse::success(issue))
+}
+
+/// Update an existing team issue
+#[instrument(
+    name = "teams.update_team_issue",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, team_id = %team_id, issue_id = %issue_id)
+)]
+async fn update_team_issue(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((team_id, issue_id)): Path<(String, Uuid)>,
+    Json(payload): Json<UpdateTeamIssueRequest>,
+) -> Result<Json<ApiResponse<TeamIssue>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    // Verify user has access to the team's workspace
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let update_data = UpdateTeamIssue {
+        title: payload.title,
+        description: payload.description,
+        status: payload.status,
+        priority: payload.priority,
+        due_date: payload.due_date,
+        assignee_id: payload.assignee_id,
+    };
+
+    let issue = TeamRepository::update_issue(pool, team.id, issue_id, update_data)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, %issue_id, "failed to update team issue");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to update issue")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "issue not found"))?;
+
+    tracing::info!(
+        team_id = %team.id,
+        issue_id = %issue.id,
+        "updated team issue"
     );
 
     Ok(ApiResponse::success(issue))
@@ -742,12 +825,18 @@ async fn update_team_member_role(
     Ok(ApiResponse::success(member))
 }
 
-/// Sync team members - refreshes member list and returns updated members
+/// Sync Clerk user to team members - finds or creates member with Clerk data
+#[instrument(
+    name = "teams.sync_team_members",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, team_id = %team_id)
+)]
 async fn sync_team_members(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(team_id): Path<String>,
-) -> Result<Json<ApiResponse<Vec<TeamMember>>>, ErrorResponse> {
+    Json(payload): Json<SyncClerkMemberRequest>,
+) -> Result<Json<ApiResponse<TeamMember>>, ErrorResponse> {
     let pool = state.pool();
 
     let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
@@ -769,19 +858,32 @@ async fn sync_team_members(
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }
 
-    // For now, sync just returns current members
-    // In future, this could sync from Clerk or other external source
-    let members = TeamRepository::get_members(pool, team.id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to sync team members");
-            ErrorResponse::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to sync team members",
-            )
-        })?;
+    // Sync the Clerk user to team members (upsert)
+    let member = TeamRepository::sync_clerk_member(
+        pool,
+        team.id,
+        &payload.clerk_user_id,
+        &payload.email,
+        payload.display_name.as_deref(),
+        payload.avatar_url.as_deref(),
+    )
+    .await
+    .map_err(|error| {
+        tracing::error!(?error, %team_id, clerk_user_id = %payload.clerk_user_id, "failed to sync team member");
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to sync team member",
+        )
+    })?;
 
-    Ok(ApiResponse::success(members))
+    tracing::info!(
+        team_id = %team.id,
+        member_id = %member.id,
+        clerk_user_id = %payload.clerk_user_id,
+        "synced clerk user to team member"
+    );
+
+    Ok(ApiResponse::success(member))
 }
 
 /// Get team invitations

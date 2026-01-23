@@ -15,6 +15,8 @@ pub mod validated_where;
 use std::{env, sync::OnceLock};
 
 pub use app::Server;
+// Re-export executor types for cloud AI execution (IKA-248)
+pub use executors;
 use sentry_tracing::{EventFilter, SentryLayer};
 pub use state::AppState;
 use tracing::Level;

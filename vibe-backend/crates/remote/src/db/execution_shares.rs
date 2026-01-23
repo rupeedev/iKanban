@@ -218,9 +218,9 @@ impl ExecutionShareRepository {
         pool: &PgPool,
         data: ShareWithUser,
     ) -> Result<ExecutionShare, ExecutionShareError> {
-        let expires_at =
-            data.expires_in_seconds
-                .map(|secs| Utc::now() + chrono::Duration::seconds(secs));
+        let expires_at = data
+            .expires_in_seconds
+            .map(|secs| Utc::now() + chrono::Duration::seconds(secs));
 
         let share_type = data.share_type.unwrap_or_else(|| "view".to_string());
 
@@ -256,9 +256,9 @@ impl ExecutionShareRepository {
         pool: &PgPool,
         data: ShareWithTeam,
     ) -> Result<ExecutionShare, ExecutionShareError> {
-        let expires_at =
-            data.expires_in_seconds
-                .map(|secs| Utc::now() + chrono::Duration::seconds(secs));
+        let expires_at = data
+            .expires_in_seconds
+            .map(|secs| Utc::now() + chrono::Duration::seconds(secs));
 
         let share_type = data.share_type.unwrap_or_else(|| "view".to_string());
 
