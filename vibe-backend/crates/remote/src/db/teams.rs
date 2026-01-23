@@ -571,6 +571,118 @@ impl TeamRepository {
             .collect())
     }
 
+    /// Create a new team invitation
+    pub async fn create_invitation(
+        pool: &PgPool,
+        team_id: Uuid,
+        email: &str,
+        role: &str,
+        invited_by: Option<Uuid>,
+    ) -> Result<TeamInvitation, TeamError> {
+        let id = Uuid::new_v4();
+        let token = Uuid::new_v4().to_string();
+        // Invitation expires in 7 days
+        let expires_at = Utc::now() + chrono::Duration::days(7);
+
+        let row = sqlx::query!(
+            r#"
+            INSERT INTO team_invitations (id, team_id, email, role, status, invited_by, token, expires_at)
+            VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7)
+            RETURNING
+                id           AS "id!: Uuid",
+                team_id      AS "team_id!: Uuid",
+                email        AS "email!",
+                role         AS "role!",
+                status       AS "status!",
+                invited_by,
+                token,
+                expires_at   AS "expires_at!: DateTime<Utc>",
+                created_at   AS "created_at!: DateTime<Utc>"
+            "#,
+            id,
+            team_id,
+            email,
+            role,
+            invited_by,
+            token,
+            expires_at
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(TeamInvitation {
+            id: row.id,
+            team_id: row.team_id,
+            email: row.email,
+            role: row.role,
+            status: row.status,
+            invited_by: row.invited_by,
+            token: row.token,
+            expires_at: row.expires_at,
+            created_at: row.created_at,
+        })
+    }
+
+    /// Update an invitation's role
+    pub async fn update_invitation_role(
+        pool: &PgPool,
+        team_id: Uuid,
+        invitation_id: Uuid,
+        role: &str,
+    ) -> Result<Option<TeamInvitation>, TeamError> {
+        let row = sqlx::query!(
+            r#"
+            UPDATE team_invitations
+            SET role = $3
+            WHERE team_id = $1 AND id = $2 AND status = 'pending'
+            RETURNING
+                id           AS "id!: Uuid",
+                team_id      AS "team_id!: Uuid",
+                email        AS "email!",
+                role         AS "role!",
+                status       AS "status!",
+                invited_by,
+                token,
+                expires_at   AS "expires_at!: DateTime<Utc>",
+                created_at   AS "created_at!: DateTime<Utc>"
+            "#,
+            team_id,
+            invitation_id,
+            role
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(row.map(|r| TeamInvitation {
+            id: r.id,
+            team_id: r.team_id,
+            email: r.email,
+            role: r.role,
+            status: r.status,
+            invited_by: r.invited_by,
+            token: r.token,
+            expires_at: r.expires_at,
+            created_at: r.created_at,
+        }))
+    }
+
+    /// Cancel (delete) an invitation
+    pub async fn cancel_invitation(
+        pool: &PgPool,
+        team_id: Uuid,
+        invitation_id: Uuid,
+    ) -> Result<bool, TeamError> {
+        let result = sqlx::query!(
+            r#"DELETE FROM team_invitations WHERE team_id = $1 AND id = $2"#,
+            team_id,
+            invitation_id
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
     /// Get team documents
     pub async fn get_documents(
         pool: &PgPool,

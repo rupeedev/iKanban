@@ -61,6 +61,17 @@ pub struct UpdateTeamMemberRoleRequest {
     pub role: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct CreateTeamInvitationRequest {
+    pub email: String,
+    pub role: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateInvitationRoleRequest {
+    pub role: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct TeamProject {
     pub team_id: Uuid,
@@ -99,7 +110,14 @@ pub fn router() -> Router<AppState> {
             "/teams/{team_id}/members/sync",
             axum::routing::post(sync_team_members),
         )
-        .route("/teams/{team_id}/invitations", get(get_team_invitations))
+        .route(
+            "/teams/{team_id}/invitations",
+            get(get_team_invitations).post(create_team_invitation),
+        )
+        .route(
+            "/teams/{team_id}/invitations/{invitation_id}",
+            axum::routing::put(update_team_invitation_role).delete(cancel_team_invitation),
+        )
         .route("/teams/{team_id}/documents", get(get_team_documents))
         .route("/teams/{team_id}/folders", get(get_team_folders))
 }
@@ -714,6 +732,188 @@ async fn get_team_invitations(
         })?;
 
     Ok(ApiResponse::success(invitations))
+}
+
+/// Create a team invitation
+#[instrument(
+    name = "teams.create_team_invitation",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, team_id = %team_id)
+)]
+async fn create_team_invitation(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<String>,
+    Json(payload): Json<CreateTeamInvitationRequest>,
+) -> Result<Json<ApiResponse<TeamInvitation>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    // Verify user has access to team's workspace
+    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team workspace");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    // Validate role
+    let valid_roles = ["viewer", "contributor", "maintainer", "owner"];
+    if !valid_roles.contains(&payload.role.as_str()) {
+        return Err(ErrorResponse::new(StatusCode::BAD_REQUEST, "invalid role"));
+    }
+
+    // Validate email format
+    if !payload.email.contains('@') || payload.email.len() < 3 {
+        return Err(ErrorResponse::new(
+            StatusCode::BAD_REQUEST,
+            "invalid email address",
+        ));
+    }
+
+    let invitation =
+        TeamRepository::create_invitation(pool, team.id, &payload.email, &payload.role, Some(ctx.user.id))
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, email = %payload.email, "failed to create invitation");
+                // Check for duplicate invitation error
+                if let crate::db::teams::TeamError::Database(ref db_err) = error
+                    && (db_err.to_string().contains("UNIQUE constraint")
+                        || db_err.to_string().contains("duplicate"))
+                {
+                    return ErrorResponse::new(
+                        StatusCode::CONFLICT,
+                        "an invitation for this email already exists",
+                    );
+                }
+                ErrorResponse::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "failed to create invitation",
+                )
+            })?;
+
+    tracing::info!(%team_id, email = %payload.email, "team invitation created");
+    Ok(ApiResponse::success(invitation))
+}
+
+/// Update a team invitation's role
+#[instrument(
+    name = "teams.update_team_invitation_role",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, team_id = %team_id, invitation_id = %invitation_id)
+)]
+async fn update_team_invitation_role(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((team_id, invitation_id)): Path<(String, Uuid)>,
+    Json(payload): Json<UpdateInvitationRoleRequest>,
+) -> Result<Json<ApiResponse<TeamInvitation>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    // Verify user has access to team's workspace
+    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team workspace");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    // Validate role
+    let valid_roles = ["viewer", "contributor", "maintainer", "owner"];
+    if !valid_roles.contains(&payload.role.as_str()) {
+        return Err(ErrorResponse::new(StatusCode::BAD_REQUEST, "invalid role"));
+    }
+
+    let invitation =
+        TeamRepository::update_invitation_role(pool, team.id, invitation_id, &payload.role)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, %invitation_id, "failed to update invitation role");
+                ErrorResponse::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "failed to update invitation role",
+                )
+            })?
+            .ok_or_else(|| {
+                ErrorResponse::new(StatusCode::NOT_FOUND, "invitation not found or not pending")
+            })?;
+
+    tracing::info!(%team_id, %invitation_id, role = %payload.role, "team invitation role updated");
+    Ok(ApiResponse::success(invitation))
+}
+
+/// Cancel a team invitation
+#[instrument(
+    name = "teams.cancel_team_invitation",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, team_id = %team_id, invitation_id = %invitation_id)
+)]
+async fn cancel_team_invitation(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((team_id, invitation_id)): Path<(String, Uuid)>,
+) -> Result<Json<ApiResponse<()>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    // Verify user has access to team's workspace
+    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team workspace");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let deleted = TeamRepository::cancel_invitation(pool, team.id, invitation_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, %invitation_id, "failed to cancel invitation");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to cancel invitation",
+            )
+        })?;
+
+    if !deleted {
+        return Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "invitation not found",
+        ));
+    }
+
+    tracing::info!(%team_id, %invitation_id, "team invitation canceled");
+    Ok(ApiResponse::success(()))
 }
 
 /// Get team documents
