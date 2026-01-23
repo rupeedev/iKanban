@@ -22,6 +22,7 @@ pub mod organization_members;
 pub mod organizations;
 pub mod projects;
 pub mod reviews;
+pub mod execution_shares;
 pub mod superadmins;
 pub mod tags;
 pub mod task_comments;
