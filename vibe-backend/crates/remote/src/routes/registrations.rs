@@ -80,6 +80,7 @@ pub fn router() -> Router<AppState> {
 }
 
 /// Get current user's registration status
+/// For existing team members without a registration, auto-create an approved registration
 #[instrument(name = "registrations.me", skip(state, ctx), fields(clerk_user_id = %ctx.clerk_user_id))]
 async fn get_my_registration(
     State(state): State<AppState>,
@@ -87,15 +88,78 @@ async fn get_my_registration(
 ) -> Json<ApiResponse<Option<UserRegistration>>> {
     let pool = state.pool();
 
-    match UserRegistration::find_by_clerk_id(pool, &ctx.clerk_user_id).await {
-        Ok(registration) => Json(ApiResponse::success(registration)),
+    // First check for existing registration
+    let registration = match UserRegistration::find_by_clerk_id(pool, &ctx.clerk_user_id).await {
+        Ok(reg) => reg,
         Err(e) => {
             tracing::error!(?e, "Failed to get user's registration");
-            Json(ApiResponse::error(
+            return Json(ApiResponse::error(
                 "Failed to get registration status".into(),
-            ))
+            ));
+        }
+    };
+
+    if registration.is_some() {
+        return Json(ApiResponse::success(registration));
+    }
+
+    // No registration - check if user is already a team member (existing user before registration)
+    let existing_member: Option<(String,)> = match sqlx::query_as(
+        r#"SELECT t.name as team_name
+           FROM team_members tm
+           JOIN teams t ON t.id = tm.team_id
+           WHERE tm.clerk_user_id = $1
+           LIMIT 1"#,
+    )
+    .bind(&ctx.clerk_user_id)
+    .fetch_optional(pool)
+    .await
+    {
+        Ok(result) => result,
+        Err(e) => {
+            tracing::error!(?e, "Failed to check team membership");
+            return Json(ApiResponse::error(
+                "Failed to check registration status".into(),
+            ));
+        }
+    };
+
+    if let Some((team_name,)) = existing_member {
+        // Existing team member - auto-create an approved registration
+        let auto_registration = CreateUserRegistration {
+            clerk_user_id: ctx.clerk_user_id.clone(),
+            email: ctx.user.email.clone(),
+            first_name: ctx.user.first_name.clone(),
+            last_name: ctx.user.last_name.clone(),
+            workspace_name: team_name.clone(),
+            planned_teams: Some(1),
+            planned_projects: Some(3),
+            selected_plan: Some("hobby".to_string()),
+            company_name: None,
+            use_case: None,
+            requested_workspace_name: Some(team_name),
+        };
+
+        match UserRegistration::create_auto_approved(pool, &auto_registration).await {
+            Ok(new_registration) => {
+                tracing::info!(
+                    registration_id = %new_registration.id,
+                    clerk_user_id = %ctx.clerk_user_id,
+                    "Auto-created approved registration for existing team member"
+                );
+                return Json(ApiResponse::success(Some(new_registration)));
+            }
+            Err(e) => {
+                tracing::error!(?e, "Failed to auto-create registration");
+                return Json(ApiResponse::error(
+                    "Failed to create registration".into(),
+                ));
+            }
         }
     }
+
+    // No registration and not an existing team member
+    Json(ApiResponse::success(None))
 }
 
 /// Create a new user registration
