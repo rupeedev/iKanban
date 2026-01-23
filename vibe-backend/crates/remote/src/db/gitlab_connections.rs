@@ -200,9 +200,7 @@ impl GitLabConnectionRepository {
     }
 
     /// Delete workspace connection
-    pub async fn delete_workspace_connection(
-        pool: &PgPool,
-    ) -> Result<u64, GitLabConnectionError> {
+    pub async fn delete_workspace_connection(pool: &PgPool) -> Result<u64, GitLabConnectionError> {
         let result = sqlx::query!("DELETE FROM gitlab_connections WHERE team_id IS NULL")
             .execute(pool)
             .await?;

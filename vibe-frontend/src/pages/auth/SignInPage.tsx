@@ -20,7 +20,8 @@ export function SignInPage() {
       {isSignedIn && user?.firstName && (
         <div className="mb-6 text-center">
           <p className="text-xl text-white">
-            Welcome Back, <span className="font-semibold">{user.firstName}</span>!
+            Welcome Back,{' '}
+            <span className="font-semibold">{user.firstName}</span>!
           </p>
         </div>
       )}

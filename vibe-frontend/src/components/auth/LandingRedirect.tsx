@@ -31,10 +31,7 @@ function ClerkLandingRedirect() {
   const userId = user?.id;
 
   // Check superadmin status
-  const {
-    data: superadminCheck,
-    isLoading: isCheckingSuperadmin,
-  } = useQuery({
+  const { data: superadminCheck, isLoading: isCheckingSuperadmin } = useQuery({
     queryKey: ['superadmin', 'check'],
     queryFn: () => superadminApi.check(),
     enabled: isClerkLoaded && !!user,
@@ -49,10 +46,7 @@ function ClerkLandingRedirect() {
   });
 
   // Check workspace membership to determine if user is admin/owner
-  const {
-    data: workspaces = [],
-    isLoading: isLoadingWorkspaces,
-  } = useQuery({
+  const { data: workspaces = [], isLoading: isLoadingWorkspaces } = useQuery({
     queryKey: ['tenant-workspaces', userId],
     queryFn: () => {
       if (!userId) throw new Error('User not authenticated');
@@ -63,10 +57,7 @@ function ClerkLandingRedirect() {
   });
 
   // Get user's role in their workspaces
-  const {
-    data: members = [],
-    isLoading: isLoadingMembers,
-  } = useQuery({
+  const { data: members = [], isLoading: isLoadingMembers } = useQuery({
     queryKey: ['workspace-members-role-check', userId],
     queryFn: async () => {
       if (!userId || workspaces.length === 0) return [];
@@ -122,7 +113,7 @@ function ClerkLandingRedirect() {
   // Check if user is admin or owner in any workspace
   const userEmail = user.primaryEmailAddress?.emailAddress;
   const userMember = members.find(
-    (m: typeof members[0]) => m.user_id === userId || m.email === userEmail
+    (m: (typeof members)[0]) => m.user_id === userId || m.email === userEmail
   );
   const isAdminOrOwner =
     userMember?.role === 'admin' || userMember?.role === 'owner';

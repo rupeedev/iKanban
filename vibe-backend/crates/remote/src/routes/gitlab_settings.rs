@@ -111,12 +111,16 @@ async fn create_workspace_gitlab_connection(
         ));
     }
 
-    let connection = GitLabConnectionRepository::create_workspace_connection(state.pool(), &payload)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, "failed to create connection");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to create connection")
-        })?;
+    let connection =
+        GitLabConnectionRepository::create_workspace_connection(state.pool(), &payload)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, "failed to create connection");
+                ErrorResponse::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "failed to create connection",
+                )
+            })?;
 
     tracing::info!(connection_id = %connection.id, "GitLab connection created");
     Ok(ApiResponse::success(connection))
@@ -138,14 +142,20 @@ async fn update_workspace_gitlab_connection(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "database error")
         })?
         .ok_or_else(|| {
-            ErrorResponse::new(StatusCode::NOT_FOUND, "workspace GitLab connection not found")
+            ErrorResponse::new(
+                StatusCode::NOT_FOUND,
+                "workspace GitLab connection not found",
+            )
         })?;
 
     let updated = GitLabConnectionRepository::update(state.pool(), existing.id, &payload)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to update connection");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to update connection")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to update connection",
+            )
         })?;
 
     tracing::info!(connection_id = %updated.id, "GitLab connection updated");
@@ -164,7 +174,10 @@ async fn delete_workspace_gitlab_connection(
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete connection");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to delete connection")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to delete connection",
+            )
         })?;
 
     if rows_affected == 0 {
@@ -193,7 +206,10 @@ async fn get_workspace_repositories(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "database error")
         })?
         .ok_or_else(|| {
-            ErrorResponse::new(StatusCode::NOT_FOUND, "workspace GitLab connection not found")
+            ErrorResponse::new(
+                StatusCode::NOT_FOUND,
+                "workspace GitLab connection not found",
+            )
         })?;
 
     let repositories = GitLabRepositoryOps::find_by_connection_id(state.pool(), connection.id)
@@ -221,12 +237,18 @@ async fn get_available_gitlab_projects(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "database error")
         })?
         .ok_or_else(|| {
-            ErrorResponse::new(StatusCode::NOT_FOUND, "workspace GitLab connection not found")
+            ErrorResponse::new(
+                StatusCode::NOT_FOUND,
+                "workspace GitLab connection not found",
+            )
         })?;
 
     // Fetch projects from GitLab API
     let client = reqwest::Client::new();
-    let api_url = format!("{}/api/v4/projects", connection.gitlab_url.trim_end_matches('/'));
+    let api_url = format!(
+        "{}/api/v4/projects",
+        connection.gitlab_url.trim_end_matches('/')
+    );
 
     let response = client
         .get(&api_url)
@@ -240,7 +262,10 @@ async fn get_available_gitlab_projects(
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to fetch projects from GitLab");
-            ErrorResponse::new(StatusCode::BAD_GATEWAY, "failed to fetch projects from GitLab")
+            ErrorResponse::new(
+                StatusCode::BAD_GATEWAY,
+                "failed to fetch projects from GitLab",
+            )
         })?;
 
     if !response.status().is_success() {
@@ -277,14 +302,20 @@ async fn link_workspace_repository(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "database error")
         })?
         .ok_or_else(|| {
-            ErrorResponse::new(StatusCode::NOT_FOUND, "workspace GitLab connection not found")
+            ErrorResponse::new(
+                StatusCode::NOT_FOUND,
+                "workspace GitLab connection not found",
+            )
         })?;
 
     let repository = GitLabRepositoryOps::link(state.pool(), connection.id, &payload)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to link repository");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to link repository")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to link repository",
+            )
         })?;
 
     tracing::info!(repo_id = %repository.id, "repository linked");
@@ -304,7 +335,10 @@ async fn unlink_workspace_repository(
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to unlink repository");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to unlink repository")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to unlink repository",
+            )
         })?;
 
     if rows_affected == 0 {

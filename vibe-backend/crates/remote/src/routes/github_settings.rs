@@ -111,12 +111,16 @@ async fn create_workspace_github_connection(
         ));
     }
 
-    let connection = GitHubConnectionRepository::create_workspace_connection(state.pool(), &payload)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, "failed to create connection");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to create connection")
-        })?;
+    let connection =
+        GitHubConnectionRepository::create_workspace_connection(state.pool(), &payload)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, "failed to create connection");
+                ErrorResponse::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "failed to create connection",
+                )
+            })?;
 
     tracing::info!(connection_id = %connection.id, "GitHub connection created");
     Ok(ApiResponse::success(connection))
@@ -138,14 +142,20 @@ async fn update_workspace_github_connection(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "database error")
         })?
         .ok_or_else(|| {
-            ErrorResponse::new(StatusCode::NOT_FOUND, "workspace GitHub connection not found")
+            ErrorResponse::new(
+                StatusCode::NOT_FOUND,
+                "workspace GitHub connection not found",
+            )
         })?;
 
     let updated = GitHubConnectionRepository::update(state.pool(), existing.id, &payload)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to update connection");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to update connection")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to update connection",
+            )
         })?;
 
     tracing::info!(connection_id = %updated.id, "GitHub connection updated");
@@ -164,7 +174,10 @@ async fn delete_workspace_github_connection(
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete connection");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to delete connection")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to delete connection",
+            )
         })?;
 
     if rows_affected == 0 {
@@ -193,7 +206,10 @@ async fn get_workspace_repositories(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "database error")
         })?
         .ok_or_else(|| {
-            ErrorResponse::new(StatusCode::NOT_FOUND, "workspace GitHub connection not found")
+            ErrorResponse::new(
+                StatusCode::NOT_FOUND,
+                "workspace GitHub connection not found",
+            )
         })?;
 
     let repositories = GitHubRepositoryOps::find_by_connection_id(state.pool(), connection.id)
@@ -221,14 +237,20 @@ async fn get_available_github_repos(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "database error")
         })?
         .ok_or_else(|| {
-            ErrorResponse::new(StatusCode::NOT_FOUND, "workspace GitHub connection not found")
+            ErrorResponse::new(
+                StatusCode::NOT_FOUND,
+                "workspace GitHub connection not found",
+            )
         })?;
 
     // Fetch repos from GitHub API
     let client = reqwest::Client::new();
     let response = client
         .get("https://api.github.com/user/repos")
-        .header("Authorization", format!("Bearer {}", connection.access_token))
+        .header(
+            "Authorization",
+            format!("Bearer {}", connection.access_token),
+        )
         .header("User-Agent", "ikanban")
         .query(&[("per_page", "100"), ("sort", "updated")])
         .send()
@@ -272,14 +294,20 @@ async fn link_workspace_repository(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "database error")
         })?
         .ok_or_else(|| {
-            ErrorResponse::new(StatusCode::NOT_FOUND, "workspace GitHub connection not found")
+            ErrorResponse::new(
+                StatusCode::NOT_FOUND,
+                "workspace GitHub connection not found",
+            )
         })?;
 
     let repository = GitHubRepositoryOps::link(state.pool(), connection.id, &payload)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to link repository");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to link repository")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to link repository",
+            )
         })?;
 
     tracing::info!(repo_id = %repository.id, "repository linked");
@@ -299,7 +327,10 @@ async fn unlink_workspace_repository(
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to unlink repository");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to unlink repository")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to unlink repository",
+            )
         })?;
 
     if rows_affected == 0 {

@@ -1,10 +1,10 @@
 //! AI provider keys routes for managing Claude, Gemini, OpenAI API keys
 
 use axum::{
+    Extension, Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
     routing::{get, post},
-    Extension, Json, Router,
 };
 use serde::Deserialize;
 use tracing::instrument;
@@ -12,9 +12,11 @@ use uuid::Uuid;
 
 use super::error::{ApiResponse, ErrorResponse};
 use crate::{
-    auth::RequestContext,
-    db::ai_provider_keys::{AiProviderKeyInfo, AiProviderKeyRepository, UpsertAiProviderKeyRequest},
     AppState,
+    auth::RequestContext,
+    db::ai_provider_keys::{
+        AiProviderKeyInfo, AiProviderKeyRepository, UpsertAiProviderKeyRequest,
+    },
 };
 
 pub fn router() -> Router<AppState> {

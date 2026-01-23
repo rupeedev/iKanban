@@ -99,14 +99,14 @@ function getAvatarPattern(str: string | undefined | null): string {
   ];
   // Handle undefined/null/empty string - use default color
   const safeStr = str || 'default';
-  const hash = safeStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hash = safeStr
+    .split('')
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colors[hash % colors.length];
 }
 
 // Safe date parsing - returns valid Date or null for invalid/missing values
-function safeParseDate(
-  value: Date | string | null | undefined
-): Date | null {
+function safeParseDate(value: Date | string | null | undefined): Date | null {
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
   return isNaN(date.getTime()) ? null : date;

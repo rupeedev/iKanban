@@ -84,7 +84,6 @@ import { UsageLimitProvider } from '@/contexts/UsageLimitContext';
 import { GlobalLimitBanner } from '@/components/subscription';
 import NiceModal from '@ebay/nice-modal-react';
 
-
 function AppContent() {
   const {
     config,

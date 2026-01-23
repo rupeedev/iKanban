@@ -184,9 +184,7 @@ impl GitHubConnectionRepository {
     }
 
     /// Delete workspace connection
-    pub async fn delete_workspace_connection(
-        pool: &PgPool,
-    ) -> Result<u64, GitHubConnectionError> {
+    pub async fn delete_workspace_connection(pool: &PgPool) -> Result<u64, GitHubConnectionError> {
         let result = sqlx::query!("DELETE FROM github_connections WHERE team_id IS NULL")
             .execute(pool)
             .await?;

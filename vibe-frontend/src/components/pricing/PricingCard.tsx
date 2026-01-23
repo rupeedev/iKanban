@@ -78,7 +78,9 @@ export function PricingCard({ plan, isYearly }: PricingCardProps) {
           <Icon className="h-5 w-5 text-muted-foreground" />
         </div>
         <h3 className="text-lg font-semibold">{plan.name}</h3>
-        <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{plan.description}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+          {plan.description}
+        </p>
       </div>
 
       {/* Price */}

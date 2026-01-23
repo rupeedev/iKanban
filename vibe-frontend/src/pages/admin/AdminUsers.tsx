@@ -174,7 +174,8 @@ function UserDetailsDialog({
 }: UserDetailsDialogProps) {
   if (!user) return null;
 
-  const displayName = user.display_name || user.email?.split('@')[0] || 'Unknown';
+  const displayName =
+    user.display_name || user.email?.split('@')[0] || 'Unknown';
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
