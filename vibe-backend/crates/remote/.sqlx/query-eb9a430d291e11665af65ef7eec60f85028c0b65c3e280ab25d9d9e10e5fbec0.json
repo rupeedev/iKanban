@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE ai_provider_keys\n            SET is_valid = $3, last_validated_at = NOW(), updated_at = NOW()\n            WHERE tenant_workspace_id = $1 AND provider = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "eb9a430d291e11665af65ef7eec60f85028c0b65c3e280ab25d9d9e10e5fbec0"
+}

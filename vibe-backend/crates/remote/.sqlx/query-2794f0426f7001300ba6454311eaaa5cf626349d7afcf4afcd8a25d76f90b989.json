@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM ai_provider_keys\n            WHERE tenant_workspace_id = $1 AND provider = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2794f0426f7001300ba6454311eaaa5cf626349d7afcf4afcd8a25d76f90b989"
+}

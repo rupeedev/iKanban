@@ -19,6 +19,7 @@ use crate::{
 
 mod abuse_signals;
 mod admin;
+mod ai_keys;
 mod api_keys;
 mod billing;
 mod documents;
@@ -26,9 +27,12 @@ mod electric_proxy;
 mod email_verification;
 mod error;
 mod github_app;
+mod github_settings;
+mod gitlab_settings;
 mod identity;
 mod inbox;
 mod oauth;
+mod oauth_settings;
 pub(crate) mod organization_members;
 mod organizations;
 mod projects;
@@ -76,16 +80,21 @@ pub fn router(state: AppState) -> Router {
         .merge(stripe::public_router())
         .merge(email_verification::public_router())
         .merge(billing::public_router())
-        .merge(tenant_workspaces::public_router());
+        .merge(tenant_workspaces::public_router())
+        .merge(oauth_settings::public_router());
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
         .merge(inbox::router())
+        .merge(ai_keys::router())
         .merge(api_keys::router())
         .merge(projects::router())
         .merge(tasks::router())
         .merge(tags::router())
         .merge(teams::router())
+        .merge(github_settings::router())
+        .merge(gitlab_settings::router())
+        .merge(oauth_settings::protected_router())
         .merge(documents::router())
         .merge(admin::router())
         .merge(organizations::router())

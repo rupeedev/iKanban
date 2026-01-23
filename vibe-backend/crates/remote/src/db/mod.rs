@@ -1,8 +1,11 @@
+pub mod ai_provider_keys;
 pub mod api_keys;
 pub mod auth;
 pub mod document_folders;
 pub mod documents;
 pub mod github_app;
+pub mod github_connections;
+pub mod gitlab_connections;
 pub mod identity_errors;
 pub mod inbox;
 pub mod invitations;
