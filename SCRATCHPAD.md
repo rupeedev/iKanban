@@ -36,10 +36,9 @@
 ---
 
 ## TODO
-- [ ] Implement task sync mechanism (local → remote)
-- [ ] Update ensure_task_access for dual-database lookup
 - [ ] Create Playwright tests for comments/tags/links endpoints
 - [ ] Verify frontend handles 404s gracefully
+- [ ] Deploy and verify fix on production
 
 ---
 
@@ -48,3 +47,10 @@
 - [x] Phase 2: Documents & Folders migration
 - [x] Phase 3: Inbox, enhanced projects, team roles
 - [x] Frontend .split() crash fix (optional chaining)
+- [x] **Fix 404 on task sub-endpoints (2026-01-23)**
+  - Root cause: `ensure_task_access` only checked `shared_tasks` table, but frontend tasks come from `tasks` table
+  - Solution: Modified `ensure_task_access` to fall back to `tasks` table lookup via team → tenant_workspace relationship
+  - Files changed:
+    - `crates/remote/src/db/tasks.rs` - Added `organization_id_from_tasks_table()` function
+    - `crates/remote/src/routes/organization_members.rs` - Updated `ensure_task_access()` with fallback
+  - SQLx cache regenerated

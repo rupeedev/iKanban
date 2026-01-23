@@ -560,20 +560,34 @@ pub(crate) async fn ensure_task_access(
     user_id: Uuid,
     task_id: Uuid,
 ) -> Result<Uuid, ErrorResponse> {
-    let organization_id = SharedTaskRepository::organization_id(pool, task_id)
-        .await
-        .map_err(|error| {
+    // First try to find the task in shared_tasks table
+    let organization_id = match SharedTaskRepository::organization_id(pool, task_id).await {
+        Ok(Some(org_id)) => org_id,
+        Ok(None) => {
+            // Fallback: check the tasks table (linked via team -> tenant_workspace)
+            SharedTaskRepository::organization_id_from_tasks_table(pool, task_id)
+                .await
+                .map_err(|error| {
+                    tracing::error!(?error, %task_id, "failed to load task from tasks table");
+                    ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+                })?
+                .ok_or_else(|| {
+                    warn!(
+                        %task_id,
+                        %user_id,
+                        "task not found in shared_tasks or tasks table"
+                    );
+                    ErrorResponse::new(StatusCode::NOT_FOUND, "task not found")
+                })?
+        }
+        Err(error) => {
             tracing::error!(?error, %task_id, "failed to load shared task");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-        })?
-        .ok_or_else(|| {
-            warn!(
-                %task_id,
-                %user_id,
-                "shared task not found for access check"
-            );
-            ErrorResponse::new(StatusCode::NOT_FOUND, "shared task not found")
-        })?;
+            return Err(ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal server error",
+            ));
+        }
+    };
 
     organization_members::assert_membership(pool, organization_id, user_id)
         .await
@@ -583,7 +597,7 @@ pub(crate) async fn ensure_task_access(
                     ?error,
                     %organization_id,
                     %task_id,
-                    "failed to authorize shared task access"
+                    "failed to authorize task access"
                 );
             } else {
                 warn!(
@@ -591,7 +605,7 @@ pub(crate) async fn ensure_task_access(
                     %organization_id,
                     %task_id,
                     %user_id,
-                    "shared task access denied"
+                    "task access denied"
                 );
             }
             membership_error(err, "task not accessible")

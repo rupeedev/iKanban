@@ -422,4 +422,26 @@ impl SharedTaskRepository<'_> {
         .fetch_optional(pool)
         .await
     }
+
+    /// Get organization_id for a task from the `tasks` table via team relationship.
+    /// This is used as a fallback when the task is not in `shared_tasks`.
+    /// Path: tasks.team_id -> teams.tenant_workspace_id
+    pub async fn organization_id_from_tasks_table(
+        pool: &PgPool,
+        task_id: Uuid,
+    ) -> Result<Option<Uuid>, sqlx::Error> {
+        sqlx::query_scalar!(
+            r#"
+            SELECT t2.tenant_workspace_id
+            FROM tasks t
+            JOIN teams t2 ON t.team_id = t2.id
+            WHERE t.id = $1
+              AND t2.tenant_workspace_id IS NOT NULL
+            "#,
+            task_id
+        )
+        .fetch_optional(pool)
+        .await
+        .map(|opt| opt.flatten())
+    }
 }
