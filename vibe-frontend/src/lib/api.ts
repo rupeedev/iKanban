@@ -3455,14 +3455,14 @@ export interface CancelSubscriptionRequest {
 export const billingApi = {
   // Get all available plans
   getPlans: async (): Promise<PlansResponse> => {
-    const response = await makeRequest('/v1/billing/plans');
+    const response = await makeRequest('/api/billing/plans');
     return handleApiResponse<PlansResponse>(response);
   },
 
   // Get workspace usage
   getUsage: async (workspaceId: string): Promise<UsageResponse> => {
     const response = await makeRequest(
-      `/v1/billing/usage?workspace_id=${workspaceId}`
+      `/api/billing/usage?workspace_id=${workspaceId}`
     );
     return handleApiResponse<UsageResponse>(response);
   },
@@ -3472,7 +3472,7 @@ export const billingApi = {
     workspaceId: string
   ): Promise<SubscriptionStatusResponse> => {
     const response = await makeRequest(
-      `/v1/stripe/subscription?workspace_id=${workspaceId}`
+      `/api/stripe/subscription?workspace_id=${workspaceId}`
     );
     return handleApiResponse<SubscriptionStatusResponse>(response);
   },
@@ -3481,7 +3481,7 @@ export const billingApi = {
   createCheckoutSession: async (
     data: CreateCheckoutSessionRequest
   ): Promise<CreateCheckoutSessionResponse> => {
-    const response = await makeRequest('/v1/stripe/checkout-session', {
+    const response = await makeRequest('/api/stripe/checkout-session', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -3492,7 +3492,7 @@ export const billingApi = {
   createPortalSession: async (
     data: CreatePortalSessionRequest
   ): Promise<CreatePortalSessionResponse> => {
-    const response = await makeRequest('/v1/stripe/portal-session', {
+    const response = await makeRequest('/api/stripe/portal-session', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -3503,7 +3503,7 @@ export const billingApi = {
   previewProration: async (
     data: ChangePlanRequest
   ): Promise<ProrationPreview> => {
-    const response = await makeRequest('/v1/stripe/preview-proration', {
+    const response = await makeRequest('/api/stripe/preview-proration', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -3514,7 +3514,7 @@ export const billingApi = {
   changePlan: async (
     data: ChangePlanRequest
   ): Promise<SubscriptionChangeResult> => {
-    const response = await makeRequest('/v1/stripe/change-plan', {
+    const response = await makeRequest('/api/stripe/change-plan', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -3525,7 +3525,7 @@ export const billingApi = {
   cancelSubscription: async (
     data: CancelSubscriptionRequest
   ): Promise<SubscriptionChangeResult> => {
-    const response = await makeRequest('/v1/stripe/cancel-subscription', {
+    const response = await makeRequest('/api/stripe/cancel-subscription', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -3534,7 +3534,7 @@ export const billingApi = {
 
   // IKA-229: Check if user can create a new workspace
   checkWorkspaceCreation: async (): Promise<WorkspaceCreationCheck> => {
-    const response = await makeRequest('/v1/billing/workspace-creation-check');
+    const response = await makeRequest('/api/billing/workspace-creation-check');
     return handleApiResponse<WorkspaceCreationCheck>(response);
   },
 };
@@ -3583,7 +3583,7 @@ export interface PlanLimitsResponse {
 export const planLimitsApi = {
   // Get all plan limits (public endpoint, no auth required)
   getPlans: async (): Promise<PlanLimitsResponse> => {
-    const response = await makeRequest('/v1/plan-limits');
+    const response = await makeRequest('/api/plan-limits');
     return handleApiResponse<PlanLimitsResponse>(response);
   },
 };
@@ -3656,13 +3656,13 @@ export interface ResolveAbuseSignalRequest {
 export const trustProfilesApi = {
   // List all flagged users (admin only)
   listFlagged: async (): Promise<UserTrustProfile[]> => {
-    const response = await makeRequest('/v1/admin/trust-profiles/flagged');
+    const response = await makeRequest('/api/admin/trust-profiles/flagged');
     return handleApiResponse<UserTrustProfile[]>(response);
   },
 
   // Get a specific user's trust profile (admin only)
   get: async (userId: string): Promise<UserTrustProfile> => {
-    const response = await makeRequest(`/v1/admin/trust-profiles/${userId}`);
+    const response = await makeRequest(`/api/admin/trust-profiles/${userId}`);
     return handleApiResponse<UserTrustProfile>(response);
   },
 
@@ -3672,7 +3672,7 @@ export const trustProfilesApi = {
     data: FlagUserRequest
   ): Promise<UserTrustProfile> => {
     const response = await makeRequest(
-      `/v1/admin/trust-profiles/${userId}/flag`,
+      `/api/admin/trust-profiles/${userId}/flag`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -3684,7 +3684,7 @@ export const trustProfilesApi = {
   // Unflag a user (admin only)
   unflag: async (userId: string): Promise<UserTrustProfile> => {
     const response = await makeRequest(
-      `/v1/admin/trust-profiles/${userId}/unflag`,
+      `/api/admin/trust-profiles/${userId}/unflag`,
       {
         method: 'POST',
       }
@@ -3698,7 +3698,7 @@ export const trustProfilesApi = {
     data: BanUserRequest
   ): Promise<UserTrustProfile> => {
     const response = await makeRequest(
-      `/v1/admin/trust-profiles/${userId}/ban`,
+      `/api/admin/trust-profiles/${userId}/ban`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -3713,7 +3713,7 @@ export const trustProfilesApi = {
     trustLevel: number
   ): Promise<UserTrustProfile> => {
     const response = await makeRequest(
-      `/v1/admin/trust-profiles/${userId}/trust-level`,
+      `/api/admin/trust-profiles/${userId}/trust-level`,
       {
         method: 'POST',
         body: JSON.stringify({ trust_level: trustLevel }),
@@ -3726,14 +3726,14 @@ export const trustProfilesApi = {
 export const abuseSignalsApi = {
   // List all unresolved abuse signals (admin only)
   listUnresolved: async (): Promise<AbuseDetectionSignal[]> => {
-    const response = await makeRequest('/v1/admin/abuse-signals');
+    const response = await makeRequest('/api/admin/abuse-signals');
     return handleApiResponse<AbuseDetectionSignal[]>(response);
   },
 
   // Get abuse signals for a specific user (admin only)
   getByUser: async (userId: string): Promise<AbuseDetectionSignal[]> => {
     const response = await makeRequest(
-      `/v1/admin/abuse-signals/user/${userId}`
+      `/api/admin/abuse-signals/user/${userId}`
     );
     return handleApiResponse<AbuseDetectionSignal[]>(response);
   },
@@ -3744,7 +3744,7 @@ export const abuseSignalsApi = {
     data?: ResolveAbuseSignalRequest
   ): Promise<AbuseDetectionSignal> => {
     const response = await makeRequest(
-      `/v1/admin/abuse-signals/${signalId}/resolve`,
+      `/api/admin/abuse-signals/${signalId}/resolve`,
       {
         method: 'POST',
         body: JSON.stringify(data || {}),
@@ -3789,7 +3789,7 @@ export interface VerifyEmailResponse {
 export const emailVerificationApi = {
   // Get current user's verification status
   getStatus: async (): Promise<VerificationStatusResponse> => {
-    const response = await makeRequest('/v1/auth/verification-status');
+    const response = await makeRequest('/api/auth/verification-status');
     return handleApiResponse<VerificationStatusResponse>(response);
   },
 
@@ -3797,7 +3797,7 @@ export const emailVerificationApi = {
   sendVerification: async (
     data: SendVerificationRequest
   ): Promise<SendVerificationResponse> => {
-    const response = await makeRequest('/v1/auth/send-verification', {
+    const response = await makeRequest('/api/auth/send-verification', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -3808,7 +3808,7 @@ export const emailVerificationApi = {
   verifyToken: async (token: string): Promise<VerifyEmailResponse> => {
     const url = import.meta.env.VITE_VK_API_BASE || '';
     const response = await fetch(
-      `${url}/v1/auth/verify-email?token=${encodeURIComponent(token)}`
+      `${url}/api/auth/verify-email?token=${encodeURIComponent(token)}`
     );
     if (!response.ok) {
       const error = await response
