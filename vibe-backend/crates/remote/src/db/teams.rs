@@ -647,6 +647,120 @@ impl TeamRepository {
             })
             .collect())
     }
+
+    /// Get a specific team member by ID
+    pub async fn get_member(
+        pool: &PgPool,
+        team_id: Uuid,
+        member_id: Uuid,
+    ) -> Result<Option<TeamMember>, TeamError> {
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                tm.id            AS "id!: Uuid",
+                tm.team_id       AS "team_id!: Uuid",
+                tm.email         AS "email!",
+                tm.display_name,
+                tm.role          AS "role!",
+                tm.invited_by,
+                tm.clerk_user_id,
+                tm.avatar_url,
+                tm.joined_at     AS "joined_at!: DateTime<Utc>",
+                tm.created_at    AS "created_at!: DateTime<Utc>",
+                tm.updated_at    AS "updated_at!: DateTime<Utc>",
+                COALESCE(
+                    (SELECT COUNT(*) FROM tasks t WHERE t.assignee_id = tm.id)::integer,
+                    0
+                ) AS "assigned_task_count!: i32"
+            FROM team_members tm
+            WHERE tm.team_id = $1 AND tm.id = $2
+            "#,
+            team_id,
+            member_id
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(row.map(|r| TeamMember {
+            id: r.id,
+            team_id: r.team_id,
+            email: r.email,
+            display_name: r.display_name,
+            role: r.role,
+            invited_by: r.invited_by,
+            clerk_user_id: r.clerk_user_id,
+            avatar_url: r.avatar_url,
+            assigned_task_count: r.assigned_task_count,
+            joined_at: r.joined_at,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+        }))
+    }
+
+    /// Remove a member from a team
+    pub async fn remove_member(
+        pool: &PgPool,
+        team_id: Uuid,
+        member_id: Uuid,
+    ) -> Result<bool, TeamError> {
+        let result = sqlx::query!(
+            r#"DELETE FROM team_members WHERE team_id = $1 AND id = $2"#,
+            team_id,
+            member_id
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Update a team member's role
+    pub async fn update_member_role(
+        pool: &PgPool,
+        team_id: Uuid,
+        member_id: Uuid,
+        role: &str,
+    ) -> Result<Option<TeamMember>, TeamError> {
+        let row = sqlx::query!(
+            r#"
+            UPDATE team_members
+            SET role = $3, updated_at = NOW()
+            WHERE team_id = $1 AND id = $2
+            RETURNING
+                id            AS "id!: Uuid",
+                team_id       AS "team_id!: Uuid",
+                email         AS "email!",
+                display_name,
+                role          AS "role!",
+                invited_by,
+                clerk_user_id,
+                avatar_url,
+                joined_at     AS "joined_at!: DateTime<Utc>",
+                created_at    AS "created_at!: DateTime<Utc>",
+                updated_at    AS "updated_at!: DateTime<Utc>"
+            "#,
+            team_id,
+            member_id,
+            role
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(row.map(|r| TeamMember {
+            id: r.id,
+            team_id: r.team_id,
+            email: r.email,
+            display_name: r.display_name,
+            role: r.role,
+            invited_by: r.invited_by,
+            clerk_user_id: r.clerk_user_id,
+            avatar_url: r.avatar_url,
+            assigned_task_count: 0, // Not fetched in update
+            joined_at: r.joined_at,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+        }))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

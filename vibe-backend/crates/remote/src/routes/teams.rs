@@ -56,6 +56,11 @@ pub struct TeamProjectAssignment {
     pub project_id: Uuid,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct UpdateTeamMemberRoleRequest {
+    pub role: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct TeamProject {
     pub team_id: Uuid,
@@ -86,6 +91,10 @@ pub fn router() -> Router<AppState> {
         )
         .route("/teams/{team_id}/issues", get(get_team_issues))
         .route("/teams/{team_id}/members", get(get_team_members))
+        .route(
+            "/teams/{team_id}/members/{member_id}",
+            axum::routing::put(update_team_member_role).delete(delete_team_member),
+        )
         .route(
             "/teams/{team_id}/members/sync",
             axum::routing::post(sync_team_members),
@@ -463,6 +472,166 @@ async fn get_team_members(
         })?;
 
     Ok(ApiResponse::success(members))
+}
+
+/// Delete a team member
+#[instrument(
+    name = "teams.delete_team_member",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, team_id = %team_id, member_id = %member_id)
+)]
+async fn delete_team_member(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((team_id, member_id)): Path<(String, Uuid)>,
+) -> Result<Json<ApiResponse<()>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    // Verify user has access to team's workspace
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    // Check if trying to delete self (prevent)
+    let member = TeamRepository::get_member(pool, team.id, member_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, %member_id, "failed to get member");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get member")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "member not found"))?;
+
+    // Prevent deleting the last owner
+    if member.role == "owner" {
+        let all_members = TeamRepository::get_members(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team members");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?;
+
+        let owner_count = all_members.iter().filter(|m| m.role == "owner").count();
+        if owner_count <= 1 {
+            return Err(ErrorResponse::new(
+                StatusCode::BAD_REQUEST,
+                "cannot remove the last owner of the team",
+            ));
+        }
+    }
+
+    let deleted = TeamRepository::remove_member(pool, team.id, member_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, %member_id, "failed to remove member");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to remove member")
+        })?;
+
+    if !deleted {
+        return Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "member not found",
+        ));
+    }
+
+    tracing::info!(%team_id, %member_id, "team member removed");
+    Ok(ApiResponse::success(()))
+}
+
+/// Update a team member's role
+#[instrument(
+    name = "teams.update_team_member_role",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, team_id = %team_id, member_id = %member_id)
+)]
+async fn update_team_member_role(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((team_id, member_id)): Path<(String, Uuid)>,
+    Json(payload): Json<UpdateTeamMemberRoleRequest>,
+) -> Result<Json<ApiResponse<TeamMember>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    // Verify user has access to team's workspace
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    // Validate role
+    let valid_roles = ["viewer", "contributor", "maintainer", "owner"];
+    if !valid_roles.contains(&payload.role.as_str()) {
+        return Err(ErrorResponse::new(StatusCode::BAD_REQUEST, "invalid role"));
+    }
+
+    // Get current member to check if demoting last owner
+    let current_member = TeamRepository::get_member(pool, team.id, member_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, %member_id, "failed to get member");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get member")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "member not found"))?;
+
+    // Prevent demoting the last owner
+    if current_member.role == "owner" && payload.role != "owner" {
+        let all_members = TeamRepository::get_members(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team members");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?;
+
+        let owner_count = all_members.iter().filter(|m| m.role == "owner").count();
+        if owner_count <= 1 {
+            return Err(ErrorResponse::new(
+                StatusCode::BAD_REQUEST,
+                "cannot demote the last owner of the team",
+            ));
+        }
+    }
+
+    let member = TeamRepository::update_member_role(pool, team.id, member_id, &payload.role)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, %member_id, "failed to update member role");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to update member role",
+            )
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "member not found"))?;
+
+    tracing::info!(%team_id, %member_id, role = %payload.role, "team member role updated");
+    Ok(ApiResponse::success(member))
 }
 
 /// Sync team members - refreshes member list and returns updated members
