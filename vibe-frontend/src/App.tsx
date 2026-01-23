@@ -191,8 +191,7 @@ function AppContent() {
           <div className="h-screen flex flex-col bg-background">
             <Routes>
               {/* Public routes - no authentication required */}
-              <Route path="/" element={<Navigate to="/about" replace />} />
-              <Route path="/about" element={<About />} />
+              <Route path="/" element={<About />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/docs" element={<DocsPage />} />
 

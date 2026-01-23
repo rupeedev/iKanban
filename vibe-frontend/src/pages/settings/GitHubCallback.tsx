@@ -16,7 +16,10 @@ export function GitHubCallback() {
     // Send message to parent window
     if (window.opener) {
       if (success) {
-        window.opener.postMessage({ type: 'github-oauth-success' }, window.location.origin);
+        window.opener.postMessage(
+          { type: 'github-oauth-success' },
+          window.location.origin
+        );
       } else {
         window.opener.postMessage(
           { type: 'github-oauth-error', error: error || 'Unknown error' },
