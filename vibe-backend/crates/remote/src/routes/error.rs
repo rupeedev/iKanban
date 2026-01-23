@@ -3,7 +3,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::{
@@ -31,6 +31,7 @@ impl<T: Serialize> ApiResponse<T> {
         })
     }
 
+    #[allow(dead_code)] // Utility function for future use
     pub fn error(message: impl Into<String>) -> Json<Self> {
         Json(Self {
             success: false,

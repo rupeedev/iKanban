@@ -94,10 +94,10 @@ impl ClerkAuthState {
         // Check cache first
         {
             let cache = self.jwks_cache.read().await;
-            if let Some(cached) = cache.as_ref() {
-                if cached.fetched_at.elapsed() < self.cache_duration {
-                    return Ok(cached.jwks.clone());
-                }
+            if let Some(cached) = cache.as_ref()
+                && cached.fetched_at.elapsed() < self.cache_duration
+            {
+                return Ok(cached.jwks.clone());
             }
         }
 
@@ -254,7 +254,10 @@ pub async fn require_clerk_session(
     let user_repo = UserRepository::new(pool);
 
     // Try to find existing user by Clerk ID
-    let db_user = match oauth_repo.get_by_provider_user("clerk", &clerk_user.user_id).await {
+    let db_user = match oauth_repo
+        .get_by_provider_user("clerk", &clerk_user.user_id)
+        .await
+    {
         Ok(Some(oauth_account)) => {
             // User exists, fetch their full record
             match user_repo.fetch_user(oauth_account.user_id).await {
@@ -313,7 +316,11 @@ pub async fn require_clerk_session(
         }
     };
 
-    configure_user_scope(db_user.id, db_user.username.as_deref(), Some(db_user.email.as_str()));
+    configure_user_scope(
+        db_user.id,
+        db_user.username.as_deref(),
+        Some(db_user.email.as_str()),
+    );
 
     // Insert as both ClerkRequestContext (new) and RequestContext (legacy compatibility)
     let ctx = ClerkRequestContext {

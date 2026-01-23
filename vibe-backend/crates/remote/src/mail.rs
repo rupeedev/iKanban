@@ -62,6 +62,12 @@ pub trait Mailer: Send + Sync {
 /// Logs email attempts but doesn't actually send them.
 pub struct NoOpMailer;
 
+impl Default for NoOpMailer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NoOpMailer {
     pub fn new() -> Self {
         tracing::warn!("NoOpMailer initialized - emails will be logged but not sent");

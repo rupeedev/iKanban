@@ -10,14 +10,20 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
+use super::{
+    error::{ApiResponse, ErrorResponse},
+    organization_members::ensure_member_access,
+};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::teams::{Team, TeamDocument, TeamFolder, TeamInvitation, TeamIssue, TeamMember, TeamRepository},
-    db::projects::{Project, ProjectRepository},
+    db::{
+        projects::{Project, ProjectRepository},
+        teams::{
+            Team, TeamDocument, TeamFolder, TeamInvitation, TeamIssue, TeamMember, TeamRepository,
+        },
+    },
 };
-use super::error::{ApiResponse, ErrorResponse};
-use super::organization_members::ensure_member_access;
 
 #[derive(Debug, Deserialize)]
 pub struct ListTeamsQuery {
@@ -36,6 +42,7 @@ pub struct CreateTeamRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)] // Placeholder for future update_team implementation
 pub struct UpdateTeamRequest {
     pub name: Option<String>,
     pub identifier: Option<String>,
@@ -79,7 +86,10 @@ pub fn router() -> Router<AppState> {
         )
         .route("/teams/{team_id}/issues", get(get_team_issues))
         .route("/teams/{team_id}/members", get(get_team_members))
-        .route("/teams/{team_id}/members/sync", axum::routing::post(sync_team_members))
+        .route(
+            "/teams/{team_id}/members/sync",
+            axum::routing::post(sync_team_members),
+        )
         .route("/teams/{team_id}/invitations", get(get_team_invitations))
         .route("/teams/{team_id}/documents", get(get_team_documents))
         .route("/teams/{team_id}/folders", get(get_team_folders))
@@ -196,7 +206,10 @@ async fn get_team_dashboard(
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team members");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team members")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to get team members",
+            )
         })?;
 
     // Get project IDs
@@ -204,7 +217,10 @@ async fn get_team_dashboard(
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team project IDs");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team projects")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to get team projects",
+            )
         })?;
 
     // Get projects (fetch all by their IDs)
@@ -220,7 +236,10 @@ async fn get_team_dashboard(
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team issues");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team issues")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to get team issues",
+            )
         })?;
 
     Ok(ApiResponse::success(TeamDashboard {
@@ -239,7 +258,10 @@ async fn create_team(
     Json(_payload): Json<CreateTeamRequest>,
 ) -> Result<Json<ApiResponse<Team>>, ErrorResponse> {
     tracing::warn!(user_id = %ctx.user.id, "create_team not implemented");
-    Err(ErrorResponse::new(StatusCode::NOT_IMPLEMENTED, "create team not implemented"))
+    Err(ErrorResponse::new(
+        StatusCode::NOT_IMPLEMENTED,
+        "create team not implemented",
+    ))
 }
 
 /// Update a team - not implemented yet
@@ -250,7 +272,10 @@ async fn update_team(
     Json(_payload): Json<UpdateTeamRequest>,
 ) -> Result<Json<ApiResponse<Team>>, ErrorResponse> {
     tracing::warn!(user_id = %ctx.user.id, %team_id, "update_team not implemented");
-    Err(ErrorResponse::new(StatusCode::NOT_IMPLEMENTED, "update team not implemented"))
+    Err(ErrorResponse::new(
+        StatusCode::NOT_IMPLEMENTED,
+        "update team not implemented",
+    ))
 }
 
 /// Delete a team - not implemented yet
@@ -260,7 +285,10 @@ async fn delete_team(
     Path(team_id): Path<String>,
 ) -> Result<StatusCode, ErrorResponse> {
     tracing::warn!(user_id = %ctx.user.id, %team_id, "delete_team not implemented");
-    Err(ErrorResponse::new(StatusCode::NOT_IMPLEMENTED, "delete team not implemented"))
+    Err(ErrorResponse::new(
+        StatusCode::NOT_IMPLEMENTED,
+        "delete team not implemented",
+    ))
 }
 
 /// Get team projects
@@ -281,12 +309,13 @@ async fn get_team_projects(
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
 
     // Verify user has access to team's workspace
-    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to get team workspace");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
-        })?
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
     {
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }
@@ -296,7 +325,10 @@ async fn get_team_projects(
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team project IDs");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team projects")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to get team projects",
+            )
         })?;
 
     let mut projects = Vec::new();
@@ -328,12 +360,13 @@ async fn assign_project(
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
 
     // Verify user has access to team's workspace
-    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to get team workspace");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
-        })?
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
     {
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }
@@ -368,12 +401,13 @@ async fn get_team_issues(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
 
-    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to get team workspace");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
-        })?
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
     {
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }
@@ -382,7 +416,10 @@ async fn get_team_issues(
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team issues");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team issues")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to get team issues",
+            )
         })?;
 
     Ok(ApiResponse::success(issues))
@@ -404,12 +441,13 @@ async fn get_team_members(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
 
-    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to get team workspace");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
-        })?
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
     {
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }
@@ -418,7 +456,10 @@ async fn get_team_members(
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team members");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team members")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to get team members",
+            )
         })?;
 
     Ok(ApiResponse::success(members))
@@ -440,12 +481,13 @@ async fn sync_team_members(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
 
-    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to get team workspace");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
-        })?
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
     {
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }
@@ -456,7 +498,10 @@ async fn sync_team_members(
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to sync team members");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to sync team members")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to sync team members",
+            )
         })?;
 
     Ok(ApiResponse::success(members))
@@ -478,12 +523,13 @@ async fn get_team_invitations(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
 
-    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to get team workspace");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
-        })?
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
     {
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }
@@ -492,7 +538,10 @@ async fn get_team_invitations(
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team invitations");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team invitations")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to get team invitations",
+            )
         })?;
 
     Ok(ApiResponse::success(invitations))
@@ -514,12 +563,13 @@ async fn get_team_documents(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
 
-    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to get team workspace");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
-        })?
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
     {
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }
@@ -528,7 +578,10 @@ async fn get_team_documents(
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team documents");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team documents")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to get team documents",
+            )
         })?;
 
     Ok(ApiResponse::success(documents))
@@ -550,12 +603,13 @@ async fn get_team_folders(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
 
-    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to get team workspace");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
-        })?
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
     {
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }
@@ -564,7 +618,10 @@ async fn get_team_folders(
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team folders");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team folders")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to get team folders",
+            )
         })?;
 
     Ok(ApiResponse::success(folders))
