@@ -41,6 +41,7 @@ function AboutWithClerk() {
     isPending,
     isRejected,
     refresh,
+    error,
   } = useUserRegistration();
 
   // Track if we've already shown the onboarding wizard to prevent duplicate shows
@@ -48,12 +49,14 @@ function AboutWithClerk() {
 
   // Show onboarding wizard for first-time sign-ups
   // Only show after registration query has completed (isFetched) to prevent race condition
+  // Don't show if there was an error (like 401) - that's not "no registration", that's an API failure
   useEffect(() => {
     if (
       isSignedIn &&
       user &&
       isRegistrationFetched &&
       !hasRegistration &&
+      !error && // Don't show wizard if there was an API error
       !onboardingShownRef.current
     ) {
       onboardingShownRef.current = true;
@@ -64,7 +67,7 @@ function AboutWithClerk() {
         lastName: user.lastName,
       });
     }
-  }, [isSignedIn, user, isRegistrationFetched, hasRegistration]);
+  }, [isSignedIn, user, isRegistrationFetched, hasRegistration, error]);
 
   // Show pending/rejected dialog
   useEffect(() => {

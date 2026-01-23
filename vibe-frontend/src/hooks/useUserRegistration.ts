@@ -38,7 +38,9 @@ export function useUserRegistration(): UseUserRegistrationResult {
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
-    retry: 1,
+    // Retry more times with delay to handle race condition with auth token setup
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * (attemptIndex + 1), 3000),
     // Only fetch registration when user is signed in to avoid 401 errors
     enabled: isSignedIn,
   });
