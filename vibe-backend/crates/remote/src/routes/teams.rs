@@ -757,12 +757,13 @@ async fn create_team_invitation(
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
 
     // Verify user has access to team's workspace
-    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to get team workspace");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
-        })?
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
     {
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }
@@ -781,26 +782,31 @@ async fn create_team_invitation(
         ));
     }
 
-    let invitation =
-        TeamRepository::create_invitation(pool, team.id, &payload.email, &payload.role, Some(ctx.user.id))
-            .await
-            .map_err(|error| {
-                tracing::error!(?error, %team_id, email = %payload.email, "failed to create invitation");
-                // Check for duplicate invitation error
-                if let crate::db::teams::TeamError::Database(ref db_err) = error
-                    && (db_err.to_string().contains("UNIQUE constraint")
-                        || db_err.to_string().contains("duplicate"))
-                {
-                    return ErrorResponse::new(
-                        StatusCode::CONFLICT,
-                        "an invitation for this email already exists",
-                    );
-                }
-                ErrorResponse::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "failed to create invitation",
-                )
-            })?;
+    let invitation = TeamRepository::create_invitation(
+        pool,
+        team.id,
+        &payload.email,
+        &payload.role,
+        Some(ctx.user.id),
+    )
+    .await
+    .map_err(|error| {
+        tracing::error!(?error, %team_id, email = %payload.email, "failed to create invitation");
+        // Check for duplicate invitation error
+        if let crate::db::teams::TeamError::Database(ref db_err) = error
+            && (db_err.to_string().contains("UNIQUE constraint")
+                || db_err.to_string().contains("duplicate"))
+        {
+            return ErrorResponse::new(
+                StatusCode::CONFLICT,
+                "an invitation for this email already exists",
+            );
+        }
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to create invitation",
+        )
+    })?;
 
     tracing::info!(%team_id, email = %payload.email, "team invitation created");
     Ok(ApiResponse::success(invitation))
@@ -829,12 +835,13 @@ async fn update_team_invitation_role(
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
 
     // Verify user has access to team's workspace
-    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to get team workspace");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
-        })?
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
     {
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }
@@ -845,19 +852,23 @@ async fn update_team_invitation_role(
         return Err(ErrorResponse::new(StatusCode::BAD_REQUEST, "invalid role"));
     }
 
-    let invitation =
-        TeamRepository::update_invitation_role(pool, team.id, invitation_id, &payload.role)
-            .await
-            .map_err(|error| {
-                tracing::error!(?error, %team_id, %invitation_id, "failed to update invitation role");
-                ErrorResponse::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "failed to update invitation role",
-                )
-            })?
-            .ok_or_else(|| {
-                ErrorResponse::new(StatusCode::NOT_FOUND, "invitation not found or not pending")
-            })?;
+    let invitation = TeamRepository::update_invitation_role(
+        pool,
+        team.id,
+        invitation_id,
+        &payload.role,
+    )
+    .await
+    .map_err(|error| {
+        tracing::error!(?error, %team_id, %invitation_id, "failed to update invitation role");
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to update invitation role",
+        )
+    })?
+    .ok_or_else(|| {
+        ErrorResponse::new(StatusCode::NOT_FOUND, "invitation not found or not pending")
+    })?;
 
     tracing::info!(%team_id, %invitation_id, role = %payload.role, "team invitation role updated");
     Ok(ApiResponse::success(invitation))
@@ -885,12 +896,13 @@ async fn cancel_team_invitation(
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
 
     // Verify user has access to team's workspace
-    if let Some(workspace_id) = TeamRepository::workspace_id(pool, team.id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to get team workspace");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
-        })?
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
     {
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }

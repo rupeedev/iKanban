@@ -19,6 +19,7 @@ use crate::{
 
 mod abuse_signals;
 mod admin;
+mod api_keys;
 mod billing;
 mod documents;
 mod electric_proxy;
@@ -36,6 +37,7 @@ mod review;
 mod stripe;
 mod stubs;
 mod superadmins;
+mod tags;
 pub mod tasks;
 mod teams;
 mod tenant_workspaces;
@@ -79,8 +81,10 @@ pub fn router(state: AppState) -> Router {
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
         .merge(inbox::router())
+        .merge(api_keys::router())
         .merge(projects::router())
         .merge(tasks::router())
+        .merge(tags::router())
         .merge(teams::router())
         .merge(documents::router())
         .merge(admin::router())
