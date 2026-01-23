@@ -525,6 +525,27 @@ pub async fn create_task_comment(
                 });
             }
 
+            // Check for @copilot mention to trigger assignment
+            if comment.content.to_lowercase().contains("@copilot") {
+                let pool_clone = pool.clone();
+                let task_id = task_id;
+                let user_id = ctx.user.id;
+                let prompt = comment.content.clone();
+                
+                tokio::spawn(async move {
+                    if let Err(e) = super::copilot_claude::trigger_copilot_assignment(
+                        &pool_clone,
+                        task_id,
+                        user_id,
+                        prompt,
+                    )
+                    .await
+                    {
+                        tracing::error!("Failed to trigger Copilot assignment from comment: {}", e);
+                    }
+                });
+            }
+
             (StatusCode::CREATED, ApiResponse::success(comment)).into_response()
         }
         Err(e) => {
