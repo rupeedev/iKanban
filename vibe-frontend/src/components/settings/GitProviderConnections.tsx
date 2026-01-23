@@ -111,6 +111,12 @@ export function GitProviderConnections() {
           </div>
           {githubConnection ? (
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-green-500/10 rounded-md">
+                <span className="h-2 w-2 rounded-full bg-green-500" />
+                <span className="text-xs font-medium text-green-600 dark:text-green-400">
+                  Connected
+                </span>
+              </div>
               <span className="text-sm text-muted-foreground">
                 @{githubConnection.github_username}
               </span>
@@ -140,6 +146,12 @@ export function GitProviderConnections() {
           </div>
           {gitlabConnection ? (
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-green-500/10 rounded-md">
+                <span className="h-2 w-2 rounded-full bg-green-500" />
+                <span className="text-xs font-medium text-green-600 dark:text-green-400">
+                  Connected
+                </span>
+              </div>
               <span className="text-sm text-muted-foreground">
                 @{gitlabConnection.connection.gitlab_username}
               </span>

@@ -8,3 +8,5 @@ export { AgentSettings } from './AgentSettings';
 export { McpSettings } from './McpSettings';
 export { ApiKeysSettings } from './ApiKeysSettings';
 export { AiProviderKeysSettings } from './AiProviderKeysSettings';
+export { GitHubCallback } from './GitHubCallback';
+export { GitLabCallback } from './GitLabCallback';

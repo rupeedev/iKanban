@@ -40,6 +40,8 @@ import {
   ApiKeysSettings,
   BillingSettings,
   GeneralSettings,
+  GitHubCallback,
+  GitLabCallback,
   McpSettings,
   ProjectSettings,
   SettingsLayout,
@@ -204,6 +206,16 @@ function AppContent() {
                 element={<PendingApprovalPage />}
               />
               <Route path="/rejected" element={<RejectedPage />} />
+
+              {/* OAuth callback pages - standalone for popup windows */}
+              <Route
+                path="/settings/github-callback"
+                element={<GitHubCallback />}
+              />
+              <Route
+                path="/settings/gitlab-callback"
+                element={<GitLabCallback />}
+              />
 
               {/* Landing redirect - determines where to send user after sign-in */}
               <Route
