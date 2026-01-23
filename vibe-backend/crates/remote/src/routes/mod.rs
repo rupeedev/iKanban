@@ -39,6 +39,7 @@ mod organizations;
 mod projects;
 pub mod registrations;
 mod review;
+mod repos;
 mod stripe;
 mod stubs;
 mod superadmins;
@@ -99,6 +100,7 @@ pub fn router(state: AppState) -> Router {
         .merge(documents::router())
         .merge(admin::router())
         .merge(organizations::router())
+        .merge(repos::router())
         .merge(organization_members::protected_router())
         .merge(oauth::protected_router())
         .merge(electric_proxy::router())

@@ -262,102 +262,82 @@ pub async fn assign_task_to_claude(
         return error.into_response();
     }
 
+    match trigger_claude_assignment(pool, task_id, ctx.user.id, payload.prompt).await {
+        Ok(assignment) => (StatusCode::CREATED, ApiResponse::success(assignment)).into_response(),
+        Err(e) => {
+            tracing::error!("failed to trigger claude assignment: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"success": false, "message": e})),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// Trigger a Claude assignment from a prompt
+pub async fn trigger_claude_assignment(
+    pool: &sqlx::PgPool,
+    task_id: Uuid,
+    _user_id: Uuid,
+    prompt: String,
+) -> Result<crate::db::copilot_assignments::CopilotAssignment, String> {
+    use crate::db::{project_repos::ProjectRepoRepository, repos::Repo};
+
     let repo = SharedTaskRepository::new(pool);
-    let task = match repo.find_by_id(task_id).await {
-        Ok(Some(t)) => t,
-        Ok(None) => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(json!({"success": false, "message": "task not found"})),
-            )
-                .into_response();
+    let task = repo
+        .find_by_id(task_id)
+        .await
+        .map_err(|e| format!("database error: {}", e))?
+        .ok_or_else(|| "task not found".to_string())?;
+
+    // Step 1: Get Access Token (Workspace Level)
+    let connection = GitHubConnectionRepository::find_workspace_connection(pool)
+        .await
+        .map_err(|e| format!("database error: {}", e))?
+        .ok_or_else(|| "No GitHub connection configured".to_string())?;
+
+    // Step 2: Determine Repository (Project Level > Workspace Level)
+    let (repo_owner, repo_name) = match ProjectRepoRepository::list_by_project(pool, task.project_id).await {
+        Ok(repos) if !repos.is_empty() => {
+            // Use the first linked project repo
+            let repo = &repos[0];
+            let parts: Vec<&str> = repo.path.split('/').collect();
+            if parts.len() != 2 {
+                return Err(format!("Invalid repo path format: {}", repo.path));
+            }
+            (parts[0].to_string(), parts[1].to_string())
         }
-        Err(e) => {
-            tracing::error!(?e, "failed to load task");
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"success": false, "message": "failed to load task"})),
-            )
-                .into_response();
+        _ => {
+            // Fallback to workspace connection repos
+            let repos = GitHubRepositoryOps::find_by_connection_id(pool, connection.id)
+                .await
+                .map_err(|e| format!("database error: {}", e))?;
+
+            let github_repo = repos
+                .first()
+                .ok_or_else(|| "No GitHub repository linked".to_string())?;
+            
+            (github_repo.repo_owner.clone(), github_repo.repo_name.clone())
         }
     };
 
-    let connection = match GitHubConnectionRepository::find_workspace_connection(pool).await {
-        Ok(Some(c)) => c,
-        Ok(None) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(json!({
-                    "success": false,
-                    "message": "No GitHub connection configured. Please connect GitHub in Settings first."
-                })),
-            )
-                .into_response();
-        }
-        Err(e) => {
-            tracing::error!(?e, "failed to get GitHub connection");
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"success": false, "message": "failed to get GitHub connection"})),
-            )
-                .into_response();
-        }
-    };
-
-    let repos = match GitHubRepositoryOps::find_by_connection_id(pool, connection.id).await {
-        Ok(r) => r,
-        Err(e) => {
-            tracing::error!(?e, "failed to get GitHub repositories");
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"success": false, "message": "failed to get GitHub repositories"})),
-            )
-                .into_response();
-        }
-    };
-
-    let github_repo = match repos.first() {
-        Some(r) => r,
-        None => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(json!({
-                    "success": false,
-                    "message": "No GitHub repository linked. Please add a repository in Settings."
-                })),
-            )
-                .into_response();
-        }
-    };
-
-    let assignment = match CopilotAssignmentRepository::create_copilot(
+    let assignment = CopilotAssignmentRepository::create_copilot(
         pool,
         task_id,
-        &payload.prompt,
-        Some(&github_repo.repo_owner),
-        Some(&github_repo.repo_name),
+        &prompt,
+        Some(&repo_owner),
+        Some(&repo_name),
     )
     .await
-    {
-        Ok(a) => a,
-        Err(e) => {
-            tracing::error!(?e, "failed to create claude assignment");
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"success": false, "message": "failed to create assignment"})),
-            )
-                .into_response();
-        }
-    };
+    .map_err(|e| format!("failed to create assignment: {}", e))?;
 
     let pool_clone = pool.clone();
     let assignment_id = assignment.id;
     let task_title = task.title.clone();
     let task_description = task.description.clone();
-    let prompt = payload.prompt.clone();
+    let prompt = prompt.clone();
     let access_token = connection.access_token.clone();
-    let repo_owner = github_repo.repo_owner.clone();
-    let repo_name = github_repo.repo_name.clone();
 
     tokio::spawn(async move {
         if let Err(e) = create_github_issue_for_claude(
@@ -377,7 +357,7 @@ pub async fn assign_task_to_claude(
         }
     });
 
-    (StatusCode::CREATED, ApiResponse::success(assignment)).into_response()
+    Ok(assignment)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
