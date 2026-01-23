@@ -10,6 +10,7 @@ const PENDING_REGISTRATIONS_QUERY_KEY = ['pending-registrations'];
 export interface UseUserRegistrationResult {
   registration: UserRegistration | null;
   isLoading: boolean;
+  isFetched: boolean;
   error: Error | null;
   isApproved: boolean;
   isPending: boolean;
@@ -29,6 +30,7 @@ export function useUserRegistration(): UseUserRegistrationResult {
   const {
     data: registration = null,
     isLoading,
+    isFetched,
     error,
   } = useQuery<UserRegistration | null, Error>({
     queryKey: REGISTRATION_QUERY_KEY,
@@ -73,6 +75,7 @@ export function useUserRegistration(): UseUserRegistrationResult {
   return {
     registration,
     isLoading,
+    isFetched,
     error,
     isApproved,
     isPending,
