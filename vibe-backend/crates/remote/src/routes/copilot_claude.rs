@@ -13,10 +13,7 @@ use serde_json::json;
 use tracing::instrument;
 use uuid::Uuid;
 
-use super::{
-    error::ApiResponse,
-    organization_members::ensure_task_access,
-};
+use super::{error::ApiResponse, organization_members::ensure_task_access};
 use crate::{
     AppState,
     auth::RequestContext,
@@ -424,7 +421,9 @@ async fn create_github_issue_for_copilot(
 
     tracing::info!(
         "Creating GitHub issue for assignment {} in {}/{}",
-        assignment_id, repo_owner, repo_name
+        assignment_id,
+        repo_owner,
+        repo_name
     );
 
     let client = reqwest::Client::new();
@@ -447,7 +446,8 @@ async fn create_github_issue_for_copilot(
 
         tracing::info!(
             "Created GitHub issue #{} for assignment {}",
-            issue_response.number, assignment_id
+            issue_response.number,
+            assignment_id
         );
 
         CopilotAssignmentRepository::update_with_issue(
@@ -470,7 +470,8 @@ async fn create_github_issue_for_copilot(
         {
             tracing::warn!(
                 "Failed to assign issue #{} to Copilot: {}",
-                issue_response.number, e
+                issue_response.number,
+                e
             );
         }
 
@@ -560,7 +561,9 @@ async fn create_github_issue_for_claude(
 
     tracing::info!(
         "Creating GitHub issue for Claude assignment {} in {}/{}",
-        assignment_id, repo_owner, repo_name
+        assignment_id,
+        repo_owner,
+        repo_name
     );
 
     let client = reqwest::Client::new();
@@ -583,7 +586,8 @@ async fn create_github_issue_for_claude(
 
         tracing::info!(
             "Created GitHub issue #{} for Claude assignment {}",
-            issue_response.number, assignment_id
+            issue_response.number,
+            assignment_id
         );
 
         CopilotAssignmentRepository::update_with_issue(
@@ -602,7 +606,8 @@ async fn create_github_issue_for_claude(
         {
             tracing::warn!(
                 "Failed to assign issue #{} to Claude: {}",
-                issue_response.number, e
+                issue_response.number,
+                e
             );
         }
 
@@ -678,7 +683,9 @@ async fn assign_issue_to_copilot(
 
     tracing::info!(
         "Assigning issue #{} to Copilot in {}/{}",
-        issue_number, repo_owner, repo_name
+        issue_number,
+        repo_owner,
+        repo_name
     );
 
     let response = client
@@ -759,7 +766,12 @@ async fn assign_issue_to_claude(
         .as_str()
         .ok_or("Claude actor ID not found")?;
 
-    tracing::info!("Found Claude actor ID: {} for {}/{}", claude_actor_id, repo_owner, repo_name);
+    tracing::info!(
+        "Found Claude actor ID: {} for {}/{}",
+        claude_actor_id,
+        repo_owner,
+        repo_name
+    );
 
     let assign_mutation = serde_json::json!({
         "query": r#"
@@ -784,7 +796,10 @@ async fn assign_issue_to_claude(
         .map_err(|e| format!("Failed to call assignment mutation: {}", e))?;
 
     if !assign_response.status().is_success() {
-        return Err(format!("Assignment mutation failed: {}", assign_response.status()));
+        return Err(format!(
+            "Assignment mutation failed: {}",
+            assign_response.status()
+        ));
     }
 
     let assign_data: serde_json::Value = assign_response

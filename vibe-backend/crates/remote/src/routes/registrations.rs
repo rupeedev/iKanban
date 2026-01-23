@@ -8,7 +8,9 @@ use axum::{
     extract::State,
     routing::{get, post},
 };
-use db_crate::models::user_registration::{CreateUserRegistration, RegistrationStatus, UserRegistration};
+use db_crate::models::user_registration::{
+    CreateUserRegistration, RegistrationStatus, UserRegistration,
+};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
@@ -103,13 +105,24 @@ async fn get_my_registration(
         return Json(ApiResponse::success(registration));
     }
 
-    // No registration - check if user is already a team member (existing user before registration)
+    // No registration - check if user is already a member (existing user before registration)
+    // Check BOTH team_members.clerk_user_id AND tenant_workspace_members.user_id
+    // IKA-253: Fix for users who clear cache and were only in tenant_workspace_members
     let existing_member: Option<(String,)> = match sqlx::query_as(
-        r#"SELECT t.name as team_name
-           FROM team_members tm
-           JOIN teams t ON t.id = tm.team_id
-           WHERE tm.clerk_user_id = $1
-           LIMIT 1"#,
+        r#"SELECT name FROM (
+            -- Check team_members table (legacy)
+            SELECT t.name as name
+            FROM team_members tm
+            JOIN teams t ON t.id = tm.team_id
+            WHERE tm.clerk_user_id = $1
+            UNION
+            -- Check tenant_workspace_members table (new tenancy model)
+            SELECT tw.name as name
+            FROM tenant_workspace_members twm
+            JOIN tenant_workspaces tw ON tw.id = twm.tenant_workspace_id
+            WHERE twm.user_id = $1
+        ) combined
+        LIMIT 1"#,
     )
     .bind(&ctx.clerk_user_id)
     .fetch_optional(pool)
@@ -117,7 +130,7 @@ async fn get_my_registration(
     {
         Ok(result) => result,
         Err(e) => {
-            tracing::error!(?e, "Failed to check team membership");
+            tracing::error!(?e, "Failed to check team/workspace membership");
             return Json(ApiResponse::error(
                 "Failed to check registration status".into(),
             ));
@@ -151,9 +164,7 @@ async fn get_my_registration(
             }
             Err(e) => {
                 tracing::error!(?e, "Failed to auto-create registration");
-                return Json(ApiResponse::error(
-                    "Failed to create registration".into(),
-                ));
+                return Json(ApiResponse::error("Failed to create registration".into()));
             }
         }
     }
@@ -177,9 +188,7 @@ async fn create_registration(
     // Check if user already has a registration
     match UserRegistration::find_by_clerk_id(pool, &ctx.clerk_user_id).await {
         Ok(Some(_)) => {
-            return Json(ApiResponse::error(
-                "User already has a registration".into(),
-            ));
+            return Json(ApiResponse::error("User already has a registration".into()));
         }
         Ok(None) => {} // No existing registration, continue
         Err(e) => {
