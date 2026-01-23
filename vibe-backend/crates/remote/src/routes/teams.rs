@@ -6,6 +6,7 @@ use axum::{
     http::StatusCode,
     routing::get,
 };
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
@@ -20,7 +21,8 @@ use crate::{
     db::{
         projects::{Project, ProjectRepository},
         teams::{
-            Team, TeamDocument, TeamFolder, TeamInvitation, TeamIssue, TeamMember, TeamRepository,
+            CreateTeamIssue, Team, TeamDocument, TeamFolder, TeamInvitation, TeamIssue, TeamMember,
+            TeamRepository,
         },
     },
 };
@@ -100,7 +102,10 @@ pub fn router() -> Router<AppState> {
             "/teams/{team_id}/projects",
             get(get_team_projects).post(assign_project),
         )
-        .route("/teams/{team_id}/issues", get(get_team_issues))
+        .route(
+            "/teams/{team_id}/issues",
+            get(get_team_issues).post(create_team_issue),
+        )
         .route("/teams/{team_id}/members", get(get_team_members))
         .route(
             "/teams/{team_id}/members/{member_id}",
@@ -450,6 +455,91 @@ async fn get_team_issues(
         })?;
 
     Ok(ApiResponse::success(issues))
+}
+
+/// Request payload for creating a team issue
+#[derive(Debug, Deserialize)]
+pub struct CreateTeamIssueRequest {
+    pub project_id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    pub status: Option<String>,
+    pub priority: Option<i32>,
+    pub due_date: Option<DateTime<Utc>>,
+    pub assignee_id: Option<Uuid>,
+}
+
+/// Create a new team issue
+async fn create_team_issue(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<String>,
+    Json(payload): Json<CreateTeamIssueRequest>,
+) -> Result<Json<ApiResponse<TeamIssue>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    // Verify user has access to the team's workspace
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    // Verify the project belongs to this team
+    let team_projects = TeamRepository::get_project_ids(pool, team.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team projects");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to verify project",
+            )
+        })?;
+
+    if !team_projects.contains(&payload.project_id) {
+        return Err(ErrorResponse::new(
+            StatusCode::BAD_REQUEST,
+            "project does not belong to this team",
+        ));
+    }
+
+    let create_data = CreateTeamIssue {
+        title: payload.title,
+        description: payload.description,
+        status: payload.status,
+        priority: payload.priority,
+        due_date: payload.due_date,
+        assignee_id: payload.assignee_id,
+    };
+
+    let issue = TeamRepository::create_issue(pool, team.id, payload.project_id, create_data)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to create team issue");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to create issue")
+        })?;
+
+    tracing::info!(
+        team_id = %team.id,
+        issue_id = %issue.id,
+        issue_number = ?issue.issue_number,
+        "created team issue"
+    );
+
+    Ok(ApiResponse::success(issue))
 }
 
 /// Get team members

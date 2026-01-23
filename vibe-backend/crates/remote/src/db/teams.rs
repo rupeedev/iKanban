@@ -529,6 +529,74 @@ impl TeamRepository {
             .collect())
     }
 
+    /// Create a new issue (task) for a team
+    pub async fn create_issue(
+        pool: &PgPool,
+        team_id: Uuid,
+        project_id: Uuid,
+        data: CreateTeamIssue,
+    ) -> Result<TeamIssue, TeamError> {
+        // Get next issue number for this team
+        let next_number = sqlx::query_scalar!(
+            r#"
+            SELECT COALESCE(MAX(issue_number), 0) + 1 AS "next!"
+            FROM tasks
+            WHERE team_id = $1
+            "#,
+            team_id
+        )
+        .fetch_one(pool)
+        .await?;
+
+        let id = Uuid::new_v4();
+        let status = data.status.unwrap_or_else(|| "todo".to_string());
+
+        let row = sqlx::query!(
+            r#"
+            INSERT INTO tasks (id, team_id, project_id, title, description, status, priority, due_date, assignee_id, issue_number, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+            RETURNING
+                id             AS "id!: Uuid",
+                project_id     AS "project_id!: Uuid",
+                title          AS "title!",
+                description,
+                status         AS "status!",
+                priority,
+                due_date,
+                assignee_id,
+                issue_number,
+                created_at     AS "created_at!: DateTime<Utc>",
+                updated_at     AS "updated_at!: DateTime<Utc>"
+            "#,
+            id,
+            team_id,
+            project_id,
+            data.title,
+            data.description,
+            status,
+            data.priority,
+            data.due_date,
+            data.assignee_id,
+            next_number
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(TeamIssue {
+            id: row.id,
+            project_id: Some(row.project_id),
+            title: row.title,
+            description: row.description,
+            status: row.status,
+            priority: row.priority,
+            due_date: row.due_date,
+            assignee_id: row.assignee_id,
+            issue_number: row.issue_number,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        })
+    }
+
     /// Get team invitations
     pub async fn get_invitations(
         pool: &PgPool,
@@ -916,6 +984,17 @@ pub struct TeamIssue {
     pub issue_number: Option<i32>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+/// Request payload for creating a new team issue
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateTeamIssue {
+    pub title: String,
+    pub description: Option<String>,
+    pub status: Option<String>,
+    pub priority: Option<i32>,
+    pub due_date: Option<DateTime<Utc>>,
+    pub assignee_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
