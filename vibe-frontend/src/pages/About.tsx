@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@clerk/clerk-react';
@@ -35,6 +35,7 @@ function AboutWithClerk() {
   const {
     registration,
     isLoading: isLoadingRegistration,
+    isFetched: isRegistrationFetched,
     hasRegistration,
     isApproved,
     isPending,
@@ -42,9 +43,20 @@ function AboutWithClerk() {
     refresh,
   } = useUserRegistration();
 
+  // Track if we've already shown the onboarding wizard to prevent duplicate shows
+  const onboardingShownRef = useRef(false);
+
   // Show onboarding wizard for first-time sign-ups
+  // Only show after registration query has completed (isFetched) to prevent race condition
   useEffect(() => {
-    if (isSignedIn && user && !isLoadingRegistration && !hasRegistration) {
+    if (
+      isSignedIn &&
+      user &&
+      isRegistrationFetched &&
+      !hasRegistration &&
+      !onboardingShownRef.current
+    ) {
+      onboardingShownRef.current = true;
       OnboardingWizard.show({
         clerkUserId: user.id,
         email: user.primaryEmailAddress?.emailAddress || '',
@@ -52,7 +64,7 @@ function AboutWithClerk() {
         lastName: user.lastName,
       });
     }
-  }, [isSignedIn, user, isLoadingRegistration, hasRegistration]);
+  }, [isSignedIn, user, isRegistrationFetched, hasRegistration]);
 
   // Show pending/rejected dialog
   useEffect(() => {
