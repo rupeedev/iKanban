@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO conversation_participants (id, conversation_id, user_id, team_member_id)\n               VALUES ($1, $2, $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2d506216e2b1a56dee51018823693ff4e2757bb0aff958971a2cbb621ed3c5c9"
+}

@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT cp.id as \"id!: Uuid\",\n                      cp.conversation_id as \"conversation_id!: Uuid\",\n                      cp.user_id,\n                      cp.team_member_id as \"team_member_id!: Uuid\",\n                      tm.display_name,\n                      tm.avatar_url,\n                      tm.email,\n                      cp.joined_at as \"joined_at!: DateTime<Utc>\",\n                      cp.last_read_at as \"last_read_at: DateTime<Utc>\"\n               FROM conversation_participants cp\n               INNER JOIN team_members tm ON cp.team_member_id = tm.id\n               WHERE cp.conversation_id = $1\n               ORDER BY cp.joined_at ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "conversation_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "team_member_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "display_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "avatar_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "joined_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "last_read_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "8cfe92727c51275cf4a5ad4d43ba5c80c7184d0d18cc4f8bfdb1296411b4c598"
+}

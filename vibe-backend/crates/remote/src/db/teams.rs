@@ -6,6 +6,87 @@ use sqlx::PgPool;
 use thiserror::Error;
 use uuid::Uuid;
 
+/// Team member roles with increasing permissions
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum TeamMemberRole {
+    /// Can view issues and documents
+    Viewer,
+    /// Can create/edit issues, comment, update status
+    #[default]
+    Contributor,
+    /// Can manage issues, docs, assign tasks
+    Maintainer,
+    /// Full control: manage roles, invite/remove members, team settings
+    Owner,
+}
+
+impl TeamMemberRole {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Viewer => "viewer",
+            Self::Contributor => "contributor",
+            Self::Maintainer => "maintainer",
+            Self::Owner => "owner",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "viewer" => Self::Viewer,
+            "contributor" => Self::Contributor,
+            "maintainer" => Self::Maintainer,
+            "owner" => Self::Owner,
+            _ => Self::Contributor,
+        }
+    }
+
+    /// Check if this role has at least the required permission level
+    pub fn has_permission(&self, required: TeamMemberRole) -> bool {
+        match (*self, required) {
+            (Self::Owner, _) => true,
+            (Self::Maintainer, Self::Owner) => false,
+            (Self::Maintainer, _) => true,
+            (Self::Contributor, Self::Owner | Self::Maintainer) => false,
+            (Self::Contributor, _) => true,
+            (Self::Viewer, Self::Viewer) => true,
+            (Self::Viewer, _) => false,
+        }
+    }
+}
+
+/// Invitation status
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum TeamInvitationStatus {
+    #[default]
+    Pending,
+    Accepted,
+    Declined,
+    Expired,
+}
+
+impl TeamInvitationStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Accepted => "accepted",
+            Self::Declined => "declined",
+            Self::Expired => "expired",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "pending" => Self::Pending,
+            "accepted" => Self::Accepted,
+            "declined" => Self::Declined,
+            "expired" => Self::Expired,
+            _ => Self::Pending,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Team {
     pub id: Uuid,
@@ -582,6 +663,18 @@ pub struct TeamMember {
     pub joined_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+impl TeamMember {
+    /// Get the parsed TeamMemberRole
+    pub fn role_enum(&self) -> TeamMemberRole {
+        TeamMemberRole::from_str(&self.role)
+    }
+
+    /// Check if member has at least the given permission level
+    pub fn has_permission(&self, required: TeamMemberRole) -> bool {
+        self.role_enum().has_permission(required)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

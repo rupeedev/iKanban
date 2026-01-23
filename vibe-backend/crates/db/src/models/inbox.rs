@@ -134,10 +134,13 @@ impl InboxItem {
     /// Create a new inbox item
     pub async fn create(pool: &PgPool, data: &CreateInboxItem) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
+        let notification_type_str = data.notification_type.to_string();
+        // Use subquery to cast TEXT to enum type to avoid SQLx type mapping issues
         sqlx::query_as!(
             InboxItem,
             r#"INSERT INTO inbox_items (id, notification_type, title, message, task_id, project_id, workspace_id, is_read)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE)
+            SELECT $1, t.n::inbox_notification_type, $3, $4, $5, $6, $7, FALSE
+            FROM (SELECT $2::TEXT AS n) t
             RETURNING
                 id as "id!: Uuid",
                 notification_type as "notification_type!: InboxNotificationType",
@@ -150,7 +153,7 @@ impl InboxItem {
                 created_at as "created_at!: DateTime<Utc>",
                 updated_at as "updated_at!: DateTime<Utc>""#,
             id,
-            data.notification_type.to_string(),
+            notification_type_str,
             data.title,
             data.message,
             data.task_id,

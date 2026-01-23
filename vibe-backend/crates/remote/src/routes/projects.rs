@@ -29,6 +29,24 @@ struct CreateProjectRequest {
     name: String,
     #[serde(default)]
     metadata: Value,
+    #[serde(default)]
+    priority: Option<i32>,
+    #[serde(default)]
+    lead_id: Option<Uuid>,
+    #[serde(default)]
+    start_date: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(default)]
+    target_date: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(default)]
+    status: Option<String>,
+    #[serde(default)]
+    health: Option<i32>,
+    #[serde(default)]
+    description: Option<String>,
+    #[serde(default)]
+    summary: Option<String>,
+    #[serde(default)]
+    icon: Option<String>,
 }
 
 pub fn router() -> Router<AppState> {
@@ -101,6 +119,15 @@ async fn create_project(
         workspace_id,
         name,
         metadata,
+        priority,
+        lead_id,
+        start_date,
+        target_date,
+        status,
+        health,
+        description,
+        summary,
+        icon,
     } = payload;
     let organization_id = workspace_id; // Alias for existing infrastructure
 
@@ -121,6 +148,15 @@ async fn create_project(
             organization_id,
             name,
             metadata,
+            priority,
+            lead_id,
+            start_date,
+            target_date,
+            status,
+            health,
+            description,
+            summary,
+            icon,
         },
     )
     .await
@@ -161,7 +197,17 @@ fn to_remote_project(project: Project) -> RemoteProject {
         organization_id: project.organization_id,
         name: project.name,
         metadata: project.metadata,
+        priority: project.priority,
+        lead_id: project.lead_id,
+        start_date: project.start_date,
+        target_date: project.target_date,
+        status: project.status.as_str().to_string(),
+        health: project.health,
+        description: project.description,
+        summary: project.summary,
+        icon: project.icon,
         created_at: project.created_at,
+        updated_at: project.updated_at,
     }
 }
 

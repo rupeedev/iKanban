@@ -26,6 +26,7 @@ mod email_verification;
 mod error;
 mod github_app;
 mod identity;
+mod inbox;
 mod oauth;
 pub(crate) mod organization_members;
 mod organizations;
@@ -76,6 +77,7 @@ pub fn router(state: AppState) -> Router {
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
+        .merge(inbox::router())
         .merge(projects::router())
         .merge(tasks::router())
         .merge(teams::router())

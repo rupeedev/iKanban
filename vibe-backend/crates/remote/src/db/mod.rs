@@ -3,6 +3,7 @@ pub mod document_folders;
 pub mod documents;
 pub mod github_app;
 pub mod identity_errors;
+pub mod inbox;
 pub mod invitations;
 pub mod oauth;
 pub mod oauth_accounts;
