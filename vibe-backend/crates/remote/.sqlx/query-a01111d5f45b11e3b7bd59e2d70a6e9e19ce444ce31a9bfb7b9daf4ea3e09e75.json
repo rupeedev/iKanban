@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                COALESCE(SUM(input_tokens), 0)::bigint AS \"input_tokens!\",\n                COALESCE(SUM(output_tokens), 0)::bigint AS \"output_tokens!\",\n                COALESCE(SUM(cache_read_tokens), 0)::bigint AS \"cache_read_tokens!\",\n                COALESCE(SUM(cache_write_tokens), 0)::bigint AS \"cache_write_tokens!\"\n            FROM execution_attempts\n            WHERE execution_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "input_tokens!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "output_tokens!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "cache_read_tokens!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "cache_write_tokens!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "a01111d5f45b11e3b7bd59e2d70a6e9e19ce444ce31a9bfb7b9daf4ea3e09e75"
+}

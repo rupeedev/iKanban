@@ -224,9 +224,10 @@ CREATE INDEX IF NOT EXISTS idx_ai_sessions_status ON ai_sessions(status);
 CREATE INDEX IF NOT EXISTS idx_ai_sessions_created_at ON ai_sessions(created_at DESC);
 
 -- ============================================================================
--- Chat Messages - Conversation history within sessions
+-- AI Session Messages - Conversation history within AI sessions
+-- (Named ai_session_messages to avoid conflict with team chat_messages table)
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS chat_messages (
+CREATE TABLE IF NOT EXISTS ai_session_messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL REFERENCES ai_sessions(id) ON DELETE CASCADE,
 
@@ -255,14 +256,14 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     -- Unique sequence per session
-    CONSTRAINT uq_chat_message_sequence UNIQUE (session_id, sequence_number)
+    CONSTRAINT uq_ai_session_message_sequence UNIQUE (session_id, sequence_number)
 );
 
--- Indexes for chat_messages
-CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(session_id);
-CREATE INDEX IF NOT EXISTS idx_chat_messages_sequence ON chat_messages(session_id, sequence_number);
-CREATE INDEX IF NOT EXISTS idx_chat_messages_role ON chat_messages(role);
-CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at DESC);
+-- Indexes for ai_session_messages
+CREATE INDEX IF NOT EXISTS idx_ai_session_messages_session_id ON ai_session_messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_ai_session_messages_sequence ON ai_session_messages(session_id, sequence_number);
+CREATE INDEX IF NOT EXISTS idx_ai_session_messages_role ON ai_session_messages(role);
+CREATE INDEX IF NOT EXISTS idx_ai_session_messages_created_at ON ai_session_messages(created_at DESC);
 
 -- ============================================================================
 -- Approvals - Human-in-the-loop approval workflow
@@ -349,5 +350,5 @@ COMMENT ON TABLE execution_attempts IS 'Individual execution attempts with retry
 COMMENT ON TABLE execution_logs IS 'Streaming logs from execution attempts';
 COMMENT ON TABLE ai_usage_records IS 'Token usage tracking for billing and analytics';
 COMMENT ON TABLE ai_sessions IS 'User sessions for interactive AI coding assistance';
-COMMENT ON TABLE chat_messages IS 'Conversation history within AI sessions';
+COMMENT ON TABLE ai_session_messages IS 'Conversation history within AI sessions';
 COMMENT ON TABLE execution_approvals IS 'Human-in-the-loop approval workflow for sensitive actions';

@@ -1,0 +1,122 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE execution_attempts\n            SET input_tokens = COALESCE(input_tokens, 0) + $2,\n                output_tokens = COALESCE(output_tokens, 0) + $3,\n                cache_read_tokens = COALESCE(cache_read_tokens, 0) + COALESCE($4, 0),\n                cache_write_tokens = COALESCE(cache_write_tokens, 0) + COALESCE($5, 0)\n            WHERE id = $1\n            RETURNING\n                id, execution_id, attempt_number, status,\n                worker_id, worker_region, exit_code, error_message,\n                ai_model, ai_provider,\n                input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,\n                created_at, started_at, completed_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "execution_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "attempt_number",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "worker_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "worker_region",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "exit_code",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "error_message",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "ai_model",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "ai_provider",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "input_tokens",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "output_tokens",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "cache_read_tokens",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 13,
+        "name": "cache_write_tokens",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 14,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "started_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 16,
+        "name": "completed_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "fb51a75b0a88447695f5de66ea17aac75c598bb54ed3a6b3e65e34a28d24229d"
+}
