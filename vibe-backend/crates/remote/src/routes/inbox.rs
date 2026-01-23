@@ -118,10 +118,7 @@ async fn get_inbox_item(
 
     // Verify ownership
     if item.user_id != ctx.user.id {
-        return Err(ErrorResponse::new(
-            StatusCode::FORBIDDEN,
-            "access denied",
-        ));
+        return Err(ErrorResponse::new(StatusCode::FORBIDDEN, "access denied"));
     }
 
     Ok(ApiResponse::success(item))
@@ -166,10 +163,7 @@ async fn mark_as_read(
         .await
         .map_err(|error| {
             tracing::error!(?error, %item_id, "failed to mark inbox item as read");
-            ErrorResponse::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to mark as read",
-            )
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to mark as read")
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "inbox item not found"))?;
 

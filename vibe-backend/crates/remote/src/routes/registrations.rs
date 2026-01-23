@@ -13,7 +13,11 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::{AppState, auth::{RequestContext, ClerkRequestContext}, db::superadmins::SuperadminRepository};
+use crate::{
+    AppState,
+    auth::{ClerkRequestContext, RequestContext},
+    db::superadmins::SuperadminRepository,
+};
 
 /// Response wrapper for API responses
 #[derive(Debug, Serialize)]
@@ -85,7 +89,9 @@ async fn get_my_registration(
         Ok(registration) => Json(ApiResponse::success(registration)),
         Err(e) => {
             tracing::error!(?e, "Failed to get user's registration");
-            Json(ApiResponse::error("Failed to get registration status".into()))
+            Json(ApiResponse::error(
+                "Failed to get registration status".into(),
+            ))
         }
     }
 }

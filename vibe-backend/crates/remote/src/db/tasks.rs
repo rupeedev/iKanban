@@ -14,8 +14,8 @@ use super::{
 pub const MAX_SHARED_TASK_TEXT_BYTES: usize = 50 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, TS)]
-#[serde(rename_all = "lowercase")]
-#[sqlx(type_name = "task_status", rename_all = "lowercase")]
+#[serde(rename_all = "kebab-case")]
+#[sqlx(type_name = "task_status", rename_all = "kebab-case")]
 #[ts(export)]
 pub enum TaskStatus {
     Todo,

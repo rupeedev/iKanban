@@ -40,12 +40,27 @@ pub fn router() -> Router<AppState> {
         .route("/tasks/{task_id}", patch(update_shared_task))
         .route("/tasks/{task_id}", delete(delete_shared_task))
         .route("/tasks/{task_id}/assign", post(assign_task))
-        .route("/tasks/{task_id}/comments", get(get_task_comments).post(create_task_comment))
-        .route("/tasks/{task_id}/comments/{comment_id}", delete(delete_task_comment))
-        .route("/tasks/{task_id}/tags", get(get_task_tags).post(add_task_tag))
+        .route(
+            "/tasks/{task_id}/comments",
+            get(get_task_comments).post(create_task_comment),
+        )
+        .route(
+            "/tasks/{task_id}/comments/{comment_id}",
+            delete(delete_task_comment),
+        )
+        .route(
+            "/tasks/{task_id}/tags",
+            get(get_task_tags).post(add_task_tag),
+        )
         .route("/tasks/{task_id}/tags/{tag_id}", delete(remove_task_tag))
-        .route("/tasks/{task_id}/links", get(get_task_links).post(add_task_link))
-        .route("/tasks/{task_id}/links/{document_id}", delete(remove_task_link))
+        .route(
+            "/tasks/{task_id}/links",
+            get(get_task_links).post(add_task_link),
+        )
+        .route(
+            "/tasks/{task_id}/links/{document_id}",
+            delete(remove_task_link),
+        )
         .route("/tasks/assignees", get(get_task_assignees_by_project))
 }
 

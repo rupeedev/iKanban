@@ -9,8 +9,8 @@ use axum::{Extension, Json, Router, extract::State, routing::get};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
-use crate::{AppState, auth::RequestContext, db::superadmins::SuperadminRepository};
 use super::error::ApiResponse;
+use crate::{AppState, auth::RequestContext, db::superadmins::SuperadminRepository};
 
 /// Response for the superadmin check endpoint
 #[derive(Debug, Serialize, Deserialize)]

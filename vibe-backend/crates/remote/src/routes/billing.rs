@@ -9,6 +9,7 @@ use db_crate::models::plan_limits::{PLAN_HOBBY, PLAN_PRO, PLAN_STARTER, PlanLimi
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::error::ApiResponse;
 use crate::{
     AppState,
     auth::RequestContext,
@@ -17,8 +18,6 @@ use crate::{
         get_usage_summary,
     },
 };
-
-use super::error::ApiResponse;
 
 /// Public routes - no authentication required (IKA-238)
 pub fn public_router() -> Router<AppState> {

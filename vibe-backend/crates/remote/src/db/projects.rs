@@ -32,7 +32,7 @@ impl ProjectStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse(s: &str) -> Self {
         match s {
             "backlog" => Self::Backlog,
             "planned" => Self::Planned,
@@ -120,6 +120,7 @@ pub enum ProjectError {
 pub struct ProjectRepository;
 
 /// Helper to map query row to Project
+#[allow(clippy::too_many_arguments)]
 fn map_row_to_project(
     id: Uuid,
     organization_id: Uuid,
@@ -146,7 +147,7 @@ fn map_row_to_project(
         lead_id,
         start_date,
         target_date,
-        status: ProjectStatus::from_str(status.as_deref().unwrap_or("backlog")),
+        status: ProjectStatus::parse(status.as_deref().unwrap_or("backlog")),
         health,
         description,
         summary,
@@ -184,12 +185,25 @@ impl ProjectRepository {
         .fetch_optional(&mut **tx)
         .await?;
 
-        Ok(record.map(|r| map_row_to_project(
-            r.id, r.organization_id, r.name, r.metadata,
-            r.priority, r.lead_id, r.start_date, r.target_date,
-            r.status, r.health, r.description, r.summary, r.icon,
-            r.created_at, r.updated_at,
-        )))
+        Ok(record.map(|r| {
+            map_row_to_project(
+                r.id,
+                r.organization_id,
+                r.name,
+                r.metadata,
+                r.priority,
+                r.lead_id,
+                r.start_date,
+                r.target_date,
+                r.status,
+                r.health,
+                r.description,
+                r.summary,
+                r.icon,
+                r.created_at,
+                r.updated_at,
+            )
+        }))
     }
 
     pub async fn insert(tx: &mut Tx<'_>, data: CreateProjectData) -> Result<Project, ProjectError> {
@@ -247,10 +261,21 @@ impl ProjectRepository {
         .map_err(ProjectError::from)?;
 
         Ok(map_row_to_project(
-            record.id, record.organization_id, record.name, record.metadata,
-            record.priority, record.lead_id, record.start_date, record.target_date,
-            record.status, record.health, record.description, record.summary, record.icon,
-            record.created_at, record.updated_at,
+            record.id,
+            record.organization_id,
+            record.name,
+            record.metadata,
+            record.priority,
+            record.lead_id,
+            record.start_date,
+            record.target_date,
+            record.status,
+            record.health,
+            record.description,
+            record.summary,
+            record.icon,
+            record.created_at,
+            record.updated_at,
         ))
     }
 
@@ -287,12 +312,25 @@ impl ProjectRepository {
 
         Ok(rows
             .into_iter()
-            .map(|r| map_row_to_project(
-                r.id, r.organization_id, r.name, r.metadata,
-                r.priority, r.lead_id, r.start_date, r.target_date,
-                r.status, r.health, r.description, r.summary, r.icon,
-                r.created_at, r.updated_at,
-            ))
+            .map(|r| {
+                map_row_to_project(
+                    r.id,
+                    r.organization_id,
+                    r.name,
+                    r.metadata,
+                    r.priority,
+                    r.lead_id,
+                    r.start_date,
+                    r.target_date,
+                    r.status,
+                    r.health,
+                    r.description,
+                    r.summary,
+                    r.icon,
+                    r.created_at,
+                    r.updated_at,
+                )
+            })
             .collect())
     }
 
@@ -326,12 +364,25 @@ impl ProjectRepository {
         .fetch_optional(pool)
         .await?;
 
-        Ok(record.map(|r| map_row_to_project(
-            r.id, r.organization_id, r.name, r.metadata,
-            r.priority, r.lead_id, r.start_date, r.target_date,
-            r.status, r.health, r.description, r.summary, r.icon,
-            r.created_at, r.updated_at,
-        )))
+        Ok(record.map(|r| {
+            map_row_to_project(
+                r.id,
+                r.organization_id,
+                r.name,
+                r.metadata,
+                r.priority,
+                r.lead_id,
+                r.start_date,
+                r.target_date,
+                r.status,
+                r.health,
+                r.description,
+                r.summary,
+                r.icon,
+                r.created_at,
+                r.updated_at,
+            )
+        }))
     }
 
     pub async fn organization_id(
@@ -414,10 +465,21 @@ impl ProjectRepository {
         .await?;
 
         Ok(Some(map_row_to_project(
-            record.id, record.organization_id, record.name, record.metadata,
-            record.priority, record.lead_id, record.start_date, record.target_date,
-            record.status, record.health, record.description, record.summary, record.icon,
-            record.created_at, record.updated_at,
+            record.id,
+            record.organization_id,
+            record.name,
+            record.metadata,
+            record.priority,
+            record.lead_id,
+            record.start_date,
+            record.target_date,
+            record.status,
+            record.health,
+            record.description,
+            record.summary,
+            record.icon,
+            record.created_at,
+            record.updated_at,
         )))
     }
 }

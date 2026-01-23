@@ -13,8 +13,8 @@ use axum::{
 use serde::Serialize;
 use uuid::Uuid;
 
-use crate::{AppState, auth::RequestContext};
 use super::error::ApiResponse;
+use crate::{AppState, auth::RequestContext};
 
 #[derive(Debug, Serialize)]
 pub struct AdminStats {

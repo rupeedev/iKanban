@@ -33,7 +33,7 @@ impl InboxNotificationType {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse(s: &str) -> Self {
         match s {
             "task_assigned" => Self::TaskAssigned,
             "task_mentioned" => Self::TaskMentioned,
@@ -128,7 +128,7 @@ impl InboxRepository {
             .map(|r| InboxItem {
                 id: r.id,
                 user_id: r.user_id,
-                notification_type: InboxNotificationType::from_str(&r.notification_type),
+                notification_type: InboxNotificationType::parse(&r.notification_type),
                 title: r.title,
                 message: r.message,
                 task_id: r.task_id,
@@ -178,7 +178,7 @@ impl InboxRepository {
             .map(|r| InboxItem {
                 id: r.id,
                 user_id: r.user_id,
-                notification_type: InboxNotificationType::from_str(&r.notification_type),
+                notification_type: InboxNotificationType::parse(&r.notification_type),
                 title: r.title,
                 message: r.message,
                 task_id: r.task_id,
@@ -192,10 +192,7 @@ impl InboxRepository {
     }
 
     /// Find an inbox item by ID
-    pub async fn find_by_id(
-        pool: &PgPool,
-        id: Uuid,
-    ) -> Result<Option<InboxItem>, InboxError> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<InboxItem>, InboxError> {
         let row = sqlx::query!(
             r#"
             SELECT
@@ -221,7 +218,7 @@ impl InboxRepository {
         Ok(row.map(|r| InboxItem {
             id: r.id,
             user_id: r.user_id,
-            notification_type: InboxNotificationType::from_str(&r.notification_type),
+            notification_type: InboxNotificationType::parse(&r.notification_type),
             title: r.title,
             message: r.message,
             task_id: r.task_id,
@@ -273,7 +270,7 @@ impl InboxRepository {
         Ok(InboxItem {
             id: row.id,
             user_id: row.user_id,
-            notification_type: InboxNotificationType::from_str(&row.notification_type),
+            notification_type: InboxNotificationType::parse(&row.notification_type),
             title: row.title,
             message: row.message,
             task_id: row.task_id,
@@ -318,7 +315,7 @@ impl InboxRepository {
         Ok(row.map(|r| InboxItem {
             id: r.id,
             user_id: r.user_id,
-            notification_type: InboxNotificationType::from_str(&r.notification_type),
+            notification_type: InboxNotificationType::parse(&r.notification_type),
             title: r.title,
             message: r.message,
             task_id: r.task_id,

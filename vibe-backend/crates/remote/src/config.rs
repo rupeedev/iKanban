@@ -189,15 +189,14 @@ impl RemoteServerConfig {
 
         // SERVER_PUBLIC_BASE_URL is required for generating callback URLs, email links, etc.
         // In cloud deployments (Railway), default to the production API URL.
-        let server_public_base_url = Some(env::var("SERVER_PUBLIC_BASE_URL").unwrap_or_else(
-            |_| {
+        let server_public_base_url =
+            Some(env::var("SERVER_PUBLIC_BASE_URL").unwrap_or_else(|_| {
                 if env::var("CLOUD_DEPLOYMENT").is_ok() || env::var("RAILWAY_PROJECT_ID").is_ok() {
                     "https://api.scho1ar.com".to_string()
                 } else {
                     "http://localhost:8081".to_string()
                 }
-            },
-        ));
+            }));
 
         let auth = AuthConfig::from_env()?;
 

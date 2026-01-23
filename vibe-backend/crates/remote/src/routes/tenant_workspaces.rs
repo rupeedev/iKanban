@@ -11,8 +11,7 @@ use axum::{
 };
 use db_crate::models::tenant_workspace::{
     AddWorkspaceMember, CreateTenantWorkspace, TenantWorkspace, TenantWorkspaceError,
-    TenantWorkspaceMember, UpdateTenantWorkspace, UpdateWorkspaceMemberRole,
-    WorkspaceMemberRole,
+    TenantWorkspaceMember, UpdateTenantWorkspace, UpdateWorkspaceMemberRole, WorkspaceMemberRole,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -52,8 +51,14 @@ pub fn public_router() -> Router<AppState> {
     Router::new()
         // These routes use query params for user identification
         .route("/tenant-workspaces", get(list_workspaces))
-        .route("/tenant-workspaces/ensure-default", post(ensure_default_workspace))
-        .route("/tenant-workspaces/by-slug/{slug}", get(get_workspace_by_slug))
+        .route(
+            "/tenant-workspaces/ensure-default",
+            post(ensure_default_workspace),
+        )
+        .route(
+            "/tenant-workspaces/by-slug/{slug}",
+            get(get_workspace_by_slug),
+        )
 }
 
 /// Protected routes requiring authentication
@@ -63,7 +68,9 @@ pub fn protected_router() -> Router<AppState> {
         .route("/tenant-workspaces", post(create_workspace))
         .route(
             "/tenant-workspaces/{workspace_id}",
-            get(get_workspace).put(update_workspace).delete(delete_workspace),
+            get(get_workspace)
+                .put(update_workspace)
+                .delete(delete_workspace),
         )
         // Member management
         .route(
@@ -86,13 +93,15 @@ async fn list_workspaces(
         Ok(workspaces) => Json(json!({
             "success": true,
             "data": workspaces
-        })).into_response(),
+        }))
+        .into_response(),
         Err(err) => {
             tracing::error!(?err, "Failed to list workspaces");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to list workspaces" })),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
@@ -111,7 +120,8 @@ async fn ensure_default_workspace(
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to create default workspace" })),
-            ).into_response();
+            )
+                .into_response();
         }
     };
 
@@ -121,12 +131,15 @@ async fn ensure_default_workspace(
         default_workspace.id,
         &params.user_id,
         &params.email,
-    ).await {
+    )
+    .await
+    {
         tracing::error!(?err, "Failed to ensure user is member");
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({ "success": false, "error": "Failed to add user to workspace" })),
-        ).into_response();
+        )
+            .into_response();
     }
 
     // Return all workspaces the user now belongs to
@@ -134,13 +147,15 @@ async fn ensure_default_workspace(
         Ok(workspaces) => Json(json!({
             "success": true,
             "data": workspaces
-        })).into_response(),
+        }))
+        .into_response(),
         Err(err) => {
             tracing::error!(?err, "Failed to list workspaces after ensure");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to list workspaces" })),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
@@ -155,34 +170,41 @@ async fn get_workspace_by_slug(
     match TenantWorkspace::find_by_slug(state.pool(), &slug).await {
         Ok(Some(workspace)) => {
             // Verify user is a member
-            match TenantWorkspaceMember::is_member(state.pool(), workspace.id, &params.user_id).await {
+            match TenantWorkspaceMember::is_member(state.pool(), workspace.id, &params.user_id)
+                .await
+            {
                 Ok(true) => Json(json!({
                     "success": true,
                     "data": workspace
-                })).into_response(),
+                }))
+                .into_response(),
                 Ok(false) => (
                     StatusCode::FORBIDDEN,
                     Json(json!({ "success": false, "error": "Not a member of this workspace" })),
-                ).into_response(),
+                )
+                    .into_response(),
                 Err(err) => {
                     tracing::error!(?err, "Failed to check membership");
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(json!({ "success": false, "error": "Failed to verify membership" })),
-                    ).into_response()
+                    )
+                        .into_response()
                 }
             }
         }
         Ok(None) => (
             StatusCode::NOT_FOUND,
             Json(json!({ "success": false, "error": "Workspace not found" })),
-        ).into_response(),
+        )
+            .into_response(),
         Err(err) => {
             tracing::error!(?err, "Failed to get workspace by slug");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to get workspace" })),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
@@ -195,29 +217,27 @@ async fn create_workspace(
     axum::extract::Query(params): axum::extract::Query<CreateWorkspaceQuery>,
     Json(payload): Json<CreateTenantWorkspace>,
 ) -> impl IntoResponse {
-    match TenantWorkspace::create(
-        state.pool(),
-        &payload,
-        &params.user_id,
-        &params.email,
-    ).await {
+    match TenantWorkspace::create(state.pool(), &payload, &params.user_id, &params.email).await {
         Ok(workspace) => (
             StatusCode::CREATED,
             Json(json!({
                 "success": true,
                 "data": workspace
             })),
-        ).into_response(),
+        )
+            .into_response(),
         Err(TenantWorkspaceError::SlugConflict) => (
             StatusCode::CONFLICT,
             Json(json!({ "success": false, "error": "Workspace slug already in use" })),
-        ).into_response(),
+        )
+            .into_response(),
         Err(err) => {
             tracing::error!(?err, "Failed to create workspace");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to create workspace" })),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
@@ -236,14 +256,16 @@ async fn get_workspace(
             return (
                 StatusCode::FORBIDDEN,
                 Json(json!({ "success": false, "error": "Not a member of this workspace" })),
-            ).into_response();
+            )
+                .into_response();
         }
         Err(err) => {
             tracing::error!(?err, "Failed to check membership");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to verify membership" })),
-            ).into_response();
+            )
+                .into_response();
         }
     }
 
@@ -251,17 +273,20 @@ async fn get_workspace(
         Ok(Some(workspace)) => Json(json!({
             "success": true,
             "data": workspace
-        })).into_response(),
+        }))
+        .into_response(),
         Ok(None) => (
             StatusCode::NOT_FOUND,
             Json(json!({ "success": false, "error": "Workspace not found" })),
-        ).into_response(),
+        )
+            .into_response(),
         Err(err) => {
             tracing::error!(?err, "Failed to get workspace");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to get workspace" })),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
@@ -289,7 +314,8 @@ async fn update_workspace(
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to verify permissions" })),
-            ).into_response();
+            )
+                .into_response();
         }
     }
 
@@ -297,13 +323,15 @@ async fn update_workspace(
         Ok(workspace) => Json(json!({
             "success": true,
             "data": workspace
-        })).into_response(),
+        }))
+        .into_response(),
         Err(err) => {
             tracing::error!(?err, "Failed to update workspace");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to update workspace" })),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
@@ -323,14 +351,16 @@ async fn delete_workspace(
             return (
                 StatusCode::FORBIDDEN,
                 Json(json!({ "success": false, "error": "Only owners can delete workspaces" })),
-            ).into_response();
+            )
+                .into_response();
         }
         Err(err) => {
             tracing::error!(?err, "Failed to check role");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to verify permissions" })),
-            ).into_response();
+            )
+                .into_response();
         }
     }
 
@@ -341,7 +371,8 @@ async fn delete_workspace(
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to delete workspace" })),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
@@ -364,14 +395,16 @@ async fn list_members(
             return (
                 StatusCode::FORBIDDEN,
                 Json(json!({ "success": false, "error": "Not a member of this workspace" })),
-            ).into_response();
+            )
+                .into_response();
         }
         Err(err) => {
             tracing::error!(?err, "Failed to check membership");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to verify membership" })),
-            ).into_response();
+            )
+                .into_response();
         }
     }
 
@@ -379,13 +412,15 @@ async fn list_members(
         Ok(members) => Json(json!({
             "success": true,
             "data": members
-        })).into_response(),
+        }))
+        .into_response(),
         Err(err) => {
             tracing::error!(?err, "Failed to list members");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to list members" })),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
@@ -405,15 +440,19 @@ async fn add_member(
         Ok(_) => {
             return (
                 StatusCode::FORBIDDEN,
-                Json(json!({ "success": false, "error": "Only owners and admins can add members" })),
-            ).into_response();
+                Json(
+                    json!({ "success": false, "error": "Only owners and admins can add members" }),
+                ),
+            )
+                .into_response();
         }
         Err(err) => {
             tracing::error!(?err, "Failed to check role");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to verify permissions" })),
-            ).into_response();
+            )
+                .into_response();
         }
     }
 
@@ -424,13 +463,15 @@ async fn add_member(
                 "success": true,
                 "data": member
             })),
-        ).into_response(),
+        )
+            .into_response(),
         Err(err) => {
             tracing::error!(?err, "Failed to add member");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to add member" })),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
@@ -451,14 +492,16 @@ async fn update_member_role(
             return (
                 StatusCode::FORBIDDEN,
                 Json(json!({ "success": false, "error": "Only owners can change member roles" })),
-            ).into_response();
+            )
+                .into_response();
         }
         Err(err) => {
             tracing::error!(?err, "Failed to check role");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to verify permissions" })),
-            ).into_response();
+            )
+                .into_response();
         }
     }
 
@@ -467,17 +510,21 @@ async fn update_member_role(
         workspace_id,
         &target_user_id,
         payload.role,
-    ).await {
+    )
+    .await
+    {
         Ok(member) => Json(json!({
             "success": true,
             "data": member
-        })).into_response(),
+        }))
+        .into_response(),
         Err(err) => {
             tracing::error!(?err, "Failed to update member role");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to update member role" })),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
@@ -507,7 +554,8 @@ async fn remove_member(
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(json!({ "success": false, "error": "Failed to verify permissions" })),
-                ).into_response();
+                )
+                    .into_response();
             }
         }
     }
@@ -519,7 +567,8 @@ async fn remove_member(
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "success": false, "error": "Failed to remove member" })),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }

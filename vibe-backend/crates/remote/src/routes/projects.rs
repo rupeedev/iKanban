@@ -10,8 +10,10 @@ use tracing::instrument;
 use utils::api::projects::RemoteProject;
 use uuid::Uuid;
 
-use super::error::{ApiResponse, ErrorResponse};
-use super::organization_members::ensure_member_access;
+use super::{
+    error::{ApiResponse, ErrorResponse},
+    organization_members::ensure_member_access,
+};
 use crate::{
     AppState,
     auth::RequestContext,
@@ -68,7 +70,12 @@ async fn list_projects(
     let workspace_id = params.workspace_id;
     ensure_member_access(state.pool(), workspace_id, ctx.user.id).await?;
 
-    let projects: Vec<RemoteProject> = match ProjectRepository::list_by_organization(state.pool(), workspace_id).await {
+    let projects: Vec<RemoteProject> = match ProjectRepository::list_by_organization(
+        state.pool(),
+        workspace_id,
+    )
+    .await
+    {
         Ok(rows) => rows.into_iter().map(to_remote_project).collect(),
         Err(error) => {
             tracing::error!(?error, workspace_id = %workspace_id, "failed to list remote projects");

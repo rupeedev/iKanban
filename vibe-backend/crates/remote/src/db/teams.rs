@@ -31,7 +31,7 @@ impl TeamMemberRole {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "viewer" => Self::Viewer,
             "contributor" => Self::Contributor,
@@ -76,7 +76,7 @@ impl TeamInvitationStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "pending" => Self::Pending,
             "accepted" => Self::Accepted,
@@ -668,7 +668,7 @@ pub struct TeamMember {
 impl TeamMember {
     /// Get the parsed TeamMemberRole
     pub fn role_enum(&self) -> TeamMemberRole {
-        TeamMemberRole::from_str(&self.role)
+        TeamMemberRole::parse(&self.role)
     }
 
     /// Check if member has at least the given permission level

@@ -3,7 +3,9 @@ use std::sync::Arc;
 use sqlx::PgPool;
 
 use crate::{
-    auth::{ClerkAuthState, JwtService, OAuthHandoffService, OAuthTokenValidator, ProviderRegistry},
+    auth::{
+        ClerkAuthState, JwtService, OAuthHandoffService, OAuthTokenValidator, ProviderRegistry,
+    },
     cache::AppCache,
     config::RemoteServerConfig,
     github_app::GitHubAppService,

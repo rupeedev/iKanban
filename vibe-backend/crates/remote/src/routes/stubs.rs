@@ -20,15 +20,28 @@ pub fn router() -> Router<AppState> {
         // Task attempts - local-only feature for managing coding agent workspaces
         .route("/task-attempts", get(list_task_attempts))
         .route("/task-attempts/{attempt_id}", get(get_task_attempt))
-        .route("/task-attempts/{attempt_id}/children", get(get_attempt_children))
+        .route(
+            "/task-attempts/{attempt_id}/children",
+            get(get_attempt_children),
+        )
         .route("/task-attempts/{attempt_id}/repos", get(get_attempt_repos))
-        .route("/task-attempts/{attempt_id}/branch-status", get(get_branch_status))
+        .route(
+            "/task-attempts/{attempt_id}/branch-status",
+            get(get_branch_status),
+        )
         // Project repositories - local-only feature for linking to local git repos
-        .route("/projects/{project_id}/repositories", get(list_project_repositories))
-        .route("/projects/{project_id}/repositories/{repo_id}", get(get_project_repository))
+        .route(
+            "/projects/{project_id}/repositories",
+            get(list_project_repositories),
+        )
+        .route(
+            "/projects/{project_id}/repositories/{repo_id}",
+            get(get_project_repository),
+        )
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct TaskAttemptsQuery {
     task_id: Option<Uuid>,
 }

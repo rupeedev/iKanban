@@ -57,16 +57,17 @@ pub async fn require_superadmin(
     let oauth_repo = OAuthAccountRepository::new(pool);
     let user_repo = UserRepository::new(pool);
 
-    let db_user = match oauth_repo.get_by_provider_user("clerk", &clerk_user.user_id).await {
-        Ok(Some(oauth_account)) => {
-            match user_repo.fetch_user(oauth_account.user_id).await {
-                Ok(user) => user,
-                Err(e) => {
-                    warn!(?e, "superadmin: failed to fetch user");
-                    return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-                }
+    let db_user = match oauth_repo
+        .get_by_provider_user("clerk", &clerk_user.user_id)
+        .await
+    {
+        Ok(Some(oauth_account)) => match user_repo.fetch_user(oauth_account.user_id).await {
+            Ok(user) => user,
+            Err(e) => {
+                warn!(?e, "superadmin: failed to fetch user");
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
             }
-        }
+        },
         Ok(None) => {
             // New user - auto-create them
             debug!(clerk_user_id = %clerk_user.user_id, "superadmin: creating new user from Clerk");
@@ -145,7 +146,11 @@ pub async fn require_superadmin(
         "superadmin: access granted"
     );
 
-    configure_user_scope(db_user.id, db_user.username.as_deref(), Some(db_user.email.as_str()));
+    configure_user_scope(
+        db_user.id,
+        db_user.username.as_deref(),
+        Some(db_user.email.as_str()),
+    );
 
     // 5. Insert request context (compatible with existing routes)
     req.extensions_mut().insert(RequestContext {

@@ -153,9 +153,12 @@ impl TaskDocumentLinkRepository {
         pool: &PgPool,
         task_id: Uuid,
     ) -> Result<u64, TaskDocumentLinkError> {
-        let result = sqlx::query!("DELETE FROM task_document_links WHERE task_id = $1", task_id)
-            .execute(pool)
-            .await?;
+        let result = sqlx::query!(
+            "DELETE FROM task_document_links WHERE task_id = $1",
+            task_id
+        )
+        .execute(pool)
+        .await?;
 
         Ok(result.rows_affected())
     }
