@@ -252,7 +252,7 @@ pub async fn trigger_copilot_assignment(
     _user_id: Uuid,
     prompt: String,
 ) -> Result<crate::db::copilot_assignments::CopilotAssignment, String> {
-    use crate::db::{project_repos::ProjectRepoRepository, repos::Repo};
+    use crate::db::{project_repos::ProjectRepoRepository};
 
     let repo = SharedTaskRepository::new(pool);
     let task = repo
@@ -367,7 +367,7 @@ pub async fn trigger_claude_assignment(
     _user_id: Uuid,
     prompt: String,
 ) -> Result<crate::db::copilot_assignments::CopilotAssignment, String> {
-    use crate::db::{project_repos::ProjectRepoRepository, repos::Repo};
+    use crate::db::{project_repos::ProjectRepoRepository};
 
     let repo = SharedTaskRepository::new(pool);
     let task = repo

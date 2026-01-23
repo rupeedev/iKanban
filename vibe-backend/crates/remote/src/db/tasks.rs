@@ -444,4 +444,22 @@ impl SharedTaskRepository<'_> {
         .await
         .map(|opt| opt.flatten())
     }
+
+    /// Get team_id for a task from the `tasks` table.
+    pub async fn get_team_id(
+        pool: &PgPool,
+        task_id: Uuid,
+    ) -> Result<Option<Uuid>, sqlx::Error> {
+        sqlx::query_scalar!(
+            r#"
+            SELECT team_id
+            FROM tasks
+            WHERE id = $1
+            "#,
+            task_id
+        )
+        .fetch_optional(pool)
+        .await
+        .map(|opt| opt.flatten())
+    }
 }

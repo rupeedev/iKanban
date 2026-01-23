@@ -29,6 +29,7 @@ use crate::{
             SharedTaskRepository, SharedTaskWithUser, TaskStatus, UpdateSharedTaskData,
             ensure_text_size,
         },
+        teams::TeamRepository,
         users::{UserData, UserRepository},
     },
 };
@@ -494,12 +495,31 @@ pub async fn create_task_comment(
         (None, None) => user.email.clone(),
     };
 
+    // Resolve author_id to team_members.id
+    // First find the task to get its team_id
+    let team_id = match SharedTaskRepository::get_team_id(pool, task_id).await {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!(?e, "failed to load task team info for comment");
+            None
+        }
+    };
+
+    let author_id = if let Some(tid) = team_id {
+        match TeamRepository::find_member_by_email(pool, tid, &user.email).await {
+            Ok(Some(member)) => Some(member.id),
+            _ => None,
+        }
+    } else {
+        None
+    };
+
     let create_data = CreateTaskComment {
         content: payload.content,
         is_internal: payload.is_internal,
         author_name,
         author_email: Some(user.email),
-        author_id: Some(ctx.user.id),
+        author_id,
     };
 
     match TaskCommentRepository::create(pool, task_id, &create_data).await {
