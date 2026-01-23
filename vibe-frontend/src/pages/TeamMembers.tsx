@@ -722,7 +722,7 @@ export function TeamMembers() {
       result = result.filter(
         (m) =>
           m.display_name?.toLowerCase().includes(query) ||
-          m.email.toLowerCase().includes(query)
+          m.email?.toLowerCase().includes(query)
       );
     }
 
@@ -731,8 +731,8 @@ export function TeamMembers() {
       let comparison = 0;
       switch (sortBy) {
         case 'account':
-          comparison = (a.display_name || a.email).localeCompare(
-            b.display_name || b.email
+          comparison = (a.display_name || a.email || '').localeCompare(
+            b.display_name || b.email || ''
           );
           break;
         case 'role': {
