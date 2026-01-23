@@ -208,7 +208,10 @@ impl TeamRepository {
     }
 
     /// Get a team by ID, slug, or identifier
-    pub async fn get_by_id_or_slug(pool: &PgPool, id_or_slug: &str) -> Result<Option<Team>, TeamError> {
+    pub async fn get_by_id_or_slug(
+        pool: &PgPool,
+        id_or_slug: &str,
+    ) -> Result<Option<Team>, TeamError> {
         // Try parsing as UUID first
         if let Ok(uuid) = Uuid::parse_str(id_or_slug) {
             return Self::get_by_id(pool, uuid).await;
@@ -370,7 +373,10 @@ impl TeamRepository {
     }
 
     /// Get projects for a team (full project objects)
-    pub async fn get_projects(pool: &PgPool, team_id: Uuid) -> Result<Vec<TeamProjectInfo>, TeamError> {
+    pub async fn get_projects(
+        pool: &PgPool,
+        team_id: Uuid,
+    ) -> Result<Vec<TeamProjectInfo>, TeamError> {
         let rows = sqlx::query!(
             r#"
             SELECT
@@ -443,7 +449,10 @@ impl TeamRepository {
     }
 
     /// Get team invitations
-    pub async fn get_invitations(pool: &PgPool, team_id: Uuid) -> Result<Vec<TeamInvitation>, TeamError> {
+    pub async fn get_invitations(
+        pool: &PgPool,
+        team_id: Uuid,
+    ) -> Result<Vec<TeamInvitation>, TeamError> {
         let rows = sqlx::query!(
             r#"
             SELECT
@@ -482,17 +491,80 @@ impl TeamRepository {
     }
 
     /// Get team documents
-    /// NOTE: team_documents table does not exist yet - returns empty for now
-    pub async fn get_documents(_pool: &PgPool, _team_id: Uuid) -> Result<Vec<TeamDocument>, TeamError> {
-        // TODO: Create team_documents table and implement query
-        Ok(vec![])
+    pub async fn get_documents(
+        pool: &PgPool,
+        team_id: Uuid,
+    ) -> Result<Vec<TeamDocument>, TeamError> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                id AS "id!: Uuid",
+                team_id AS "team_id!: Uuid",
+                folder_id AS "folder_id: Uuid",
+                title AS "name!",
+                slug,
+                content,
+                file_path AS "storage_path",
+                created_at AS "created_at!: DateTime<Utc>",
+                updated_at AS "updated_at!: DateTime<Utc>"
+            FROM documents
+            WHERE team_id = $1 AND is_archived = FALSE
+            ORDER BY position ASC, updated_at DESC
+            "#,
+            team_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| TeamDocument {
+                id: r.id,
+                team_id: r.team_id,
+                folder_id: r.folder_id,
+                name: r.name,
+                slug: r.slug,
+                content: r.content,
+                storage_path: r.storage_path,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+            })
+            .collect())
     }
 
     /// Get team folders
-    /// NOTE: team_folders table does not exist yet - returns empty for now
-    pub async fn get_folders(_pool: &PgPool, _team_id: Uuid) -> Result<Vec<TeamFolder>, TeamError> {
-        // TODO: Create team_folders table and implement query
-        Ok(vec![])
+    pub async fn get_folders(pool: &PgPool, team_id: Uuid) -> Result<Vec<TeamFolder>, TeamError> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                id AS "id!: Uuid",
+                team_id AS "team_id!: Uuid",
+                parent_id AS "parent_id: Uuid",
+                name,
+                local_path,
+                created_at AS "created_at!: DateTime<Utc>",
+                updated_at AS "updated_at!: DateTime<Utc>"
+            FROM document_folders
+            WHERE team_id = $1
+            ORDER BY position ASC, name ASC
+            "#,
+            team_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| TeamFolder {
+                id: r.id,
+                team_id: r.team_id,
+                parent_id: r.parent_id,
+                name: r.name,
+                local_path: r.local_path,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+            })
+            .collect())
     }
 }
 

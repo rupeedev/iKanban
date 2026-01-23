@@ -1,4 +1,6 @@
 pub mod auth;
+pub mod document_folders;
+pub mod documents;
 pub mod github_app;
 pub mod identity_errors;
 pub mod invitations;

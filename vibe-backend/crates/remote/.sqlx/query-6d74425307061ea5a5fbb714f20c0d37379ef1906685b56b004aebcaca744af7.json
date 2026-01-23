@@ -1,0 +1,142 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, team_id, folder_id, title, slug, content, file_path, file_type,\n                   file_size, mime_type, icon, is_pinned, is_archived, position, created_by,\n                   created_at, updated_at, storage_key, storage_bucket, storage_metadata, storage_provider\n            FROM documents WHERE team_id = $1 AND folder_id IS NULL AND is_archived = FALSE\n            ORDER BY is_pinned DESC, position ASC, updated_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "folder_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "file_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "file_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "file_size",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "mime_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "icon",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "is_pinned",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 12,
+        "name": "is_archived",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 13,
+        "name": "position",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 14,
+        "name": "created_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 16,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 17,
+        "name": "storage_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "storage_bucket",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 19,
+        "name": "storage_metadata",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 20,
+        "name": "storage_provider",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "6d74425307061ea5a5fbb714f20c0d37379ef1906685b56b004aebcaca744af7"
+}

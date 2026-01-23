@@ -20,6 +20,7 @@ use crate::{
 mod abuse_signals;
 mod admin;
 mod billing;
+mod documents;
 mod electric_proxy;
 mod email_verification;
 mod error;
@@ -78,6 +79,7 @@ pub fn router(state: AppState) -> Router {
         .merge(projects::router())
         .merge(tasks::router())
         .merge(teams::router())
+        .merge(documents::router())
         .merge(admin::router())
         .merge(organizations::router())
         .merge(organization_members::protected_router())
