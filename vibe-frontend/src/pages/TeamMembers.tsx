@@ -380,7 +380,7 @@ Best regards`
     );
   };
 
-  const username = invitation.email.split('@')[0];
+  const username = invitation.email?.split('@')[0] || 'unknown';
 
   return (
     <tr className="border-b hover:bg-muted/50">
@@ -572,7 +572,7 @@ function PendingRegistrationRow({
   const displayName =
     registration.first_name && registration.last_name
       ? `${registration.first_name} ${registration.last_name}`
-      : registration.email.split('@')[0];
+      : registration.email?.split('@')[0] || 'Unknown';
   const avatarColor = getAvatarPattern(registration.email);
   const createdAt = new Date(registration.created_at);
 

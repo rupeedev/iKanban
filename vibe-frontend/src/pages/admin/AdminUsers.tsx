@@ -174,7 +174,7 @@ function UserDetailsDialog({
 }: UserDetailsDialogProps) {
   if (!user) return null;
 
-  const displayName = user.display_name || user.email.split('@')[0];
+  const displayName = user.display_name || user.email?.split('@')[0] || 'Unknown';
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -539,7 +539,7 @@ export function AdminUsers() {
             <TableBody>
               {filteredUsers.map((user) => {
                 const displayName =
-                  user.display_name || user.email.split('@')[0];
+                  user.display_name || user.email?.split('@')[0] || 'Unknown';
                 return (
                   <TableRow
                     key={user.id}

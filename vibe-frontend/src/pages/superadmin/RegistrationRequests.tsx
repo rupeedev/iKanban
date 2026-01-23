@@ -288,7 +288,7 @@ export function RegistrationRequests() {
                 const displayName =
                   [registration.first_name, registration.last_name]
                     .filter(Boolean)
-                    .join(' ') || registration.email.split('@')[0];
+                    .join(' ') || registration.email?.split('@')[0] || 'Unknown';
                 return (
                   <TableRow key={registration.id}>
                     <TableCell>

@@ -123,7 +123,7 @@ export function TeamIssues() {
   const teamMembers: TeamMember[] = useMemo(() => {
     return members.map((m) => ({
       id: m.id,
-      name: m.display_name || m.email.split('@')[0],
+      name: m.display_name || m.email?.split('@')[0] || 'Unknown',
       email: m.email,
       avatar: m.avatar_url || undefined,
     }));
