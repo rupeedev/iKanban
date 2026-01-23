@@ -22,6 +22,7 @@ mod admin;
 mod ai_keys;
 mod api_keys;
 mod billing;
+mod copilot_claude;
 mod documents;
 mod electric_proxy;
 mod email_verification;

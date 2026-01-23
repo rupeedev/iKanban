@@ -1,6 +1,7 @@
 pub mod ai_provider_keys;
 pub mod api_keys;
 pub mod auth;
+pub mod copilot_assignments;
 pub mod document_folders;
 pub mod documents;
 pub mod github_app;

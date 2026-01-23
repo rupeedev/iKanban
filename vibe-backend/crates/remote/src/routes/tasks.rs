@@ -62,6 +62,17 @@ pub fn router() -> Router<AppState> {
             delete(remove_task_link),
         )
         .route("/tasks/assignees", get(get_task_assignees_by_project))
+        // Copilot/Claude assignment routes
+        .route(
+            "/tasks/{task_id}/copilot",
+            get(super::copilot_claude::get_copilot_assignments)
+                .post(super::copilot_claude::assign_task_to_copilot),
+        )
+        .route(
+            "/tasks/{task_id}/claude",
+            get(super::copilot_claude::get_claude_assignments)
+                .post(super::copilot_claude::assign_task_to_claude),
+        )
 }
 
 #[derive(Debug, Deserialize, TS)]
