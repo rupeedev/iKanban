@@ -12,7 +12,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{
-    error::{identity_error_response, task_error_response},
+    error::{ApiResponse, identity_error_response, task_error_response},
     organization_members::{ensure_project_access, ensure_task_access},
 };
 use crate::{
@@ -429,12 +429,12 @@ pub async fn get_task_comments(
     };
 
     match TaskCommentRepository::find_by_task_id(pool, task_id).await {
-        Ok(comments) => (StatusCode::OK, Json(comments)).into_response(),
+        Ok(comments) => (StatusCode::OK, ApiResponse::success(comments)).into_response(),
         Err(e) => {
             tracing::error!(?e, "failed to load task comments");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "failed to load task comments"})),
+                Json(json!({"success": false, "message": "failed to load task comments"})),
             )
                 .into_response()
         }
@@ -469,7 +469,7 @@ pub async fn create_task_comment(
             tracing::error!(?e, "failed to fetch user for comment");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "failed to fetch user"})),
+                Json(json!({"success": false, "message": "failed to fetch user"})),
             )
                 .into_response();
         }
@@ -492,12 +492,12 @@ pub async fn create_task_comment(
     };
 
     match TaskCommentRepository::create(pool, task_id, &create_data).await {
-        Ok(comment) => (StatusCode::CREATED, Json(comment)).into_response(),
+        Ok(comment) => (StatusCode::CREATED, ApiResponse::success(comment)).into_response(),
         Err(e) => {
             tracing::error!(?e, "failed to create task comment");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "failed to create task comment"})),
+                Json(json!({"success": false, "message": "failed to create task comment"})),
             )
                 .into_response()
         }
@@ -530,7 +530,7 @@ pub async fn delete_task_comment(
         Ok(None) => {
             return (
                 StatusCode::NOT_FOUND,
-                Json(json!({"error": "comment not found"})),
+                Json(json!({"success": false, "message": "comment not found"})),
             )
                 .into_response();
         }
@@ -538,7 +538,7 @@ pub async fn delete_task_comment(
             tracing::error!(?e, "failed to find comment");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "failed to find comment"})),
+                Json(json!({"success": false, "message": "failed to find comment"})),
             )
                 .into_response();
         }
@@ -547,7 +547,7 @@ pub async fn delete_task_comment(
     if comment.task_id != task_id {
         return (
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": "comment does not belong to this task"})),
+            Json(json!({"success": false, "message": "comment does not belong to this task"})),
         )
             .into_response();
     }
@@ -556,23 +556,23 @@ pub async fn delete_task_comment(
     if comment.author_id != Some(ctx.user.id) {
         return (
             StatusCode::FORBIDDEN,
-            Json(json!({"error": "only comment author can delete"})),
+            Json(json!({"success": false, "message": "only comment author can delete"})),
         )
             .into_response();
     }
 
     match TaskCommentRepository::delete(pool, comment_id).await {
-        Ok(true) => (StatusCode::NO_CONTENT, ()).into_response(),
+        Ok(true) => (StatusCode::OK, ApiResponse::success(())).into_response(),
         Ok(false) => (
             StatusCode::NOT_FOUND,
-            Json(json!({"error": "comment not found"})),
+            Json(json!({"success": false, "message": "comment not found"})),
         )
             .into_response(),
         Err(e) => {
             tracing::error!(?e, "failed to delete comment");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "failed to delete comment"})),
+                Json(json!({"success": false, "message": "failed to delete comment"})),
             )
                 .into_response()
         }
@@ -609,12 +609,12 @@ pub async fn get_task_tags(
     };
 
     match TaskTagRepository::find_by_task_id(pool, task_id).await {
-        Ok(tags) => (StatusCode::OK, Json(tags)).into_response(),
+        Ok(tags) => (StatusCode::OK, ApiResponse::success(tags)).into_response(),
         Err(e) => {
             tracing::error!(?e, "failed to load task tags");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "failed to load task tags"})),
+                Json(json!({"success": false, "message": "failed to load task tags"})),
             )
                 .into_response()
         }
@@ -648,7 +648,7 @@ pub async fn add_task_tag(
         Ok(None) => {
             return (
                 StatusCode::NOT_FOUND,
-                Json(json!({"error": "tag not found"})),
+                Json(json!({"success": false, "message": "tag not found"})),
             )
                 .into_response();
         }
@@ -656,19 +656,19 @@ pub async fn add_task_tag(
             tracing::error!(?e, "failed to find tag");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "failed to find tag"})),
+                Json(json!({"success": false, "message": "failed to find tag"})),
             )
                 .into_response();
         }
     }
 
     match TaskTagRepository::add_tag(pool, task_id, payload.tag_id).await {
-        Ok(task_tag) => (StatusCode::CREATED, Json(task_tag)).into_response(),
+        Ok(task_tag) => (StatusCode::CREATED, ApiResponse::success(task_tag)).into_response(),
         Err(e) => {
             tracing::error!(?e, "failed to add tag to task");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "failed to add tag to task"})),
+                Json(json!({"success": false, "message": "failed to add tag to task"})),
             )
                 .into_response()
         }
@@ -696,17 +696,17 @@ pub async fn remove_task_tag(
     };
 
     match TaskTagRepository::remove_tag(pool, task_id, tag_id).await {
-        Ok(true) => (StatusCode::NO_CONTENT, ()).into_response(),
+        Ok(true) => (StatusCode::OK, ApiResponse::success(())).into_response(),
         Ok(false) => (
             StatusCode::NOT_FOUND,
-            Json(json!({"error": "tag not found on task"})),
+            Json(json!({"success": false, "message": "tag not found on task"})),
         )
             .into_response(),
         Err(e) => {
             tracing::error!(?e, "failed to remove tag from task");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "failed to remove tag from task"})),
+                Json(json!({"success": false, "message": "failed to remove tag from task"})),
             )
                 .into_response()
         }
@@ -743,12 +743,12 @@ pub async fn get_task_links(
     };
 
     match TaskDocumentLinkRepository::find_by_task_id(pool, task_id).await {
-        Ok(links) => (StatusCode::OK, Json(links)).into_response(),
+        Ok(links) => (StatusCode::OK, ApiResponse::success(links)).into_response(),
         Err(e) => {
             tracing::error!(?e, "failed to load task document links");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "failed to load task document links"})),
+                Json(json!({"success": false, "message": "failed to load task document links"})),
             )
                 .into_response()
         }
@@ -777,12 +777,12 @@ pub async fn add_task_link(
     };
 
     match TaskDocumentLinkRepository::link_document(pool, task_id, payload.document_id).await {
-        Ok(link) => (StatusCode::CREATED, Json(link)).into_response(),
+        Ok(link) => (StatusCode::CREATED, ApiResponse::success(link)).into_response(),
         Err(e) => {
             tracing::error!(?e, "failed to link document to task");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "failed to link document to task"})),
+                Json(json!({"success": false, "message": "failed to link document to task"})),
             )
                 .into_response()
         }
@@ -810,17 +810,17 @@ pub async fn remove_task_link(
     };
 
     match TaskDocumentLinkRepository::unlink_document(pool, task_id, document_id).await {
-        Ok(true) => (StatusCode::NO_CONTENT, ()).into_response(),
+        Ok(true) => (StatusCode::OK, ApiResponse::success(())).into_response(),
         Ok(false) => (
             StatusCode::NOT_FOUND,
-            Json(json!({"error": "document link not found"})),
+            Json(json!({"success": false, "message": "document link not found"})),
         )
             .into_response(),
         Err(e) => {
             tracing::error!(?e, "failed to unlink document from task");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "failed to unlink document from task"})),
+                Json(json!({"success": false, "message": "failed to unlink document from task"})),
             )
                 .into_response()
         }
