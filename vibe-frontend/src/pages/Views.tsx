@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Layers,
@@ -228,15 +228,17 @@ function StatusGroup({
 }
 
 function AllIssuesView() {
+  // Get teamId from URL params (for /teams/:teamId/views route)
+  const { teamId: teamIdFromParams } = useParams<{ teamId: string }>();
   const { teams } = useTeams();
   const { projects } = useProjects();
 
-  // Get all team IDs
+  // Use teamId from URL params, or fall back to first team for /views route
   const teamIds = useMemo(() => teams.map((t) => t.id), [teams]);
+  const activeTeamId = teamIdFromParams || teamIds[0];
 
-  // Fetch issues from first team (for demo - in production would aggregate)
-  const firstTeamId = teamIds[0];
-  const { issues, isLoading } = useTeamIssues(firstTeamId);
+  // Fetch issues for the active team
+  const { issues, isLoading } = useTeamIssues(activeTeamId);
 
   // Project names lookup
   const projectNamesById = useMemo(() => {
