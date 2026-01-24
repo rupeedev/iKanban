@@ -60,3 +60,5 @@ tower_governor = "0.4"
 governor = "0.6"
 # Stripe payment integration (IKA-181)
 async-stripe = { version = "0.41", default-features = false, features = ["runtime-tokio-hyper", "checkout", "billing"] }
+# SAML 2.0 SSO integration (TENANCY-P5-01)
+samael = { version = "0.0.18", features = ["xmlsec"] }

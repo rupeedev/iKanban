@@ -5,6 +5,7 @@ mod jwt;
 mod middleware;
 mod oauth_token_validator;
 mod provider;
+mod saml;
 mod superadmin;
 
 pub use abuse_detector::AbuseDetector;
@@ -15,5 +16,9 @@ pub use middleware::RequestContext;
 pub use oauth_token_validator::{OAuthTokenValidationError, OAuthTokenValidator};
 pub use provider::{
     GitHubOAuthProvider, GoogleOAuthProvider, ProviderRegistry, ProviderTokenDetails,
+};
+pub use saml::{
+    JitProvisioningService, ProvisionedUser, SamlServiceProvider, SamlUserAttributes,
+    parse_saml_response,
 };
 pub use superadmin::require_superadmin;

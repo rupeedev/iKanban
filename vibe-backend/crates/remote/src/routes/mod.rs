@@ -40,6 +40,7 @@ mod projects;
 pub mod registrations;
 mod review;
 mod repos;
+mod sso;
 mod stripe;
 mod stubs;
 mod superadmins;
@@ -83,7 +84,8 @@ pub fn router(state: AppState) -> Router {
         .merge(email_verification::public_router())
         .merge(billing::public_router())
         .merge(tenant_workspaces::public_router())
-        .merge(oauth_settings::public_router());
+        .merge(oauth_settings::public_router())
+        .merge(sso::public_router());
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
@@ -111,6 +113,7 @@ pub fn router(state: AppState) -> Router {
         .merge(abuse_signals::protected_router())
         .merge(email_verification::protected_router())
         .merge(tenant_workspaces::protected_router())
+        .merge(sso::protected_router())
         .merge(superadmins::public_router()) // Check endpoint - any authed user
         .merge(registrations::user_router()) // User's own registration status
         .merge(stubs::router()) // Stub endpoints for local-only features
