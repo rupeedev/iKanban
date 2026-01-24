@@ -269,4 +269,134 @@ impl CopilotAssignmentRepository {
             completed_at: r.completed_at,
         }))
     }
+
+    /// Find assignment by GitHub issue number
+    pub async fn find_by_issue(
+        pool: &PgPool,
+        repo_owner: &str,
+        repo_name: &str,
+        issue_number: i64,
+    ) -> Result<Option<CopilotAssignment>, sqlx::Error> {
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                id,
+                task_id,
+                github_issue_id,
+                github_issue_url,
+                github_pr_id,
+                github_pr_url,
+                github_repo_owner,
+                github_repo_name,
+                status,
+                prompt,
+                error_message,
+                created_at,
+                completed_at
+            FROM copilot_assignments
+            WHERE github_repo_owner = $1
+              AND github_repo_name = $2
+              AND github_issue_id = $3
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+            repo_owner,
+            repo_name,
+            issue_number
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(row.map(|r| CopilotAssignment {
+            id: r.id,
+            task_id: r.task_id,
+            github_issue_id: r.github_issue_id,
+            github_issue_url: r.github_issue_url,
+            github_pr_id: r.github_pr_id,
+            github_pr_url: r.github_pr_url,
+            github_repo_owner: r.github_repo_owner,
+            github_repo_name: r.github_repo_name,
+            status: CopilotAssignmentStatus::parse(&r.status),
+            prompt: r.prompt,
+            error_message: r.error_message,
+            created_at: r.created_at,
+            completed_at: r.completed_at,
+        }))
+    }
+
+    /// Find assignment by PR number
+    pub async fn find_by_pr(
+        pool: &PgPool,
+        repo_owner: &str,
+        repo_name: &str,
+        pr_number: i64,
+    ) -> Result<Option<CopilotAssignment>, sqlx::Error> {
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                id,
+                task_id,
+                github_issue_id,
+                github_issue_url,
+                github_pr_id,
+                github_pr_url,
+                github_repo_owner,
+                github_repo_name,
+                status,
+                prompt,
+                error_message,
+                created_at,
+                completed_at
+            FROM copilot_assignments
+            WHERE github_repo_owner = $1
+              AND github_repo_name = $2
+              AND github_pr_id = $3
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+            repo_owner,
+            repo_name,
+            pr_number
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(row.map(|r| CopilotAssignment {
+            id: r.id,
+            task_id: r.task_id,
+            github_issue_id: r.github_issue_id,
+            github_issue_url: r.github_issue_url,
+            github_pr_id: r.github_pr_id,
+            github_pr_url: r.github_pr_url,
+            github_repo_owner: r.github_repo_owner,
+            github_repo_name: r.github_repo_name,
+            status: CopilotAssignmentStatus::parse(&r.status),
+            prompt: r.prompt,
+            error_message: r.error_message,
+            created_at: r.created_at,
+            completed_at: r.completed_at,
+        }))
+    }
+
+    /// Update assignment status
+    pub async fn update_status(
+        pool: &PgPool,
+        id: Uuid,
+        status: &str,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"
+            UPDATE copilot_assignments
+            SET status = $2,
+                completed_at = CASE WHEN $2 IN ('completed', 'failed', 'merged', 'deployed') THEN NOW() ELSE completed_at END
+            WHERE id = $1
+            "#,
+            id,
+            status
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
 }

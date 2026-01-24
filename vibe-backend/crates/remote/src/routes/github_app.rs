@@ -939,10 +939,19 @@ async fn handle_pull_request_event(
 ) -> Response {
     let action = payload["action"].as_str().unwrap_or("");
 
-    if action != "opened" {
-        return StatusCode::OK.into_response();
+    match action {
+        "opened" => handle_pr_opened(state, github_app, payload).await,
+        "closed" => handle_pr_closed(state, payload).await,
+        _ => StatusCode::OK.into_response(),
     }
+}
 
+/// Handle PR opened - trigger review if enabled
+async fn handle_pr_opened(
+    state: &AppState,
+    github_app: &crate::github_app::GitHubAppService,
+    payload: &serde_json::Value,
+) -> Response {
     let ctx = TriggerReviewContext {
         installation_id: payload["installation"]["id"].as_i64().unwrap_or(0),
         github_repo_id: payload["repository"]["id"].as_i64().unwrap_or(0),
@@ -984,6 +993,131 @@ async fn handle_pull_request_event(
     }
 
     StatusCode::OK.into_response()
+}
+
+/// Handle PR closed - if merged, update iKanban task with completion status
+async fn handle_pr_closed(state: &AppState, payload: &serde_json::Value) -> Response {
+    use crate::db::copilot_assignments::CopilotAssignmentRepository;
+    use crate::db::task_comments::{CreateTaskComment, TaskCommentRepository};
+
+    // Only process if PR was actually merged
+    let merged = payload["pull_request"]["merged"].as_bool().unwrap_or(false);
+    if !merged {
+        info!("PR closed but not merged, ignoring");
+        return StatusCode::OK.into_response();
+    }
+
+    let repo_owner = payload["repository"]["owner"]["login"]
+        .as_str()
+        .unwrap_or("");
+    let repo_name = payload["repository"]["name"].as_str().unwrap_or("");
+    let pr_number = payload["pull_request"]["number"].as_i64().unwrap_or(0);
+    let merge_commit_sha = payload["pull_request"]["merge_commit_sha"]
+        .as_str()
+        .unwrap_or("unknown");
+    let pr_body = payload["pull_request"]["body"].as_str().unwrap_or("");
+
+    info!(
+        repo_owner,
+        repo_name,
+        pr_number,
+        merge_commit_sha,
+        "Processing pull_request.closed (merged) event"
+    );
+
+    // Try to find the linked GitHub issue from PR body (e.g., "Fixes #35" or "Closes #35")
+    let linked_issue_number = extract_linked_issue_number(pr_body);
+
+    // Find the copilot/claude assignment by issue or PR
+    let pool = state.pool();
+    let assignment = if let Some(issue_num) = linked_issue_number {
+        // Try to find by issue number first
+        CopilotAssignmentRepository::find_by_issue(pool, repo_owner, repo_name, issue_num)
+            .await
+            .ok()
+            .flatten()
+    } else {
+        None
+    };
+
+    // Fall back to finding by PR number if no issue match
+    let assignment = match assignment {
+        Some(a) => Some(a),
+        None => CopilotAssignmentRepository::find_by_pr(pool, repo_owner, repo_name, pr_number)
+            .await
+            .ok()
+            .flatten(),
+    };
+
+    let Some(assignment) = assignment else {
+        info!(
+            repo_owner,
+            repo_name, pr_number, "No copilot/claude assignment found for this PR"
+        );
+        return StatusCode::OK.into_response();
+    };
+
+    info!(
+        assignment_id = %assignment.id,
+        task_id = %assignment.task_id,
+        "Found assignment, updating task status"
+    );
+
+    // Update the assignment status to "merged"
+    if let Err(e) =
+        CopilotAssignmentRepository::update_status(pool, assignment.id, "merged").await
+    {
+        error!(?e, "Failed to update assignment status to merged");
+    }
+
+    // Add a comment to the iKanban task
+    let comment_content = format!(
+        "✅ **Implementation complete and merged to main**\n\n\
+        - Commit: `{}`\n\
+        - PR: [#{}](https://github.com/{}/{}/pull/{})\n\n\
+        _Automatically updated by Claude/Copilot bot_",
+        merge_commit_sha, pr_number, repo_owner, repo_name, pr_number
+    );
+
+    if let Err(e) = TaskCommentRepository::create(
+        pool,
+        assignment.task_id,
+        &CreateTaskComment {
+            content: comment_content,
+            is_internal: false,
+            author_name: "Claude Bot".to_string(),
+            author_email: Some("noreply@anthropic.com".to_string()),
+            author_id: None,
+        },
+    )
+    .await
+    {
+        error!(?e, "Failed to add comment to task");
+    }
+
+    // Update the task status to "done"
+    if let Err(e) = sqlx::query!(
+        r#"UPDATE shared_tasks SET status = 'done', updated_at = NOW() WHERE id = $1"#,
+        assignment.task_id
+    )
+    .execute(pool)
+    .await
+    {
+        error!(?e, "Failed to update task status to done");
+    } else {
+        info!(task_id = %assignment.task_id, "Task marked as done");
+    }
+
+    StatusCode::OK.into_response()
+}
+
+/// Extract linked issue number from PR body (e.g., "Fixes #35", "Closes #35", "Resolves #35")
+fn extract_linked_issue_number(body: &str) -> Option<i64> {
+    // Match patterns like "Fixes #35", "Closes #35", "Resolves #35" (case-insensitive)
+    let re = regex::Regex::new(r"(?i)(?:fix(?:es)?|close[sd]?|resolve[sd]?)\s+#(\d+)").ok()?;
+    re.captures(body)
+        .and_then(|caps| caps.get(1))
+        .and_then(|m| m.as_str().parse().ok())
 }
 
 async fn handle_issue_comment_event(

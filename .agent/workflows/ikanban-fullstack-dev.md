@@ -16,8 +16,8 @@ allowed_tools:
   - "Bash(cd:*)"
   - "Bash(cat:*)"
   # Dev tools
-  - "Bas(git:*)"
-  - "Bas(python3:*)"
+  - "Bash(git:*)"
+  - "Bash(python3:*)"
   - "Bash(pnpm:*)"
   - "Bash(npm:*)"
   - "Bash(npx:*)"
@@ -66,6 +66,25 @@ python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py create IKA "tit
 # Update task status
 python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py update IKA-XX -s done
 ```
+
+### Troubleshooting: "project does not belong to this team"
+
+If you get this error when creating tasks, the `teams-config.json` may have outdated project IDs.
+
+**Fix: Fetch actual project IDs from the API:**
+```bash
+export VIBE_API_TOKEN=$(grep '^VIBE_API_TOKEN=' /Users/rupeshpanwar/Downloads/Projects/iKanban/.env | cut -d'=' -f2)
+
+# Get IKA team projects (team_id from teams-config.json)
+curl -s -H "Authorization: Bearer $VIBE_API_TOKEN" \
+  "https://api.scho1ar.com/api/teams/a263e43f-43d3-4af7-a947-5f70e6670921/projects" | python3 -m json.tool
+
+# Then use the correct project ID explicitly:
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py create IKA "title" \
+  --project <actual-project-uuid> -s inprogress -d "description"
+```
+
+**Full documentation:** `/Users/rupeshpanwar/Downloads/docs/common-mcp/how-to-use-ikanban-mcp.txt`
 
 ---
 
