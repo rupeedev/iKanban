@@ -27,7 +27,8 @@ jobs:
         github.event.pull_request.user.login == 'copilot-swe-agent[bot]' ||
         github.event.pull_request.user.login == 'claude[bot]' ||
         contains(github.event.pull_request.head.ref, 'copilot/') ||
-        contains(github.event.pull_request.head.ref, 'claude/')
+        contains(github.event.pull_request.head.ref, 'claude/') ||
+        contains(github.event.pull_request.head.ref, 'gemini/')
       )
     steps:
       - name: Mark PR as ready for review
@@ -58,7 +59,8 @@ jobs:
         github.event.pull_request.user.login == 'copilot-swe-agent[bot]' ||
         github.event.pull_request.user.login == 'claude[bot]' ||
         contains(github.event.pull_request.head.ref, 'copilot/') ||
-        contains(github.event.pull_request.head.ref, 'claude/')
+        contains(github.event.pull_request.head.ref, 'claude/') ||
+        contains(github.event.pull_request.head.ref, 'gemini/')
       )
     steps:
       - name: Wait for checks to complete

@@ -18,7 +18,8 @@ jobs:
       github.event.action == 'opened' &&
       (
         contains(github.event.issue.labels.*.name, 'copilot') ||
-        contains(github.event.issue.labels.*.name, 'claude')
+        contains(github.event.issue.labels.*.name, 'claude') ||
+        contains(github.event.issue.labels.*.name, 'gemini')
       )
     steps:
       - name: Extract iKanban metadata and post comment
@@ -40,7 +41,8 @@ jobs:
 
             const taskId = metadataMatch[1];
             const assignmentId = metadataMatch[2];
-            const agentType = issue.labels.some(l => l.name === 'claude') ? 'Claude' : 'Copilot';
+            const agentType = issue.labels.some(l => l.name === 'claude') ? 'Claude' : 
+                             issue.labels.some(l => l.name === 'gemini') ? 'Gemini' : 'Copilot';
 
             console.log(`Found iKanban metadata: task=${taskId}, assignment=${assignmentId}`);
 
@@ -89,7 +91,8 @@ jobs:
         github.event.pull_request.user.login == 'copilot-swe-agent[bot]' ||
         github.event.pull_request.user.login == 'claude[bot]' ||
         contains(github.event.pull_request.head.ref, 'copilot/') ||
-        contains(github.event.pull_request.head.ref, 'claude/')
+        contains(github.event.pull_request.head.ref, 'claude/') ||
+        contains(github.event.pull_request.head.ref, 'gemini/')
       )
     steps:
       - name: Find linked issue and post comment
@@ -127,7 +130,8 @@ jobs:
                 if (metadataMatch) {
                   taskId = metadataMatch[1];
                   assignmentId = metadataMatch[2];
-                  agentType = issue.labels.some(l => l.name === 'claude') ? 'Claude' : 'Copilot';
+                  agentType = issue.labels.some(l => l.name === 'claude') ? 'Claude' : 
+                             issue.labels.some(l => l.name === 'gemini') ? 'Gemini' : 'Copilot';
                 }
               } catch (error) {
                 console.log(`Could not fetch issue #${issueNumber}: ${error.message}`);
@@ -153,6 +157,8 @@ jobs:
               agentType = 'Claude';
             } else if (pr.user.login === 'copilot-swe-agent[bot]' || pr.head.ref.includes('copilot/')) {
               agentType = 'Copilot';
+            } else if (pr.head.ref.includes('gemini/')) {
+              agentType = 'Gemini';
             }
 
             console.log(`Found iKanban metadata: task=${taskId}, agent=${agentType}`);
@@ -204,7 +210,8 @@ jobs:
         github.event.pull_request.user.login == 'copilot-swe-agent[bot]' ||
         github.event.pull_request.user.login == 'claude[bot]' ||
         contains(github.event.pull_request.head.ref, 'copilot/') ||
-        contains(github.event.pull_request.head.ref, 'claude/')
+        contains(github.event.pull_request.head.ref, 'claude/') ||
+        contains(github.event.pull_request.head.ref, 'gemini/')
       )
     steps:
       - name: Find linked issue and post completion comment
@@ -241,7 +248,8 @@ jobs:
                 if (metadataMatch) {
                   taskId = metadataMatch[1];
                   assignmentId = metadataMatch[2];
-                  agentType = issue.labels.some(l => l.name === 'claude') ? 'Claude' : 'Copilot';
+                  agentType = issue.labels.some(l => l.name === 'claude') ? 'Claude' : 
+                             issue.labels.some(l => l.name === 'gemini') ? 'Gemini' : 'Copilot';
                 }
               } catch (error) {
                 console.log(`Could not fetch issue #${issueNumber}: ${error.message}`);
