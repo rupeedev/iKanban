@@ -38,8 +38,6 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: |
-            --allowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,TodoWrite"
           prompt: |
             IMPORTANT: Before starting any work, read and follow IN ORDER:
             1. .claude/ikanban-fullstack-dev.md - COMPLETE workflow with validation gates
