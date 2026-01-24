@@ -62,6 +62,7 @@ pub fn router() -> Router<AppState> {
             "/tasks/{task_id}/links/{document_id}",
             delete(remove_task_link),
         )
+        .route("/tasks/{task_id}/move", post(move_task))
         .route("/tasks/assignees", get(get_task_assignees_by_project))
         // Copilot/Claude assignment routes
         .route(
@@ -341,6 +342,50 @@ pub async fn delete_shared_task(
 }
 
 #[instrument(
+    name = "tasks.move_task",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, task_id = %task_id, new_project_id = %payload.project_id)
+)]
+pub async fn move_task(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(task_id): Path<Uuid>,
+    Json(payload): Json<MoveTaskRequest>,
+) -> Response {
+    let pool = state.pool();
+
+    // Verify access to the current task
+    let _organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+        Ok(org_id) => org_id,
+        Err(error) => return error.into_response(),
+    };
+
+    // Verify access to the target project
+    if let Err(error) = ensure_project_access(pool, ctx.user.id, payload.project_id).await {
+        return error.into_response();
+    }
+
+    let repo = SharedTaskRepository::new(pool);
+
+    // Verify task exists
+    let _existing = match repo.find_by_id(task_id).await {
+        Ok(Some(task)) => task,
+        Ok(None) => {
+            return task_error_response(SharedTaskError::NotFound, "task not found");
+        }
+        Err(error) => {
+            return task_error_response(error, "failed to load task");
+        }
+    };
+
+    // Move the task to the new project
+    match repo.move_task(task_id, payload.project_id).await {
+        Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
+        Err(error) => task_error_response(error, "failed to move task"),
+    }
+}
+
+#[instrument(
     name = "tasks.check_existence",
     skip(state, ctx, payload),
     fields(user_id = %ctx.user.id)
@@ -383,6 +428,11 @@ pub struct UpdateSharedTaskRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssignSharedTaskRequest {
     pub new_assignee_user_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MoveTaskRequest {
+    pub project_id: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

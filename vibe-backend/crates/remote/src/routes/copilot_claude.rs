@@ -158,127 +158,18 @@ pub async fn assign_task_to_copilot(
         return error.into_response();
     }
 
-    // Get task details for the GitHub issue
-    let repo = SharedTaskRepository::new(pool);
-    let task = match repo.find_any_task_by_id(task_id).await {
-        Ok(Some(t)) => t,
-        Ok(None) => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(json!({"success": false, "message": "task not found"})),
-            )
-                .into_response();
-        }
+    // Delegate to the shared trigger function which handles project-level repos correctly
+    match trigger_copilot_assignment(pool, task_id, ctx.user.id, payload.prompt).await {
+        Ok(assignment) => (StatusCode::CREATED, ApiResponse::success(assignment)).into_response(),
         Err(e) => {
-            tracing::error!(?e, "failed to load task");
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"success": false, "message": "failed to load task"})),
-            )
-                .into_response();
-        }
-    };
-
-    // Get workspace GitHub connection for access token
-    let connection = match GitHubConnectionRepository::find_workspace_connection(pool).await {
-        Ok(Some(c)) => c,
-        Ok(None) => {
-            return (
+            tracing::error!("failed to trigger copilot assignment: {}", e);
+            (
                 StatusCode::BAD_REQUEST,
-                Json(json!({
-                    "success": false,
-                    "message": "No GitHub connection configured. Please connect GitHub in Settings first."
-                })),
+                Json(json!({"success": false, "message": e})),
             )
-                .into_response();
+                .into_response()
         }
-        Err(e) => {
-            tracing::error!(?e, "failed to get GitHub connection");
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"success": false, "message": "failed to get GitHub connection"})),
-            )
-                .into_response();
-        }
-    };
-
-    // Get repositories linked to this connection
-    let repos = match GitHubRepositoryOps::find_by_connection_id(pool, connection.id).await {
-        Ok(r) => r,
-        Err(e) => {
-            tracing::error!(?e, "failed to get GitHub repositories");
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"success": false, "message": "failed to get GitHub repositories"})),
-            )
-                .into_response();
-        }
-    };
-
-    let github_repo = match repos.first() {
-        Some(r) => r,
-        None => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(json!({
-                    "success": false,
-                    "message": "No GitHub repository linked. Please add a repository in Settings."
-                })),
-            )
-                .into_response();
-        }
-    };
-
-    // Create the assignment record
-    let assignment = match CopilotAssignmentRepository::create_copilot(
-        pool,
-        task_id,
-        &payload.prompt,
-        Some(&github_repo.repo_owner),
-        Some(&github_repo.repo_name),
-    )
-    .await
-    {
-        Ok(a) => a,
-        Err(e) => {
-            tracing::error!(?e, "failed to create copilot assignment");
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"success": false, "message": "failed to create assignment"})),
-            )
-                .into_response();
-        }
-    };
-
-    // Spawn background task to create GitHub issue
-    let pool_clone = pool.clone();
-    let assignment_id = assignment.id;
-    let task_title = task.title.clone();
-    let task_description = task.description.clone();
-    let prompt = payload.prompt.clone();
-    let access_token = connection.access_token.clone();
-    let repo_owner = github_repo.repo_owner.clone();
-    let repo_name = github_repo.repo_name.clone();
-
-    tokio::spawn(async move {
-        if let Err(e) = create_github_issue_for_copilot(
-            &pool_clone,
-            assignment_id,
-            task_id,
-            &task_title,
-            task_description.as_deref(),
-            &prompt,
-            &access_token,
-            &repo_owner,
-            &repo_name,
-        )
-        .await
-        {
-            tracing::error!("Failed to create GitHub issue for copilot: {}", e);
-        }
-    });
-
-    (StatusCode::CREATED, ApiResponse::success(assignment)).into_response()
+    }
 }
 
 /// Trigger a Copilot assignment from a prompt

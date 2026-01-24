@@ -415,6 +415,61 @@ impl<'a> SharedTaskRepository<'a> {
         Ok(SharedTaskWithUser::new(task, None))
     }
 
+    /// Move a task to a different project
+    pub async fn move_task(
+        &self,
+        task_id: Uuid,
+        new_project_id: Uuid,
+    ) -> Result<SharedTaskWithUser, SharedTaskError> {
+        // Verify the target project exists and get its organization_id
+        let project = ProjectRepository::fetch_by_id(self.pool, new_project_id)
+            .await?
+            .ok_or(SharedTaskError::NotFound)?;
+
+        let mut tx = self.pool.begin().await.map_err(SharedTaskError::from)?;
+
+        let task = sqlx::query_as!(
+            SharedTask,
+            r#"
+        UPDATE shared_tasks AS t
+        SET project_id = $2,
+            organization_id = $3,
+            updated_at = NOW()
+        WHERE t.id = $1
+          AND t.deleted_at IS NULL
+        RETURNING
+            t.id                AS "id!",
+            t.organization_id   AS "organization_id!: Uuid",
+            t.project_id        AS "project_id!",
+            t.creator_user_id   AS "creator_user_id?: Uuid",
+            t.assignee_user_id  AS "assignee_user_id?: Uuid",
+            t.deleted_by_user_id AS "deleted_by_user_id?: Uuid",
+            t.title             AS "title!",
+            t.description       AS "description?",
+            t.status            AS "status!: TaskStatus",
+            t.priority          AS "priority?",
+            t.deleted_at        AS "deleted_at?",
+            t.shared_at         AS "shared_at?",
+            t.created_at        AS "created_at!",
+            t.updated_at        AS "updated_at!"
+        "#,
+            task_id,
+            new_project_id,
+            project.organization_id
+        )
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or_else(|| SharedTaskError::NotFound)?;
+
+        let user = match task.assignee_user_id {
+            Some(user_id) => fetch_user(&mut tx, user_id).await?,
+            None => None,
+        };
+
+        tx.commit().await.map_err(SharedTaskError::from)?;
+        Ok(SharedTaskWithUser::new(task, user))
+    }
+
     pub async fn check_existence(
         &self,
         task_ids: &[Uuid],
