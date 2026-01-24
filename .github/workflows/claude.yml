@@ -38,15 +38,24 @@ jobs:
           claude_args: |
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,TodoWrite"
           prompt: |
-            IMPORTANT: Before starting any work, read and follow:
-            1. .claude/GITHUB-AGENT-WORKFLOW.md - Your workflow instructions
+            IMPORTANT: Before starting any work, read and follow IN ORDER:
+            1. .claude/ikanban-fullstack-dev.md - COMPLETE workflow with validation gates
             2. .claude/FILE-MAP.md - Find file paths (DO NOT explore/grep)
-            3. .claude/CODING-GUIDELINES.md - Rules and limits
+            3. .claude/CODING-GUIDELINES.md - Code rules and file size limits
+            4. .claude/PATTERNS.md - Code patterns (if implementing features)
 
-            CRITICAL RULES:
-            - Run ALL validation gates (Quality, Test, Review, Security) before committing
-            - Create feature branch, NEVER commit directly to main
-            - NEVER merge to main - only push to feature branch, let PR process handle merge
-            - Deployment happens automatically on main merge, not from feature branches
+            GITHUB ACTIONS SPECIFIC:
+            - You are single-agent (no Task() subagents)
+            - No MCP available - skip task management steps
+            - Run validation gates SEQUENTIALLY (not parallel)
+            - Use relative paths from repo root
+
+            WORKFLOW:
+            1. Classify task: fix/bug/typo → QUICK, add/implement/new → FEATURE
+            2. Create feature branch: git checkout -b <type>/issue-<number>-<desc>
+            3. Implement following the ikanban-fullstack-dev workflow
+            4. Run validations: pnpm lint, cargo check, cargo clippy, npx playwright test
+            5. Commit and push to feature branch
+            6. NEVER merge to main - deployment happens on PR merge
 
             Now proceed with the task from the issue/comment.
