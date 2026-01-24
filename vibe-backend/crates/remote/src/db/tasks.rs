@@ -71,6 +71,8 @@ pub struct UpdateSharedTaskData {
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
     pub priority: Option<i32>,
+    pub assignee_user_id: Option<Uuid>,
+    pub due_date: Option<String>, // Ignored - shared_tasks doesn't have due_date column yet
     pub acting_user_id: Uuid,
 }
 
@@ -281,11 +283,12 @@ impl<'a> SharedTaskRepository<'a> {
             SharedTask,
             r#"
         UPDATE shared_tasks AS t
-        SET title       = COALESCE($2, t.title),
-            description = COALESCE($3, t.description),
-            status      = COALESCE($4, t.status),
-            priority    = COALESCE($5, t.priority),
-            updated_at  = NOW()
+        SET title            = COALESCE($2, t.title),
+            description      = COALESCE($3, t.description),
+            status           = COALESCE($4, t.status),
+            priority         = COALESCE($5, t.priority),
+            assignee_user_id = COALESCE($6, t.assignee_user_id),
+            updated_at       = NOW()
         WHERE t.id = $1
           AND t.deleted_at IS NULL
         RETURNING
@@ -309,6 +312,7 @@ impl<'a> SharedTaskRepository<'a> {
             data.description,
             data.status as Option<TaskStatus>,
             data.priority,
+            data.assignee_user_id,
         )
         .fetch_optional(&mut *tx)
         .await?

@@ -222,6 +222,10 @@ pub async fn update_shared_task(
         description,
         status,
         priority,
+        assignee_id,
+        due_date,
+        parent_workspace_id: _, // Ignored - not stored in shared_tasks
+        image_ids: _,          // Ignored - not stored in shared_tasks
     } = payload;
 
     let next_title = title.as_deref().unwrap_or(existing.title.as_str());
@@ -236,6 +240,8 @@ pub async fn update_shared_task(
         description,
         status,
         priority,
+        assignee_user_id: assignee_id,
+        due_date,
         acting_user_id: ctx.user.id,
     };
 
@@ -423,6 +429,13 @@ pub struct UpdateSharedTaskRequest {
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
     pub priority: Option<i32>,
+    pub assignee_id: Option<Uuid>,
+    pub due_date: Option<String>,
+    // Ignored fields (sent by frontend but not stored in shared_tasks)
+    #[serde(default)]
+    pub parent_workspace_id: Option<String>,
+    #[serde(default)]
+    pub image_ids: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
