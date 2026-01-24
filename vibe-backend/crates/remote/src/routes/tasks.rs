@@ -25,7 +25,7 @@ use crate::{
         task_document_links::TaskDocumentLinkRepository,
         task_tags::TaskTagRepository,
         tasks::{
-            AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTask, SharedTaskError,
+            AssignTaskData, CreateSharedTaskData, DeleteTaskData, MoveTaskData, SharedTask, SharedTaskError,
             SharedTaskRepository, SharedTaskWithUser, TaskStatus, UpdateSharedTaskData,
             ensure_text_size,
         },
@@ -41,6 +41,7 @@ pub fn router() -> Router<AppState> {
         .route("/tasks/{task_id}", patch(update_shared_task).put(update_shared_task))
         .route("/tasks/{task_id}", delete(delete_shared_task))
         .route("/tasks/{task_id}/assign", post(assign_task))
+        .route("/tasks/{task_id}/move", post(move_shared_task))
         .route(
             "/tasks/{task_id}/comments",
             get(get_task_comments).post(create_task_comment),
@@ -300,6 +301,55 @@ pub async fn assign_task(
 }
 
 #[instrument(
+    name = "tasks.move_shared_task",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, task_id = %task_id, org_id = tracing::field::Empty)
+)]
+pub async fn move_shared_task(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(task_id): Path<Uuid>,
+    Json(payload): Json<MoveSharedTaskRequest>,
+) -> Response {
+    let pool = state.pool();
+    let _organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
+
+    // Verify user has access to the new project
+    let _new_org_id = match ensure_project_access(pool, ctx.user.id, payload.project_id).await {
+        Ok(org_id) => org_id,
+        Err(error) => return error.into_response(),
+    };
+
+    let repo = SharedTaskRepository::new(pool);
+
+    let _existing = match repo.find_by_id(task_id).await {
+        Ok(Some(task)) => task,
+        Ok(None) => {
+            return task_error_response(SharedTaskError::NotFound, "shared task not found");
+        }
+        Err(error) => {
+            return task_error_response(error, "failed to load shared task");
+        }
+    };
+
+    let data = MoveTaskData {
+        new_project_id: payload.project_id,
+        acting_user_id: ctx.user.id,
+    };
+
+    match repo.move_task(task_id, data).await {
+        Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
+        Err(error) => task_error_response(error, "failed to move shared task"),
+    }
+}
+
+#[instrument(
     name = "tasks.delete_shared_task",
     skip(state, ctx),
     fields(user_id = %ctx.user.id, task_id = %task_id, org_id = tracing::field::Empty)
@@ -383,6 +433,11 @@ pub struct UpdateSharedTaskRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssignSharedTaskRequest {
     pub new_assignee_user_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MoveSharedTaskRequest {
+    pub project_id: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
