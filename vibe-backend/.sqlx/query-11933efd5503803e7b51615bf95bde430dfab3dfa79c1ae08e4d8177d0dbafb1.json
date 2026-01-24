@@ -1,0 +1,125 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE task_executions\n            SET status = $2, updated_at = NOW()\n            WHERE id = $1 AND deleted_at IS NULL\n            RETURNING\n                id, task_id, project_id, organization_id,\n                status, initiated_by, execution_mode,\n                max_attempts, current_attempt,\n                max_duration_seconds, max_tokens,\n                result_summary, error_message,\n                created_at, updated_at, started_at, completed_at, deleted_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "task_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "organization_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "initiated_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "execution_mode",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "max_attempts",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "current_attempt",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "max_duration_seconds",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "max_tokens",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "result_summary",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "error_message",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "started_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 16,
+        "name": "completed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 17,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "11933efd5503803e7b51615bf95bde430dfab3dfa79c1ae08e4d8177d0dbafb1"
+}

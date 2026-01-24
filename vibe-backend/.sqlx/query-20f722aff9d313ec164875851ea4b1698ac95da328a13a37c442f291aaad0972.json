@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE execution_approvals\n            SET status = 'expired'\n            WHERE status = 'pending' AND expires_at IS NOT NULL AND expires_at < NOW()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "20f722aff9d313ec164875851ea4b1698ac95da328a13a37c442f291aaad0972"
+}

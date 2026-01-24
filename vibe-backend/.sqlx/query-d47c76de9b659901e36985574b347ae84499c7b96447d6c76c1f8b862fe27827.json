@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE ai_sessions\n            SET status = 'completed', ended_at = NOW(), updated_at = NOW()\n            WHERE id = $1 AND deleted_at IS NULL\n            RETURNING\n                id, organization_id, user_id, project_id,\n                name, session_type, status,\n                working_directory, git_branch, git_commit,\n                config,\n                created_at, updated_at, last_activity_at, ended_at, deleted_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "session_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "working_directory",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "git_branch",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "git_commit",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "config",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "last_activity_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "ended_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "d47c76de9b659901e36985574b347ae84499c7b96447d6c76c1f8b862fe27827"
+}

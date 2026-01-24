@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE team_members\n                SET\n                    email = $3,\n                    display_name = COALESCE($4, display_name),\n                    avatar_url = COALESCE($5, avatar_url),\n                    updated_at = NOW()\n                WHERE id = $1 AND team_id = $2\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1187feb74d2aab9ef13dc5a8ceaf6a65698eb0e7fd65d82b37e9de64b14cc3bb"
+}

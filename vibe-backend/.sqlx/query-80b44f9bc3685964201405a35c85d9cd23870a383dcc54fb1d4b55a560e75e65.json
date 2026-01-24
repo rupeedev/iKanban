@@ -11,7 +11,22 @@
       {
         "ordinal": 1,
         "name": "notification_type!: InboxNotificationType",
-        "type_info": "Text"
+        "type_info": {
+          "Custom": {
+            "name": "inbox_notification_type",
+            "kind": {
+              "Enum": [
+                "task_assigned",
+                "task_mentioned",
+                "task_comment",
+                "task_status_changed",
+                "task_completed",
+                "workspace_created",
+                "system_notification"
+              ]
+            }
+          }
+        }
       },
       {
         "ordinal": 2,

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT encrypted_key\n            FROM ai_provider_keys\n            WHERE tenant_workspace_id = $1 AND provider = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "encrypted_key",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0345bcb34ae26c254e4112417d19191c81cbe5bb56e300e8c61f83744b3c77fb"
+}

@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                ai_provider AS \"ai_provider!\",\n                ai_model AS \"ai_model!\",\n                COALESCE(SUM(input_tokens), 0)::bigint AS \"input_tokens!\",\n                COALESCE(SUM(output_tokens), 0)::bigint AS \"output_tokens!\",\n                COALESCE(SUM(total_cost_microdollars), 0)::bigint AS \"total_cost_microdollars!\",\n                COUNT(*) AS \"request_count!\"\n            FROM ai_usage_records\n            WHERE organization_id = $1 AND billing_period = $2\n            GROUP BY ai_provider, ai_model\n            ORDER BY COALESCE(SUM(total_cost_microdollars), 0) DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ai_provider!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "ai_model!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "input_tokens!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "output_tokens!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "total_cost_microdollars!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "request_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "0ee9bba104a2e880095b44de79cfb1efd93244a5c5e48dab188b4f5ef9f6054b"
+}
