@@ -31,6 +31,24 @@ Work on: $ARGUMENTS
 
 ---
 
+## 🛑 MANDATORY - COMPLETE BEFORE ANY CODE
+
+**STOP. Copy this checklist into your response and complete it FIRST:**
+
+```
+## Pre-Code Checklist
+- [ ] 1. Read .claude/FILE-MAP.md (find exact file paths)
+- [ ] 2. Task type: QUICK (fix/bug/typo) or FEATURE (add/implement/new)?
+- [ ] 3. Created task in iKanban: IKA-___
+- [ ] 4. Created feature branch: git checkout -b <fix|feature>/IKA-___-<name>
+```
+
+**⛔ DO NOT write any code until ALL boxes are checked with [x]**
+
+**After code changes, MUST spawn 4 validation agents (Quality, Test, Review, Security) BEFORE merge.**
+
+---
+
 > [!IMPORTANT]
 > ## GitHub Actions Adaptation
 > 
