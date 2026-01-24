@@ -219,4 +219,54 @@ impl CopilotAssignmentRepository {
 
         Ok(())
     }
+
+    /// Find an active (non-completed, non-failed) assignment for a task
+    /// Used for deduplication - prevents creating duplicate GitHub issues
+    pub async fn find_active_by_task_id(
+        pool: &PgPool,
+        task_id: Uuid,
+    ) -> Result<Option<CopilotAssignment>, sqlx::Error> {
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                id,
+                task_id,
+                github_issue_id,
+                github_issue_url,
+                github_pr_id,
+                github_pr_url,
+                github_repo_owner,
+                github_repo_name,
+                status,
+                prompt,
+                error_message,
+                created_at,
+                completed_at
+            FROM copilot_assignments
+            WHERE task_id = $1
+              AND status NOT IN ('failed', 'completed')
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+            task_id
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(row.map(|r| CopilotAssignment {
+            id: r.id,
+            task_id: r.task_id,
+            github_issue_id: r.github_issue_id,
+            github_issue_url: r.github_issue_url,
+            github_pr_id: r.github_pr_id,
+            github_pr_url: r.github_pr_url,
+            github_repo_owner: r.github_repo_owner,
+            github_repo_name: r.github_repo_name,
+            status: CopilotAssignmentStatus::parse(&r.status),
+            prompt: r.prompt,
+            error_message: r.error_message,
+            created_at: r.created_at,
+            completed_at: r.completed_at,
+        }))
+    }
 }

@@ -254,6 +254,15 @@ pub async fn trigger_copilot_assignment(
 ) -> Result<crate::db::copilot_assignments::CopilotAssignment, String> {
     use crate::db::{project_repos::ProjectRepoRepository};
 
+    // Deduplication: Check if an active assignment already exists for this task
+    if let Ok(Some(existing)) = CopilotAssignmentRepository::find_active_by_task_id(pool, task_id).await {
+        tracing::info!(
+            "Skipping Copilot assignment - active assignment {} already exists for task {} (status: {:?})",
+            existing.id, task_id, existing.status
+        );
+        return Ok(existing);
+    }
+
     let repo = SharedTaskRepository::new(pool);
     let task = repo
         .find_any_task_by_id(task_id)
@@ -368,6 +377,15 @@ pub async fn trigger_claude_assignment(
     prompt: String,
 ) -> Result<crate::db::copilot_assignments::CopilotAssignment, String> {
     use crate::db::{project_repos::ProjectRepoRepository};
+
+    // Deduplication: Check if an active assignment already exists for this task
+    if let Ok(Some(existing)) = CopilotAssignmentRepository::find_active_by_task_id(pool, task_id).await {
+        tracing::info!(
+            "Skipping Claude assignment - active assignment {} already exists for task {} (status: {:?})",
+            existing.id, task_id, existing.status
+        );
+        return Ok(existing);
+    }
 
     let repo = SharedTaskRepository::new(pool);
     let task = repo
