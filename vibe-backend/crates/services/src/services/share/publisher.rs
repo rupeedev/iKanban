@@ -72,6 +72,7 @@ impl SharePublisher {
             title: Some(task.title.clone()),
             description: task.description.clone(),
             status: Some(status::to_remote(&task.status)),
+            priority: task.priority,
         };
 
         self.client

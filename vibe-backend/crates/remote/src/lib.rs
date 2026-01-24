@@ -5,6 +5,7 @@ pub mod config;
 pub mod db;
 pub mod github_app;
 pub mod mail;
+pub mod mcp;
 pub mod middleware;
 pub mod r2;
 pub mod routes;

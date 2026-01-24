@@ -1,6 +1,11 @@
-use std::{future::Future, str::FromStr};
+//! Core MCP task server implementation
+//!
+//! This module provides the TaskServer struct and core task management tools.
+//! Additional tools are implemented in sibling modules (teams, documents, folders, comments).
 
-use db::models::{
+use std::str::FromStr;
+
+use db_crate::models::{
     project::Project,
     repo::Repo,
     tag::Tag,
@@ -21,10 +26,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json;
 use uuid::Uuid;
 
-use crate::routes::{
-    containers::ContainerQuery,
-    task_attempts::{CreateTaskAttemptBody, WorkspaceRepoInput},
-};
+use super::types::{ApiResponseEnvelope, ContainerQuery, CreateTaskAttemptBody, WorkspaceRepoInput};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {
@@ -378,29 +380,28 @@ impl TaskServer {
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct ApiResponseEnvelope<T> {
-    success: bool,
-    data: Option<T>,
-    message: Option<String>,
-}
-
 impl TaskServer {
-    fn success<T: Serialize>(data: &T) -> Result<CallToolResult, ErrorData> {
+    /// Get the reqwest client (for use by other MCP modules)
+    pub fn client(&self) -> &reqwest::Client {
+        &self.client
+    }
+
+    pub fn success<T: Serialize>(data: &T) -> Result<CallToolResult, ErrorData> {
         Ok(CallToolResult::success(vec![Content::text(
             serde_json::to_string_pretty(data)
                 .unwrap_or_else(|_| "Failed to serialize response".to_string()),
         )]))
     }
 
-    fn err_value(v: serde_json::Value) -> Result<CallToolResult, ErrorData> {
+    #[allow(dead_code)]
+    pub fn err_value(v: serde_json::Value) -> Result<CallToolResult, ErrorData> {
         Ok(CallToolResult::error(vec![Content::text(
             serde_json::to_string_pretty(&v)
                 .unwrap_or_else(|_| "Failed to serialize error".to_string()),
         )]))
     }
 
-    fn err<S: Into<String>>(msg: S, details: Option<S>) -> Result<CallToolResult, ErrorData> {
+    pub fn err<S: Into<String>>(msg: S, details: Option<S>) -> Result<CallToolResult, ErrorData> {
         let mut v = serde_json::json!({"success": false, "error": msg.into()});
         if let Some(d) = details {
             v["details"] = serde_json::json!(d.into());
@@ -408,7 +409,7 @@ impl TaskServer {
         Self::err_value(v)
     }
 
-    async fn send_json<T: DeserializeOwned>(
+    pub async fn send_json<T: DeserializeOwned>(
         &self,
         rb: reqwest::RequestBuilder,
     ) -> Result<T, CallToolResult> {
@@ -438,7 +439,7 @@ impl TaskServer {
             .ok_or_else(|| Self::err("VK API response missing data field", None).unwrap())
     }
 
-    fn url(&self, path: &str) -> String {
+    pub fn url(&self, path: &str) -> String {
         format!(
             "{}/{}",
             self.base_url.trim_end_matches('/'),
@@ -836,10 +837,21 @@ impl TaskServer {
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
-        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`.. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_workspace_session', 'get_task', 'update_task', 'delete_task', 'list_repos'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string();
+        let mut instruction = concat!(
+            "A task and project management server for iKanban. ",
+            "TOOLS BY CATEGORY: ",
+            "TEAMS: 'list_teams' (get all teams), 'list_issues' (issues by team identifier like IKA), ",
+            "'get_issue_by_key' (IKA-123 format), 'update_issue_by_key'. ",
+            "TASKS: 'list_projects', 'list_tasks' (by project_id), 'create_task', 'get_task', 'update_task', 'delete_task'. ",
+            "DOCUMENTS: 'list_documents', 'get_document', 'create_document', 'update_document', 'delete_document'. ",
+            "FOLDERS: 'list_folders', 'get_folder', 'create_folder', 'update_folder', 'delete_folder'. ",
+            "COMMENTS: 'list_comments', 'add_comment' (accepts IKA-123 or UUID). ",
+            "REPOS: 'list_repos'. WORKSPACES: 'start_workspace_session'. ",
+            "Use team identifiers (IKA, BLA) or issue keys (IKA-123) where supported."
+        ).to_string();
         if self.context.is_some() {
-            let context_instruction = "Use 'get_context' to fetch project/task/workspace metadata for the active Vibe Kanban workspace session when available.";
-            instruction = format!("{} {}", context_instruction, instruction);
+            let context_instruction = "Use 'get_context' to fetch project/task/workspace metadata for the active Vibe Kanban workspace session when available. ";
+            instruction = format!("{}{}", context_instruction, instruction);
         }
 
         ServerInfo {
@@ -847,7 +859,7 @@ impl ServerHandler for TaskServer {
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             server_info: Implementation {
                 name: "vibe-kanban".to_string(),
-                version: "1.0.0".to_string(),
+                version: "2.0.0".to_string(),
             },
             instructions: Some(instruction),
         }

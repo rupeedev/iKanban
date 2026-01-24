@@ -15,7 +15,7 @@ use rmcp::{
         stdio,
     },
 };
-use server::mcp::task_server::TaskServer;
+use remote::mcp::TaskServer;
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};

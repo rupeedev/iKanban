@@ -306,10 +306,33 @@ GitHub Actions → Docker Hub → Railway
 
 ## MCP Server Configuration
 
-### Priority Order
+### Architecture (IKA-271)
 
-1. **ikanban-local** (preferred) - Uses local stdio, faster, works offline
-2. **ikanban-remote** (fallback) - Uses HTTPS, requires API key, works anywhere
+**Single MCP Implementation:** MCP is consolidated in `crates/remote/src/mcp/`:
+- `task_server.rs` - Core TaskServer and task/project tools
+- `teams.rs` - Team/issue operations with IKA-123 format support
+- `documents.rs` - Document CRUD
+- `folders.rs` - Folder CRUD
+- `comments.rs` - Comment operations
+- `types.rs` - Shared types
+
+**Binary:** `crates/server/src/bin/mcp_task_server.rs` - supports both transports
+
+### Available Tools (22 total)
+
+| Category | Tools |
+|----------|-------|
+| Teams | `list_teams`, `list_issues`, `get_issue_by_key`, `update_issue_by_key` |
+| Tasks | `list_projects`, `list_tasks`, `create_task`, `get_task`, `update_task`, `delete_task` |
+| Documents | `list_documents`, `get_document`, `create_document`, `update_document`, `delete_document` |
+| Folders | `list_folders`, `get_folder`, `create_folder`, `update_folder`, `delete_folder` |
+| Comments | `list_comments`, `add_comment` |
+| Other | `list_repos`, `start_workspace_session`, `get_context` |
+
+### Transport Modes
+
+1. **stdio (local)** - Set `MCP_TRANSPORT=stdio` or omit (default)
+2. **SSE (remote)** - Set `MCP_TRANSPORT=sse`, served at `https://mcp.scho1ar.com/sse`
 
 ### Local MCP Server (ikanban-local)
 

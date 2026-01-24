@@ -217,6 +217,24 @@
 | OAuth Validator | `src/auth/oauth_token_validator.rs` | Token validation |
 | Handoff | `src/auth/handoff.rs` | Auth handoff |
 
+#### MCP Server (crates/remote/src/mcp/)
+
+| File | Path | Purpose |
+|------|------|---------|
+| Module | `src/mcp/mod.rs` | MCP module exports |
+| TaskServer | `src/mcp/task_server.rs` | Core MCP server, task/project tools |
+| Types | `src/mcp/types.rs` | Shared request/response types |
+| Teams | `src/mcp/teams.rs` | Team/issue tools (IKA-123 format) |
+| Documents | `src/mcp/documents.rs` | Document CRUD tools |
+| Folders | `src/mcp/folders.rs` | Folder CRUD tools |
+| Comments | `src/mcp/comments.rs` | Comment tools |
+
+#### MCP Binary (crates/server/src/bin/)
+
+| File | Path | Purpose |
+|------|------|---------|
+| MCP Server | `src/bin/mcp_task_server.rs` | MCP server binary (stdio/SSE) |
+
 #### DB (crates/remote/src/db/)
 
 | File | Path | Purpose |
@@ -287,6 +305,12 @@
 ### Backend API
 - Tasks API: `crates/remote/src/routes/tasks.rs`
 - DB queries: `crates/remote/src/db/tasks.rs`
+
+### MCP Server
+- Core MCP: `crates/remote/src/mcp/task_server.rs`
+- Team/Issues: `crates/remote/src/mcp/teams.rs`
+- Documents: `crates/remote/src/mcp/documents.rs`
+- Binary: `crates/server/src/bin/mcp_task_server.rs`
 
 ---
 
