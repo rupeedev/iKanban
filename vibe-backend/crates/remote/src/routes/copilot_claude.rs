@@ -601,6 +601,19 @@ async fn create_github_issue_for_claude(
     repo_owner: &str,
     repo_name: &str,
 ) -> Result<(), String> {
+    // Strip @claude mention from prompt to avoid duplication in issue body
+    // Case-insensitive replacement using simple string manipulation
+    let clean_prompt = {
+        let lower = prompt.to_lowercase();
+        if let Some(pos) = lower.find("@claude") {
+            let before = &prompt[..pos];
+            let after = &prompt[pos + 7..]; // "@claude" is 7 chars
+            format!("{}{}", before, after.trim_start())
+        } else {
+            prompt.to_string()
+        }
+    }.trim().to_string();
+    
     let issue_title = format!("[Claude] Task: {}", task_title);
     let issue_body = format!(
         "## Task\n{}\n\n## Description\n{}\n\n## Claude Instructions\n@claude {}\n\n---\n\
@@ -608,7 +621,7 @@ async fn create_github_issue_for_claude(
         <!-- ikanban-metadata\ntask_id: {}\nassignment_id: {}\n-->",
         task_title,
         task_description.unwrap_or("No description provided"),
-        prompt,
+        clean_prompt,
         task_id,
         assignment_id
     );
