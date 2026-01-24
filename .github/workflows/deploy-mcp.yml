@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
     paths:
       - "vibe-backend/crates/server/src/bin/mcp_task_server.rs"
-      - "vibe-backend/crates/server/src/mcp/**"
+      - "vibe-backend/crates/remote/src/mcp/**"
       - "vibe-backend/Dockerfile.mcp"
       - ".github/workflows/deploy-mcp.yml"
   workflow_dispatch:
