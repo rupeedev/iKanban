@@ -54,8 +54,11 @@ jobs:
             1. Classify task: fix/bug/typo → QUICK, add/implement/new → FEATURE
             2. Create feature branch: git checkout -b <type>/issue-<number>-<desc>
             3. Implement following the ikanban-fullstack-dev workflow
-            4. Run validations: pnpm lint, cargo check, cargo clippy, npx playwright test
+            4. Run validations: pnpm lint, cargo check, cargo clippy
             5. Commit and push to feature branch
-            6. NEVER merge to main - deployment happens on PR merge
+            6. CREATE A PR using: gh pr create --title "<type>: <desc>" --body "Fixes #<issue-number>"
+            7. NEVER merge to main - deployment happens on PR merge
+
+            IMPORTANT: Always create a PR after pushing. Use gh CLI to create the PR.
 
             Now proceed with the task from the issue/comment.
