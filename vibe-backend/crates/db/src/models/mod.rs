@@ -28,6 +28,7 @@ pub mod project_repo;
 pub mod repo;
 pub mod scratch;
 pub mod session;
+pub mod sso_configuration;
 pub mod tag;
 pub mod task;
 pub mod task_comment;
