@@ -270,11 +270,11 @@ pub async fn trigger_copilot_assignment(
     // Step 2: Determine Repository (Project Level > Workspace Level)
     let (repo_owner, repo_name) = match ProjectRepoRepository::list_by_project(pool, task.project_id).await {
         Ok(repos) if !repos.is_empty() => {
-            // Use the first linked project repo
+            // Use the first linked project repo - display_name is in 'owner/repo' format
             let repo = &repos[0];
-            let parts: Vec<&str> = repo.path.split('/').collect();
+            let parts: Vec<&str> = repo.display_name.split('/').collect();
             if parts.len() != 2 {
-                return Err(format!("Invalid repo path format: {}", repo.path));
+                return Err(format!("Invalid repo display_name format: {}", repo.display_name));
             }
             (parts[0].to_string(), parts[1].to_string())
         }
@@ -385,11 +385,11 @@ pub async fn trigger_claude_assignment(
     // Step 2: Determine Repository (Project Level > Workspace Level)
     let (repo_owner, repo_name) = match ProjectRepoRepository::list_by_project(pool, task.project_id).await {
         Ok(repos) if !repos.is_empty() => {
-            // Use the first linked project repo
+            // Use the first linked project repo - display_name is in 'owner/repo' format
             let repo = &repos[0];
-            let parts: Vec<&str> = repo.path.split('/').collect();
+            let parts: Vec<&str> = repo.display_name.split('/').collect();
             if parts.len() != 2 {
-                return Err(format!("Invalid repo path format: {}", repo.path));
+                return Err(format!("Invalid repo display_name format: {}", repo.display_name));
             }
             (parts[0].to_string(), parts[1].to_string())
         }
