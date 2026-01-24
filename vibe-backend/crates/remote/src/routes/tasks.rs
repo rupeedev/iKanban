@@ -529,69 +529,6 @@ pub async fn create_task_comment(
 
     match TaskCommentRepository::create(pool, task_id, &create_data).await {
         Ok(comment) => {
-            // Check for @claude mention to trigger assignment
-            if comment.content.to_lowercase().contains("@claude") {
-                let pool_clone = pool.clone();
-                let task_id = task_id;
-                let user_id = ctx.user.id;
-                let prompt = comment.content.clone();
-                
-                tokio::spawn(async move {
-                    if let Err(e) = super::copilot_claude::trigger_claude_assignment(
-                        &pool_clone,
-                        task_id,
-                        user_id,
-                        prompt,
-                    )
-                    .await
-                    {
-                        tracing::error!("Failed to trigger Claude assignment from comment: {}", e);
-                    }
-                });
-            }
-
-            // Check for @copilot mention to trigger assignment
-            if comment.content.to_lowercase().contains("@copilot") {
-                let pool_clone = pool.clone();
-                let task_id = task_id;
-                let user_id = ctx.user.id;
-                let prompt = comment.content.clone();
-                
-                tokio::spawn(async move {
-                    if let Err(e) = super::copilot_claude::trigger_copilot_assignment(
-                        &pool_clone,
-                        task_id,
-                        user_id,
-                        prompt,
-                    )
-                    .await
-                    {
-                        tracing::error!("Failed to trigger Copilot assignment from comment: {}", e);
-                    }
-                });
-            }
-
-            // Check for @gemini mention to trigger assignment
-            if comment.content.to_lowercase().contains("@gemini") {
-                let pool_clone = pool.clone();
-                let task_id = task_id;
-                let user_id = ctx.user.id;
-                let prompt = comment.content.clone();
-                
-                tokio::spawn(async move {
-                    if let Err(e) = super::copilot_claude::trigger_gemini_assignment(
-                        &pool_clone,
-                        task_id,
-                        user_id,
-                        prompt,
-                    )
-                    .await
-                    {
-                        tracing::error!("Failed to trigger Gemini assignment from comment: {}", e);
-                    }
-                });
-            }
-
             (StatusCode::CREATED, ApiResponse::success(comment)).into_response()
         }
         Err(e) => {
