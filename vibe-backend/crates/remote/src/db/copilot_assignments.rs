@@ -399,4 +399,28 @@ impl CopilotAssignmentRepository {
 
         Ok(())
     }
+
+    /// Update assignment with PR info
+    pub async fn update_with_pr(
+        pool: &PgPool,
+        id: Uuid,
+        pr_id: i64,
+        pr_url: &str,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"
+            UPDATE copilot_assignments
+            SET github_pr_id = $2,
+                github_pr_url = $3
+            WHERE id = $1
+            "#,
+            id,
+            pr_id,
+            pr_url
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
 }

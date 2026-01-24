@@ -1206,3 +1206,65 @@ async fn assign_issue_to_claude(
 
     Ok(())
 }
+
+// ============================================================================
+// PR Registration Endpoint
+// ============================================================================
+
+/// Request to register a PR for an assignment
+#[derive(Debug, Clone, Deserialize)]
+pub struct RegisterPrRequest {
+    pub pr_number: i64,
+    pub pr_url: String,
+}
+
+/// Register a PR for a copilot/claude assignment
+/// Called by Claude Code Action after creating a PR
+#[instrument(
+    name = "assignments.register_pr",
+    skip(state, payload),
+    fields(task_id = %task_id, assignment_id = %assignment_id)
+)]
+pub async fn register_pr(
+    State(state): State<AppState>,
+    Path((task_id, assignment_id)): Path<(Uuid, Uuid)>,
+    Json(payload): Json<RegisterPrRequest>,
+) -> Response {
+    let pool = state.pool();
+
+    tracing::info!(
+        task_id = %task_id,
+        assignment_id = %assignment_id,
+        pr_number = payload.pr_number,
+        pr_url = %payload.pr_url,
+        "Registering PR for assignment"
+    );
+
+    // Update the assignment with PR info
+    if let Err(e) = CopilotAssignmentRepository::update_with_pr(
+        pool,
+        assignment_id,
+        payload.pr_number,
+        &payload.pr_url,
+    )
+    .await
+    {
+        tracing::error!(?e, "Failed to update assignment with PR info");
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"success": false, "message": "Failed to register PR"})),
+        )
+            .into_response();
+    }
+
+    (
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "message": "PR registered successfully",
+            "assignment_id": assignment_id,
+            "pr_number": payload.pr_number
+        })),
+    )
+        .into_response()
+}

@@ -79,6 +79,11 @@ pub fn router() -> Router<AppState> {
             get(super::copilot_claude::get_gemini_assignments)
                 .post(super::copilot_claude::assign_task_to_gemini),
         )
+        // PR registration endpoint (called by Claude/Copilot when PR is created)
+        .route(
+            "/tasks/{task_id}/assignments/{assignment_id}/pr",
+            post(super::copilot_claude::register_pr),
+        )
 }
 
 #[derive(Debug, Deserialize, TS)]
