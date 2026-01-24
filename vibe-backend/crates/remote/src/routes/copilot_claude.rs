@@ -463,6 +463,100 @@ pub async fn trigger_claude_assignment(
     Ok(assignment)
 }
 
+/// Trigger a Gemini assignment from a prompt
+pub async fn trigger_gemini_assignment(
+    pool: &sqlx::PgPool,
+    task_id: Uuid,
+    _user_id: Uuid,
+    prompt: String,
+) -> Result<crate::db::copilot_assignments::CopilotAssignment, String> {
+    use crate::db::{project_repos::ProjectRepoRepository};
+
+    // Deduplication: Check if an active assignment already exists for this task
+    if let Ok(Some(existing)) = CopilotAssignmentRepository::find_active_by_task_id(pool, task_id).await {
+        tracing::info!(
+            "Skipping Gemini assignment - active assignment {} already exists for task {} (status: {:?})",
+            existing.id, task_id, existing.status
+        );
+        return Ok(existing);
+    }
+
+    let repo = SharedTaskRepository::new(pool);
+    let task = repo
+        .find_any_task_by_id(task_id)
+        .await
+        .map_err(|e| format!("database error: {}", e))?
+        .ok_or_else(|| "task not found".to_string())?;
+
+    // Step 1: Get Access Token (Workspace Level)
+    let connection = GitHubConnectionRepository::find_workspace_connection(pool)
+        .await
+        .map_err(|e| format!("database error: {}", e))?
+        .ok_or_else(|| "No GitHub connection configured. Please add a GitHub connection in Settings.".to_string())?;
+
+    // Step 2: Determine Repository (Project Level > Workspace Level)
+    let (repo_owner, repo_name) = match ProjectRepoRepository::list_by_project(pool, task.project_id).await {
+        Ok(repos) if !repos.is_empty() => {
+            // Use the first linked project repo - display_name is in 'owner/repo' format
+            let repo = &repos[0];
+            let parts: Vec<&str> = repo.display_name.split('/').collect();
+            if parts.len() != 2 {
+                return Err(format!("Invalid repo display_name format: {}", repo.display_name));
+            }
+            (parts[0].to_string(), parts[1].to_string())
+        }
+        _ => {
+            // Fallback to workspace connection repos
+            let repos = GitHubRepositoryOps::find_by_connection_id(pool, connection.id)
+                .await
+                .map_err(|e| format!("database error: {}", e))?;
+
+            let github_repo = repos
+                .first()
+                .ok_or_else(|| "No GitHub repository linked. Please add a repository in Settings → GitHub.".to_string())?;
+            
+            (github_repo.repo_owner.clone(), github_repo.repo_name.clone())
+        }
+    };
+
+    let assignment = CopilotAssignmentRepository::create_copilot(
+        pool,
+        task_id,
+        &prompt,
+        Some(&repo_owner),
+        Some(&repo_name),
+    )
+    .await
+    .map_err(|e| format!("failed to create assignment: {}", e))?;
+
+    let pool_clone = pool.clone();
+    let assignment_id = assignment.id;
+    let task_title = task.title.clone();
+    let task_description = task.description.clone();
+    let prompt = prompt.clone();
+    let access_token = connection.access_token.clone();
+
+    tokio::spawn(async move {
+        if let Err(e) = create_github_issue_for_gemini(
+            &pool_clone,
+            assignment_id,
+            task_id,
+            &task_title,
+            task_description.as_deref(),
+            &prompt,
+            &access_token,
+            &repo_owner,
+            &repo_name,
+        )
+        .await
+        {
+            tracing::error!("Failed to create GitHub issue for Gemini: {}", e);
+        }
+    });
+
+    Ok(assignment)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Background Tasks for GitHub Issue Creation
 // ─────────────────────────────────────────────────────────────────────────────
@@ -713,6 +807,143 @@ async fn create_github_issue_for_claude(
             Issue: [#{number}]({url})\n\
             Repository: {owner}/{name}\n\
             Status: Waiting for Claude to start work",
+            number = issue_response.number,
+            url = issue_response.html_url,
+            owner = repo_owner,
+            name = repo_name
+        );
+
+        let create_data = CreateTaskComment {
+            content: comment_content,
+            is_internal: false,
+            author_name: "GitHub Integration".to_string(),
+            author_email: None,
+            author_id: None,
+        };
+
+        if let Err(e) = TaskCommentRepository::create(pool, task_id, &create_data).await {
+            tracing::warn!("Failed to post callback comment: {}", e);
+        }
+
+        Ok(())
+    } else {
+        let status = response.status();
+        let error_body = response.text().await.unwrap_or_default();
+
+        tracing::error!("GitHub API error ({}): {}", status, error_body);
+
+        let error_message =
+            if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&error_body) {
+                error_json["message"]
+                    .as_str()
+                    .unwrap_or("Unknown error")
+                    .to_string()
+            } else {
+                format!("GitHub API error: {}", status)
+            };
+
+        CopilotAssignmentRepository::update_with_error(pool, assignment_id, &error_message)
+            .await
+            .ok();
+
+        Err(error_message)
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn create_github_issue_for_gemini(
+    pool: &sqlx::PgPool,
+    assignment_id: Uuid,
+    task_id: Uuid,
+    task_title: &str,
+    task_description: Option<&str>,
+    prompt: &str,
+    access_token: &str,
+    repo_owner: &str,
+    repo_name: &str,
+) -> Result<(), String> {
+    // Strip @gemini mention from prompt to avoid duplication in issue body
+    let clean_prompt = {
+        let lower = prompt.to_lowercase();
+        if let Some(pos) = lower.find("@gemini") {
+            let before = &prompt[..pos];
+            let after = &prompt[pos + 7..]; // "@gemini" is 7 chars
+            format!("{}{}", before, after.trim_start())
+        } else {
+            prompt.to_string()
+        }
+    }.trim().to_string();
+    
+    let issue_title = format!("[Gemini] Task: {}", task_title);
+    let issue_body = format!(
+        "## Task\n{}\n\n## Description\n{}\n\n## Gemini Instructions\n@gemini {}\n\n---\n\
+        *Created by iKanban @gemini integration*\n\n\
+        <!-- ikanban-metadata\ntask_id: {}\nassignment_id: {}\n-->",
+        task_title,
+        task_description.unwrap_or("No description provided"),
+        clean_prompt,
+        task_id,
+        assignment_id
+    );
+
+    let url = format!(
+        "https://api.github.com/repos/{}/{}/issues",
+        repo_owner, repo_name
+    );
+
+    let body = serde_json::json!({
+        "title": issue_title,
+        "body": issue_body,
+        "labels": ["gemini", "automated"]
+    });
+
+    tracing::info!(
+        "Creating GitHub issue for Gemini assignment {} in {}/{}",
+        assignment_id,
+        repo_owner,
+        repo_name
+    );
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("User-Agent", "iKanban-Gemini")
+        .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("GitHub API request failed: {}", e))?;
+
+    if response.status().is_success() {
+        let issue_response: GitHubIssueResponse = response
+            .json()
+            .await
+            .map_err(|e| format!("Failed to parse GitHub response: {}", e))?;
+
+        tracing::info!(
+            "Created GitHub issue #{} for Gemini assignment {}",
+            issue_response.number,
+            assignment_id
+        );
+
+        CopilotAssignmentRepository::update_with_issue(
+            pool,
+            assignment_id,
+            issue_response.id,
+            &issue_response.html_url,
+            "issue_created",
+        )
+        .await
+        .map_err(|e| format!("Failed to update assignment: {}", e))?;
+
+        let comment_content = format!(
+            "🎫 **GitHub Issue Created**\n\n\
+            Agent: Gemini\n\
+            Issue: [#{number}]({url})\n\
+            Repository: {owner}/{name}\n\
+            Status: Waiting for Gemini to start work",
             number = issue_response.number,
             url = issue_response.html_url,
             owner = repo_owner,
