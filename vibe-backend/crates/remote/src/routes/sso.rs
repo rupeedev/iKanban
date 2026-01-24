@@ -4,10 +4,10 @@
 
 use axum::{
     Extension, Json, Router,
-    extract::{Path, Query, State},
-    http::{HeaderMap, StatusCode},
+    extract::{Path, State},
+    http::StatusCode,
     response::{Html, IntoResponse, Response},
-    routing::{delete, get, post, put},
+    routing::{get, post},
 };
 use base64::{Engine as _, engine::general_purpose};
 use db_crate::models::sso_configuration::{
@@ -22,7 +22,6 @@ use crate::{
     AppState,
     auth::{
         ClerkRequestContext, JitProvisioningService, SamlServiceProvider, parse_saml_response,
-        require_clerk_session,
     },
 };
 

@@ -270,34 +270,34 @@ impl JitProvisioningService {
         default_role: WorkspaceMemberRole,
     ) -> Result<ProvisionedUser> {
         // Check if user already exists in workspace
-        let existing_member = sqlx::query!(
+        let existing_member = sqlx::query_as::<_, (String, String)>(
             r#"
             SELECT user_id, role
             FROM tenant_workspace_members
             WHERE tenant_workspace_id = $1 AND email = $2
-            "#,
-            workspace_id,
-            &saml_attrs.email
+            "#
         )
+        .bind(workspace_id)
+        .bind(&saml_attrs.email)
         .fetch_optional(pool)
         .await?;
 
-        if let Some(member) = existing_member {
+        if let Some((user_id, role)) = existing_member {
             // User exists, update their profile if needed
-            Self::update_user_profile(pool, &member.user_id, saml_attrs).await?;
+            Self::update_user_profile(pool, &user_id, saml_attrs).await?;
 
             Ok(ProvisionedUser {
-                user_id: member.user_id,
+                user_id,
                 email: saml_attrs.email.clone(),
                 is_new: false,
-                role: member.role,
+                role,
             })
         } else {
             // Create new user via JIT provisioning
             let user_id = saml_attrs.name_id.clone();
             let display_name = saml_attrs.full_name().unwrap_or_else(|| saml_attrs.email.clone());
 
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 INSERT INTO tenant_workspace_members (
                     tenant_workspace_id, user_id, email, display_name, role
@@ -305,13 +305,13 @@ impl JitProvisioningService {
                 VALUES ($1, $2, $3, $4, $5)
                 ON CONFLICT (tenant_workspace_id, user_id) DO UPDATE
                 SET email = EXCLUDED.email, display_name = EXCLUDED.display_name
-                "#,
-                workspace_id,
-                &user_id,
-                &saml_attrs.email,
-                &display_name,
-                default_role.to_string()
+                "#
             )
+            .bind(workspace_id)
+            .bind(&user_id)
+            .bind(&saml_attrs.email)
+            .bind(&display_name)
+            .bind(default_role.to_string())
             .execute(pool)
             .await?;
 
@@ -332,16 +332,16 @@ impl JitProvisioningService {
     ) -> Result<()> {
         let display_name = saml_attrs.full_name().unwrap_or_else(|| saml_attrs.email.clone());
 
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE tenant_workspace_members
             SET display_name = $2, email = $3, updated_at = NOW()
             WHERE user_id = $1
-            "#,
-            user_id,
-            &display_name,
-            &saml_attrs.email
+            "#
         )
+        .bind(user_id)
+        .bind(&display_name)
+        .bind(&saml_attrs.email)
         .execute(pool)
         .await?;
 
