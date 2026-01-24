@@ -4,6 +4,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## 🛑 STOP - BEFORE ANY CODE CHANGE
+
+**Answer these questions FIRST (copy this checklist into your response):**
+
+```
+## Pre-Code Checklist
+- [ ] 1. Read FILE-MAP.md? (find file paths without exploration)
+- [ ] 2. Task type: QUICK (fix/bug) or FEATURE (add/implement)?
+- [ ] 3. Task created in iKanban? IKA-___
+- [ ] 4. Feature branch created? `git checkout -b <fix|feature>/IKA-___-<name>`
+```
+
+**DO NOT write any code until all boxes are checked.**
+
+After code changes, **MUST run validation agents** (Quality, Test, Review, Security) before merge.
+
+---
+
 ## ⚠️ MANDATORY - READ BEFORE ANY TASK
 
 **These documents MUST be read before starting any work:**
