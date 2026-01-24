@@ -638,6 +638,141 @@ Due to this bug, the following tables didn't exist on production:
 
 ---
 
+## Incident: Claude Code Action SDK Crash (2026-01-24)
+
+### What Happened
+
+The GitHub Actions Claude workflow started failing immediately after starting. All runs after January 21st crashed within ~700ms with exit code 1, while the last successful run (Issue #17) worked correctly.
+
+**Symptoms:**
+- Workflow starts, "Run Claude Code" step begins
+- Crashes within 700ms with SDK error
+- `is_error: true`, `num_turns: 1`, `duration_ms: 691`
+- No actual work performed (no branch created, no PR, no comments)
+
+### Root Cause
+
+**The `claude_args` parameter with `--allowedTools` flag was crashing the claude-code-action SDK.**
+
+On January 21st at 11:01, commit `605ffb32a` added this parameter to the workflow:
+
+```yaml
+# BROKEN - causes SDK crash:
+- name: Run Claude Code
+  uses: anthropics/claude-code-action@v1
+  with:
+    claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    claude_args: |
+      --allowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,TodoWrite"
+    prompt: |
+      ...
+```
+
+The working version (commit `2a73cd1cc` from January 18th) did NOT have this parameter:
+
+```yaml
+# WORKING - no claude_args:
+- name: Run Claude Code
+  uses: anthropics/claude-code-action@v1
+  with:
+    claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    prompt: |
+      ...
+```
+
+### Timeline
+
+| Date/Time | Commit | Change | Result |
+|-----------|--------|--------|--------|
+| Jan 18 22:02 | `2a73cd1cc` | Original workflow (no claude_args) | ✅ Works |
+| Jan 21 03:03 | - | Issue #17 runs successfully | ✅ 23 turns, $0.47 |
+| Jan 21 10:59 | `c7ef7607b` | Added `allowed_tools` (invalid param) | ❌ Likely failed |
+| Jan 21 11:01 | `605ffb32a` | Changed to `claude_args: --allowedTools` | ❌ Breaks SDK |
+| Jan 24 07:00+ | - | All subsequent runs | ❌ SDK crash in 700ms |
+| Jan 24 10:28 | `49d4e6ab3` | Removed `claude_args` | ✅ Fixed |
+
+### Comparison: Successful vs Failed Runs
+
+| Metric | Successful (Jan 21) | Failed (Jan 24) |
+|--------|---------------------|-----------------|
+| Duration | 108,122ms (~2 min) | 691ms |
+| Turns | 23 | 1 |
+| is_error | false | true |
+| Cost | $0.47 | $0 |
+| Result | Analyzed issue, posted comment | Immediate crash |
+
+### How It Was Fixed
+
+Removed the `claude_args` parameter from `.github/workflows/claude.yml`:
+
+```yaml
+# Commit 49d4e6ab3 - FIXED:
+- name: Run Claude Code
+  uses: anthropics/claude-code-action@v1
+  with:
+    claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    prompt: |
+      IMPORTANT: Before starting any work, read and follow IN ORDER:
+      ...
+```
+
+The action works correctly without explicit tool permissions - they are granted by default or through other means.
+
+### Investigation Process
+
+1. **Noticed pattern:** Recent workflows all failing, earlier ones succeeded
+2. **Compared logs:** Successful run showed `duration_ms: 108122`, failed showed `duration_ms: 691`
+3. **Found successful run:** Issue #17 on Jan 21 03:03 worked perfectly
+4. **Checked git history:** `git log --oneline -- .github/workflows/claude.yml`
+5. **Identified culprit:** Commit `605ffb32a` added `claude_args` after the successful run
+6. **Verified fix:** Removed parameter, new run continued past the crash point
+
+### Prevention Checklist
+
+When modifying the Claude Code GitHub Action:
+
+- [ ] **Test locally first** if possible, or create a test issue
+- [ ] **Don't add undocumented parameters** without verifying they work
+- [ ] **Compare with working version** if things break
+- [ ] **Check run duration** - instant crash (< 1 second) indicates configuration issue
+- [ ] **The action works fine with defaults** - don't add tool permissions unless necessary
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `.github/workflows/claude.yml` | Claude Code workflow configuration |
+| Issue #17 run logs | Example of successful run |
+| Commit `605ffb32a` | Where the breaking change was introduced |
+| Commit `49d4e6ab3` | The fix |
+
+### Debugging GitHub Action Failures
+
+**Symptom:** Claude Code action crashes immediately
+
+**Diagnosis:**
+```bash
+# Check recent runs
+gh run list --repo rupeedev/iKanban --workflow="Claude Code" --limit 10
+
+# Compare successful vs failed run logs
+gh run view <successful_run_id> --repo rupeedev/iKanban --log | grep -E "duration_ms|is_error|num_turns"
+gh run view <failed_run_id> --repo rupeedev/iKanban --log | grep -E "duration_ms|is_error|num_turns"
+
+# Check git history for recent workflow changes
+git log --oneline -- .github/workflows/claude.yml
+```
+
+**Quick fix if workflow breaks:**
+```bash
+# Revert to last known working version
+git show <working_commit>:.github/workflows/claude.yml > .github/workflows/claude.yml
+git commit -m "fix: revert workflow to working version"
+git push
+```
+
+---
+
 ## Template for Future Incidents
 
 ### Incident: [Title] (Date)
