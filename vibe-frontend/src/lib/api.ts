@@ -906,6 +906,25 @@ export const tasksApi = {
     return handleApiResponse<CopilotAssignment>(response);
   },
 
+  // Gemini assignments
+  getGeminiAssignments: async (
+    taskId: string
+  ): Promise<CopilotAssignment[]> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/gemini`);
+    return handleApiResponse<CopilotAssignment[]>(response);
+  },
+
+  assignToGemini: async (
+    taskId: string,
+    data: CreateCopilotAssignment
+  ): Promise<CopilotAssignment> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/gemini`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<CopilotAssignment>(response);
+  },
+
   // Task tags (IKA-106: Tags/Labels System)
   getTags: async (taskId: string): Promise<TaskTagWithDetails[]> => {
     const response = await makeRequest(`/api/tasks/${taskId}/tags`);

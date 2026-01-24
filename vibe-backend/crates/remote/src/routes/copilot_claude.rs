@@ -37,6 +37,12 @@ pub struct AssignToClaudeRequest {
     pub prompt: String,
 }
 
+/// Request to assign a task to Gemini
+#[derive(Debug, Clone, Deserialize)]
+pub struct AssignToGeminiRequest {
+    pub prompt: String,
+}
+
 /// GitHub API response for issue creation
 #[derive(Debug, Deserialize)]
 struct GitHubIssueResponse {
@@ -99,6 +105,36 @@ pub async fn get_claude_assignments(
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({"success": false, "message": "failed to load claude assignments"})),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[instrument(
+    name = "gemini.get_assignments",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, task_id = %task_id)
+)]
+pub async fn get_gemini_assignments(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(task_id): Path<Uuid>,
+) -> Response {
+    let pool = state.pool();
+
+    if let Err(error) = ensure_task_access(pool, ctx.user.id, task_id).await {
+        return error.into_response();
+    }
+
+    // Gemini assignments use the same table as Copilot
+    match CopilotAssignmentRepository::find_copilot_by_task_id(pool, task_id).await {
+        Ok(assignments) => (StatusCode::OK, ApiResponse::success(assignments)).into_response(),
+        Err(e) => {
+            tracing::error!(?e, "failed to load gemini assignments");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"success": false, "message": "failed to load gemini assignments"})),
             )
                 .into_response()
         }
@@ -461,6 +497,36 @@ pub async fn trigger_claude_assignment(
     });
 
     Ok(assignment)
+}
+
+#[instrument(
+    name = "gemini.assign_task",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, task_id = %task_id)
+)]
+pub async fn assign_task_to_gemini(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(task_id): Path<Uuid>,
+    Json(payload): Json<AssignToGeminiRequest>,
+) -> Response {
+    let pool = state.pool();
+
+    if let Err(error) = ensure_task_access(pool, ctx.user.id, task_id).await {
+        return error.into_response();
+    }
+
+    match trigger_gemini_assignment(pool, task_id, ctx.user.id, payload.prompt).await {
+        Ok(assignment) => (StatusCode::OK, ApiResponse::success(assignment)).into_response(),
+        Err(e) => {
+            tracing::error!(?e, "failed to assign task to Gemini");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"success": false, "message": e})),
+            )
+                .into_response()
+        }
+    }
 }
 
 /// Trigger a Gemini assignment from a prompt

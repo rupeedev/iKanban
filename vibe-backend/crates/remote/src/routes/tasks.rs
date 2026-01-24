@@ -74,6 +74,11 @@ pub fn router() -> Router<AppState> {
             get(super::copilot_claude::get_claude_assignments)
                 .post(super::copilot_claude::assign_task_to_claude),
         )
+        .route(
+            "/tasks/{task_id}/gemini",
+            get(super::copilot_claude::get_gemini_assignments)
+                .post(super::copilot_claude::assign_task_to_gemini),
+        )
 }
 
 #[derive(Debug, Deserialize, TS)]

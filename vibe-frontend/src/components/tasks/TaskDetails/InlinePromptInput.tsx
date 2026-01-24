@@ -9,10 +9,12 @@ import {
   useAgentMentions,
   isCopilotMention,
   isClaudeMention,
+  isGeminiMention,
   type AgentMention,
 } from '@/hooks/useAgentMentions';
 import { useAssignToCopilot } from '@/hooks/useCopilotAssignment';
 import { useAssignToClaude } from '@/hooks/useClaudeAssignment';
+import { useAssignToGemini } from '@/hooks/useGeminiAssignment';
 import { useRepoBranchSelection } from '@/hooks/useRepoBranchSelection';
 import { useProjectRepos, useNavigateWithSearch } from '@/hooks';
 import { useProject } from '@/contexts/ProjectContext';
@@ -132,6 +134,23 @@ export function InlinePromptInput({
       },
     });
 
+  // Gemini assignment hook (NEW)
+  const { mutateAsync: assignToGemini, isPending: isAssigningGemini } =
+    useAssignToGemini({
+      onSuccess: () => {
+        toast.success('Task assigned to Gemini', {
+          description: 'GitHub issue will be created and processed.',
+        });
+        onCommentCreated?.();
+      },
+      onError: (error) => {
+        console.error('Failed to assign to Gemini:', error);
+        toast.error('Failed to assign to Gemini', {
+          description: error.message || 'Please check GitHub connection.',
+        });
+      },
+    });
+
   // Get current mention state
   const mentionState = getMentionPosition(promptText, cursorPosition);
   const filteredSuggestions = mentionState
@@ -206,7 +225,8 @@ export function InlinePromptInput({
       isCreating ||
       isCreatingComment ||
       isAssigningCopilot ||
-      isAssigningClaude
+      isAssigningClaude ||
+      isAssigningGemini
     )
       return;
 
@@ -300,6 +320,37 @@ export function InlinePromptInput({
       return;
     }
 
+    // CASE 2.7: @gemini mention → Comment + Gemini Assignment (GitHub Issue)
+    if (isGeminiMention(agent)) {
+      // First create the comment
+      try {
+        await createComment({
+          content: promptText.trim(),
+          is_internal: false,
+          author_name: currentUser.name,
+          author_email: currentUser.email,
+          author_id: currentUser.id,
+        });
+      } catch (err) {
+        console.error('Failed to create comment:', err);
+        toast.error('Failed to add comment');
+        return;
+      }
+
+      // Then assign to Gemini (creates GitHub Issue with @gemini mention)
+      try {
+        await assignToGemini({
+          taskId,
+          data: { prompt: cleanPrompt },
+        });
+        setPromptText('');
+      } catch (err) {
+        // Error is handled by onError callback
+        setPromptText('');
+      }
+      return;
+    }
+
     // CASE 3: Other @mention → Comment + Local AI attempt
     // First create the comment
     try {
@@ -359,6 +410,7 @@ export function InlinePromptInput({
     isCreatingComment,
     isAssigningCopilot,
     isAssigningClaude,
+    isAssigningGemini,
     parseAllMentions,
     createComment,
     currentUser,
@@ -366,6 +418,7 @@ export function InlinePromptInput({
     taskId,
     assignToCopilot,
     assignToClaude,
+    assignToGemini,
     projectRepos.length,
     resolveMentionToProfile,
     getWorkspaceRepoInputs,
@@ -410,7 +463,8 @@ export function InlinePromptInput({
     !isCreating &&
     !isCreatingComment &&
     !isAssigningCopilot &&
-    !isAssigningClaude;
+    !isAssigningClaude &&
+    !isAssigningGemini;
 
   return (
     <div className={cn('relative', className)}>
@@ -462,7 +516,8 @@ export function InlinePromptInput({
               isCreating ||
               isCreatingComment ||
               isAssigningCopilot ||
-              isAssigningClaude
+              isAssigningClaude ||
+              isAssigningGemini
             }
             data-testid="inline-prompt-input"
           />
@@ -477,9 +532,10 @@ export function InlinePromptInput({
           data-testid="inline-prompt-submit"
         >
           {isCreating ||
-          isCreatingComment ||
-          isAssigningCopilot ||
-          isAssigningClaude ? (
+            isCreatingComment ||
+            isAssigningCopilot ||
+            isAssigningClaude ||
+            isAssigningGemini ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <SendHorizonal className="h-4 w-4" />

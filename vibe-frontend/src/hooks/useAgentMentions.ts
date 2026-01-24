@@ -49,6 +49,16 @@ const CLAUDE_MENTION: AgentMention = {
   available: true, // Always available if GitHub is connected with Claude Code Action
 };
 
+// Special agent that uses Gemini CLI via GitHub Action (NEW)
+const GEMINI_EXECUTOR = 'GEMINI' as unknown as BaseCodingAgent;
+const GEMINI_MENTION: AgentMention = {
+  trigger: '@gemini',
+  executor: GEMINI_EXECUTOR,
+  variant: null,
+  displayName: 'Google Gemini',
+  available: true,
+};
+
 /**
  * Check if an agent mention is the special Copilot integration
  * Copilot uses a different flow - creates GitHub Issue instead of local workspace
@@ -63,6 +73,14 @@ export function isCopilotMention(agent: AgentMention | null): boolean {
  */
 export function isClaudeMention(agent: AgentMention | null): boolean {
   return (agent?.executor as unknown as string) === 'CLAUDE';
+}
+
+/**
+ * Check if an agent mention is the special Gemini integration
+ * Gemini uses a different flow - creates GitHub Issue and triggers Gemini CLI Action
+ */
+export function isGeminiMention(agent: AgentMention | null): boolean {
+  return (agent?.executor as unknown as string) === 'GEMINI';
 }
 
 // Whitelist of allowed agents for @mentions
@@ -81,11 +99,15 @@ function buildAgentMentions(
   // Always add the special Claude mention (uses Claude Code Action - IKA-171)
   mentions.push(CLAUDE_MENTION);
 
+  // Always add the special Gemini mention
+  mentions.push(GEMINI_MENTION);
+
   if (!profiles) return mentions;
 
   for (const [executor, config] of Object.entries(profiles)) {
-    // Skip COPILOT and CLAUDE since we handle them specially
-    if (executor === 'COPILOT' || executor === 'CLAUDE') continue;
+    // Skip COPILOT, CLAUDE, and GEMINI since we handle them specially
+    if (executor === 'COPILOT' || executor === 'CLAUDE' || executor === 'GEMINI')
+      continue;
 
     // Only include whitelisted agents
     if (!ALLOWED_PROFILE_AGENTS.has(executor)) continue;
