@@ -1,0 +1,97 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO ai_session_messages (\n                session_id, role, content, content_type,\n                tool_use_id, tool_name,\n                input_tokens, output_tokens,\n                metadata, sequence_number\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n            RETURNING\n                id, session_id, role, content, content_type,\n                tool_use_id, tool_name,\n                input_tokens, output_tokens,\n                metadata, sequence_number, created_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "session_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "role",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "content_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "tool_use_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "tool_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "input_tokens",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "output_tokens",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "metadata",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 10,
+        "name": "sequence_number",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Text",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Int4",
+        "Int4",
+        "Jsonb",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "efe3f12cbf00f705d9cb7b99206182a662f72dcc1174fc0e4b04d6b7d5ee8494"
+}

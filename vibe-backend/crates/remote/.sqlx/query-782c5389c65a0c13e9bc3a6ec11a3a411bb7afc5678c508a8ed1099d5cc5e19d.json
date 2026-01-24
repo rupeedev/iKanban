@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM inbox_items WHERE id = $1 AND user_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "782c5389c65a0c13e9bc3a6ec11a3a411bb7afc5678c508a8ed1099d5cc5e19d"
+}

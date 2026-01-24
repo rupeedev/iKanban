@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COALESCE(MAX(sequence_number), 0) + 1 as \"seq!\"\n            FROM execution_logs\n            WHERE attempt_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "seq!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "2134c56f06de4faf507fbf0bec10e24af181cc79df2a2b505192a61291bd5246"
+}

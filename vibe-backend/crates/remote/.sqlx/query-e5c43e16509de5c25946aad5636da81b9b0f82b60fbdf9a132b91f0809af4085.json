@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COUNT(*) as \"count!\"\n            FROM execution_approvals\n            WHERE execution_id = $1 AND status = 'pending'\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "e5c43e16509de5c25946aad5636da81b9b0f82b60fbdf9a132b91f0809af4085"
+}

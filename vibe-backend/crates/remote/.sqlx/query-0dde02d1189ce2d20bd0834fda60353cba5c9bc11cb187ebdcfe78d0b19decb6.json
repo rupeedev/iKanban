@@ -1,0 +1,84 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE team_members\n            SET role = $3, updated_at = NOW()\n            WHERE team_id = $1 AND id = $2\n            RETURNING\n                id            AS \"id!: Uuid\",\n                team_id       AS \"team_id!: Uuid\",\n                email         AS \"email!\",\n                display_name,\n                role          AS \"role!\",\n                invited_by,\n                clerk_user_id,\n                avatar_url,\n                joined_at     AS \"joined_at!: DateTime<Utc>\",\n                created_at    AS \"created_at!: DateTime<Utc>\",\n                updated_at    AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "email!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "display_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "role!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "invited_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "clerk_user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "avatar_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "joined_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0dde02d1189ce2d20bd0834fda60353cba5c9bc11cb187ebdcfe78d0b19decb6"
+}

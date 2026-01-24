@@ -1,0 +1,82 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, execution_id, shared_by,\n                shared_with_user_id, shared_with_team_id,\n                share_type, message, status,\n                expires_at, created_at, revoked_at\n            FROM execution_shares\n            WHERE shared_by = $1\n            ORDER BY created_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "execution_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "shared_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "shared_with_user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "shared_with_team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "share_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "message",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "expires_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "revoked_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "1a0e2292b832de316d3df1da67e98d50564b032e61f0f14730fe16c582ead307"
+}

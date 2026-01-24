@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COUNT(*) as \"count!\"\n            FROM execution_shares\n            WHERE execution_id = $1\n              AND shared_with_team_id = $2\n              AND status = 'active'\n              AND (expires_at IS NULL OR expires_at > NOW())\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "9092e857a26a87929ebf1a586b5c26ad7f27c05cc818f83beabe29ccd9f521ad"
+}
