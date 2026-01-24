@@ -3,12 +3,13 @@
 //! Provides endpoints for SSO configuration management and SAML authentication flows
 
 use axum::{
-    Json, Router,
+    Extension, Json, Router,
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse, Response},
     routing::{delete, get, post, put},
 };
+use base64::{Engine as _, engine::general_purpose};
 use db_crate::models::sso_configuration::{
     CreateSsoConfiguration, SsoConfiguration, SsoConfigurationError, UpdateSsoConfiguration,
 };
@@ -183,10 +184,11 @@ async fn initiate_saml_login(
     };
 
     // Redirect to IdP SSO URL with the request
+    let encoded_request = general_purpose::STANDARD.encode(authn_request.as_bytes());
     let redirect_url = format!(
         "{}?SAMLRequest={}",
         config.idp_sso_url,
-        urlencoding::encode(&base64::encode(&authn_request))
+        urlencoding::encode(&encoded_request)
     );
 
     Ok((
@@ -322,11 +324,11 @@ async fn handle_saml_callback(
 // ============================================================================
 
 /// List all SSO configurations for a workspace
-#[instrument(name = "sso.list_configs", skip(state, ctx), fields(workspace_id = %workspace_id))]
+#[instrument(name = "sso.list_configs", skip(state), fields(workspace_id = %workspace_id))]
 async fn list_sso_configs(
     State(state): State<AppState>,
     Path(workspace_id): Path<Uuid>,
-    ctx: ClerkRequestContext,
+    Extension(_ctx): Extension<ClerkRequestContext>,
 ) -> Result<Json<serde_json::Value>, Response> {
     // TODO: Check if user has permission to view SSO configs for this workspace
 
@@ -350,11 +352,11 @@ async fn list_sso_configs(
 }
 
 /// Get a specific SSO configuration
-#[instrument(name = "sso.get_config", skip(state, ctx), fields(workspace_id = %workspace_id, config_id = %config_id))]
+#[instrument(name = "sso.get_config", skip(state), fields(workspace_id = %workspace_id, config_id = %config_id))]
 async fn get_sso_config(
     State(state): State<AppState>,
     Path((workspace_id, config_id)): Path<(Uuid, Uuid)>,
-    ctx: ClerkRequestContext,
+    Extension(_ctx): Extension<ClerkRequestContext>,
 ) -> Result<Json<serde_json::Value>, Response> {
     match SsoConfiguration::find_by_id(state.pool(), config_id).await {
         Ok(config) => {
@@ -391,11 +393,11 @@ async fn get_sso_config(
 }
 
 /// Create a new SSO configuration
-#[instrument(name = "sso.create_config", skip(state, ctx, payload), fields(workspace_id = %workspace_id))]
+#[instrument(name = "sso.create_config", skip(state, payload), fields(workspace_id = %workspace_id))]
 async fn create_sso_config(
     State(state): State<AppState>,
     Path(workspace_id): Path<Uuid>,
-    ctx: ClerkRequestContext,
+    Extension(ctx): Extension<ClerkRequestContext>,
     Json(payload): Json<CreateSsoConfiguration>,
 ) -> Result<Json<serde_json::Value>, Response> {
     // TODO: Check if user has permission to create SSO configs
@@ -404,7 +406,7 @@ async fn create_sso_config(
         state.pool(),
         workspace_id,
         payload,
-        Some(ctx.user_id().to_string()),
+        Some(ctx.clerk_user_id.to_string()),
     )
     .await
     {
@@ -435,11 +437,11 @@ async fn create_sso_config(
 }
 
 /// Update an SSO configuration
-#[instrument(name = "sso.update_config", skip(state, ctx, payload), fields(workspace_id = %workspace_id, config_id = %config_id))]
+#[instrument(name = "sso.update_config", skip(state, payload), fields(workspace_id = %workspace_id, config_id = %config_id))]
 async fn update_sso_config(
     State(state): State<AppState>,
     Path((workspace_id, config_id)): Path<(Uuid, Uuid)>,
-    ctx: ClerkRequestContext,
+    Extension(_ctx): Extension<ClerkRequestContext>,
     Json(payload): Json<UpdateSsoConfiguration>,
 ) -> Result<Json<serde_json::Value>, Response> {
     // Verify the config belongs to the workspace
@@ -480,11 +482,11 @@ async fn update_sso_config(
 }
 
 /// Delete an SSO configuration
-#[instrument(name = "sso.delete_config", skip(state, ctx), fields(workspace_id = %workspace_id, config_id = %config_id))]
+#[instrument(name = "sso.delete_config", skip(state), fields(workspace_id = %workspace_id, config_id = %config_id))]
 async fn delete_sso_config(
     State(state): State<AppState>,
     Path((workspace_id, config_id)): Path<(Uuid, Uuid)>,
-    ctx: ClerkRequestContext,
+    Extension(_ctx): Extension<ClerkRequestContext>,
 ) -> Result<Json<serde_json::Value>, Response> {
     // Verify the config belongs to the workspace
     match SsoConfiguration::find_by_id(state.pool(), config_id).await {
@@ -524,11 +526,11 @@ async fn delete_sso_config(
 }
 
 /// Test an SSO configuration
-#[instrument(name = "sso.test_config", skip(state, ctx), fields(workspace_id = %workspace_id, config_id = %config_id))]
+#[instrument(name = "sso.test_config", skip(state), fields(workspace_id = %workspace_id, config_id = %config_id))]
 async fn test_sso_config(
     State(state): State<AppState>,
     Path((workspace_id, config_id)): Path<(Uuid, Uuid)>,
-    ctx: ClerkRequestContext,
+    Extension(_ctx): Extension<ClerkRequestContext>,
 ) -> Result<Json<serde_json::Value>, Response> {
     // Get the configuration
     let config = match SsoConfiguration::find_by_id(state.pool(), config_id).await {

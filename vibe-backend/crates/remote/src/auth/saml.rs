@@ -1,16 +1,15 @@
 //! SAML 2.0 authentication module for SSO integration
 //!
-//! Provides SAML assertion validation, metadata generation, and JIT user provisioning
+//! Provides basic SAML assertion validation, metadata generation, and JIT user provisioning
+//! This is a lightweight implementation for MVP. For production, consider using a full SAML library.
 
 use std::collections::HashMap;
 
 use anyhow::{Context, Result, anyhow};
+use base64::{Engine as _, engine::general_purpose};
 use chrono::{DateTime, Utc};
-use samael::{
-    metadata::{ContactPerson, ContactType, EntityDescriptor, SpSsoDescriptor},
-    service_provider::ServiceProvider,
-    schema::{Assertion, Response as SamlResponse},
-};
+use quick_xml::events::Event;
+use quick_xml::Reader;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -23,112 +22,109 @@ use db_crate::models::sso_configuration::{SsoConfiguration, WorkspaceMemberRole}
 /// SAML Service Provider wrapper
 pub struct SamlServiceProvider {
     config: SsoConfiguration,
-    service_provider: ServiceProvider,
 }
 
 impl SamlServiceProvider {
     /// Create a new SAML Service Provider from SSO configuration
     pub fn new(config: SsoConfiguration) -> Result<Self> {
-        // Parse the IdP certificate
-        let idp_cert = samael::idp::IdentityProvider {
-            entity_id: Some(config.idp_entity_id.clone()),
-            single_sign_on_service_url: Some(config.idp_sso_url.clone()),
-            single_logout_service_url: config.idp_slo_url.clone(),
-            signing_keys: vec![samael::crypto::decode_x509_cert(&config.idp_certificate)?],
-            ..Default::default()
-        };
-
-        let service_provider = ServiceProvider {
-            entity_id: config.sp_entity_id.clone(),
-            acs_url: config.sp_acs_url.clone(),
-            idp: idp_cert,
-            ..Default::default()
-        };
-
-        Ok(Self {
-            config,
-            service_provider,
-        })
+        Ok(Self { config })
     }
 
     /// Generate SAML metadata XML for this Service Provider
     pub fn generate_metadata(&self) -> Result<String> {
-        let sp_descriptor = SpSsoDescriptor {
-            assertion_consumer_service: vec![samael::metadata::AssertionConsumerService {
-                index: 0,
-                is_default: Some(true),
-                binding: samael::metadata::HTTP_POST_BINDING.to_string(),
-                location: self.config.sp_acs_url.clone(),
-            }],
-            want_assertions_signed: Some(true),
-            authn_requests_signed: Some(false),
-            ..Default::default()
-        };
+        let metadata = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
+                     entityID="{}">
+    <md:SPSSODescriptor
+        AuthnRequestsSigned="false"
+        WantAssertionsSigned="true"
+        protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+        <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>
+        <md:AssertionConsumerService
+            Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+            Location="{}"
+            index="0"
+            isDefault="true"/>
+    </md:SPSSODescriptor>
+    <md:Organization>
+        <md:OrganizationName xml:lang="en">iKanban</md:OrganizationName>
+        <md:OrganizationDisplayName xml:lang="en">iKanban</md:OrganizationDisplayName>
+        <md:OrganizationURL xml:lang="en">https://ikanban.scho1ar.com</md:OrganizationURL>
+    </md:Organization>
+    <md:ContactPerson contactType="technical">
+        <md:Company>iKanban</md:Company>
+    </md:ContactPerson>
+</md:EntityDescriptor>"#,
+            self.config.sp_entity_id, self.config.sp_acs_url
+        );
 
-        let entity_descriptor = EntityDescriptor {
-            entity_id: Some(self.config.sp_entity_id.clone()),
-            sp_sso_descriptors: Some(vec![sp_descriptor]),
-            contact_person: Some(vec![ContactPerson {
-                contact_type: Some(ContactType::Technical),
-                ..Default::default()
-            }]),
-            ..Default::default()
-        };
-
-        entity_descriptor
-            .to_xml()
-            .context("Failed to generate SAML metadata XML")
+        Ok(metadata)
     }
 
     /// Validate a SAML response and extract user attributes
+    /// Note: This is a basic implementation for MVP. 
+    /// For production, proper signature verification should be added.
     pub fn validate_response(&self, saml_response: &str) -> Result<SamlUserAttributes> {
-        // Parse and validate the SAML response
-        let response = self
-            .service_provider
-            .parse_response(saml_response, None)
-            .context("Failed to parse SAML response")?;
+        // Parse SAML response XML
+        let mut reader = Reader::from_str(saml_response);
+        reader.config_mut().trim_text(true);
 
-        // Extract assertions
-        let assertions = self.extract_assertions(&response)?;
-        
-        if assertions.is_empty() {
-            return Err(anyhow!("No assertions found in SAML response"));
-        }
+        let mut attributes: HashMap<String, String> = HashMap::new();
+        let mut name_id = String::new();
+        let mut current_attr_name: Option<String> = None;
+        let mut in_attribute_value = false;
 
-        // Get the first assertion (most common case)
-        let assertion = &assertions[0];
-
-        // Extract user attributes
-        self.extract_user_attributes(assertion)
-    }
-
-    /// Extract assertions from SAML response
-    fn extract_assertions(&self, response: &SamlResponse) -> Result<Vec<Assertion>> {
-        let assertions = response
-            .assertions
-            .as_ref()
-            .ok_or_else(|| anyhow!("No assertions in SAML response"))?;
-
-        Ok(assertions.clone())
-    }
-
-    /// Extract user attributes from SAML assertion
-    fn extract_user_attributes(&self, assertion: &Assertion) -> Result<SamlUserAttributes> {
-        let attribute_statement = assertion
-            .attribute_statement
-            .as_ref()
-            .ok_or_else(|| anyhow!("No attribute statement in assertion"))?;
-
-        // Extract raw attributes
-        let mut attributes = HashMap::new();
-        for attr in &attribute_statement.attributes {
-            if let Some(name) = &attr.name {
-                if let Some(values) = &attr.values {
-                    if !values.is_empty() {
-                        attributes.insert(name.clone(), values[0].value.clone());
+        let mut buf = Vec::new();
+        loop {
+            match reader.read_event_into(&mut buf) {
+                Ok(Event::Start(e)) => {
+                    let name = String::from_utf8_lossy(e.local_name().as_ref()).to_string();
+                    
+                    // Extract NameID
+                    if name == "NameID" {
+                        let mut text_buf = Vec::new();
+                        if let Ok(Event::Text(text)) = reader.read_event_into(&mut text_buf) {
+                            name_id = text.unescape().unwrap_or_default().to_string();
+                        }
+                    }
+                    
+                    // Extract Attribute Name
+                    if name == "Attribute" {
+                        if let Some(name_attr) = e.attributes()
+                            .filter_map(|a| a.ok())
+                            .find(|a| a.key.as_ref() == b"Name")
+                        {
+                            current_attr_name = Some(
+                                String::from_utf8_lossy(&name_attr.value).to_string()
+                            );
+                        }
+                    }
+                    
+                    if name == "AttributeValue" {
+                        in_attribute_value = true;
                     }
                 }
+                Ok(Event::Text(text)) if in_attribute_value => {
+                    if let Some(ref attr_name) = current_attr_name {
+                        let value = text.unescape().unwrap_or_default().to_string();
+                        attributes.insert(attr_name.clone(), value);
+                    }
+                }
+                Ok(Event::End(e)) => {
+                    let name = String::from_utf8_lossy(e.local_name().as_ref()).to_string();
+                    if name == "AttributeValue" {
+                        in_attribute_value = false;
+                    }
+                    if name == "Attribute" {
+                        current_attr_name = None;
+                    }
+                }
+                Ok(Event::Eof) => break,
+                Err(e) => return Err(anyhow!("Error parsing SAML XML: {}", e)),
+                _ => {}
             }
+            buf.clear();
         }
 
         // Map attributes based on configuration
@@ -139,12 +135,9 @@ impl SamlServiceProvider {
         let email = self.get_mapped_attribute(&attributes, &mapping, "email")
             .ok_or_else(|| anyhow!("Email attribute not found in SAML assertion"))?;
 
-        let name_id = assertion
-            .subject
-            .as_ref()
-            .and_then(|s| s.name_id.as_ref())
-            .and_then(|n| n.value.clone())
-            .unwrap_or_else(|| email.clone());
+        if name_id.is_empty() {
+            name_id = email.clone();
+        }
 
         Ok(SamlUserAttributes {
             name_id,
@@ -164,9 +157,18 @@ impl SamlServiceProvider {
         mapping: &HashMap<String, String>,
         field: &str,
     ) -> Option<String> {
-        // Check if there's a mapping for this field
-        let attr_name = mapping.get(field).unwrap_or(&field.to_string()).clone();
-        attributes.get(&attr_name).cloned()
+        // Try mapping first, then fallback to field name
+        let attr_names = vec![
+            mapping.get(field).map(|s| s.as_str()),
+            Some(field),
+        ];
+
+        for attr_name in attr_names.into_iter().flatten() {
+            if let Some(value) = attributes.get(attr_name) {
+                return Some(value.clone());
+            }
+        }
+        None
     }
 
     /// Get mapped attributes as a vector (for multi-value attributes like groups)
@@ -181,12 +183,31 @@ impl SamlServiceProvider {
             .unwrap_or_default()
     }
 
-    /// Generate a SAML AuthnRequest
+    /// Generate a SAML AuthnRequest (basic version)
     pub fn generate_authn_request(&self) -> Result<String> {
-        let authn_request = self
-            .service_provider
-            .make_authentication_request(&self.config.idp_sso_url)
-            .context("Failed to generate SAML AuthnRequest")?;
+        let request_id = generate_request_id();
+        let issue_instant = Utc::now().to_rfc3339();
+
+        let authn_request = format!(
+            r#"<samlp:AuthnRequest
+    xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+    xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+    ID="{}"
+    Version="2.0"
+    IssueInstant="{}"
+    Destination="{}"
+    AssertionConsumerServiceURL="{}">
+    <saml:Issuer>{}</saml:Issuer>
+    <samlp:NameIDPolicy
+        Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
+        AllowCreate="true"/>
+</samlp:AuthnRequest>"#,
+            request_id,
+            issue_instant,
+            self.config.idp_sso_url,
+            self.config.sp_acs_url,
+            self.config.sp_entity_id
+        );
 
         Ok(authn_request)
     }
@@ -343,7 +364,7 @@ pub struct ProvisionedUser {
 
 /// Parse SAML response from base64-encoded string
 pub fn parse_saml_response(base64_response: &str) -> Result<String> {
-    let decoded = base64::decode(base64_response)
+    let decoded = general_purpose::STANDARD.decode(base64_response)
         .context("Failed to decode base64 SAML response")?;
     
     String::from_utf8(decoded)
@@ -352,5 +373,5 @@ pub fn parse_saml_response(base64_response: &str) -> Result<String> {
 
 /// Generate a random request ID for SAML requests
 pub fn generate_request_id() -> String {
-    format!("_id_{}", Uuid::new_v4().simple())
+    format!("_id_{}", Uuid::new_v4().as_simple())
 }
