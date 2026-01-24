@@ -124,7 +124,7 @@ pub async fn assign_task_to_copilot(
 
     // Get task details for the GitHub issue
     let repo = SharedTaskRepository::new(pool);
-    let task = match repo.find_by_id(task_id).await {
+    let task = match repo.find_any_task_by_id(task_id).await {
         Ok(Some(t)) => t,
         Ok(None) => {
             return (
@@ -256,7 +256,7 @@ pub async fn trigger_copilot_assignment(
 
     let repo = SharedTaskRepository::new(pool);
     let task = repo
-        .find_by_id(task_id)
+        .find_any_task_by_id(task_id)
         .await
         .map_err(|e| format!("database error: {}", e))?
         .ok_or_else(|| "task not found".to_string())?;
@@ -371,7 +371,7 @@ pub async fn trigger_claude_assignment(
 
     let repo = SharedTaskRepository::new(pool);
     let task = repo
-        .find_by_id(task_id)
+        .find_any_task_by_id(task_id)
         .await
         .map_err(|e| format!("database error: {}", e))?
         .ok_or_else(|| "task not found".to_string())?;
