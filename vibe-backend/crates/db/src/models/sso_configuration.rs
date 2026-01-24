@@ -245,8 +245,8 @@ impl SsoConfiguration {
         data: CreateSsoConfiguration,
         created_by: Option<String>,
     ) -> Result<Self, SsoConfigurationError> {
-        let sp_metadata_url = format!("{}/saml/metadata/{}", 
-            data.sp_entity_id, 
+        let sp_metadata_url = format!(
+            "https://api.scho1ar.com/sso/saml/metadata/{}", 
             tenant_workspace_id
         );
         

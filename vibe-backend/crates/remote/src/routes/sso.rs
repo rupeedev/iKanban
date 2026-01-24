@@ -327,10 +327,11 @@ async fn handle_saml_callback(
 async fn list_sso_configs(
     State(state): State<AppState>,
     Path(workspace_id): Path<Uuid>,
-    Extension(_ctx): Extension<ClerkRequestContext>,
+    Extension(ctx): Extension<ClerkRequestContext>,
 ) -> Result<Json<serde_json::Value>, Response> {
-    // TODO: Check if user has permission to view SSO configs for this workspace
-
+    // TODO: Verify user has admin access to this workspace
+    // For now, allowing any authenticated user (should be workspace admin only)
+    
     match SsoConfiguration::find_all_for_workspace(state.pool(), workspace_id).await {
         Ok(configs) => Ok(Json(json!({
             "success": true,
@@ -399,7 +400,8 @@ async fn create_sso_config(
     Extension(ctx): Extension<ClerkRequestContext>,
     Json(payload): Json<CreateSsoConfiguration>,
 ) -> Result<Json<serde_json::Value>, Response> {
-    // TODO: Check if user has permission to create SSO configs
+    // TODO: Verify user has admin access to create SSO configs for this workspace
+    // For now, allowing any authenticated user (should be workspace admin/owner only)
 
     match SsoConfiguration::create(
         state.pool(),

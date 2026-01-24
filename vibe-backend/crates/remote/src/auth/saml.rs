@@ -63,8 +63,19 @@ impl SamlServiceProvider {
     }
 
     /// Validate a SAML response and extract user attributes
-    /// Note: This is a basic implementation for MVP. 
-    /// For production, proper signature verification should be added.
+    /// 
+    /// ⚠️ SECURITY WARNING: This is a basic implementation for MVP.
+    /// Production deployment MUST add:
+    /// - SAML response signature verification with IdP certificate
+    /// - X.509 certificate chain validation
+    /// - Replay attack prevention (track assertion IDs)
+    /// - Timestamp validation (NotBefore, NotOnOrAfter)
+    /// - Audience restriction validation
+    /// 
+    /// Without these checks, the system is vulnerable to:
+    /// - SAML assertion forgery
+    /// - Replay attacks
+    /// - Man-in-the-middle attacks
     pub fn validate_response(&self, saml_response: &str) -> Result<SamlUserAttributes> {
         // Parse SAML response XML
         let mut reader = Reader::from_str(saml_response);
@@ -128,9 +139,15 @@ impl SamlServiceProvider {
         }
 
         // Map attributes based on configuration
-        let mapping: HashMap<String, String> = serde_json::from_value(
+        let mapping: HashMap<String, String> = match serde_json::from_value(
             self.config.attribute_mapping.clone()
-        ).unwrap_or_default();
+        ) {
+            Ok(m) => m,
+            Err(e) => {
+                tracing::warn!("Failed to parse attribute mapping, using defaults: {}", e);
+                HashMap::new()
+            }
+        };
 
         let email = self.get_mapped_attribute(&attributes, &mapping, "email")
             .ok_or_else(|| anyhow!("Email attribute not found in SAML assertion"))?;
