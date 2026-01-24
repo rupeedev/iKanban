@@ -49,6 +49,7 @@ pub struct SharedTask {
     pub title: String,
     pub description: Option<String>,
     pub status: TaskStatus,
+    pub priority: Option<i32>,
     pub deleted_at: Option<DateTime<Utc>>,
     pub shared_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -69,6 +70,7 @@ pub struct UpdateSharedTaskData {
     pub title: Option<String>,
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
+    pub priority: Option<i32>,
     pub acting_user_id: Uuid,
 }
 
@@ -134,6 +136,7 @@ impl<'a> SharedTaskRepository<'a> {
                 title               AS "title!",
                 description         AS "description?",
                 status              AS "status!: TaskStatus",
+                priority            AS "priority?",
                 deleted_at          AS "deleted_at?",
                 shared_at           AS "shared_at?",
                 created_at          AS "created_at!",
@@ -242,6 +245,7 @@ impl<'a> SharedTaskRepository<'a> {
                       title              AS "title!",
                       description        AS "description?",
                       status             AS "status!: TaskStatus",
+                      priority           AS "priority?",
                       deleted_at         AS "deleted_at?",
                       shared_at          AS "shared_at?",
                       created_at         AS "created_at!",
@@ -280,9 +284,9 @@ impl<'a> SharedTaskRepository<'a> {
         SET title       = COALESCE($2, t.title),
             description = COALESCE($3, t.description),
             status      = COALESCE($4, t.status),
+            priority    = COALESCE($5, t.priority),
             updated_at  = NOW()
         WHERE t.id = $1
-          AND t.assignee_user_id = $5
           AND t.deleted_at IS NULL
         RETURNING
             t.id                AS "id!",
@@ -294,6 +298,7 @@ impl<'a> SharedTaskRepository<'a> {
             t.title             AS "title!",
             t.description       AS "description?",
             t.status            AS "status!: TaskStatus",
+            t.priority          AS "priority?",
             t.deleted_at        AS "deleted_at?",
             t.shared_at         AS "shared_at?",
             t.created_at        AS "created_at!",
@@ -303,7 +308,7 @@ impl<'a> SharedTaskRepository<'a> {
             data.title,
             data.description,
             data.status as Option<TaskStatus>,
-            data.acting_user_id
+            data.priority,
         )
         .fetch_optional(&mut *tx)
         .await?
@@ -345,6 +350,7 @@ impl<'a> SharedTaskRepository<'a> {
             t.title             AS "title!",
             t.description       AS "description?",
             t.status            AS "status!: TaskStatus",
+            t.priority          AS "priority?",
             t.deleted_at        AS "deleted_at?",
             t.shared_at         AS "shared_at?",
             t.created_at        AS "created_at!",
@@ -356,7 +362,7 @@ impl<'a> SharedTaskRepository<'a> {
         )
         .fetch_optional(&mut *tx)
         .await?
-        .ok_or_else(|| SharedTaskError::Conflict("previous assignee mismatch".to_string()))?;
+        .ok_or_else(|| SharedTaskError::NotFound)?;
 
         let user = match data.new_assignee_user_id {
             Some(user_id) => fetch_user(&mut tx, user_id).await?,
@@ -381,7 +387,6 @@ impl<'a> SharedTaskRepository<'a> {
         SET deleted_at = NOW(),
             deleted_by_user_id = $2
         WHERE t.id = $1
-          AND t.assignee_user_id = $2
           AND t.deleted_at IS NULL
         RETURNING
             t.id                AS "id!",
@@ -393,6 +398,7 @@ impl<'a> SharedTaskRepository<'a> {
             t.title             AS "title!",
             t.description       AS "description?",
             t.status            AS "status!: TaskStatus",
+            t.priority          AS "priority?",
             t.deleted_at        AS "deleted_at?",
             t.shared_at         AS "shared_at?",
             t.created_at        AS "created_at!",
@@ -403,7 +409,7 @@ impl<'a> SharedTaskRepository<'a> {
         )
         .fetch_optional(&mut *tx)
         .await?
-        .ok_or_else(|| SharedTaskError::Conflict("user not authorized".to_string()))?;
+        .ok_or_else(|| SharedTaskError::NotFound)?;
 
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, None))

@@ -38,7 +38,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/tasks", post(create_shared_task))
         .route("/tasks/check", post(check_tasks_existence))
-        .route("/tasks/{task_id}", patch(update_shared_task))
+        .route("/tasks/{task_id}", patch(update_shared_task).put(update_shared_task))
         .route("/tasks/{task_id}", delete(delete_shared_task))
         .route("/tasks/{task_id}/assign", post(assign_task))
         .route(
@@ -211,17 +211,11 @@ pub async fn update_shared_task(
         }
     };
 
-    if existing.assignee_user_id.as_ref() != Some(&ctx.user.id) {
-        return task_error_response(
-            SharedTaskError::Forbidden,
-            "acting user is not the task assignee",
-        );
-    }
-
     let UpdateSharedTaskRequest {
         title,
         description,
         status,
+        priority,
     } = payload;
 
     let next_title = title.as_deref().unwrap_or(existing.title.as_str());
@@ -235,6 +229,7 @@ pub async fn update_shared_task(
         title,
         description,
         status,
+        priority,
         acting_user_id: ctx.user.id,
     };
 
@@ -267,7 +262,7 @@ pub async fn assign_task(
     let repo = SharedTaskRepository::new(pool);
     let user_repo = UserRepository::new(pool);
 
-    let existing = match repo.find_by_id(task_id).await {
+    let _existing = match repo.find_by_id(task_id).await {
         Ok(Some(task)) => task,
         Ok(None) => {
             return task_error_response(SharedTaskError::NotFound, "shared task not found");
@@ -276,13 +271,6 @@ pub async fn assign_task(
             return task_error_response(error, "failed to load shared task");
         }
     };
-
-    if existing.assignee_user_id.as_ref() != Some(&ctx.user.id) {
-        return task_error_response(
-            SharedTaskError::Forbidden,
-            "acting user is not the task assignee",
-        );
-    }
 
     if let Some(assignee) = payload.new_assignee_user_id.as_ref() {
         if let Err(err) = user_repo.fetch_user(*assignee).await {
@@ -297,7 +285,7 @@ pub async fn assign_task(
 
     let data = AssignTaskData {
         new_assignee_user_id: payload.new_assignee_user_id,
-        previous_assignee_user_id: Some(ctx.user.id),
+        previous_assignee_user_id: None,
     };
 
     match repo.assign_task(task_id, data).await {
@@ -327,7 +315,7 @@ pub async fn delete_shared_task(
 
     let repo = SharedTaskRepository::new(pool);
 
-    let existing = match repo.find_by_id(task_id).await {
+    let _existing = match repo.find_by_id(task_id).await {
         Ok(Some(task)) => task,
         Ok(None) => {
             return task_error_response(SharedTaskError::NotFound, "shared task not found");
@@ -336,13 +324,6 @@ pub async fn delete_shared_task(
             return task_error_response(error, "failed to load shared task");
         }
     };
-
-    if existing.assignee_user_id.as_ref() != Some(&ctx.user.id) {
-        return task_error_response(
-            SharedTaskError::Forbidden,
-            "acting user is not the task assignee",
-        );
-    }
 
     let data = DeleteTaskData {
         acting_user_id: ctx.user.id,
@@ -391,6 +372,7 @@ pub struct UpdateSharedTaskRequest {
     pub title: Option<String>,
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
+    pub priority: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
