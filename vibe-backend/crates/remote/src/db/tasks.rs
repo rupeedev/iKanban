@@ -78,9 +78,17 @@ pub struct AssignTaskData {
     pub previous_assignee_user_id: Option<Uuid>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeleteTaskData {
     pub acting_user_id: Uuid,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskMetadata {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Error)]
@@ -140,6 +148,51 @@ impl<'a> SharedTaskRepository<'a> {
         .await?;
 
         Ok(task)
+    }
+
+    pub async fn find_any_task_by_id(
+        &self,
+        task_id: Uuid,
+    ) -> Result<Option<TaskMetadata>, SharedTaskError> {
+        // 1. Try shared_tasks first
+        let shared = sqlx::query!(
+            r#"
+            SELECT id, project_id, title, description
+            FROM shared_tasks
+            WHERE id = $1 AND deleted_at IS NULL
+            "#,
+            task_id
+        )
+        .fetch_optional(self.pool)
+        .await?;
+
+        if let Some(s) = shared {
+            return Ok(Some(TaskMetadata {
+                id: s.id,
+                project_id: s.project_id,
+                title: s.title,
+                description: s.description,
+            }));
+        }
+
+        // 2. Fallback to tasks table
+        let internal = sqlx::query!(
+            r#"
+            SELECT id, project_id, title, description
+            FROM tasks
+            WHERE id = $1
+            "#,
+            task_id
+        )
+        .fetch_optional(self.pool)
+        .await?;
+
+        Ok(internal.map(|i| TaskMetadata {
+            id: i.id,
+            project_id: i.project_id,
+            title: i.title,
+            description: i.description,
+        }))
     }
 
     pub async fn create(

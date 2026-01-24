@@ -1,80 +1,60 @@
-# Agent Documentation Index
+# iKanban Project Guidelines & Tech Stack
 
-This is the central reference for AI assistants working on the iKanban project. **Read this first** to understand where to find project documentation and guidelines.
+This directory contains the operational rules, workflows, and technical standards for the iKanban project.
 
-## Quick Reference
+## 🚀 Tech Stack Overview
 
-| Category | Location | Purpose |
-|----------|----------|---------|
-| **Rules** | `/.agent/rules/` | AI behavior guidelines, project context, technical rules |
-| **Workflows** | `/.agent/workflows/` | Standard operating procedures for common tasks |
-| **Docs** | `/Users/rupeshpanwar/Documents/docs/docs-ikanban/` | Architecture, feature docs, planning |
-| **MCP Tools** | `/mcp/` | Custom MCP tools (vk, supabase_db_util) |
+### Backend (Rust)
+- **Framework**: Axum (web server).
+- **Crates**:
+    - `remote`: The main API server (`api.scho1ar.com`).
+    - `db`: Database utilities (legacy).
+    - `executors` / `services`: Core business logic.
+- **Database**: PostgreSQL (hosted on Supabase).
+- **ORM/Query**: SQLx with offline metadata support.
 
----
+### Frontend (React)
+- **Build Tool**: Vite.
+- **Styling**: TailwindCSS v4 + Vanilla CSS.
+- **UI Components**: strictly **shadcn/ui** only.
+- **State Management**: Zustand (local) + TanStack Query v5 (server state).
+- **Authentication**: Clerk (modal-based).
 
-## Rules (`/.agent/rules/`)
-
-| File | Purpose |
-|------|---------|
-| [`Agent.md`](rules/Agent.md) | AI behavior rules - permission protocols, scope adherence |
-| [`Context.md`](rules/Context.md) | Project architecture, infrastructure, dependencies |
-| [`Migration.md`](rules/Migration.md) | Database migration procedures |
-| [`SQLxQueryCache.md`](rules/SQLxQueryCache.md) | SQLx compile-time query caching for CI builds |
-
----
-
-## Workflows (`/.agent/workflows/`)
-
-| File | Slash Command | Purpose |
-|------|---------------|---------|
-| [`feature-development.md`](workflows/feature-development.md) | `/feature-development` | End-to-end feature development SOP |
-| [`database-update.md`](workflows/database-update.md) | `/database-update` | Supabase schema updates with Drizzle ORM |
+### Testing & Quality
+- **Framework**: Playwright (located in `vibe-testing/`).
+- **Linter**: `pnpm lint` (frontend), `cargo clippy` (backend).
+- **CI/CD**: GitHub Actions → Docker Hub → Railway.
 
 ---
 
-## Project Structure
+## 🛠️ Critical Rules & Workflows
 
+### 1. Database Migrations
+**MANDATORY**: All migrations must be placed in:
+`vibe-backend/crates/remote/migrations/`
+*Do NOT use `crates/db/migrations/` (legacy/ignored).*
+
+### 2. SQLx Offline Sync
+After any change to SQL queries or migrations, you **MUST** regenerate the query cache:
+```bash
+cd vibe-backend/crates/remote
+cargo sqlx prepare
 ```
-vibe-kanban/
-├── .agent/              # AI agent configuration
-│   ├── README.md        # THIS FILE - read first
-│   ├── workflows/       # Standard operating procedures
-│   └── rules/           # AI behavior rules & project context
-├── mcp/                 # MCP tools (vk task manager, supabase utils)
-├── vibe-frontend/       # React/Vite frontend
-├── vibe-backend/        # Rust/Axum backend
-│   ├── crates/
-│   │   ├── db/          # Main database crate (Supabase)
-│   │   └── remote/      # Cloud deployment crate (separate schema)
-│   └── schema/          # Drizzle schema definitions
-└── .github/workflows/   # CI/CD pipelines
-```
+Ensure the `.sqlx/` directory is committed; the CI relies on it for offline validation.
 
----
+### 3. Agent Documentation (`.claude/`)
+Always reference these files to reduce token usage and ensure accuracy:
+- `FILE-MAP.md`: Exact file paths (prevents manual exploration).
+- `CODING-GUIDELINES.md`: Max 400 lines per file, zero-warning policy.
+- `API.md`: Current endpoint definitions.
+- `lessons-learned.md`: History of past deployment and configuration issues.
 
-## Key Technical Context
+### 4. Git & Branching
+1. Always work in a **feature branch** (`feature/IKA-XX` or `fix/IKA-XX`).
+2. Run `cargo check` and `pnpm lint` before pushing.
+3. Merge to `main` only after local verification.
 
-### Database
-- **Type:** Supabase Postgres  
-- **ORM:** Drizzle (TypeScript) + SQLx (Rust)
-- **Schema location:** `/vibe-backend/schema/schema.pg.ts`
-
-### CI/CD
-- **Platform:** GitHub Actions → Docker Hub → Railway
-- **SQLx Mode:** Offline (`SQLX_OFFLINE=true`) - requires cached queries
-- **Cache location:** `/vibe-backend/crates/db/.sqlx/`
-
-### Important Constraints
-- Never hardcode credentials - use environment variables
-- Always regenerate SQLx cache after schema/query changes
-- Backend builds on Linux (not macOS) due to linker issues
-
----
-
-## Before Starting Work
-
-1. **Read** `rules/Agent.md` for behavior guidelines
-2. **Check** `rules/Context.md` for architecture understanding
-3. **Follow** appropriate workflow in `.agent/workflows/`
-4. **Reference** `rules/SQLxQueryCache.md` if touching database code
+### 5. Task Management
+Use the provided workflows in `.agent/workflows/` and keep progress tracked in:
+- `SCRATCHPAD.md`: For temporary notes and focus.
+- `task.md` / `implementation_plan.md`: For structured work tracking.
