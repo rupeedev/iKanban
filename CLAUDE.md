@@ -282,19 +282,29 @@ python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py create IKA "tit
 
 ### Backend Crates
 
-| Crate | Database | Purpose |
-|-------|----------|---------|
-| `remote` | **PostgreSQL** | **Main API server** - all web endpoints, auth, MCP |
-| `server` | PostgreSQL | Server binary, combines remote + local features |
-| `db` | PostgreSQL | Shared database utilities (legacy, mostly unused) |
-| `local-deployment` | SQLite | Local agent execution for AI coding tasks |
-| `services` | - | Business logic services |
-| `executors` | - | Task/command execution |
-| `deployment` | - | Deployment orchestration |
-| `review` | - | Code review features |
-| `utils` | - | Shared utilities and types |
+| Crate | Database | Purpose | Status |
+|-------|----------|---------|--------|
+| `remote` | **PostgreSQL** | **Main API server** - all web endpoints, auth, MCP | **ACTIVE** |
+| `server` | PostgreSQL | Legacy local server + MCP binary | **DEPRECATED** |
+| `db` | PostgreSQL | Shared database models and utilities | Active |
+| `services` | - | Business logic services | Active |
+| `executors` | - | AI agent executors (Claude, Codex, etc.) | Active |
+| `deployment` | - | Deployment orchestration | Active |
+| `local-deployment` | SQLite | Local agent execution | Maintenance |
+| `review` | - | Code review features | Active |
+| `utils` | - | Shared utilities and types | Active |
 
-**Note:** There is no Tauri desktop app. The `local-deployment` crate with SQLite is for running AI coding agents locally, not a GUI app.
+### Development Focus
+
+**ALL new backend development goes to `crates/remote`.**
+
+| Do This | Don't Do This |
+|---------|---------------|
+| Add routes to `crates/remote/src/routes/` | Add routes to `crates/server/src/routes/` |
+| Add MCP tools to `crates/remote/src/mcp/` | Create new files in `crates/server/` |
+| Update `crates/remote/Cargo.toml` | Add dependencies to `crates/server/Cargo.toml` |
+
+**Exception:** The MCP binary (`crates/server/src/bin/mcp_task_server.rs`) stays in server but uses `remote::mcp::TaskServer`.
 
 ### Frontend Stack
 

@@ -175,15 +175,7 @@
 
 ## Backend Crates (vibe-backend/crates/)
 
-### Server (crates/server/)
-
-| File | Path | Purpose |
-|------|------|---------|
-| Main | `src/main.rs` | Server entry |
-| Routes | `src/routes/mod.rs` | Route definitions |
-| State | `src/state.rs` | App state |
-
-### Remote (crates/remote/)
+### Remote (crates/remote/) - **PRIMARY, ALL NEW DEVELOPMENT HERE**
 
 | File | Path | Purpose |
 |------|------|---------|
@@ -267,6 +259,15 @@
 | Cursor | `src/executors/cursor.rs` | Cursor executor |
 | Gemini | `src/executors/gemini.rs` | Gemini executor |
 | Copilot | `src/executors/copilot.rs` | Copilot executor |
+
+### Server (crates/server/) - **DEPRECATED, DO NOT ADD NEW CODE**
+
+| File | Path | Purpose |
+|------|------|---------|
+| MCP Binary | `src/bin/mcp_task_server.rs` | MCP server (uses remote::mcp) |
+| DEPRECATED.md | `DEPRECATED.md` | Deprecation notice |
+
+**Note:** All routes in `crates/server/src/routes/` are frozen. Use `crates/remote/src/routes/` instead.
 
 ---
 
