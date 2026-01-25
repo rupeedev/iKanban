@@ -160,62 +160,47 @@ pub fn router() -> Router<AppState> {
 
 /// Get workspace stats - queries real counts from database
 /// IKA-283: Updated to return actual data
+/// Note: Teams don't have workspace_id set, so we count system-wide for now
 async fn get_stats(
     State(state): State<AppState>,
     Extension(_ctx): Extension<RequestContext>,
-    Path(workspace_id): Path<Uuid>,
+    Path(_workspace_id): Path<Uuid>,
 ) -> Json<ApiResponse<AdminStats>> {
     let pool = state.pool();
 
-    // Count workspace members
-    let total_users: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM tenant_workspace_members WHERE workspace_id = $1")
-            .bind(workspace_id)
-            .fetch_one(pool)
-            .await
-            .unwrap_or(0);
-
-    // Active users = same as total for now (could filter by last_active_at in future)
-    let active_users = total_users;
-
-    // Count pending invitations for this workspace
-    let pending_invitations: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM invitations WHERE workspace_id = $1 AND status = 'pending'",
-    )
-    .bind(workspace_id)
-    .fetch_one(pool)
-    .await
-    .unwrap_or(0);
-
-    // Count teams in workspace
-    let total_teams: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM teams WHERE workspace_id = $1")
-        .bind(workspace_id)
+    // Count distinct users from team_members (actual users with team access)
+    let total_users: i64 = sqlx::query_scalar("SELECT COUNT(DISTINCT user_id) FROM team_members")
         .fetch_one(pool)
         .await
         .unwrap_or(0);
 
-    // Count projects in workspace teams
-    let total_projects: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM projects p
-         JOIN teams t ON p.team_id = t.id
-         WHERE t.workspace_id = $1",
-    )
-    .bind(workspace_id)
-    .fetch_one(pool)
-    .await
-    .unwrap_or(0);
+    // Active users = same as total for now
+    let active_users = total_users;
 
-    // Count tasks in workspace projects
-    let total_tasks: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM tasks t
-         JOIN projects p ON t.project_id = p.id
-         JOIN teams tm ON p.team_id = tm.id
-         WHERE tm.workspace_id = $1",
-    )
-    .bind(workspace_id)
-    .fetch_one(pool)
-    .await
-    .unwrap_or(0);
+    // Count pending invitations (system-wide for now)
+    let pending_invitations: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM invitations WHERE status = 'pending'")
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0);
+
+    // Count all teams (teams don't have workspace_id set)
+    let total_teams: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM teams")
+        .fetch_one(pool)
+        .await
+        .unwrap_or(0);
+
+    // Count all projects
+    let total_projects: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM projects")
+        .fetch_one(pool)
+        .await
+        .unwrap_or(0);
+
+    // Count all tasks
+    let total_tasks: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tasks")
+        .fetch_one(pool)
+        .await
+        .unwrap_or(0);
 
     ApiResponse::success(AdminStats {
         total_users,
