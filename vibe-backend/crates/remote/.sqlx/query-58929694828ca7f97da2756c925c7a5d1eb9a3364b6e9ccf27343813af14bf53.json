@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH inserted AS (\n                INSERT INTO task_document_links (task_id, document_id)\n                VALUES ($1, $2)\n                RETURNING id, document_id, created_at\n            )\n            SELECT\n                inserted.id AS \"id!: Uuid\",\n                inserted.document_id AS \"document_id!: Uuid\",\n                COALESCE(d.title, 'Untitled') AS \"document_title!\",\n                df.name AS \"folder_name?\",\n                inserted.created_at AS \"linked_at!: DateTime<Utc>\"\n            FROM inserted\n            JOIN documents d ON d.id = inserted.document_id\n            LEFT JOIN document_folders df ON df.id = d.folder_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "document_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "document_title!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "folder_name?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "linked_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      true,
+      false
+    ]
+  },
+  "hash": "58929694828ca7f97da2756c925c7a5d1eb9a3364b6e9ccf27343813af14bf53"
+}

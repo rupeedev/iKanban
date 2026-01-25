@@ -75,21 +75,25 @@ impl TaskDocumentLinkRepository {
     }
 
     /// Link a document to a task (idempotent - checks for existing link first)
+    /// Returns LinkedDocument with full document details for frontend display
     pub async fn link_document(
         pool: &PgPool,
         task_id: Uuid,
         document_id: Uuid,
-    ) -> Result<TaskDocumentLink, TaskDocumentLinkError> {
-        // Check if link already exists
+    ) -> Result<LinkedDocument, TaskDocumentLinkError> {
+        // Check if link already exists - if so, return with document details
         let existing = sqlx::query!(
             r#"
             SELECT
-                id AS "id!: Uuid",
-                task_id AS "task_id!: Uuid",
-                document_id AS "document_id!: Uuid",
-                created_at AS "created_at!: DateTime<Utc>"
-            FROM task_document_links
-            WHERE task_id = $1 AND document_id = $2
+                tdl.id AS "id!: Uuid",
+                tdl.document_id AS "document_id!: Uuid",
+                COALESCE(d.title, 'Untitled') AS "document_title!",
+                df.name AS "folder_name?",
+                tdl.created_at AS "linked_at!: DateTime<Utc>"
+            FROM task_document_links tdl
+            JOIN documents d ON d.id = tdl.document_id
+            LEFT JOIN document_folders df ON df.id = d.folder_id
+            WHERE tdl.task_id = $1 AND tdl.document_id = $2
             "#,
             task_id,
             document_id
@@ -98,24 +102,32 @@ impl TaskDocumentLinkRepository {
         .await?;
 
         if let Some(row) = existing {
-            return Ok(TaskDocumentLink {
+            return Ok(LinkedDocument {
                 id: row.id,
-                task_id: row.task_id,
                 document_id: row.document_id,
-                created_at: row.created_at,
+                document_title: row.document_title,
+                folder_name: row.folder_name,
+                linked_at: row.linked_at,
             });
         }
 
-        // Create new link
+        // Create new link and return with document details
         let row = sqlx::query!(
             r#"
-            INSERT INTO task_document_links (task_id, document_id)
-            VALUES ($1, $2)
-            RETURNING
-                id AS "id!: Uuid",
-                task_id AS "task_id!: Uuid",
-                document_id AS "document_id!: Uuid",
-                created_at AS "created_at!: DateTime<Utc>"
+            WITH inserted AS (
+                INSERT INTO task_document_links (task_id, document_id)
+                VALUES ($1, $2)
+                RETURNING id, document_id, created_at
+            )
+            SELECT
+                inserted.id AS "id!: Uuid",
+                inserted.document_id AS "document_id!: Uuid",
+                COALESCE(d.title, 'Untitled') AS "document_title!",
+                df.name AS "folder_name?",
+                inserted.created_at AS "linked_at!: DateTime<Utc>"
+            FROM inserted
+            JOIN documents d ON d.id = inserted.document_id
+            LEFT JOIN document_folders df ON df.id = d.folder_id
             "#,
             task_id,
             document_id
@@ -123,11 +135,12 @@ impl TaskDocumentLinkRepository {
         .fetch_one(pool)
         .await?;
 
-        Ok(TaskDocumentLink {
+        Ok(LinkedDocument {
             id: row.id,
-            task_id: row.task_id,
             document_id: row.document_id,
-            created_at: row.created_at,
+            document_title: row.document_title,
+            folder_name: row.folder_name,
+            linked_at: row.linked_at,
         })
     }
 
