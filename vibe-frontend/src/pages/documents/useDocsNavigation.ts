@@ -32,7 +32,7 @@ function buildNavTree(
   folders.forEach((folder) => {
     const node: NavItem = {
       id: folder.id,
-      name: folder.name,
+      name: folder.name ?? 'Untitled Folder',
       type: 'folder',
       parentId: folder.parent_id,
       children: [],
@@ -45,7 +45,7 @@ function buildNavTree(
   documents.forEach((doc) => {
     const docNode: NavItem = {
       id: doc.id,
-      name: doc.title,
+      name: doc.title ?? 'Untitled Document',
       type: 'document',
       slug: doc.slug ?? undefined,
       parentId: doc.folder_id,
@@ -75,7 +75,10 @@ function buildNavTree(
       if (a.type !== b.type) {
         return a.type === 'folder' ? -1 : 1;
       }
-      return a.name.localeCompare(b.name);
+      // Defensive: handle undefined names
+      const aName = a.name ?? '';
+      const bName = b.name ?? '';
+      return aName.localeCompare(bName);
     });
   };
 
