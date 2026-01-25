@@ -283,7 +283,7 @@ async fn add_project_repository(
             name: payload
                 .display_name
                 .split('/')
-                .last()
+                .next_back()
                 .unwrap_or(&payload.display_name)
                 .to_string(),
             display_name: payload.display_name.clone(),
@@ -292,7 +292,10 @@ async fn add_project_repository(
     .await
     .map_err(|error| {
         tracing::error!(?error, %project_id, "failed to create repo");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to create repository")
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to create repository",
+        )
     })?;
 
     // Link repo to project
@@ -345,14 +348,19 @@ async fn get_project_repository(
             tracing::error!(?error, %project_id, %repo_id, "failed to get project repo link");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?
-        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "repository not found in project"))?;
+        .ok_or_else(|| {
+            ErrorResponse::new(StatusCode::NOT_FOUND, "repository not found in project")
+        })?;
 
     // Get the repo details
     let repo = RepoRepository::find_by_id(state.pool(), repo_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %repo_id, "failed to load repo");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load repository")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to load repository",
+            )
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "repository not found"))?;
 
@@ -400,7 +408,10 @@ async fn update_project_repository(
         .await
         .map_err(|error| {
             tracing::error!(?error, %repo_id, "failed to load repo");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load repository")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to load repository",
+            )
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "repository not found"))?;
 

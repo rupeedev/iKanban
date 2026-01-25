@@ -1,17 +1,10 @@
 //! Documents MCP tools - CRUD operations for team documents
 
-use rmcp::{
-    ErrorData,
-    handler::server::tool::Parameters,
-    model::CallToolResult,
-    tool,
-};
+use rmcp::{ErrorData, handler::server::tool::Parameters, model::CallToolResult, tool};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::task_server::TaskServer;
-use super::teams::resolve_team;
-use super::types::*;
+use super::{task_server::TaskServer, teams::resolve_team, types::*};
 
 /// Document from API response
 #[derive(Debug, Deserialize)]
@@ -49,13 +42,11 @@ impl TaskServer {
         }
 
         // Get documents
-        let documents: Vec<ApiDocument> = match self
-            .send_json(self.client().get(&self.url(&url)))
-            .await
-        {
-            Ok(d) => d,
-            Err(e) => return Ok(e),
-        };
+        let documents: Vec<ApiDocument> =
+            match self.send_json(self.client().get(self.url(&url))).await {
+                Ok(d) => d,
+                Err(e) => return Ok(e),
+            };
 
         let doc_summaries: Vec<DocumentSummary> = documents
             .into_iter()
@@ -84,10 +75,7 @@ impl TaskServer {
         Parameters(GetDocumentRequest { document_id }): Parameters<GetDocumentRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/documents/{}", document_id));
-        let document: ApiDocument = match self
-            .send_json(self.client().get(&url))
-            .await
-        {
+        let document: ApiDocument = match self.send_json(self.client().get(&url)).await {
             Ok(d) => d,
             Err(e) => return Ok(e),
         };
@@ -189,13 +177,11 @@ impl TaskServer {
         };
 
         let url = self.url(&format!("/api/documents/{}", document_id));
-        let document: ApiDocument = match self
-            .send_json(self.client().put(&url).json(&payload))
-            .await
-        {
-            Ok(d) => d,
-            Err(e) => return Ok(e),
-        };
+        let document: ApiDocument =
+            match self.send_json(self.client().put(&url).json(&payload)).await {
+                Ok(d) => d,
+                Err(e) => return Ok(e),
+            };
 
         let response = DocumentDetails {
             id: document.id.to_string(),

@@ -144,10 +144,10 @@ impl ProjectRepoRepository {
         .fetch_one(pool)
         .await
         .map_err(|e| {
-            if let sqlx::Error::Database(ref db_err) = e {
-                if db_err.constraint() == Some("project_repos_project_id_repo_id_key") {
-                    return ProjectRepoError::AlreadyLinked;
-                }
+            if let sqlx::Error::Database(ref db_err) = e
+                && db_err.constraint() == Some("project_repos_project_id_repo_id_key")
+            {
+                return ProjectRepoError::AlreadyLinked;
             }
             ProjectRepoError::Database(e)
         })?;

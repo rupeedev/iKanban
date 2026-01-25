@@ -1,17 +1,10 @@
 //! Folders MCP tools - CRUD operations for team document folders
 
-use rmcp::{
-    ErrorData,
-    handler::server::tool::Parameters,
-    model::CallToolResult,
-    tool,
-};
+use rmcp::{ErrorData, handler::server::tool::Parameters, model::CallToolResult, tool};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::task_server::TaskServer;
-use super::teams::resolve_team;
-use super::types::*;
+use super::{task_server::TaskServer, teams::resolve_team, types::*};
 
 /// Folder from API response
 #[derive(Debug, Deserialize)]
@@ -42,9 +35,7 @@ impl TaskServer {
 
         // Get folders
         let url = format!("/api/folders?team_id={}", resolved_team.id);
-        let folders: Vec<ApiFolder> = match self
-            .send_json(self.client().get(&self.url(&url)))
-            .await
+        let folders: Vec<ApiFolder> = match self.send_json(self.client().get(self.url(&url))).await
         {
             Ok(f) => f,
             Err(e) => return Ok(e),
@@ -76,10 +67,7 @@ impl TaskServer {
         Parameters(GetFolderRequest { folder_id }): Parameters<GetFolderRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/folders/{}", folder_id));
-        let folder: ApiFolder = match self
-            .send_json(self.client().get(&url))
-            .await
-        {
+        let folder: ApiFolder = match self.send_json(self.client().get(&url)).await {
             Ok(f) => f,
             Err(e) => return Ok(e),
         };
@@ -166,10 +154,7 @@ impl TaskServer {
         let payload = UpdatePayload { name, parent_id };
 
         let url = self.url(&format!("/api/folders/{}", folder_id));
-        let folder: ApiFolder = match self
-            .send_json(self.client().put(&url).json(&payload))
-            .await
-        {
+        let folder: ApiFolder = match self.send_json(self.client().put(&url).json(&payload)).await {
             Ok(f) => f,
             Err(e) => return Ok(e),
         };
