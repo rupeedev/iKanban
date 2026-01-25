@@ -50,12 +50,14 @@ function StatusBadge({
 }) {
   const statusConfig = {
     ok: {
-      color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+      color:
+        'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
       icon: CheckCircle,
       text: label || 'OK',
     },
     warning: {
-      color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+      color:
+        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
       icon: AlertTriangle,
       text: label || 'Near Limit',
     },
@@ -119,7 +121,8 @@ function UsageBar({
         </TooltipTrigger>
         <TooltipContent>
           <p>
-            Using {current} of {unlimited ? 'unlimited' : max} ({unlimited ? 'unlimited' : `${Math.round(percentage)}%`})
+            Using {current} of {unlimited ? 'unlimited' : max} (
+            {unlimited ? 'unlimited' : `${Math.round(percentage)}%`})
           </p>
         </TooltipContent>
       </Tooltip>
@@ -145,12 +148,16 @@ function SummaryCards({
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Workspaces</CardTitle>
+          <CardTitle className="text-sm font-medium">
+            Total Workspaces
+          </CardTitle>
           <Building2 className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{summary.total_workspaces}</div>
-          <p className="text-xs text-muted-foreground">Active tenant workspaces</p>
+          <p className="text-xs text-muted-foreground">
+            Active tenant workspaces
+          </p>
         </CardContent>
       </Card>
 
@@ -188,18 +195,27 @@ function SummaryCards({
         <CardContent>
           <div className="flex items-center gap-2">
             {summary.workspaces_at_limit > 0 && (
-              <Badge variant="destructive">{summary.workspaces_at_limit} at limit</Badge>
+              <Badge variant="destructive">
+                {summary.workspaces_at_limit} at limit
+              </Badge>
             )}
             {summary.workspaces_near_limit > 0 && (
-              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+              <Badge
+                variant="secondary"
+                className="bg-yellow-100 text-yellow-800"
+              >
                 {summary.workspaces_near_limit} near limit
               </Badge>
             )}
-            {summary.workspaces_at_limit === 0 && summary.workspaces_near_limit === 0 && (
-              <Badge variant="outline" className="bg-green-100 text-green-800">
-                All OK
-              </Badge>
-            )}
+            {summary.workspaces_at_limit === 0 &&
+              summary.workspaces_near_limit === 0 && (
+                <Badge
+                  variant="outline"
+                  className="bg-green-100 text-green-800"
+                >
+                  All OK
+                </Badge>
+              )}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             Workspaces approaching limits
@@ -226,7 +242,9 @@ function TenantRow({ tenant }: { tenant: TenantMetrics }) {
         <div className="flex flex-col">
           <span>{tenant.owner_name || tenant.owner_email || 'No owner'}</span>
           {tenant.owner_name && tenant.owner_email && (
-            <span className="text-xs text-muted-foreground">{tenant.owner_email}</span>
+            <span className="text-xs text-muted-foreground">
+              {tenant.owner_email}
+            </span>
           )}
         </div>
       </TableCell>
@@ -263,8 +281,12 @@ function TenantRow({ tenant }: { tenant: TenantMetrics }) {
         </div>
       </TableCell>
       <TableCell className="text-center">{tenant.usage.issues_count}</TableCell>
-      <TableCell className="text-center">{tenant.usage.documents_count}</TableCell>
-      <TableCell className="text-muted-foreground text-sm">{createdDate}</TableCell>
+      <TableCell className="text-center">
+        {tenant.usage.documents_count}
+      </TableCell>
+      <TableCell className="text-muted-foreground text-sm">
+        {createdDate}
+      </TableCell>
       <TableCell>
         <StatusBadge status={tenant.status.overall} />
       </TableCell>
@@ -306,7 +328,8 @@ function LoadingSkeleton() {
 }
 
 export function SuperadminStatsPage() {
-  const { data, isLoading, isError, error, refetch, isFetching } = useTenantMetrics();
+  const { data, isLoading, isError, error, refetch, isFetching } =
+    useTenantMetrics();
 
   if (isLoading) {
     return (
@@ -334,7 +357,9 @@ export function SuperadminStatsPage() {
         <Card>
           <CardContent className="py-8 text-center">
             <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
-            <p className="text-lg font-medium mb-2">Failed to load tenant metrics</p>
+            <p className="text-lg font-medium mb-2">
+              Failed to load tenant metrics
+            </p>
             <p className="text-sm text-muted-foreground mb-4">
               {error instanceof Error ? error.message : 'Unknown error'}
             </p>
@@ -376,7 +401,9 @@ export function SuperadminStatsPage() {
           onClick={() => refetch()}
           disabled={isFetching}
         >
-          <RefreshCw className={cn('h-4 w-4 mr-2', isFetching && 'animate-spin')} />
+          <RefreshCw
+            className={cn('h-4 w-4 mr-2', isFetching && 'animate-spin')}
+          />
           Refresh
         </Button>
       </div>

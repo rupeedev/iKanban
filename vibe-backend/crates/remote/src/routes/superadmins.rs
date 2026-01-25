@@ -363,7 +363,8 @@ async fn list_tenants(
             let teams_status = calculate_status(row.teams_count, row.max_teams);
             let projects_status = calculate_status(row.projects_count, row.max_projects);
             let members_status = calculate_status(row.members_count, row.max_members);
-            let overall = calculate_overall_status(&teams_status, &projects_status, &members_status);
+            let overall =
+                calculate_overall_status(&teams_status, &projects_status, &members_status);
 
             // Track limit status
             if overall == "critical" {

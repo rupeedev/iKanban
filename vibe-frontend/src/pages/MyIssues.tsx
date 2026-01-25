@@ -57,15 +57,23 @@ const STATUS_COLORS: Record<TaskStatus, string> = {
 
 export function MyIssues() {
   const { user } = useClerkUser();
-  const { teams, teamsById, isLoading: teamsLoading, error: teamsError } = useTeams();
+  const {
+    teams,
+    teamsById,
+    isLoading: teamsLoading,
+    error: teamsError,
+  } = useTeams();
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [allIssues, setAllIssues] = useState<
     Record<string, TaskWithAttemptStatus[]>
   >({});
 
   // Issue detail panel state
-  const [selectedIssue, setSelectedIssue] = useState<(TaskWithAttemptStatus & { teamId: string }) | null>(null);
-  const [issuePanelSize, setIssuePanelSize] = useState<number>(loadIssuePanelSize);
+  const [selectedIssue, setSelectedIssue] = useState<
+    (TaskWithAttemptStatus & { teamId: string }) | null
+  >(null);
+  const [issuePanelSize, setIssuePanelSize] =
+    useState<number>(loadIssuePanelSize);
 
   // Get current user email from Clerk (reliable source)
   const userEmail = user?.primaryEmailAddress?.emailAddress || null;
@@ -338,7 +346,9 @@ export function MyIssues() {
                       <div className="p-4 rounded-full bg-muted inline-block mb-4">
                         <ListTodo className="h-8 w-8 text-muted-foreground" />
                       </div>
-                      <h3 className="text-lg font-medium mb-1">No issues found</h3>
+                      <h3 className="text-lg font-medium mb-1">
+                        No issues found
+                      </h3>
                       <p className="text-sm text-muted-foreground">
                         {viewFilter === 'all'
                           ? 'When you get assigned to issues, they will appear here'
@@ -349,38 +359,40 @@ export function MyIssues() {
                 ) : (
                   <div className="space-y-8">
                     {/* Render issues grouped by status */}
-                    {(['inprogress', 'inreview', 'todo', 'done'] as TaskStatus[]).map(
-                      (status) => {
-                        const statusIssues = issuesByStatus[status];
-                        if (statusIssues.length === 0) return null;
+                    {(
+                      ['inprogress', 'inreview', 'todo', 'done'] as TaskStatus[]
+                    ).map((status) => {
+                      const statusIssues = issuesByStatus[status];
+                      if (statusIssues.length === 0) return null;
 
-                        return (
-                          <div key={status}>
-                            <div className="flex items-center gap-2 mb-4 pb-2 border-b">
-                              <StatusIcon
-                                status={status}
-                                className={cn('h-5 w-5', STATUS_COLORS[status])}
-                              />
-                              <h2 className="font-medium">{STATUS_LABELS[status]}</h2>
-                              <Badge variant="secondary" className="rounded-full">
-                                {statusIssues.length}
-                              </Badge>
-                            </div>
-                            <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
-                              {statusIssues.map((issue) => (
-                                <IssueCard
-                                  key={issue.id}
-                                  issue={issue}
-                                  teams={teams}
-                                  selected={selectedIssue?.id === issue.id}
-                                  onClick={() => handleIssueClick(issue)}
-                                />
-                              ))}
-                            </div>
+                      return (
+                        <div key={status}>
+                          <div className="flex items-center gap-2 mb-4 pb-2 border-b">
+                            <StatusIcon
+                              status={status}
+                              className={cn('h-5 w-5', STATUS_COLORS[status])}
+                            />
+                            <h2 className="font-medium">
+                              {STATUS_LABELS[status]}
+                            </h2>
+                            <Badge variant="secondary" className="rounded-full">
+                              {statusIssues.length}
+                            </Badge>
                           </div>
-                        );
-                      }
-                    )}
+                          <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
+                            {statusIssues.map((issue) => (
+                              <IssueCard
+                                key={issue.id}
+                                issue={issue}
+                                teams={teams}
+                                selected={selectedIssue?.id === issue.id}
+                                onClick={() => handleIssueClick(issue)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

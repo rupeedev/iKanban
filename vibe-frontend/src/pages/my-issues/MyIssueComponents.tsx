@@ -161,7 +161,8 @@ export function IssueCard({
         issue.status === 'inreview' && 'border-l-blue-500',
         issue.status === 'todo' && 'border-l-gray-300 dark:border-l-gray-600',
         issue.status === 'done' && 'border-l-green-500',
-        selected && 'ring-2 ring-indigo-500 border-indigo-300 dark:border-indigo-700'
+        selected &&
+          'ring-2 ring-indigo-500 border-indigo-300 dark:border-indigo-700'
       )}
       onClick={onClick}
     >

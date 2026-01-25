@@ -54,7 +54,9 @@ export function SuperadminDashboard() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Pending Requests
+            </CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -65,12 +67,16 @@ export function SuperadminDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Approved Today</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Approved Today
+            </CardTitle>
             <UserCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">Registrations approved</p>
+            <p className="text-xs text-muted-foreground">
+              Registrations approved
+            </p>
           </CardContent>
         </Card>
 
@@ -101,7 +107,9 @@ export function SuperadminDashboard() {
             {isLoading ? (
               <Skeleton className="h-8 w-12" />
             ) : (
-              <div className="text-2xl font-bold">{summary.total_workspaces}</div>
+              <div className="text-2xl font-bold">
+                {summary.total_workspaces}
+              </div>
             )}
             <p className="text-xs text-muted-foreground">Tenant workspaces</p>
           </CardContent>
@@ -118,7 +126,9 @@ export function SuperadminDashboard() {
             ) : (
               <div className="text-2xl font-bold">{summary.total_teams}</div>
             )}
-            <p className="text-xs text-muted-foreground">Across all workspaces</p>
+            <p className="text-xs text-muted-foreground">
+              Across all workspaces
+            </p>
           </CardContent>
         </Card>
 
@@ -154,36 +164,43 @@ export function SuperadminDashboard() {
       </div>
 
       {/* Limit Status Alert */}
-      {!isLoading && (summary.workspaces_at_limit > 0 || summary.workspaces_near_limit > 0) && (
-        <Card className="border-yellow-500/50 bg-yellow-50/50 dark:bg-yellow-900/10">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-600" />
-              Limit Status Alerts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              {summary.workspaces_at_limit > 0 && (
-                <Badge variant="destructive">
-                  {summary.workspaces_at_limit} workspace{summary.workspaces_at_limit > 1 ? 's' : ''} at limit
-                </Badge>
-              )}
-              {summary.workspaces_near_limit > 0 && (
-                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                  {summary.workspaces_near_limit} workspace{summary.workspaces_near_limit > 1 ? 's' : ''} near limit
-                </Badge>
-              )}
-              <Link to="stats" className="ml-auto">
-                <Button variant="outline" size="sm">
-                  View Details
-                  <ArrowRight className="h-4 w-4 ml-1" />
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {!isLoading &&
+        (summary.workspaces_at_limit > 0 ||
+          summary.workspaces_near_limit > 0) && (
+          <Card className="border-yellow-500/50 bg-yellow-50/50 dark:bg-yellow-900/10">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                Limit Status Alerts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                {summary.workspaces_at_limit > 0 && (
+                  <Badge variant="destructive">
+                    {summary.workspaces_at_limit} workspace
+                    {summary.workspaces_at_limit > 1 ? 's' : ''} at limit
+                  </Badge>
+                )}
+                {summary.workspaces_near_limit > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                  >
+                    {summary.workspaces_near_limit} workspace
+                    {summary.workspaces_near_limit > 1 ? 's' : ''} near limit
+                  </Badge>
+                )}
+                <Link to="stats" className="ml-auto">
+                  <Button variant="outline" size="sm">
+                    View Details
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
       {/* Recent Workspaces */}
       <Card>
@@ -204,7 +221,9 @@ export function SuperadminDashboard() {
               ))}
             </div>
           ) : isError ? (
-            <p className="text-sm text-muted-foreground">Failed to load recent workspaces.</p>
+            <p className="text-sm text-muted-foreground">
+              Failed to load recent workspaces.
+            </p>
           ) : recentWorkspaces.length === 0 ? (
             <p className="text-sm text-muted-foreground">No workspaces yet.</p>
           ) : (
