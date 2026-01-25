@@ -179,13 +179,17 @@ pub async fn trigger_copilot_assignment(
     _user_id: Uuid,
     prompt: String,
 ) -> Result<crate::db::copilot_assignments::CopilotAssignment, String> {
-    use crate::db::{project_repos::ProjectRepoRepository};
+    use crate::db::project_repos::ProjectRepoRepository;
 
     // Deduplication: Check if an active assignment already exists for this task
-    if let Ok(Some(existing)) = CopilotAssignmentRepository::find_active_by_task_id(pool, task_id).await {
+    if let Ok(Some(existing)) =
+        CopilotAssignmentRepository::find_active_by_task_id(pool, task_id).await
+    {
         tracing::info!(
             "Skipping Copilot assignment - active assignment {} already exists for task {} (status: {:?})",
-            existing.id, task_id, existing.status
+            existing.id,
+            task_id,
+            existing.status
         );
         return Ok(existing);
     }
@@ -204,29 +208,36 @@ pub async fn trigger_copilot_assignment(
         .ok_or_else(|| "No GitHub connection configured".to_string())?;
 
     // Step 2: Determine Repository (Project Level > Workspace Level)
-    let (repo_owner, repo_name) = match ProjectRepoRepository::list_by_project(pool, task.project_id).await {
-        Ok(repos) if !repos.is_empty() => {
-            // Use the first linked project repo - display_name is in 'owner/repo' format
-            let repo = &repos[0];
-            let parts: Vec<&str> = repo.display_name.split('/').collect();
-            if parts.len() != 2 {
-                return Err(format!("Invalid repo display_name format: {}", repo.display_name));
+    let (repo_owner, repo_name) =
+        match ProjectRepoRepository::list_by_project(pool, task.project_id).await {
+            Ok(repos) if !repos.is_empty() => {
+                // Use the first linked project repo - display_name is in 'owner/repo' format
+                let repo = &repos[0];
+                let parts: Vec<&str> = repo.display_name.split('/').collect();
+                if parts.len() != 2 {
+                    return Err(format!(
+                        "Invalid repo display_name format: {}",
+                        repo.display_name
+                    ));
+                }
+                (parts[0].to_string(), parts[1].to_string())
             }
-            (parts[0].to_string(), parts[1].to_string())
-        }
-        _ => {
-            // Fallback to workspace connection repos
-            let repos = GitHubRepositoryOps::find_by_connection_id(pool, connection.id)
-                .await
-                .map_err(|e| format!("database error: {}", e))?;
+            _ => {
+                // Fallback to workspace connection repos
+                let repos = GitHubRepositoryOps::find_by_connection_id(pool, connection.id)
+                    .await
+                    .map_err(|e| format!("database error: {}", e))?;
 
-            let github_repo = repos
-                .first()
-                .ok_or_else(|| "No GitHub repository linked".to_string())?;
-            
-            (github_repo.repo_owner.clone(), github_repo.repo_name.clone())
-        }
-    };
+                let github_repo = repos
+                    .first()
+                    .ok_or_else(|| "No GitHub repository linked".to_string())?;
+
+                (
+                    github_repo.repo_owner.clone(),
+                    github_repo.repo_name.clone(),
+                )
+            }
+        };
 
     let assignment = CopilotAssignmentRepository::create_copilot(
         pool,
@@ -303,13 +314,17 @@ pub async fn trigger_claude_assignment(
     _user_id: Uuid,
     prompt: String,
 ) -> Result<crate::db::copilot_assignments::CopilotAssignment, String> {
-    use crate::db::{project_repos::ProjectRepoRepository};
+    use crate::db::project_repos::ProjectRepoRepository;
 
     // Deduplication: Check if an active assignment already exists for this task
-    if let Ok(Some(existing)) = CopilotAssignmentRepository::find_active_by_task_id(pool, task_id).await {
+    if let Ok(Some(existing)) =
+        CopilotAssignmentRepository::find_active_by_task_id(pool, task_id).await
+    {
         tracing::info!(
             "Skipping Claude assignment - active assignment {} already exists for task {} (status: {:?})",
-            existing.id, task_id, existing.status
+            existing.id,
+            task_id,
+            existing.status
         );
         return Ok(existing);
     }
@@ -328,29 +343,36 @@ pub async fn trigger_claude_assignment(
         .ok_or_else(|| "No GitHub connection configured".to_string())?;
 
     // Step 2: Determine Repository (Project Level > Workspace Level)
-    let (repo_owner, repo_name) = match ProjectRepoRepository::list_by_project(pool, task.project_id).await {
-        Ok(repos) if !repos.is_empty() => {
-            // Use the first linked project repo - display_name is in 'owner/repo' format
-            let repo = &repos[0];
-            let parts: Vec<&str> = repo.display_name.split('/').collect();
-            if parts.len() != 2 {
-                return Err(format!("Invalid repo display_name format: {}", repo.display_name));
+    let (repo_owner, repo_name) =
+        match ProjectRepoRepository::list_by_project(pool, task.project_id).await {
+            Ok(repos) if !repos.is_empty() => {
+                // Use the first linked project repo - display_name is in 'owner/repo' format
+                let repo = &repos[0];
+                let parts: Vec<&str> = repo.display_name.split('/').collect();
+                if parts.len() != 2 {
+                    return Err(format!(
+                        "Invalid repo display_name format: {}",
+                        repo.display_name
+                    ));
+                }
+                (parts[0].to_string(), parts[1].to_string())
             }
-            (parts[0].to_string(), parts[1].to_string())
-        }
-        _ => {
-            // Fallback to workspace connection repos
-            let repos = GitHubRepositoryOps::find_by_connection_id(pool, connection.id)
-                .await
-                .map_err(|e| format!("database error: {}", e))?;
+            _ => {
+                // Fallback to workspace connection repos
+                let repos = GitHubRepositoryOps::find_by_connection_id(pool, connection.id)
+                    .await
+                    .map_err(|e| format!("database error: {}", e))?;
 
-            let github_repo = repos
-                .first()
-                .ok_or_else(|| "No GitHub repository linked".to_string())?;
-            
-            (github_repo.repo_owner.clone(), github_repo.repo_name.clone())
-        }
-    };
+                let github_repo = repos
+                    .first()
+                    .ok_or_else(|| "No GitHub repository linked".to_string())?;
+
+                (
+                    github_repo.repo_owner.clone(),
+                    github_repo.repo_name.clone(),
+                )
+            }
+        };
 
     let assignment = CopilotAssignmentRepository::create_copilot(
         pool,
@@ -427,13 +449,17 @@ pub async fn trigger_gemini_assignment(
     _user_id: Uuid,
     prompt: String,
 ) -> Result<crate::db::copilot_assignments::CopilotAssignment, String> {
-    use crate::db::{project_repos::ProjectRepoRepository};
+    use crate::db::project_repos::ProjectRepoRepository;
 
     // Deduplication: Check if an active assignment already exists for this task
-    if let Ok(Some(existing)) = CopilotAssignmentRepository::find_active_by_task_id(pool, task_id).await {
+    if let Ok(Some(existing)) =
+        CopilotAssignmentRepository::find_active_by_task_id(pool, task_id).await
+    {
         tracing::info!(
             "Skipping Gemini assignment - active assignment {} already exists for task {} (status: {:?})",
-            existing.id, task_id, existing.status
+            existing.id,
+            task_id,
+            existing.status
         );
         return Ok(existing);
     }
@@ -449,32 +475,43 @@ pub async fn trigger_gemini_assignment(
     let connection = GitHubConnectionRepository::find_workspace_connection(pool)
         .await
         .map_err(|e| format!("database error: {}", e))?
-        .ok_or_else(|| "No GitHub connection configured. Please add a GitHub connection in Settings.".to_string())?;
+        .ok_or_else(|| {
+            "No GitHub connection configured. Please add a GitHub connection in Settings."
+                .to_string()
+        })?;
 
     // Step 2: Determine Repository (Project Level > Workspace Level)
-    let (repo_owner, repo_name) = match ProjectRepoRepository::list_by_project(pool, task.project_id).await {
-        Ok(repos) if !repos.is_empty() => {
-            // Use the first linked project repo - display_name is in 'owner/repo' format
-            let repo = &repos[0];
-            let parts: Vec<&str> = repo.display_name.split('/').collect();
-            if parts.len() != 2 {
-                return Err(format!("Invalid repo display_name format: {}", repo.display_name));
+    let (repo_owner, repo_name) =
+        match ProjectRepoRepository::list_by_project(pool, task.project_id).await {
+            Ok(repos) if !repos.is_empty() => {
+                // Use the first linked project repo - display_name is in 'owner/repo' format
+                let repo = &repos[0];
+                let parts: Vec<&str> = repo.display_name.split('/').collect();
+                if parts.len() != 2 {
+                    return Err(format!(
+                        "Invalid repo display_name format: {}",
+                        repo.display_name
+                    ));
+                }
+                (parts[0].to_string(), parts[1].to_string())
             }
-            (parts[0].to_string(), parts[1].to_string())
-        }
-        _ => {
-            // Fallback to workspace connection repos
-            let repos = GitHubRepositoryOps::find_by_connection_id(pool, connection.id)
-                .await
-                .map_err(|e| format!("database error: {}", e))?;
+            _ => {
+                // Fallback to workspace connection repos
+                let repos = GitHubRepositoryOps::find_by_connection_id(pool, connection.id)
+                    .await
+                    .map_err(|e| format!("database error: {}", e))?;
 
-            let github_repo = repos
-                .first()
-                .ok_or_else(|| "No GitHub repository linked. Please add a repository in Settings → GitHub.".to_string())?;
-            
-            (github_repo.repo_owner.clone(), github_repo.repo_name.clone())
-        }
-    };
+                let github_repo = repos.first().ok_or_else(|| {
+                    "No GitHub repository linked. Please add a repository in Settings → GitHub."
+                        .to_string()
+                })?;
+
+                (
+                    github_repo.repo_owner.clone(),
+                    github_repo.repo_name.clone(),
+                )
+            }
+        };
 
     let assignment = CopilotAssignmentRepository::create_copilot(
         pool,
@@ -681,8 +718,10 @@ async fn create_github_issue_for_claude(
         } else {
             prompt.to_string()
         }
-    }.trim().to_string();
-    
+    }
+    .trim()
+    .to_string();
+
     let issue_title = format!("[Claude] Task: {}", task_title);
     let issue_body = format!(
         "## Task\n{}\n\n## Description\n{}\n\n## Claude Instructions\n@claude {}\n\n---\n\
@@ -829,8 +868,10 @@ async fn create_github_issue_for_gemini(
         } else {
             prompt.to_string()
         }
-    }.trim().to_string();
-    
+    }
+    .trim()
+    .to_string();
+
     let issue_title = format!("[Gemini] Task: {}", task_title);
     let issue_body = format!(
         "## Task\n{}\n\n## Description\n{}\n\n## Gemini Instructions\n@gemini {}\n\n---\n\

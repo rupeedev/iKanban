@@ -1,17 +1,14 @@
 //! Comments MCP tools - list and add comments on tasks
 
-use rmcp::{
-    ErrorData,
-    handler::server::tool::Parameters,
-    model::CallToolResult,
-    tool,
-};
+use rmcp::{ErrorData, handler::server::tool::Parameters, model::CallToolResult, tool};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::task_server::TaskServer;
-use super::teams::{parse_issue_key, resolve_issue_key};
-use super::types::*;
+use super::{
+    task_server::TaskServer,
+    teams::{parse_issue_key, resolve_issue_key},
+    types::*,
+};
 
 /// Comment from API response
 #[derive(Debug, Deserialize)]

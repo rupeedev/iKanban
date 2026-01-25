@@ -379,11 +379,7 @@ impl CopilotAssignmentRepository {
     }
 
     /// Update assignment status
-    pub async fn update_status(
-        pool: &PgPool,
-        id: Uuid,
-        status: &str,
-    ) -> Result<(), sqlx::Error> {
+    pub async fn update_status(pool: &PgPool, id: Uuid, status: &str) -> Result<(), sqlx::Error> {
         sqlx::query!(
             r#"
             UPDATE copilot_assignments

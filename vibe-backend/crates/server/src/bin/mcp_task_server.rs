@@ -8,6 +8,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::get,
 };
+use remote::mcp::TaskServer;
 use rmcp::{
     ServiceExt,
     transport::{
@@ -15,7 +16,6 @@ use rmcp::{
         stdio,
     },
 };
-use remote::mcp::TaskServer;
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};

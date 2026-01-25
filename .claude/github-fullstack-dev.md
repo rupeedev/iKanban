@@ -37,7 +37,9 @@ Work on: $ARGUMENTS
 
 ```
 ## Pre-Code Checklist
-- [ ] 1. Read .claude/FILE-MAP.md (find exact file paths)
+- [ ] 1a. Read .claude/FILE-MAP.md (find exact file paths)
+- [ ] 1b. Read .claude/CODING-GUIDELINES.md (file limits, lint rules)
+- [ ] 1c. Read .claude/CODEBASE-GAPS.md (known issues, correct API patterns)
 - [ ] 2. Task type: QUICK (fix/bug/typo) or FEATURE (add/implement/new)?
 - [ ] 3. Created task in iKanban: IKA-___
 - [ ] 4. Created feature branch: git checkout -b <fix|feature>/IKA-___-<name>

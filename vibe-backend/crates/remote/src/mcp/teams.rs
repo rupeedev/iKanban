@@ -3,17 +3,11 @@
 use std::str::FromStr;
 
 use db_crate::models::task::{Task, TaskStatus, UpdateTask};
-use rmcp::{
-    ErrorData,
-    handler::server::tool::Parameters,
-    model::CallToolResult,
-    tool,
-};
+use rmcp::{ErrorData, handler::server::tool::Parameters, model::CallToolResult, tool};
 use serde::Deserialize;
 use uuid::Uuid;
 
-use super::task_server::TaskServer;
-use super::types::*;
+use super::{task_server::TaskServer, types::*};
 
 /// Team from API response
 #[derive(Debug, Deserialize)]
@@ -99,10 +93,7 @@ pub async fn resolve_team(server: &TaskServer, team: &str) -> Result<ResolvedTea
         }
     }
 
-    Err(
-        TaskServer::err(format!("Team '{}' not found", team), None::<String>)
-            .unwrap(),
-    )
+    Err(TaskServer::err(format!("Team '{}' not found", team), None::<String>).unwrap())
 }
 
 /// Resolve an issue key (IKA-123) to (task_uuid, issue_key)
@@ -112,10 +103,7 @@ pub async fn resolve_issue_key(
 ) -> Result<(Uuid, String), CallToolResult> {
     let (identifier, number) = parse_issue_key(key).ok_or_else(|| {
         TaskServer::err(
-            format!(
-                "Invalid issue key '{}'. Use format like 'IKA-123'.",
-                key
-            ),
+            format!("Invalid issue key '{}'. Use format like 'IKA-123'.", key),
             None::<String>,
         )
         .unwrap()
@@ -138,16 +126,14 @@ pub async fn resolve_issue_key(
         }
     }
 
-    Err(TaskServer::err(
-        format!("Issue '{}' not found", key),
-        None::<String>,
-    )
-    .unwrap())
+    Err(TaskServer::err(format!("Issue '{}' not found", key), None::<String>).unwrap())
 }
 
 impl TaskServer {
     /// List all teams
-    #[tool(description = "List all teams. Returns team identifiers (e.g., 'IKA', 'BLA') and names.")]
+    #[tool(
+        description = "List all teams. Returns team identifiers (e.g., 'IKA', 'BLA') and names."
+    )]
     pub async fn list_teams(
         &self,
         #[allow(unused)] Parameters(_req): Parameters<ListTeamsRequest>,
@@ -181,7 +167,11 @@ impl TaskServer {
     )]
     pub async fn list_issues(
         &self,
-        Parameters(ListTeamIssuesRequest { team, status, limit }): Parameters<ListTeamIssuesRequest>,
+        Parameters(ListTeamIssuesRequest {
+            team,
+            status,
+            limit,
+        }): Parameters<ListTeamIssuesRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         // Resolve team
         let resolved_team = match resolve_team(self, &team).await {

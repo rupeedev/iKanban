@@ -26,7 +26,9 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json;
 use uuid::Uuid;
 
-use super::types::{ApiResponseEnvelope, ContainerQuery, CreateTaskAttemptBody, WorkspaceRepoInput};
+use super::types::{
+    ApiResponseEnvelope, ContainerQuery, CreateTaskAttemptBody, WorkspaceRepoInput,
+};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {

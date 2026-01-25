@@ -3,11 +3,11 @@
 //! Handles repository-related operations like fetching branches.
 
 use axum::{
+    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
-    Json, Router,
 };
 use reqwest::header;
 use serde::{Deserialize, Serialize};
@@ -15,12 +15,9 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::{
-        github_connections::GitHubConnectionRepository,
-        repos::RepoRepository,
-    },
-    routes::error::ApiResponse,
     AppState,
+    db::{github_connections::GitHubConnectionRepository, repos::RepoRepository},
+    routes::error::ApiResponse,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -78,7 +75,7 @@ pub async fn get_repo_branches(
             return (
                 StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({
-                    "success": false, 
+                    "success": false,
                     "message": "No GitHub connection configured"
                 })),
             )
@@ -89,7 +86,7 @@ pub async fn get_repo_branches(
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
-                    "success": false, 
+                    "success": false,
                     "message": "Failed to get GitHub connection"
                 })),
             )
@@ -101,9 +98,12 @@ pub async fn get_repo_branches(
     let (owner, name) = if repo.path.starts_with("http") {
         let parts: Vec<&str> = repo.path.split('/').collect();
         if parts.len() >= 2 {
-            (parts[parts.len() - 2].to_string(), parts[parts.len() - 1].to_string())
+            (
+                parts[parts.len() - 2].to_string(),
+                parts[parts.len() - 1].to_string(),
+            )
         } else {
-             return (
+            return (
                 StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({"success": false, "message": format!("Invalid repo URL format: {}", repo.path)})),
             )
@@ -126,7 +126,10 @@ pub async fn get_repo_branches(
 
     match client
         .get(&url)
-        .header(header::AUTHORIZATION, format!("Bearer {}", connection.access_token))
+        .header(
+            header::AUTHORIZATION,
+            format!("Bearer {}", connection.access_token),
+        )
         .header(header::USER_AGENT, "iKanban-Backend")
         .header(header::ACCEPT, "application/vnd.github+json")
         .header("X-GitHub-Api-Version", "2022-11-28")
@@ -141,7 +144,7 @@ pub async fn get_repo_branches(
                 return (
                     StatusCode::BAD_GATEWAY,
                     Json(serde_json::json!({
-                        "success": false, 
+                        "success": false,
                         "message": format!("GitHub API error: {}", status)
                     })),
                 )
@@ -155,7 +158,7 @@ pub async fn get_repo_branches(
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(serde_json::json!({
-                            "success": false, 
+                            "success": false,
                             "message": "Failed to parse GitHub response"
                         })),
                     )

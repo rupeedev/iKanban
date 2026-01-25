@@ -10,7 +10,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 ## Pre-Code Checklist
-- [ ] 1. Read FILE-MAP.md? (find file paths without exploration)
+- [ ] 1a. Read FILE-MAP.md? (find file paths without exploration)
+- [ ] 1b. Read CODING-GUIDELINES.md? (file limits, lint rules)
+- [ ] 1c. Read CODEBASE-GAPS.md? (known issues, correct API patterns)
 - [ ] 2. Task type: QUICK (fix/bug) or FEATURE (add/implement)?
 - [ ] 3. Task created in iKanban? IKA-___
 - [ ] 4. Feature branch created? `git checkout -b <fix|feature>/IKA-___-<name>`
@@ -62,7 +64,8 @@ curl -s -X PUT "https://api.scho1ar.com/api/tasks/{id}" \
 |----------|----------|------|----------|
 | **1** | **FILE-MAP.md** | `.claude/FILE-MAP.md` | **Exact file paths - ELIMINATES exploration** |
 | **2** | **CODING-GUIDELINES.md** | `.claude/CODING-GUIDELINES.md` | File size limits, lint rules, pre-commit checks |
-| **3** | **WORKFLOW.md** | `.claude/WORKFLOW.md` | 8-phase TDD workflow, task management, git process |
+| **3** | **CODEBASE-GAPS.md** | `.claude/CODEBASE-GAPS.md` | **Known issues, wrong patterns, correct API usage** |
+| **4** | **WORKFLOW.md** | `.claude/WORKFLOW.md` | 8-phase TDD workflow, task management, git process |
 
 ### Critical: FILE-MAP.md Eliminates Exploration
 - **DO NOT** use Grep/Glob to find files - paths are in FILE-MAP.md

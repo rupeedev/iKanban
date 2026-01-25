@@ -38,7 +38,10 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/tasks", post(create_shared_task))
         .route("/tasks/check", post(check_tasks_existence))
-        .route("/tasks/{task_id}", patch(update_shared_task).put(update_shared_task))
+        .route(
+            "/tasks/{task_id}",
+            patch(update_shared_task).put(update_shared_task),
+        )
         .route("/tasks/{task_id}", delete(delete_shared_task))
         .route("/tasks/{task_id}/assign", post(assign_task))
         .route(
@@ -151,9 +154,9 @@ pub async fn create_shared_task(
         due_date: _, // Ignored - shared_tasks doesn't have due_date column yet
         assignee_id,
         parent_workspace_id: _, // Ignored - not stored in shared_tasks
-        image_ids: _,          // Ignored - not stored in shared_tasks
-        shared_task_id: _,     // Ignored - not stored in shared_tasks
-        team_id: _,            // Ignored - not stored in shared_tasks
+        image_ids: _,           // Ignored - not stored in shared_tasks
+        shared_task_id: _,      // Ignored - not stored in shared_tasks
+        team_id: _,             // Ignored - not stored in shared_tasks
     } = payload;
 
     if let Err(error) = ensure_text_size(&title, description.as_deref()) {
@@ -234,7 +237,7 @@ pub async fn update_shared_task(
         assignee_id,
         due_date,
         parent_workspace_id: _, // Ignored - not stored in shared_tasks
-        image_ids: _,          // Ignored - not stored in shared_tasks
+        image_ids: _,           // Ignored - not stored in shared_tasks
     } = payload;
 
     let next_title = title.as_deref().unwrap_or(existing.title.as_str());
@@ -601,9 +604,7 @@ pub async fn create_task_comment(
     };
 
     match TaskCommentRepository::create(pool, task_id, &create_data).await {
-        Ok(comment) => {
-            (StatusCode::CREATED, ApiResponse::success(comment)).into_response()
-        }
+        Ok(comment) => (StatusCode::CREATED, ApiResponse::success(comment)).into_response(),
         Err(e) => {
             tracing::error!(?e, "failed to create task comment");
             (

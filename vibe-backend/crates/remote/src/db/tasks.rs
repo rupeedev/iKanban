@@ -575,10 +575,7 @@ impl SharedTaskRepository<'_> {
     }
 
     /// Get team_id for a task from the `tasks` table.
-    pub async fn get_team_id(
-        pool: &PgPool,
-        task_id: Uuid,
-    ) -> Result<Option<Uuid>, sqlx::Error> {
+    pub async fn get_team_id(pool: &PgPool, task_id: Uuid) -> Result<Option<Uuid>, sqlx::Error> {
         sqlx::query_scalar!(
             r#"
             SELECT team_id

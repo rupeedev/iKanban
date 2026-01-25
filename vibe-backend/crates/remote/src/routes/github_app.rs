@@ -997,8 +997,10 @@ async fn handle_pr_opened(
 
 /// Handle PR closed - if merged, update iKanban task with completion status
 async fn handle_pr_closed(state: &AppState, payload: &serde_json::Value) -> Response {
-    use crate::db::copilot_assignments::CopilotAssignmentRepository;
-    use crate::db::task_comments::{CreateTaskComment, TaskCommentRepository};
+    use crate::db::{
+        copilot_assignments::CopilotAssignmentRepository,
+        task_comments::{CreateTaskComment, TaskCommentRepository},
+    };
 
     // Only process if PR was actually merged
     let merged = payload["pull_request"]["merged"].as_bool().unwrap_or(false);
@@ -1019,10 +1021,7 @@ async fn handle_pr_closed(state: &AppState, payload: &serde_json::Value) -> Resp
 
     info!(
         repo_owner,
-        repo_name,
-        pr_number,
-        merge_commit_sha,
-        "Processing pull_request.closed (merged) event"
+        repo_name, pr_number, merge_commit_sha, "Processing pull_request.closed (merged) event"
     );
 
     // Try to find the linked GitHub issue from PR body (e.g., "Fixes #35" or "Closes #35")
@@ -1064,8 +1063,7 @@ async fn handle_pr_closed(state: &AppState, payload: &serde_json::Value) -> Resp
     );
 
     // Update the assignment status to "merged"
-    if let Err(e) =
-        CopilotAssignmentRepository::update_status(pool, assignment.id, "merged").await
+    if let Err(e) = CopilotAssignmentRepository::update_status(pool, assignment.id, "merged").await
     {
         error!(?e, "Failed to update assignment status to merged");
     }
