@@ -5,16 +5,6 @@ import { AlertTriangle } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { openIssueForm } from '@/lib/openIssueForm';
-import {
-  loadIssuePanelSize,
-  saveIssuePanelSize,
-  PANEL_DEFAULTS,
-} from '@/lib/panelStorage';
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from '@/components/ui/resizable';
 
 import { useTeamDashboard } from '@/hooks/useTeamDashboard';
 import { useIssueUpdateHandlers } from '@/hooks/useIssueUpdateHandlers';
@@ -25,7 +15,7 @@ import {
   ViewFilter,
   DisplayMode,
 } from '@/components/tasks/TeamIssuesHeader';
-import { IssueDetailPanel } from '@/components/tasks/IssueDetailPanel';
+import { IssueFullView } from '@/components/tasks/IssueFullView';
 import { FilterState } from '@/components/filters/IssueFilterDropdown';
 import type { DragEndEvent } from '@dnd-kit/core';
 
@@ -85,27 +75,12 @@ export function TeamIssues() {
 
   const [showInsights, setShowInsights] = useState(false);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
-  const [issuePanelSize, setIssuePanelSize] =
-    useState<number>(loadIssuePanelSize);
   const [displayMode, setDisplayMode] = useState<DisplayMode>(loadDisplayMode);
 
   // Handle display mode change with localStorage persistence
   const handleDisplayModeChange = useCallback((mode: DisplayMode) => {
     setDisplayMode(mode);
     saveDisplayMode(mode);
-  }, []);
-
-  // Handle panel resize - save to localStorage
-  const handlePanelResize = useCallback((sizes: number[]) => {
-    // sizes[1] is the issue detail panel size (when present)
-    if (
-      sizes.length === 2 &&
-      sizes[1] >= PANEL_DEFAULTS.ISSUE_PANEL_MIN &&
-      sizes[1] <= PANEL_DEFAULTS.ISSUE_PANEL_MAX
-    ) {
-      setIssuePanelSize(sizes[1]);
-      saveIssuePanelSize(sizes[1]);
-    }
   }, []);
 
   // Filter state
@@ -264,6 +239,25 @@ export function TeamIssues() {
   // Get the selected issue from state
   const selectedIssue = selectedIssueId ? issuesById[selectedIssueId] : null;
 
+  // Get current index of selected issue for navigation
+  const selectedIssueIndex = useMemo(() => {
+    if (!selectedIssueId) return -1;
+    return filteredIssues.findIndex((i) => i.id === selectedIssueId);
+  }, [selectedIssueId, filteredIssues]);
+
+  // Navigation handlers for full-view
+  const handleNavigatePrev = useCallback(() => {
+    if (selectedIssueIndex > 0) {
+      setSelectedIssueId(filteredIssues[selectedIssueIndex - 1].id);
+    }
+  }, [selectedIssueIndex, filteredIssues]);
+
+  const handleNavigateNext = useCallback(() => {
+    if (selectedIssueIndex < filteredIssues.length - 1) {
+      setSelectedIssueId(filteredIssues[selectedIssueIndex + 1].id);
+    }
+  }, [selectedIssueIndex, filteredIssues]);
+
   // Generate issue key for selected issue
   const selectedIssueKey = useMemo(() => {
     if (!selectedIssue || !team || selectedIssue.issue_number == null)
@@ -335,6 +329,27 @@ export function TeamIssues() {
     (filters.assigneeId?.length ?? 0) > 0 ||
     !!filters.projectId;
 
+  // Full-view mode: show issue detail as full page when selected
+  if (selectedIssue) {
+    return (
+      <div className="h-full flex flex-col">
+        <IssueFullView
+          issue={selectedIssue}
+          teamId={actualTeamId}
+          issueKey={selectedIssueKey}
+          teamMembers={teamMembers}
+          teamProjects={teamProjectsForDropdown}
+          onClose={() => setSelectedIssueId(null)}
+          onUpdate={refresh}
+          onNavigatePrev={handleNavigatePrev}
+          onNavigateNext={handleNavigateNext}
+          currentIndex={selectedIssueIndex}
+          totalCount={filteredIssues.length}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col">
       <TeamIssuesHeader
@@ -357,60 +372,26 @@ export function TeamIssues() {
 
       {/* Content */}
       <div className="flex-1 min-h-0">
-        <ResizablePanelGroup
-          direction="horizontal"
-          className="h-full"
-          onLayout={handlePanelResize}
-        >
-          {/* Main content area */}
-          <ResizablePanel
-            defaultSize={selectedIssue ? 100 - issuePanelSize : 100}
-            minSize={40}
-            className="min-w-0"
-          >
-            <TeamIssuesContent
-              hasIssues={hasIssues}
-              hasFilteredIssues={hasFilteredIssues}
-              hasActiveFilters={hasActiveFilters}
-              showInsights={showInsights}
-              displayMode={displayMode}
-              selectedIssueId={selectedIssueId ?? undefined}
-              issues={issues}
-              kanbanColumns={kanbanColumns}
-              teamMembers={teamMembers}
-              teamProjects={teamProjectsForDropdown}
-              onCreateIssue={handleCreateIssue}
-              onDragEnd={handleDragEnd}
-              onViewIssueDetails={handleViewIssueDetails}
-              onAssigneeChange={handleAssigneeChange}
-              onPriorityChange={handlePriorityChange}
-              onProjectChange={handleProjectChange}
-              onClearFilters={handleClearFilters}
-              onCloseInsights={() => setShowInsights(false)}
-            />
-          </ResizablePanel>
-
-          {/* Issue Detail Panel with resize handle */}
-          {selectedIssue && (
-            <>
-              <ResizableHandle withHandle />
-              <ResizablePanel
-                defaultSize={issuePanelSize}
-                minSize={25}
-                maxSize={60}
-                className="min-w-0"
-              >
-                <IssueDetailPanel
-                  issue={selectedIssue}
-                  teamId={actualTeamId}
-                  issueKey={selectedIssueKey}
-                  onClose={() => setSelectedIssueId(null)}
-                  onUpdate={refresh}
-                />
-              </ResizablePanel>
-            </>
-          )}
-        </ResizablePanelGroup>
+        <TeamIssuesContent
+          hasIssues={hasIssues}
+          hasFilteredIssues={hasFilteredIssues}
+          hasActiveFilters={hasActiveFilters}
+          showInsights={showInsights}
+          displayMode={displayMode}
+          selectedIssueId={selectedIssueId ?? undefined}
+          issues={issues}
+          kanbanColumns={kanbanColumns}
+          teamMembers={teamMembers}
+          teamProjects={teamProjectsForDropdown}
+          onCreateIssue={handleCreateIssue}
+          onDragEnd={handleDragEnd}
+          onViewIssueDetails={handleViewIssueDetails}
+          onAssigneeChange={handleAssigneeChange}
+          onPriorityChange={handlePriorityChange}
+          onProjectChange={handleProjectChange}
+          onClearFilters={handleClearFilters}
+          onCloseInsights={() => setShowInsights(false)}
+        />
       </div>
     </div>
   );
