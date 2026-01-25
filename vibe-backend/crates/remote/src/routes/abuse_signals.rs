@@ -15,6 +15,7 @@ use serde_json::json;
 use tracing::instrument;
 use uuid::Uuid;
 
+use super::error::ApiResponse;
 use crate::{AppState, auth::RequestContext};
 
 /// Protected routes requiring authentication
@@ -62,12 +63,12 @@ async fn list_unresolved_signals(
     // TODO: Add admin role check when role system is implemented
 
     match AbuseDetectionSignal::list_unresolved(state.pool()).await {
-        Ok(signals) => Json(signals).into_response(),
+        Ok(signals) => ApiResponse::success(signals).into_response(),
         Err(err) => {
             tracing::error!(?err, "failed to list unresolved abuse signals");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "internal server error" })),
+                Json(json!({ "success": false, "message": "internal server error" })),
             )
                 .into_response()
         }

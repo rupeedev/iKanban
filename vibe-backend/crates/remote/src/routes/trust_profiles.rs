@@ -15,6 +15,7 @@ use db_crate::models::user_trust_profile::{
 use serde_json::json;
 use tracing::instrument;
 
+use super::error::ApiResponse;
 use crate::{AppState, auth::RequestContext};
 
 /// Protected routes requiring authentication
@@ -67,12 +68,12 @@ async fn list_flagged_users(
     // TODO: Add admin role check when role system is implemented
 
     match UserTrustProfile::list_flagged(state.pool()).await {
-        Ok(profiles) => Json(profiles).into_response(),
+        Ok(profiles) => ApiResponse::success(profiles).into_response(),
         Err(err) => {
             tracing::error!(?err, "failed to list flagged users");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "internal server error" })),
+                Json(json!({ "success": false, "message": "internal server error" })),
             )
                 .into_response()
         }
