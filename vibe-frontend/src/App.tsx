@@ -61,6 +61,7 @@ import {
   SuperadminDashboard,
   RegistrationRequests,
   SuperadminRegistrationDetail,
+  SuperadminStatsPage,
 } from '@/pages/superadmin/';
 import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -304,6 +305,7 @@ function AppContent() {
                       path="registrations/:registrationId"
                       element={<SuperadminRegistrationDetail />}
                     />
+                    <Route path="stats" element={<SuperadminStatsPage />} />
                   </Route>
                 </Route>
                 <Route
