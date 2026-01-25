@@ -101,14 +101,19 @@ export function ManageMode({
     return folders.filter((f) => f.parent_id === currentFolderId);
   }, [folders, currentFolderId]);
 
+  // Helper to get document title (API returns 'name' but frontend type expects 'title')
+  const getDocTitle = useCallback((doc: Document): string => {
+    return (doc as unknown as { name?: string }).name || doc.title || 'Untitled';
+  }, []);
+
   const currentDocuments = useMemo(() => {
     if (searchQuery) {
       return documents.filter((d) =>
-        d.title.toLowerCase().includes(searchQuery.toLowerCase())
+        getDocTitle(d).toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
     return documents.filter((d) => d.folder_id === currentFolderId);
-  }, [documents, currentFolderId, searchQuery]);
+  }, [documents, currentFolderId, searchQuery, getDocTitle]);
 
   // Handlers
   const handleCreateDocument = useCallback(async () => {
@@ -250,7 +255,7 @@ export function ManageMode({
       try {
         await updateDocument(doc.id, {
           folder_id: targetFolderId,
-          title: doc.title,
+          title: getDocTitle(doc),
           content: doc.content,
           icon: doc.icon,
           is_pinned: doc.is_pinned,
@@ -263,7 +268,7 @@ export function ManageMode({
       setDraggedDocId(null);
       setDragOverFolderId(null);
     },
-    [documents, updateDocument]
+    [documents, updateDocument, getDocTitle]
   );
 
   // File drop zone
@@ -559,7 +564,7 @@ export function ManageMode({
                   <>
                     <FileText className="h-12 w-12 text-gray-500 mb-2" />
                     <span className="font-medium text-sm truncate w-full">
-                      {doc.title}
+                      {getDocTitle(doc)}
                     </span>
                     {doc.is_pinned && (
                       <Pin className="h-3 w-3 text-amber-500" />
@@ -572,7 +577,7 @@ export function ManageMode({
                       <FileText className="h-5 w-5 text-gray-500" />
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{doc.title}</span>
+                          <span className="font-medium">{getDocTitle(doc)}</span>
                           {doc.is_pinned && (
                             <Pin className="h-3 w-3 text-amber-500" />
                           )}
