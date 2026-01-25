@@ -20,7 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **DO NOT write any code until all boxes are checked.**
 
-After code changes, **MUST run validation agents** (Quality, Test, Review, Security) before merge.
+After code changes, **MUST run `vibe-check`** for validation before merge (replaces Task agents).
 
 ---
 
@@ -140,6 +140,48 @@ curl -s -X PUT "https://api.scho1ar.com/api/tasks/{id}" \
 **Frontend:** `cd vibe-frontend && pnpm dev`
 **SQLx cache:** `cd vibe-backend/crates/remote && cargo sqlx prepare`
 **Lint:** `cd vibe-frontend && pnpm lint`
+
+---
+
+## Vibe-Check Tool (Validation)
+
+**Location:** `tools/vibe-check/`
+
+Local CLI that replaces expensive Task agents for validation. **Use vibe-check instead of spawning validation agents.**
+
+### Commands
+
+| Command | Purpose | Replaces |
+|---------|---------|----------|
+| `vibe-check` | Run all checks | Quality + Security + Review agents |
+| `vibe-check quality` | Lint, format, compile, clippy | Quality agent (~45K tokens saved) |
+| `vibe-check quality --fix` | Auto-fix issues | Quality agent with fixes |
+| `vibe-check security` | Audit deps, scan secrets | Security agent (~45K tokens saved) |
+| `vibe-check review` | Show git diff | Review agent (LLM still needed for analysis) |
+
+### Usage in Workflow
+
+```bash
+# Before merge, run instead of spawning 3+ Task agents:
+vibe-check
+
+# Or run specific checks:
+vibe-check quality --fix
+vibe-check security
+```
+
+### Installation (one-time)
+
+```bash
+cd tools/vibe-check
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+**Token savings: ~140K tokens per validation cycle**
+
+---
 
 ## Core Rules
 

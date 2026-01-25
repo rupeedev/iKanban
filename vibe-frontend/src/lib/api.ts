@@ -1870,10 +1870,13 @@ export const teamsApi = {
       project_id?: string | null;
     }
   ): Promise<TaskWithAttemptStatus> => {
-    const response = await makeRequest(`/api/teams/${teamId}/issues/${issueId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
+    const response = await makeRequest(
+      `/api/teams/${teamId}/issues/${issueId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<TaskWithAttemptStatus>(response);
   },
 

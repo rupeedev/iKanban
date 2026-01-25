@@ -1,0 +1,34 @@
+# vibe-check configuration for iKanban (Rust + React/TypeScript)
+# See: tools/vibe-check/README.md for documentation
+
+[project]
+name = "iKanban"
+
+[quality]
+commands = [
+  # Frontend checks
+  { name = "lint", cmd = "pnpm lint", path = "vibe-frontend", fix_cmd = "pnpm lint --fix" },
+  { name = "typecheck", cmd = "pnpm check", path = "vibe-frontend" },
+  { name = "format-fe", cmd = "pnpm format --check", path = "vibe-frontend", fix_cmd = "pnpm format" },
+
+  # Backend checks
+  { name = "format-be", cmd = "cargo fmt --all --check", path = "vibe-backend", fix_cmd = "cargo fmt --all" },
+  { name = "compile", cmd = "cargo check --workspace", path = "vibe-backend", timeout = 600 },
+  { name = "clippy", cmd = "cargo clippy --workspace -- -D warnings", path = "vibe-backend", fix_cmd = "cargo clippy --workspace --fix --allow-dirty -- -D warnings", timeout = 600 },
+]
+
+[security]
+commands = [
+  { name = "npm-audit", cmd = "pnpm audit --audit-level=high", path = "vibe-frontend" },
+  # Uncomment if cargo-audit is installed: cargo install cargo-audit
+  # { name = "cargo-audit", cmd = "cargo audit", path = "vibe-backend" },
+]
+secrets_scan = true
+
+[test]
+commands = [
+  { name = "e2e", cmd = "npx playwright test", path = "vibe-testing", timeout = 600 },
+]
+
+[review]
+base_branch = "main"

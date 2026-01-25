@@ -532,10 +532,10 @@ export function InlinePromptInput({
           data-testid="inline-prompt-submit"
         >
           {isCreating ||
-            isCreatingComment ||
-            isAssigningCopilot ||
-            isAssigningClaude ||
-            isAssigningGemini ? (
+          isCreatingComment ||
+          isAssigningCopilot ||
+          isAssigningClaude ||
+          isAssigningGemini ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <SendHorizonal className="h-4 w-4" />

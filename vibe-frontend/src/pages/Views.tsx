@@ -303,7 +303,10 @@ function BoardColumn({ status, issues, projectNamesById }: BoardColumnProps) {
                 {/* Status + Title */}
                 <div className="flex items-start gap-2 mb-2">
                   <StatusIcon
-                    className={cn('w-4 h-4 mt-0.5 shrink-0', statusConfig.color)}
+                    className={cn(
+                      'w-4 h-4 mt-0.5 shrink-0',
+                      statusConfig.color
+                    )}
                   />
                   <span className="text-sm font-medium line-clamp-2">
                     {issue.title}
@@ -374,7 +377,10 @@ function ViewsHeader({
       <div className="flex-1" />
 
       {/* Right side: Display toggle */}
-      <DisplayModeToggle mode={displayMode} onModeChange={onDisplayModeChange} />
+      <DisplayModeToggle
+        mode={displayMode}
+        onModeChange={onDisplayModeChange}
+      />
     </div>
   );
 }

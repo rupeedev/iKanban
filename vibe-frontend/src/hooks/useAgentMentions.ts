@@ -106,7 +106,11 @@ function buildAgentMentions(
 
   for (const [executor, config] of Object.entries(profiles)) {
     // Skip COPILOT, CLAUDE, and GEMINI since we handle them specially
-    if (executor === 'COPILOT' || executor === 'CLAUDE' || executor === 'GEMINI')
+    if (
+      executor === 'COPILOT' ||
+      executor === 'CLAUDE' ||
+      executor === 'GEMINI'
+    )
       continue;
 
     // Only include whitelisted agents

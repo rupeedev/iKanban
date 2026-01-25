@@ -23,6 +23,9 @@ allowed_tools:
   - "Bash(npx:*)"
   - "Bash(cargo:*)"
   - "Bash(~/.cargo/bin/cargo:*)"
+  # Validation tool (replaces Task agents for quality/security checks)
+  - "Bash(vibe-check:*)"
+  - "Bash(vibe-check*)"
 ---
 
 # iKanban Full-Stack Development
@@ -47,7 +50,7 @@ Work on: $ARGUMENTS
 
 **⛔ DO NOT write any code until ALL boxes are checked with [x]**
 
-**After code changes, MUST spawn 4 validation agents (Quality, Test, Review, Security) BEFORE merge.**
+**After code changes, MUST run `vibe-check` for validation BEFORE merge (replaces 4 Task agents, saves ~140K tokens).**
 
 ---
 
@@ -295,43 +298,43 @@ git checkout -b fix/IKA-143-button-alignment
 
 **Key point:** FILE-MAP.md tells you exactly where to find files. DO NOT use Grep/Glob to search.
 
-### 3. Validation Agents (PARALLEL - MANDATORY)
+### 3. Validation with vibe-check (PARALLEL - MANDATORY)
 **These ALWAYS run - never skip security/quality gates:**
 
-Spawn ALL 4 in ONE message:
+Run ALL validation checks in PARALLEL (spawn 4 Bash calls in ONE message):
+
 ```
-# Quality
-Task(
-  subagent_type: "general-purpose",
-  model: "haiku",
-  description: "Quality check",
-  prompt: "In /Users/rupeshpanwar/Downloads/Projects/iKanban run: cd vibe-frontend && pnpm lint --fix && pnpm format && pnpm check; cd ../vibe-backend && cargo fmt --all && cargo check --workspace && cargo clippy --workspace -- -D warnings. Fix issues. Report PASS/FAIL."
+# Quality check with auto-fix
+Bash(
+  command: "cd /Users/rupeshpanwar/Downloads/Projects/iKanban && vibe-check quality --fix",
+  description: "Quality: lint, format, compile"
 )
 
-# Test
-Task(
-  subagent_type: "general-purpose",
-  model: "haiku",
-  description: "Run tests",
-  prompt: "cd /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-testing && npx playwright test. Report pass/fail count."
+# Security scan
+Bash(
+  command: "cd /Users/rupeshpanwar/Downloads/Projects/iKanban && vibe-check security",
+  description: "Security: audit deps, scan secrets"
 )
 
-# Review
-Task(
-  subagent_type: "general-purpose",
-  model: "haiku",
-  description: "Code review",
-  prompt: "Review git diff in /Users/rupeshpanwar/Downloads/Projects/iKanban. Check: DRY, error handling, React hooks, Rust Result types. Report only issues found."
+# Review diff
+Bash(
+  command: "cd /Users/rupeshpanwar/Downloads/Projects/iKanban && vibe-check review",
+  description: "Review: show git diff"
 )
 
-# Security
-Task(
-  subagent_type: "general-purpose",
-  model: "haiku",
-  description: "Security scan",
-  prompt: "In /Users/rupeshpanwar/Downloads/Projects/iKanban: cd vibe-frontend && pnpm audit; grep -rn 'password=\\|secret=' --include='*.ts' --include='*.rs' vibe-frontend/src vibe-backend/crates 2>/dev/null || echo 'No secrets'. Report PASS/FAIL."
+# Playwright tests
+Bash(
+  command: "cd /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-testing && npx playwright test",
+  description: "Test: run Playwright tests"
 )
 ```
+
+**What vibe-check does:**
+| Command | Checks | Token Savings |
+|---------|--------|---------------|
+| `vibe-check quality` | pnpm lint, format, cargo check, clippy | ~45K → 0 |
+| `vibe-check security` | pnpm audit, secret scanning | ~45K → 0 |
+| `vibe-check review` | git diff output | ~51K → partial |
 
 ### 4. Git Agent (haiku)
 ```
@@ -458,41 +461,33 @@ Read .claude/PATTERNS.md for code patterns. Task: $ARGUMENTS"
 )
 ```
 
-### 4. Validation Agents (PARALLEL - all haiku)
+### 4. Validation with vibe-check (PARALLEL - MANDATORY)
 
-Spawn ALL 4 in ONE message:
+Run ALL validation checks in PARALLEL (spawn 4 Bash calls in ONE message):
 
 ```
-# Quality
-Task(
-  subagent_type: "general-purpose",
-  model: "haiku",
-  description: "Quality check",
-  prompt: "In /Users/rupeshpanwar/Downloads/Projects/iKanban run: cd vibe-frontend && pnpm lint --fix && pnpm format && pnpm check; cd ../vibe-backend && cargo fmt --all && cargo check --workspace && cargo clippy --workspace -- -D warnings. Fix issues. Report PASS/FAIL."
+# Quality check with auto-fix
+Bash(
+  command: "cd /Users/rupeshpanwar/Downloads/Projects/iKanban && vibe-check quality --fix",
+  description: "Quality: lint, format, compile"
 )
 
-# Test
-Task(
-  subagent_type: "general-purpose",
-  model: "haiku",
-  description: "Run tests",
-  prompt: "cd /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-testing && npx playwright test. Report pass/fail count."
+# Security scan
+Bash(
+  command: "cd /Users/rupeshpanwar/Downloads/Projects/iKanban && vibe-check security",
+  description: "Security: audit deps, scan secrets"
 )
 
-# Review
-Task(
-  subagent_type: "general-purpose",
-  model: "haiku",
-  description: "Code review",
-  prompt: "Review git diff in /Users/rupeshpanwar/Downloads/Projects/iKanban. Check: DRY, error handling, React hooks, Rust Result types. Report only issues found."
+# Review diff
+Bash(
+  command: "cd /Users/rupeshpanwar/Downloads/Projects/iKanban && vibe-check review",
+  description: "Review: show git diff"
 )
 
-# Security
-Task(
-  subagent_type: "general-purpose",
-  model: "haiku",
-  description: "Security scan",
-  prompt: "In /Users/rupeshpanwar/Downloads/Projects/iKanban: cd vibe-frontend && pnpm audit; grep -rn 'password=\\|secret=' --include='*.ts' --include='*.rs' vibe-frontend/src vibe-backend/crates 2>/dev/null || echo 'No secrets'. Report PASS/FAIL."
+# Playwright tests
+Bash(
+  command: "cd /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-testing && npx playwright test",
+  description: "Test: run Playwright tests"
 )
 ```
 
@@ -531,17 +526,17 @@ $ARGUMENTS
     ├── QUICK ────────────────────────────────────────┐
     │   1. Task + Branch (Bash) ─── ~500              │  ← DIRECT BASH!
     │   2. You fix directly ─────── ~3K               │  ← NO EXPLORATION
-    │   3. Quality+Test+Review+Security (haiku) ─ ~5K │  ← NEVER SKIPPED
+    │   3. vibe-check (4x parallel Bash) ─ ~0         │  ← PARALLEL!
     │   4. Git Agent (haiku) ────── ~2K               │
-    │   Total: ~10K tokens                            │
+    │   Total: ~5.5K tokens                           │
     │                                                 │
     └── FEATURE ──────────────────────────────────────┤
         1. Task + Branch (Bash) ─── ~500              │  ← DIRECT BASH!
         2. Plan Agent (haiku) ───── ~3K               │
         3. TDD Agent (sonnet) ───── ~20K              │
-        4. Quality+Test+Review+Security (haiku) ─ ~5K │  ← NEVER SKIPPED
+        4. vibe-check (4x parallel Bash) ─ ~0         │  ← PARALLEL!
         5. Git Agent (haiku) ─────── ~2K              │
-        Total: ~30K tokens                            │
+        Total: ~25.5K tokens                          │
                                                       │
                                     ◄─────────────────┘
                                     │
@@ -553,26 +548,27 @@ $ARGUMENTS
 
 ## SDLC Gates (ALWAYS ENFORCED)
 
-| Gate | Agent | Purpose | Skippable? |
-|------|-------|---------|------------|
-| Quality | haiku | Lint, type check, format | **NO** |
-| Test | haiku | Run Playwright tests | **NO** |
-| Review | haiku | Code review | **NO** |
-| Security | haiku | Audit, secrets scan | **NO** |
+| Gate | Tool | Purpose | Skippable? |
+|------|------|---------|------------|
+| Quality | `vibe-check quality` | Lint, type check, format | **NO** |
+| Security | `vibe-check security` | Audit, secrets scan | **NO** |
+| Review | `vibe-check review` | Code review diff | **NO** |
+| Test | `npx playwright test` | Run Playwright tests | **NO** |
 
-**Every change goes through all 4 validation gates before merge.**
+**Every change goes through validation via `vibe-check` before merge.**
 
 ---
 
 ## Token Budget
 
-| Workflow | Task Creation | Agents | Validation Gates | Total Tokens |
-|----------|--------------|--------|------------------|--------------|
-| **QUICK** | Direct Bash (~500) | 5 (haiku) | ✅ All 4 | ~10K |
-| **FEATURE** | Direct Bash (~500) | 6 (5 haiku + 1 sonnet) | ✅ All 4 | ~30K |
+| Workflow | Task Creation | Agents | Validation | Total Tokens |
+|----------|--------------|--------|------------|--------------|
+| **QUICK** | Direct Bash (~500) | 1 (Git haiku) | vibe-check (~0) | ~5.5K |
+| **FEATURE** | Direct Bash (~500) | 3 (Plan + TDD + Git) | vibe-check (~0) | ~25.5K |
 
-Previously: ~100K+ tokens per task
-After Task agent optimization: Saved ~1.5K tokens by using direct Bash instead of Task agent
+**Token savings from vibe-check:**
+- Previously: ~100K+ tokens per task (with 4 validation Task agents)
+- After vibe-check: ~5.5K-25.5K (saves ~140K per validation cycle)
 
 ---
 
@@ -581,9 +577,9 @@ After Task agent optimization: Saved ~1.5K tokens by using direct Bash instead o
 1. **Always classify first** - QUICK vs FEATURE
 2. **QUICK = skip Plan + TDD + Exploration** - Use prepared context in `.claude/`, no Task/Explore agents
 3. **FEATURE = full workflow** - Plan → TDD → Validate → Git
-4. **NEVER skip validation** - Quality, Test, Review, Security run for ALL changes
-5. **Parallel validation** - Spawn all 4 validation agents together
-6. **No merge without gates passing** - All 4 must PASS before Git agent runs
+4. **NEVER skip validation** - Run `vibe-check` for ALL changes before merge
+5. **Run validation in PARALLEL** - Spawn 4 Bash calls in ONE message (quality, security, review, test)
+6. **No merge without gates passing** - All 4 checks must PASS before Git agent runs
 7. **Context is prepared** - Read directly from `.claude/` in order:
    1. `FILE-MAP.md` (ALWAYS FIRST) - exact file paths, NO exploration needed
    2. `CODING-GUIDELINES.md` (always) - lint, file size

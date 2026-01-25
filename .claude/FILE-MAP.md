@@ -281,6 +281,83 @@
 
 ---
 
+## Vibe-Check Tool (tools/vibe-check/)
+
+**Purpose:** Local validation CLI that replaces expensive Task agents for quality/security checks.
+
+| File | Path | Purpose |
+|------|------|---------|
+| Main CLI | `tools/vibe-check/vibe_check/cli.py` | CLI entry point |
+| Config Loader | `tools/vibe-check/vibe_check/config.py` | TOML config parser |
+| Generic Checker | `tools/vibe-check/vibe_check/checkers/generic.py` | Runs configured commands |
+| Frontend Checker | `tools/vibe-check/vibe_check/checkers/frontend.py` | Auto-detect frontend |
+| Backend Checker | `tools/vibe-check/vibe_check/checkers/backend.py` | Auto-detect backend |
+| Security Checker | `tools/vibe-check/vibe_check/checkers/security.py` | Audit + secrets scan |
+| Stack Detectors | `tools/vibe-check/vibe_check/detectors.py` | Auto-detect stack |
+| **Project Config** | `.vibe-check.toml` | **iKanban's config file** |
+
+### Commands
+
+| Command | Purpose | Token Savings |
+|---------|---------|---------------|
+| `vibe-check` | Run all checks (quality + security) | ~140K → 0 |
+| `vibe-check quality` | Lint, format, compile, clippy | ~45K → 0 |
+| `vibe-check quality --fix` | Auto-fix linting issues | ~45K → 0 |
+| `vibe-check security` | Audit deps, scan for secrets | ~45K → 0 |
+| `vibe-check test` | Run configured tests | ~45K → 0 |
+| `vibe-check review` | Show git diff for code review | ~51K → partial |
+| `vibe-check init` | Generate .vibe-check.toml template | - |
+| `vibe-check init --preset go-react` | Use preset for Go + React | - |
+
+### Configuration File (.vibe-check.toml)
+
+Located at project root. Supports any stack:
+
+```toml
+[project]
+name = "my-project"
+
+[quality]
+commands = [
+  { name = "lint", cmd = "npm run lint", path = "frontend", fix_cmd = "npm run lint --fix" },
+  { name = "build", cmd = "go build ./...", path = "backend" },
+]
+
+[security]
+commands = [
+  { name = "audit", cmd = "npm audit", path = "frontend" },
+]
+secrets_scan = true
+
+[test]
+commands = [
+  { name = "unit", cmd = "go test ./...", path = "backend" },
+]
+
+[review]
+base_branch = "main"
+```
+
+### Available Presets
+
+| Preset | Stack | Command |
+|--------|-------|---------|
+| `rust-react` | Rust + React/TypeScript | `vibe-check init --preset rust-react` |
+| `go-react` | Go + React/TypeScript | `vibe-check init --preset go-react` |
+| `python-vue` | Python + Vue | `vibe-check init --preset python-vue` |
+| `node` | Node.js fullstack | `vibe-check init --preset node` |
+
+### Installation (one-time)
+
+```bash
+cd tools/vibe-check
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+---
+
 ## Quick Lookup by Feature
 
 ### Issue/Task Management

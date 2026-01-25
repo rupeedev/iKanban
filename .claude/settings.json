@@ -63,6 +63,9 @@
     "Bash(python *)",
 
     "Bash(docker *)",
-    "Bash(docker-compose *)"
+    "Bash(docker-compose *)",
+
+    "Bash(vibe-check*)",
+    "Bash(source */vibe-check/.venv/bin/activate*)"
   ]
 }
