@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -73,7 +73,7 @@ function TeamIssuesLoader({
   const { issues } = useTeamIssues(teamId);
 
   // Filter to user's assigned issues and call parent callback
-  useMemo(() => {
+  useEffect(() => {
     if (userMemberId) {
       const userIssues = issues.filter(
         (issue) => issue.assignee_id === userMemberId

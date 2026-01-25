@@ -168,11 +168,13 @@ async fn get_stats(
 ) -> Json<ApiResponse<AdminStats>> {
     let pool = state.pool();
 
-    // Count distinct users from team_members (actual users with team access)
-    let total_users: i64 = sqlx::query_scalar("SELECT COUNT(DISTINCT user_id) FROM team_members")
-        .fetch_one(pool)
-        .await
-        .unwrap_or(0);
+    // Count distinct users from team_members via clerk_user_id (actual users with team access)
+    let total_users: i64 = sqlx::query_scalar(
+        "SELECT COUNT(DISTINCT clerk_user_id) FROM team_members WHERE clerk_user_id IS NOT NULL",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
 
     // Active users = same as total for now
     let active_users = total_users;
