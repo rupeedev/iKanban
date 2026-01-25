@@ -21,7 +21,7 @@ import {
   TableBody,
   TableCell,
   TableHead,
-  TableHeader,
+  TableHeaderCell,
   TableRow,
 } from '@/components/ui/table';
 import {
@@ -399,45 +399,45 @@ export function SuperadminStatsPage() {
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader>
+                <TableHead>
                   <TableRow>
-                    <TableHead>Workspace</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Plan</TableHead>
-                    <TableHead>
+                    <TableHeaderCell>Workspace</TableHeaderCell>
+                    <TableHeaderCell>Owner</TableHeaderCell>
+                    <TableHeaderCell>Plan</TableHeaderCell>
+                    <TableHeaderCell>
                       <div className="flex items-center gap-1">
                         <Users className="h-3 w-3" />
                         Teams
                       </div>
-                    </TableHead>
-                    <TableHead>
+                    </TableHeaderCell>
+                    <TableHeaderCell>
                       <div className="flex items-center gap-1">
                         <FolderKanban className="h-3 w-3" />
                         Projects
                       </div>
-                    </TableHead>
-                    <TableHead>
+                    </TableHeaderCell>
+                    <TableHeaderCell>
                       <div className="flex items-center gap-1">
                         <Users className="h-3 w-3" />
                         Members
                       </div>
-                    </TableHead>
-                    <TableHead className="text-center">
+                    </TableHeaderCell>
+                    <TableHeaderCell className="text-center">
                       <div className="flex items-center justify-center gap-1">
                         <ClipboardList className="h-3 w-3" />
                         Issues
                       </div>
-                    </TableHead>
-                    <TableHead className="text-center">
+                    </TableHeaderCell>
+                    <TableHeaderCell className="text-center">
                       <div className="flex items-center justify-center gap-1">
                         <FileText className="h-3 w-3" />
                         Docs
                       </div>
-                    </TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Status</TableHead>
+                    </TableHeaderCell>
+                    <TableHeaderCell>Created</TableHeaderCell>
+                    <TableHeaderCell>Status</TableHeaderCell>
                   </TableRow>
-                </TableHeader>
+                </TableHead>
                 <TableBody>
                   {tenants.map((tenant) => (
                     <TenantRow key={tenant.id} tenant={tenant} />
