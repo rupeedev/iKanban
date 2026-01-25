@@ -1,6 +1,7 @@
 //! Admin routes - Dashboard with real data from database
 //!
 //! IKA-283: Updated to query actual counts from database tables.
+//! IKA-286: Implemented get_users to return actual users from team_members.
 
 #![allow(dead_code)] // Some fields used only for API contract
 
@@ -10,10 +11,51 @@ use axum::{
     routing::get,
 };
 use serde::Serialize;
+use sqlx::FromRow;
 use uuid::Uuid;
 
 use super::error::ApiResponse;
 use crate::{AppState, auth::RequestContext};
+
+// =============================================================================
+// Database Row Types
+// =============================================================================
+
+#[derive(Debug, FromRow)]
+struct AdminUserRow {
+    id: Uuid,
+    email: String,
+    display_name: Option<String>,
+    avatar_url: Option<String>,
+    role: String,
+    joined_at: chrono::DateTime<chrono::Utc>,
+    teams_count: i64,
+    #[allow(dead_code)]
+    projects_count: i64,
+}
+
+#[derive(Debug, FromRow)]
+struct ActivityLogRow {
+    id: Uuid,
+    user_id: Uuid,
+    user_email: Option<String>,
+    action: String,
+    resource_type: String,
+    resource_id: Option<Uuid>,
+    resource_name: Option<String>,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Map team_member role to admin display role
+fn map_role_to_admin_role(role: &str) -> String {
+    match role {
+        "owner" => "owner".to_string(),
+        "maintainer" => "admin".to_string(),
+        "contributor" => "member".to_string(),
+        "viewer" => "viewer".to_string(),
+        _ => "member".to_string(),
+    }
+}
 
 // =============================================================================
 // Dashboard Types
@@ -214,26 +256,113 @@ async fn get_stats(
     })
 }
 
-/// Get workspace activity - returns empty array (stub)
-/// TODO: Add proper tenant_workspace_members check when implementing
+/// Get workspace activity - queries activity_logs table
+/// IKA-286: Implemented to return recent activity from activity_logs
 async fn get_activity(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Extension(_ctx): Extension<RequestContext>,
     Path(_workspace_id): Path<Uuid>,
 ) -> Json<ApiResponse<Vec<AdminActivity>>> {
-    // Stub: return empty activity (skip membership check for now)
-    ApiResponse::success(vec![])
+    let pool = state.pool();
+
+    // Query recent activity logs (last 50 entries)
+    let activities: Vec<AdminActivity> = match sqlx::query_as::<_, ActivityLogRow>(
+        r#"
+        SELECT
+            id,
+            user_id,
+            user_email,
+            action,
+            resource_type,
+            resource_id,
+            resource_name,
+            created_at
+        FROM activity_logs
+        ORDER BY created_at DESC
+        LIMIT 50
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    {
+        Ok(rows) => rows
+            .into_iter()
+            .map(|row| AdminActivity {
+                id: row.id,
+                user_id: row.user_id,
+                action: row.action.clone(),
+                resource_type: row.resource_type.clone(),
+                resource_id: row.resource_id,
+                activity_type: format!("{}_{}", row.action, row.resource_type),
+                user_email: row.user_email,
+                target_email: None,
+                from_role: None,
+                to_role: None,
+                timestamp: row.created_at,
+                created_at: row.created_at,
+            })
+            .collect(),
+        Err(e) => {
+            tracing::error!("Failed to fetch activity logs: {}", e);
+            vec![]
+        }
+    };
+
+    ApiResponse::success(activities)
 }
 
-/// Get workspace users - returns empty array (stub)
-/// IKA-282: Added to fix 404 errors on admin pages
+/// Get workspace users - queries team_members with aggregated team/project counts
+/// IKA-286: Implemented to return actual users from team_members table
 async fn get_users(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Extension(_ctx): Extension<RequestContext>,
     Path(_workspace_id): Path<Uuid>,
 ) -> Json<ApiResponse<Vec<AdminUser>>> {
-    // Stub: return empty users (skip membership check for now)
-    ApiResponse::success(vec![])
+    let pool = state.pool();
+
+    // Query distinct users from team_members with aggregated team count
+    // We group by clerk_user_id to get unique users across teams
+    let users: Vec<AdminUser> = match sqlx::query_as::<_, AdminUserRow>(
+        r#"
+        SELECT
+            tm.id,
+            tm.email,
+            tm.display_name,
+            tm.avatar_url,
+            tm.role,
+            tm.joined_at,
+            (SELECT COUNT(DISTINCT t2.team_id) FROM team_members t2 WHERE t2.clerk_user_id = tm.clerk_user_id) as teams_count,
+            (SELECT COUNT(DISTINCT mp.project_id) FROM member_project_access mp WHERE mp.member_id = tm.id) as projects_count
+        FROM team_members tm
+        WHERE tm.clerk_user_id IS NOT NULL
+        GROUP BY tm.clerk_user_id
+        ORDER BY tm.joined_at DESC
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    {
+        Ok(rows) => rows
+            .into_iter()
+            .map(|row| AdminUser {
+                id: row.id,
+                email: row.email,
+                display_name: row.display_name,
+                avatar_url: row.avatar_url,
+                role: map_role_to_admin_role(&row.role),
+                status: "active".to_string(), // All team members are active
+                joined_at: row.joined_at,
+                workspaces: 1, // Users are in the current workspace
+                teams: row.teams_count,
+            })
+            .collect(),
+        Err(e) => {
+            tracing::error!("Failed to fetch admin users: {}", e);
+            vec![]
+        }
+    };
+
+    ApiResponse::success(users)
 }
 
 /// Get workspace invitations - returns empty array (stub)

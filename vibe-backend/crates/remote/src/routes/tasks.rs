@@ -193,7 +193,23 @@ pub async fn create_shared_task(
     };
 
     match repo.create(data).await {
-        Ok(task) => (StatusCode::CREATED, Json(SharedTaskResponse::from(task))).into_response(),
+        Ok(task) => {
+            // Log activity (fire and forget - don't fail if logging fails)
+            let _ = crate::db::activity::log_activity(
+                pool,
+                ctx.user.id,
+                Some(&ctx.user.email),
+                crate::db::activity::actions::CREATE,
+                crate::db::activity::resources::TASK,
+                Some(task.task.id),
+                Some(&task.task.title),
+                None,
+                None,
+            )
+            .await;
+
+            (StatusCode::CREATED, Json(SharedTaskResponse::from(task))).into_response()
+        }
         Err(error) => task_error_response(error, "failed to create shared task"),
     }
 }
@@ -258,7 +274,23 @@ pub async fn update_shared_task(
     };
 
     match repo.update(task_id, data).await {
-        Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
+        Ok(task) => {
+            // Log activity (fire and forget)
+            let _ = crate::db::activity::log_activity(
+                pool,
+                ctx.user.id,
+                Some(&ctx.user.email),
+                crate::db::activity::actions::UPDATE,
+                crate::db::activity::resources::TASK,
+                Some(task.task.id),
+                Some(&task.task.title),
+                None,
+                None,
+            )
+            .await;
+
+            (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response()
+        }
         Err(error) => task_error_response(error, "failed to update shared task"),
     }
 }

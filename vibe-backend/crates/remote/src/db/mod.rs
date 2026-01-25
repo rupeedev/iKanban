@@ -1,3 +1,4 @@
+pub mod activity;
 pub mod ai_provider_keys;
 pub mod ai_session_messages;
 pub mod ai_sessions;
