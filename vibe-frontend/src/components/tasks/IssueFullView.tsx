@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,9 +19,11 @@ import { copilotAssignmentKeys } from '@/hooks/useCopilotAssignment';
 import { claudeAssignmentKeys } from '@/hooks/useClaudeAssignment';
 import { tasksApi, teamsApi } from '@/lib/api';
 import { CommentList } from '@/components/comments';
-import { IssueAttemptsSection } from '@/components/tasks/IssueAttemptsSection';
+// Attempts section hidden per IKA-295 - keeping import for future use
+// import { IssueAttemptsSection } from '@/components/tasks/IssueAttemptsSection';
 import { IssueLinkedDocuments } from '@/components/tasks/IssueLinkedDocuments';
 import { IssuePropertiesSidebar } from '@/components/tasks/IssuePropertiesSidebar';
+import { InlinePromptInput } from '@/components/tasks/TaskDetails/InlinePromptInput';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 import type { PriorityValue } from '@/components/selectors/PrioritySelector';
@@ -58,8 +61,16 @@ export function IssueFullView({
   totalCount,
 }: IssueFullViewProps) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { teamsById } = useTeams();
   const team = teamId ? teamsById[teamId] : null;
+
+  // Navigate back to team issues page
+  const handleNavigateToIssues = useCallback(() => {
+    if (team) {
+      navigate(`/teams/${team.identifier || teamId}/issues`);
+    }
+  }, [navigate, team, teamId]);
 
   // Local state for editing
   const [title, setTitle] = useState(issue.title);
@@ -220,9 +231,12 @@ export function IssueFullView({
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {team && (
             <>
-              <span className="font-medium text-foreground">
+              <button
+                onClick={handleNavigateToIssues}
+                className="font-medium text-foreground hover:text-primary hover:underline cursor-pointer flex items-center gap-1"
+              >
                 {team.icon || '👥'} {team.name}
-              </span>
+              </button>
               <ChevronRight className="h-4 w-4" />
             </>
           )}
@@ -275,9 +289,9 @@ export function IssueFullView({
 
       {/* Main content with sidebar */}
       <div className="flex-1 min-h-0 flex overflow-hidden">
-        {/* Main content area */}
+        {/* Main content area - wider with less wasted space */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto px-8 py-6 space-y-6">
+          <div className="max-w-4xl mx-auto px-6 py-4 space-y-4">
             {/* Title */}
             <div>
               {isEditingTitle ? (
@@ -306,7 +320,7 @@ export function IssueFullView({
               )}
             </div>
 
-            {/* Description */}
+            {/* Description - scrollable with max height */}
             <div className="space-y-2">
               {isEditingDescription ? (
                 <div className="space-y-3">
@@ -314,7 +328,7 @@ export function IssueFullView({
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Add a description..."
-                    className="min-h-[150px] resize-y"
+                    className="min-h-[120px] max-h-[200px] resize-y"
                     disabled={isSaving}
                     autoFocus
                   />
@@ -342,7 +356,7 @@ export function IssueFullView({
               ) : (
                 <div
                   className={cn(
-                    'min-h-[80px] p-3 rounded-md border cursor-pointer hover:bg-muted/50 text-sm whitespace-pre-wrap',
+                    'min-h-[60px] max-h-[180px] overflow-y-auto p-3 rounded-md border cursor-pointer hover:bg-muted/50 text-sm whitespace-pre-wrap',
                     !issue.description && 'text-muted-foreground italic'
                   )}
                   onClick={() => setIsEditingDescription(true)}
@@ -369,10 +383,9 @@ export function IssueFullView({
             {/* Linked Documents */}
             <IssueLinkedDocuments issueId={issue.id} teamId={teamId} />
 
-            {/* Attempts section */}
-            <IssueAttemptsSection
-              issueId={issue.id}
-              projectId={issue.project_id}
+            {/* Inline Prompt Input - handles both comments and AI prompts */}
+            <InlinePromptInput
+              taskId={issue.id}
               teamId={teamId}
             />
 
