@@ -49,7 +49,7 @@ function NavItemRow({
         className={cn(
           'w-full flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-colors text-left',
           'hover:bg-accent',
-          isSelected && 'bg-accent font-medium text-primary',
+          isSelected && 'bg-accent font-medium text-foreground',
           !isSelected && 'text-muted-foreground hover:text-foreground'
         )}
         style={{ paddingLeft: `${12 + depth * 12}px` }}

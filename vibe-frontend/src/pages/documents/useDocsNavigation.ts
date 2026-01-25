@@ -3,6 +3,44 @@ import { useSearchParams } from 'react-router-dom';
 import type { Document, DocumentFolder } from 'shared/types';
 import type { NavItem } from './types';
 
+/**
+ * Get display name for a document with smart fallbacks.
+ * Priority: title > slug (humanized) > file_path filename > "Untitled Document"
+ */
+function getDocumentDisplayName(doc: Document): string {
+  // 1. Use title if non-empty
+  if (doc.title && doc.title.trim()) {
+    return doc.title;
+  }
+
+  // 2. Use slug, converted to readable format
+  if (doc.slug) {
+    // Convert slug like "my-document-name" to "My Document Name"
+    return doc.slug
+      .split('-')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  // 3. Use file_path filename
+  if (doc.file_path) {
+    // Extract filename from path, remove extension
+    const filename = doc.file_path.split('/').pop() || '';
+    const nameWithoutExt = filename.replace(/\.[^/.]+$/, '');
+    if (nameWithoutExt) {
+      // Convert underscores/dashes to spaces, capitalize
+      return nameWithoutExt
+        .replace(/[-_]/g, ' ')
+        .split(' ')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    }
+  }
+
+  // 4. Fallback
+  return 'Untitled Document';
+}
+
 interface UseDocsNavigationResult {
   navTree: NavItem[];
   categories: NavItem[];
@@ -45,7 +83,7 @@ function buildNavTree(
   documents.forEach((doc) => {
     const docNode: NavItem = {
       id: doc.id,
-      name: doc.title ?? 'Untitled Document',
+      name: getDocumentDisplayName(doc),
       type: 'document',
       slug: doc.slug ?? undefined,
       parentId: doc.folder_id,
