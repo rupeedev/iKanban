@@ -28,6 +28,7 @@ import { defineModal } from '@/lib/modals';
 import { useTeams } from '@/hooks/useTeams';
 import { useProjects } from '@/hooks/useProjects';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
+import { teamsApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import type { TaskStatus } from 'shared/types';
 import {
@@ -164,19 +165,33 @@ const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(
 
       try {
         setIsSubmitting(true);
-        await createTask.mutateAsync({
-          project_id: projectId,
-          title: title.trim(),
-          description: description.trim() || null,
-          status: status,
-          parent_workspace_id: null,
-          image_ids: null,
-          shared_task_id: null,
-          team_id: teamId || null,
-          priority: priority || null,
-          due_date: dueDate,
-          assignee_id: assigneeId,
-        });
+
+        // Use teamsApi for team issues, tasksApi for other tasks
+        if (teamId) {
+          await teamsApi.createIssue(teamId, {
+            project_id: projectId,
+            title: title.trim(),
+            description: description.trim() || null,
+            status: status,
+            priority: priority || null,
+            due_date: dueDate,
+            assignee_id: assigneeId,
+          });
+        } else {
+          await createTask.mutateAsync({
+            project_id: projectId,
+            title: title.trim(),
+            description: description.trim() || null,
+            status: status,
+            parent_workspace_id: null,
+            image_ids: null,
+            shared_task_id: null,
+            team_id: null,
+            priority: priority || null,
+            due_date: dueDate,
+            assignee_id: assigneeId,
+          });
+        }
 
         if (createMore) {
           // Reset form for next issue
