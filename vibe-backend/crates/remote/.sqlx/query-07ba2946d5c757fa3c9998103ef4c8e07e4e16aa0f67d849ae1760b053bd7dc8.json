@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT EXISTS(\n            -- Check direct workspace membership via tenant_workspace_members\n            SELECT 1 FROM tenant_workspace_members twm\n            JOIN users u ON twm.email = u.email\n            WHERE twm.tenant_workspace_id = $1 AND u.id = $2\n        ) OR EXISTS(\n            -- Check legacy organization membership\n            SELECT 1 FROM organization_member_metadata\n            WHERE organization_id = $1 AND user_id = $2\n        ) OR EXISTS(\n            -- Check if user is member of a team that has this organization/workspace\n            -- team_members uses email, so join with users table\n            SELECT 1 FROM team_members tm\n            JOIN teams t ON tm.team_id = t.id\n            JOIN users u ON tm.email = u.email\n            WHERE u.id = $2 AND (\n                t.tenant_workspace_id = $1 OR\n                EXISTS (\n                    SELECT 1 FROM projects p\n                    WHERE p.organization_id = $1\n                    AND (p.tenant_workspace_id = t.tenant_workspace_id OR p.organization_id = t.tenant_workspace_id)\n                )\n            )\n        ) OR EXISTS(\n            -- Check if user is in a workspace that owns projects with this organization_id\n            SELECT 1 FROM tenant_workspace_members twm\n            JOIN users u ON twm.email = u.email\n            JOIN projects p ON p.tenant_workspace_id = twm.tenant_workspace_id\n            WHERE u.id = $2 AND p.organization_id = $1\n        ) AS \"exists!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "07ba2946d5c757fa3c9998103ef4c8e07e4e16aa0f67d849ae1760b053bd7dc8"
+}

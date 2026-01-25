@@ -58,18 +58,42 @@ pub async fn is_member<'a, E>(
 where
     E: Executor<'a, Database = Postgres>,
 {
-    // Check membership using email as the common key between users table and tenant_workspace_members
-    // tenant_workspace_members stores Clerk IDs, but we receive database UUIDs from auth
-    // So we join on email to find the correct membership
+    // Check membership in multiple ways:
+    // 1. tenant_workspace_members - direct workspace membership (join on email since twm uses Clerk IDs)
+    // 2. organization_member_metadata - legacy organization membership
+    // 3. team_members - membership via team that belongs to a workspace with matching projects
+    // 4. projects with tenant_workspace_id - if user is member of that workspace
     let exists = sqlx::query_scalar!(
         r#"
         SELECT EXISTS(
+            -- Check direct workspace membership via tenant_workspace_members
             SELECT 1 FROM tenant_workspace_members twm
             JOIN users u ON twm.email = u.email
             WHERE twm.tenant_workspace_id = $1 AND u.id = $2
         ) OR EXISTS(
+            -- Check legacy organization membership
             SELECT 1 FROM organization_member_metadata
             WHERE organization_id = $1 AND user_id = $2
+        ) OR EXISTS(
+            -- Check if user is member of a team that has this organization/workspace
+            -- team_members uses email, so join with users table
+            SELECT 1 FROM team_members tm
+            JOIN teams t ON tm.team_id = t.id
+            JOIN users u ON tm.email = u.email
+            WHERE u.id = $2 AND (
+                t.tenant_workspace_id = $1 OR
+                EXISTS (
+                    SELECT 1 FROM projects p
+                    WHERE p.organization_id = $1
+                    AND (p.tenant_workspace_id = t.tenant_workspace_id OR p.organization_id = t.tenant_workspace_id)
+                )
+            )
+        ) OR EXISTS(
+            -- Check if user is in a workspace that owns projects with this organization_id
+            SELECT 1 FROM tenant_workspace_members twm
+            JOIN users u ON twm.email = u.email
+            JOIN projects p ON p.tenant_workspace_id = twm.tenant_workspace_id
+            WHERE u.id = $2 AND p.organization_id = $1
         ) AS "exists!"
         "#,
         organization_id,
