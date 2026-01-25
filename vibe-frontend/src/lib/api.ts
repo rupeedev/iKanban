@@ -2960,11 +2960,69 @@ export interface SuperadminCheckResponse {
   email: string;
 }
 
+// IKA-288: Tenant metrics types for superadmin dashboard
+export interface TenantLimits {
+  max_teams: number;
+  max_projects: number;
+  max_members: number;
+  max_storage_gb: number;
+}
+
+export interface TenantUsage {
+  teams_count: number;
+  projects_count: number;
+  members_count: number;
+  issues_count: number;
+  documents_count: number;
+}
+
+export interface TenantStatus {
+  teams: 'ok' | 'warning' | 'critical';
+  projects: 'ok' | 'warning' | 'critical';
+  members: 'ok' | 'warning' | 'critical';
+  overall: 'ok' | 'warning' | 'critical';
+}
+
+export interface TenantMetrics {
+  id: string;
+  name: string;
+  slug: string;
+  owner_email?: string;
+  owner_name?: string;
+  plan: string;
+  created_at: string;
+  updated_at: string;
+  limits: TenantLimits;
+  usage: TenantUsage;
+  status: TenantStatus;
+}
+
+export interface TenantsSummary {
+  total_workspaces: number;
+  total_teams: number;
+  total_projects: number;
+  total_members: number;
+  total_issues: number;
+  workspaces_at_limit: number;
+  workspaces_near_limit: number;
+}
+
+export interface TenantsResponse {
+  summary: TenantsSummary;
+  tenants: TenantMetrics[];
+}
+
 export const superadminApi = {
   // Check if current user is a superadmin
   check: async (): Promise<SuperadminCheckResponse> => {
     const response = await makeRequest('/api/superadmin/check');
     return handleApiResponse<SuperadminCheckResponse>(response);
+  },
+
+  // IKA-288: Get comprehensive tenant metrics
+  getTenants: async (): Promise<TenantsResponse> => {
+    const response = await makeRequest('/api/superadmin/tenants');
+    return handleApiResponse<TenantsResponse>(response);
   },
 };
 
