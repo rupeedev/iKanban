@@ -37,37 +37,34 @@ export function useTaskDocumentLinks(taskId: string | undefined) {
   const linkDocumentsMutation = useMutation({
     mutationFn: async (documentIds: string[]) => {
       if (!taskId) throw new Error('Task ID required');
-      console.log(
-        '[linkDocuments] Linking documents to task:',
-        taskId,
-        documentIds
-      );
-      const result = await tasksApi.linkDocuments(taskId, {
-        document_ids: documentIds,
-      });
-      console.log('[linkDocuments] API response:', result);
-      return result;
+      console.log('[linkDocuments] Linking documents to task:', taskId, documentIds);
+
+      // Backend only accepts one document at a time, so we call API for each
+      const results: LinkedDocument[] = [];
+      for (const documentId of documentIds) {
+        try {
+          const result = await tasksApi.linkDocument(taskId, documentId);
+          results.push(result);
+        } catch (err) {
+          console.error(`[linkDocuments] Failed to link document ${documentId}:`, err);
+          // Continue with other documents even if one fails
+        }
+      }
+      console.log('[linkDocuments] API results:', results);
+      return results;
     },
     onSuccess: (newLinks) => {
       console.log('[linkDocuments] onSuccess - new links:', newLinks);
       queryClient.setQueryData<LinkedDocument[]>(
         ['task-document-links', taskId],
         (old) => {
-          console.log(
-            '[linkDocuments] setQueryData - old:',
-            old,
-            'new:',
-            newLinks
-          );
           if (!old) return newLinks;
           // Merge new links avoiding duplicates
           const existingIds = new Set(old.map((l) => l.document_id));
           const uniqueNewLinks = newLinks.filter(
             (l) => !existingIds.has(l.document_id)
           );
-          const merged = [...old, ...uniqueNewLinks];
-          console.log('[linkDocuments] setQueryData - merged:', merged);
-          return merged;
+          return [...old, ...uniqueNewLinks];
         }
       );
       // Also invalidate to ensure fresh data - mark stale but don't refetch immediately

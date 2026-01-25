@@ -68,11 +68,14 @@ export function LinkDocumentsDialog({
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (doc) =>
-          doc.title.toLowerCase().includes(query) ||
+      filtered = filtered.filter((doc) => {
+        // Handle both 'title' and 'name' fields (API returns 'name' for team documents)
+        const docTitle = (doc as unknown as { name?: string }).name || doc.title || '';
+        return (
+          docTitle.toLowerCase().includes(query) ||
           (doc.content && doc.content.toLowerCase().includes(query))
-      );
+        );
+      });
     }
 
     return filtered;
@@ -202,26 +205,30 @@ export function LinkDocumentsDialog({
                       {folderName}
                     </div>
                     <div className="space-y-1">
-                      {docs.map((doc) => (
-                        <div
-                          key={doc.id}
-                          className={cn(
-                            'flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer',
-                            selectedIds.has(doc.id) && 'bg-muted'
-                          )}
-                          onClick={() => handleToggle(doc.id)}
-                        >
-                          {/* Wrap checkbox to stop propagation and prevent double-toggle */}
-                          <span onClick={(e) => e.stopPropagation()}>
-                            <Checkbox
-                              checked={selectedIds.has(doc.id)}
-                              onCheckedChange={() => handleToggle(doc.id)}
-                            />
-                          </span>
-                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="text-sm truncate">{doc.title}</span>
-                        </div>
-                      ))}
+                      {docs.map((doc) => {
+                        // Handle both 'title' and 'name' fields (API returns 'name' for team documents)
+                        const docTitle = (doc as unknown as { name?: string }).name || doc.title || 'Untitled';
+                        return (
+                          <div
+                            key={doc.id}
+                            className={cn(
+                              'flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer',
+                              selectedIds.has(doc.id) && 'bg-muted'
+                            )}
+                            onClick={() => handleToggle(doc.id)}
+                          >
+                            {/* Wrap checkbox to stop propagation and prevent double-toggle */}
+                            <span onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={selectedIds.has(doc.id)}
+                                onCheckedChange={() => handleToggle(doc.id)}
+                              />
+                            </span>
+                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="text-sm truncate">{docTitle}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );

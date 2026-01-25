@@ -847,6 +847,19 @@ export const tasksApi = {
     return handleApiResponse<LinkedDocument[]>(response);
   },
 
+  // Link a single document to a task (backend API expects singular document_id)
+  linkDocument: async (
+    taskId: string,
+    documentId: string
+  ): Promise<LinkedDocument> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/links`, {
+      method: 'POST',
+      body: JSON.stringify({ document_id: documentId }),
+    });
+    return handleApiResponse<LinkedDocument>(response);
+  },
+
+  // Legacy: kept for backwards compatibility, but use linkDocument instead
   linkDocuments: async (
     taskId: string,
     data: LinkDocumentsRequest
