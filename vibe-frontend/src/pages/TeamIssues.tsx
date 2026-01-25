@@ -138,7 +138,7 @@ export function TeamIssues() {
     handlePriorityChange,
     handleProjectChange,
     handleStatusChange,
-  } = useIssueUpdateHandlers({ issuesById, refresh });
+  } = useIssueUpdateHandlers({ teamId: actualTeamId ?? '', issuesById, refresh });
 
   const handleCreateIssue = useCallback(() => {
     // Open Linear-style issue form dialog

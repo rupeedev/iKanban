@@ -1857,6 +1857,25 @@ export const teamsApi = {
     return handleApiResponse<TaskWithAttemptStatus[]>(response);
   },
 
+  updateIssue: async (
+    teamId: string,
+    issueId: string,
+    data: {
+      title?: string;
+      description?: string;
+      status?: string;
+      priority?: number | null;
+      due_date?: string | null;
+      assignee_id?: string | null;
+    }
+  ): Promise<TaskWithAttemptStatus> => {
+    const response = await makeRequest(`/api/teams/${teamId}/issues/${issueId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<TaskWithAttemptStatus>(response);
+  },
+
   getDashboard: async (teamId: string): Promise<TeamDashboard> => {
     const response = await makeRequest(`/api/teams/${teamId}/dashboard`);
     return handleApiResponse<TeamDashboard>(response);
