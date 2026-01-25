@@ -22,10 +22,17 @@ class CheckResult:
 class BackendChecker:
     """Quality checker for backend (Rust) projects."""
 
-    def __init__(self, stack: BackendStack, fix: bool = False, verbose: bool = False):
+    def __init__(
+        self,
+        stack: BackendStack,
+        fix: bool = False,
+        verbose: bool = False,
+        packages: List[str] = None,
+    ):
         self.stack = stack
         self.fix = fix
         self.verbose = verbose
+        self.packages = packages or []
         self.console = Console()
 
     def _run_command(self, name: str, args: List[str]) -> CheckResult:
@@ -72,7 +79,11 @@ class BackendChecker:
     def check_compile(self) -> CheckResult:
         """Run cargo check for compilation errors."""
         args = ["check"]
-        if self.stack.has_workspace:
+        if self.packages:
+            # Use --package for specific packages (faster)
+            for pkg in self.packages:
+                args.extend(["--package", pkg])
+        elif self.stack.has_workspace:
             args.append("--workspace")
 
         return self._run_command("compile", args)
@@ -80,7 +91,11 @@ class BackendChecker:
     def check_clippy(self) -> CheckResult:
         """Run cargo clippy for lints."""
         args = ["clippy"]
-        if self.stack.has_workspace:
+        if self.packages:
+            # Use --package for specific packages (faster)
+            for pkg in self.packages:
+                args.extend(["--package", pkg])
+        elif self.stack.has_workspace:
             args.append("--workspace")
 
         # Add deny warnings flag
@@ -99,7 +114,9 @@ class BackendChecker:
 
         self.console.print(f"\n[bold yellow]Backend[/bold yellow] ({self.stack.path})")
         self.console.print(f"  Language: {self.stack.language}")
-        if self.stack.has_workspace:
+        if self.packages:
+            self.console.print(f"  [dim]Packages: {', '.join(self.packages)}[/dim]")
+        elif self.stack.has_workspace:
             self.console.print("  [dim]Workspace detected[/dim]")
 
         # Format

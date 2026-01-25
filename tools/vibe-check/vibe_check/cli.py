@@ -90,11 +90,30 @@ def main(ctx, path: Path, verbose: bool, config: Optional[Path]):
 @click.option("--frontend/--no-frontend", "-f/-F", default=None)
 @click.option("--backend/--no-backend", "-b/-B", default=None)
 @click.option("--fix", is_flag=True, help="Auto-fix issues where possible")
+@click.option(
+    "--package", "-P",
+    multiple=True,
+    help="Cargo package(s) to check (faster than full workspace). Requires --no-config.",
+)
+@click.option(
+    "--no-config",
+    is_flag=True,
+    help="Ignore .vibe-check.toml and use auto-detection (required for --package).",
+)
 @click.pass_context
-def quality_checks(ctx, frontend: Optional[bool], backend: Optional[bool], fix: bool):
-    """Run quality checks (lint, format, compile, clippy)."""
+def quality_checks(ctx, frontend: Optional[bool], backend: Optional[bool], fix: bool, package: tuple, no_config: bool):
+    """Run quality checks (lint, format, compile, clippy).
+
+    \b
+    Examples:
+        vibe-check quality                                # Use config or auto-detect
+        vibe-check quality --no-config -P remote          # Check only 'remote' package (~2 min)
+        vibe-check quality --no-config -P remote -P db    # Check multiple packages
+        vibe-check quality --no-config --fix -P remote    # Auto-fix 'remote' package
+    """
     path = ctx.obj["path"]
     verbose = ctx.obj["verbose"]
+    packages = list(package)  # Convert tuple to list
 
     console.print(Panel.fit(
         "[bold]vibe-check quality[/bold]",
@@ -103,8 +122,11 @@ def quality_checks(ctx, frontend: Optional[bool], backend: Optional[bool], fix: 
 
     all_results = []
 
-    # Try config first
-    config, is_custom = get_config_or_detect(path, verbose)
+    # Try config first (unless --no-config is specified)
+    if no_config:
+        config, is_custom = None, False
+    else:
+        config, is_custom = get_config_or_detect(path, verbose)
 
     if is_custom and config and config.quality.commands:
         # Use config-based checker
@@ -134,7 +156,7 @@ def quality_checks(ctx, frontend: Optional[bool], backend: Optional[bool], fix: 
             all_results.extend(checker.run_all())
 
         if run_backend and stack.backend:
-            checker = BackendChecker(stack.backend, fix=fix, verbose=verbose)
+            checker = BackendChecker(stack.backend, fix=fix, verbose=verbose, packages=packages)
             all_results.extend(checker.run_all())
 
     _print_summary(all_results)
@@ -315,11 +337,22 @@ def init_config(ctx, preset: Optional[str], force: bool):
 
 @main.command("all")
 @click.option("--fix", is_flag=True, help="Auto-fix issues where possible")
+@click.option(
+    "--package", "-P",
+    multiple=True,
+    help="Cargo package(s) to check (faster than full workspace). Requires --no-config.",
+)
+@click.option(
+    "--no-config",
+    is_flag=True,
+    help="Ignore .vibe-check.toml and use auto-detection (required for --package).",
+)
 @click.pass_context
-def all_checks(ctx, fix: bool = False):
+def all_checks(ctx, fix: bool = False, package: tuple = (), no_config: bool = False):
     """Run all checks (quality + security)."""
     path = ctx.obj["path"]
     verbose = ctx.obj["verbose"]
+    packages = list(package)  # Convert tuple to list
 
     console.print(Panel.fit(
         f"[bold]vibe-check[/bold] v{__version__}",
@@ -328,8 +361,11 @@ def all_checks(ctx, fix: bool = False):
 
     all_results = []
 
-    # Try config first
-    config, is_custom = get_config_or_detect(path, verbose)
+    # Try config first (unless --no-config is specified)
+    if no_config:
+        config, is_custom = None, False
+    else:
+        config, is_custom = get_config_or_detect(path, verbose)
 
     if is_custom and config:
         # Config-based checks
@@ -382,7 +418,7 @@ def all_checks(ctx, fix: bool = False):
             all_results.extend(checker.run_all())
 
         if stack.backend:
-            checker = BackendChecker(stack.backend, fix=fix, verbose=verbose)
+            checker = BackendChecker(stack.backend, fix=fix, verbose=verbose, packages=packages)
             all_results.extend(checker.run_all())
 
         # Security checks
