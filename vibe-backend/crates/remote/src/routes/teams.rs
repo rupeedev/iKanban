@@ -19,6 +19,10 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{
+        document_folders::{
+            CreateDocumentFolder, DocumentFolder, DocumentFolderRepository, UpdateDocumentFolder,
+        },
+        documents::{CreateDocument, Document, DocumentRepository, UpdateDocument},
         projects::{Project, ProjectRepository},
         teams::{
             CreateTeamIssue, Team, TeamDocument, TeamFolder, TeamInvitation, TeamIssue, TeamMember,
@@ -135,8 +139,28 @@ pub fn router() -> Router<AppState> {
             "/teams/{team_id}/invitations/{invitation_id}",
             axum::routing::put(update_team_invitation_role).delete(cancel_team_invitation),
         )
-        .route("/teams/{team_id}/documents", get(get_team_documents))
-        .route("/teams/{team_id}/folders", get(get_team_folders))
+        // Document CRUD routes
+        .route(
+            "/teams/{team_id}/documents",
+            get(get_team_documents).post(create_team_document),
+        )
+        .route(
+            "/teams/{team_id}/documents/{document_id}",
+            get(get_team_document)
+                .put(update_team_document)
+                .delete(delete_team_document),
+        )
+        // Folder CRUD routes
+        .route(
+            "/teams/{team_id}/folders",
+            get(get_team_folders).post(create_team_folder),
+        )
+        .route(
+            "/teams/{team_id}/folders/{folder_id}",
+            get(get_team_folder)
+                .put(update_team_folder)
+                .delete(delete_team_folder),
+        )
 }
 
 /// List teams - returns teams from database
@@ -1200,4 +1224,449 @@ async fn get_team_folders(
         })?;
 
     Ok(ApiResponse::success(folders))
+}
+
+// =============================================================================
+// Document CRUD handlers (POST, GET by ID, PUT, DELETE)
+// =============================================================================
+
+/// Create a new document in a team
+#[instrument(
+    name = "teams.create_team_document",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, team_id = %team_id)
+)]
+async fn create_team_document(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<String>,
+    Json(payload): Json<CreateDocument>,
+) -> Result<Json<ApiResponse<Document>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let document = DocumentRepository::create(pool, team.id, &payload)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to create document");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to create document",
+            )
+        })?;
+
+    tracing::info!(team_id = %team.id, document_id = %document.id, "created team document");
+    Ok(ApiResponse::success(document))
+}
+
+/// Get a specific document by ID
+#[instrument(
+    name = "teams.get_team_document",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, team_id = %team_id, document_id = %document_id)
+)]
+async fn get_team_document(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((team_id, document_id)): Path<(String, Uuid)>,
+) -> Result<Json<ApiResponse<Document>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let document = DocumentRepository::find_by_id(pool, document_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %document_id, "failed to get document");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get document")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "document not found"))?;
+
+    if document.team_id != team.id {
+        return Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "document not found in this team",
+        ));
+    }
+
+    Ok(ApiResponse::success(document))
+}
+
+/// Update a document
+#[instrument(
+    name = "teams.update_team_document",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, team_id = %team_id, document_id = %document_id)
+)]
+async fn update_team_document(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((team_id, document_id)): Path<(String, Uuid)>,
+    Json(payload): Json<UpdateDocument>,
+) -> Result<Json<ApiResponse<Document>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let existing = DocumentRepository::find_by_id(pool, document_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %document_id, "failed to find document");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to update document",
+            )
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "document not found"))?;
+
+    if existing.team_id != team.id {
+        return Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "document not found in this team",
+        ));
+    }
+
+    let document = DocumentRepository::update(pool, document_id, &payload)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %document_id, "failed to update document");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to update document",
+            )
+        })?;
+
+    tracing::info!(team_id = %team.id, document_id = %document.id, "updated team document");
+    Ok(ApiResponse::success(document))
+}
+
+/// Delete a document
+#[instrument(
+    name = "teams.delete_team_document",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, team_id = %team_id, document_id = %document_id)
+)]
+async fn delete_team_document(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((team_id, document_id)): Path<(String, Uuid)>,
+) -> Result<StatusCode, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let existing = DocumentRepository::find_by_id(pool, document_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %document_id, "failed to find document");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to delete document",
+            )
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "document not found"))?;
+
+    if existing.team_id != team.id {
+        return Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "document not found in this team",
+        ));
+    }
+
+    DocumentRepository::delete(pool, document_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %document_id, "failed to delete document");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to delete document",
+            )
+        })?;
+
+    tracing::info!(team_id = %team.id, %document_id, "deleted team document");
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// =============================================================================
+// Folder CRUD handlers (POST, GET by ID, PUT, DELETE)
+// =============================================================================
+
+/// Create a new folder in a team
+#[instrument(
+    name = "teams.create_team_folder",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, team_id = %team_id)
+)]
+async fn create_team_folder(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(team_id): Path<String>,
+    Json(payload): Json<CreateDocumentFolder>,
+) -> Result<Json<ApiResponse<DocumentFolder>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let folder = DocumentFolderRepository::create(pool, team.id, &payload)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to create folder");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to create folder")
+        })?;
+
+    tracing::info!(team_id = %team.id, folder_id = %folder.id, "created team folder");
+    Ok(ApiResponse::success(folder))
+}
+
+/// Get a specific folder by ID
+#[instrument(
+    name = "teams.get_team_folder",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, team_id = %team_id, folder_id = %folder_id)
+)]
+async fn get_team_folder(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((team_id, folder_id)): Path<(String, Uuid)>,
+) -> Result<Json<ApiResponse<DocumentFolder>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let folder = DocumentFolderRepository::find_by_id(pool, folder_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %folder_id, "failed to get folder");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get folder")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "folder not found"))?;
+
+    if folder.team_id != team.id {
+        return Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "folder not found in this team",
+        ));
+    }
+
+    Ok(ApiResponse::success(folder))
+}
+
+/// Update a folder
+#[instrument(
+    name = "teams.update_team_folder",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, team_id = %team_id, folder_id = %folder_id)
+)]
+async fn update_team_folder(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((team_id, folder_id)): Path<(String, Uuid)>,
+    Json(payload): Json<UpdateDocumentFolder>,
+) -> Result<Json<ApiResponse<DocumentFolder>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let existing = DocumentFolderRepository::find_by_id(pool, folder_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %folder_id, "failed to find folder");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to update folder")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "folder not found"))?;
+
+    if existing.team_id != team.id {
+        return Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "folder not found in this team",
+        ));
+    }
+
+    let folder = DocumentFolderRepository::update(pool, folder_id, &payload)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %folder_id, "failed to update folder");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to update folder")
+        })?;
+
+    tracing::info!(team_id = %team.id, folder_id = %folder.id, "updated team folder");
+    Ok(ApiResponse::success(folder))
+}
+
+/// Delete a folder
+#[instrument(
+    name = "teams.delete_team_folder",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, team_id = %team_id, folder_id = %folder_id)
+)]
+async fn delete_team_folder(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((team_id, folder_id)): Path<(String, Uuid)>,
+) -> Result<StatusCode, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let existing = DocumentFolderRepository::find_by_id(pool, folder_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %folder_id, "failed to find folder");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to delete folder")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "folder not found"))?;
+
+    if existing.team_id != team.id {
+        return Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "folder not found in this team",
+        ));
+    }
+
+    DocumentFolderRepository::delete(pool, folder_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %folder_id, "failed to delete folder");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to delete folder")
+        })?;
+
+    tracing::info!(team_id = %team.id, %folder_id, "deleted team folder");
+    Ok(StatusCode::NO_CONTENT)
 }
