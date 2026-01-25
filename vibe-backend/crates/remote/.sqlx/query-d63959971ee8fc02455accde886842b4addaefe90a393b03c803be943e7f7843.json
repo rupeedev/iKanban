@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE tasks\n            SET\n                title = COALESCE($3, title),\n                description = COALESCE($4, description),\n                status = COALESCE($5, status),\n                priority = COALESCE($6, priority),\n                due_date = COALESCE($7, due_date),\n                assignee_id = COALESCE($8, assignee_id),\n                updated_at = NOW()\n            WHERE id = $1 AND team_id = $2\n            RETURNING\n                id             AS \"id!: Uuid\",\n                project_id     AS \"project_id!: Uuid\",\n                title          AS \"title!\",\n                description,\n                status         AS \"status!\",\n                priority,\n                due_date,\n                assignee_id,\n                issue_number,\n                created_at     AS \"created_at!: DateTime<Utc>\",\n                updated_at     AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "query": "\n            UPDATE tasks\n            SET\n                title = COALESCE($3, title),\n                description = COALESCE($4, description),\n                status = COALESCE($5, status),\n                priority = COALESCE($6, priority),\n                due_date = COALESCE($7, due_date),\n                assignee_id = COALESCE($8, assignee_id),\n                project_id = COALESCE($9, project_id),\n                updated_at = NOW()\n            WHERE id = $1 AND team_id = $2\n            RETURNING\n                id             AS \"id!: Uuid\",\n                project_id     AS \"project_id!: Uuid\",\n                title          AS \"title!\",\n                description,\n                status         AS \"status!\",\n                priority,\n                due_date,\n                assignee_id,\n                issue_number,\n                created_at     AS \"created_at!: DateTime<Utc>\",\n                updated_at     AS \"updated_at!: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -68,6 +68,7 @@
         "Text",
         "Int4",
         "Timestamptz",
+        "Uuid",
         "Uuid"
       ]
     },
@@ -85,5 +86,5 @@
       false
     ]
   },
-  "hash": "dfb2b391fec3ee8874abc3a455e2847737975dfc09d00e038baa43e72e7d2434"
+  "hash": "d63959971ee8fc02455accde886842b4addaefe90a393b03c803be943e7f7843"
 }

@@ -614,6 +614,7 @@ impl TeamRepository {
                 priority = COALESCE($6, priority),
                 due_date = COALESCE($7, due_date),
                 assignee_id = COALESCE($8, assignee_id),
+                project_id = COALESCE($9, project_id),
                 updated_at = NOW()
             WHERE id = $1 AND team_id = $2
             RETURNING
@@ -636,7 +637,8 @@ impl TeamRepository {
             data.status,
             data.priority,
             data.due_date,
-            data.assignee_id
+            data.assignee_id,
+            data.project_id
         )
         .fetch_optional(pool)
         .await?;
@@ -1226,6 +1228,7 @@ pub struct UpdateTeamIssue {
     pub priority: Option<i32>,
     pub due_date: Option<DateTime<Utc>>,
     pub assignee_id: Option<Uuid>,
+    pub project_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1867,6 +1867,7 @@ export const teamsApi = {
       priority?: number | null;
       due_date?: string | null;
       assignee_id?: string | null;
+      project_id?: string | null;
     }
   ): Promise<TaskWithAttemptStatus> => {
     const response = await makeRequest(`/api/teams/${teamId}/issues/${issueId}`, {

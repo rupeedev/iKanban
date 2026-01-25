@@ -53,7 +53,14 @@ impl SharePublisher {
             project_id: remote_project_id,
             title: task.title.clone(),
             description: task.description.clone(),
-            assignee_user_id: Some(user_id),
+            status: None,
+            priority: task.priority,
+            due_date: None,
+            assignee_id: Some(user_id),
+            parent_workspace_id: None,
+            image_ids: None,
+            shared_task_id: None,
+            team_id: None,
         };
 
         let remote_task = self.client.create_shared_task(&payload).await?;
@@ -73,6 +80,10 @@ impl SharePublisher {
             description: task.description.clone(),
             status: Some(status::to_remote(&task.status)),
             priority: task.priority,
+            assignee_id: None,
+            due_date: None,
+            parent_workspace_id: None,
+            image_ids: None,
         };
 
         self.client

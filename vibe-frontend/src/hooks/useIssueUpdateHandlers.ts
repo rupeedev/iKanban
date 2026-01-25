@@ -54,16 +54,21 @@ export function useIssueUpdateHandlers({
   );
 
   // Handler for project changes - moves issue to a different project
-  // Note: Moving issues between projects is not yet supported for team issues
   const handleProjectChange = useCallback(
     async (taskId: string, newProjectId: string) => {
       const issue = issuesById[taskId];
       if (!issue || issue.project_id === newProjectId) return;
 
-      // TODO: Implement move endpoint for team issues
-      console.warn('Moving issues between projects is not yet supported');
+      try {
+        await teamsApi.updateIssue(teamId, taskId, {
+          project_id: newProjectId,
+        });
+        await refresh();
+      } catch (err) {
+        console.error('Failed to move issue to project:', err);
+      }
     },
-    [issuesById]
+    [teamId, issuesById, refresh]
   );
 
   // Handler for status changes (drag and drop)

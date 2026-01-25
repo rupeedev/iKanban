@@ -490,6 +490,7 @@ pub struct UpdateTeamIssueRequest {
     pub priority: Option<i32>,
     pub due_date: Option<DateTime<Utc>>,
     pub assignee_id: Option<Uuid>,
+    pub project_id: Option<Uuid>,
 }
 
 /// Create a new team issue
@@ -606,6 +607,7 @@ async fn update_team_issue(
         priority: payload.priority,
         due_date: payload.due_date,
         assignee_id: payload.assignee_id,
+        project_id: payload.project_id,
     };
 
     let issue = TeamRepository::update_issue(pool, team.id, issue_id, update_data)
