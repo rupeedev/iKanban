@@ -313,6 +313,7 @@ async fn get_activity(
 
 /// Get workspace users - queries team_members with aggregated team/project counts
 /// IKA-286: Implemented to return actual users from team_members table
+/// IKA-287: Fixed invalid GROUP BY - use DISTINCT ON for PostgreSQL
 async fn get_users(
     State(state): State<AppState>,
     Extension(_ctx): Extension<RequestContext>,
@@ -321,10 +322,10 @@ async fn get_users(
     let pool = state.pool();
 
     // Query distinct users from team_members with aggregated team count
-    // We group by clerk_user_id to get unique users across teams
+    // Use DISTINCT ON (PostgreSQL) to get one row per unique clerk_user_id
     let users: Vec<AdminUser> = match sqlx::query_as::<_, AdminUserRow>(
         r#"
-        SELECT
+        SELECT DISTINCT ON (tm.clerk_user_id)
             tm.id,
             tm.email,
             tm.display_name,
@@ -335,8 +336,7 @@ async fn get_users(
             (SELECT COUNT(DISTINCT mp.project_id) FROM member_project_access mp WHERE mp.member_id = tm.id) as projects_count
         FROM team_members tm
         WHERE tm.clerk_user_id IS NOT NULL
-        GROUP BY tm.clerk_user_id
-        ORDER BY tm.joined_at DESC
+        ORDER BY tm.clerk_user_id, tm.joined_at DESC
         "#,
     )
     .fetch_all(pool)
