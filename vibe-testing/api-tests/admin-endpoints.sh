@@ -88,8 +88,11 @@ echo ""
 echo "--- Configuration ---"
 test_endpoint "GET /admin/{id}/configuration" "GET" "/admin/$WORKSPACE_ID/configuration" "200"
 
-# Note: Trust & Safety endpoints (/admin/trust-profiles/*, /admin/abuse-signals)
-# return raw arrays instead of ApiResponse wrapper - separate issue to fix
+# Trust & Safety endpoints (IKA-283 fixed response format)
+echo ""
+echo "--- Trust & Safety ---"
+test_endpoint "GET /admin/trust-profiles/flagged" "GET" "/admin/trust-profiles/flagged" "200"
+test_endpoint "GET /admin/abuse-signals" "GET" "/admin/abuse-signals" "200"
 
 echo ""
 echo "=========================================="
