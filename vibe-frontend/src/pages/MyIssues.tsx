@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -10,25 +9,33 @@ import {
   CircleDot,
   ListTodo,
   CheckCircle2,
-  Clock,
-  AlertCircle,
-  ArrowUp,
-  ArrowRight,
-  ArrowDown,
-  Minus,
 } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable';
 
 import { useClerkUser } from '@/hooks/auth/useClerkAuth';
 import { useTeams } from '@/hooks/useTeams';
-import { useTeamIssues } from '@/hooks/useTeamIssues';
-import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { StatusIcon } from '@/utils/StatusIcons';
 import { cn } from '@/lib/utils';
+import { IssueDetailPanel } from '@/components/tasks/IssueDetailPanel';
+import {
+  loadIssuePanelSize,
+  saveIssuePanelSize,
+  PANEL_DEFAULTS,
+} from '@/lib/panelStorage';
+import {
+  FilterTab,
+  TeamMemberIssueLoader,
+  IssueCard,
+} from './my-issues/MyIssueComponents';
 
-import type { TaskWithAttemptStatus, TaskStatus, Team } from 'shared/types';
+import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 
 type ViewFilter = 'all' | 'active' | 'backlog' | 'done';
 
@@ -48,51 +55,17 @@ const STATUS_COLORS: Record<TaskStatus, string> = {
   cancelled: 'text-red-500',
 };
 
-// Priority icons and colors
-const PRIORITY_CONFIG: Record<
-  number,
-  { icon: typeof AlertCircle; color: string; label: string }
-> = {
-  1: { icon: AlertCircle, color: 'text-red-500', label: 'Urgent' },
-  2: { icon: ArrowUp, color: 'text-orange-500', label: 'High' },
-  3: { icon: ArrowRight, color: 'text-yellow-500', label: 'Medium' },
-  4: { icon: ArrowDown, color: 'text-blue-500', label: 'Low' },
-  0: { icon: Minus, color: 'text-muted-foreground', label: 'None' },
-};
-
-// Component to fetch and display issues for a single team
-function TeamIssuesLoader({
-  teamId,
-  userMemberId,
-  onIssuesLoaded,
-}: {
-  teamId: string;
-  userMemberId: string | null;
-  onIssuesLoaded: (teamId: string, issues: TaskWithAttemptStatus[]) => void;
-}) {
-  const { issues } = useTeamIssues(teamId);
-
-  // Filter to user's assigned issues and call parent callback
-  useEffect(() => {
-    if (userMemberId) {
-      const userIssues = issues.filter(
-        (issue) => issue.assignee_id === userMemberId
-      );
-      onIssuesLoaded(teamId, userIssues);
-    }
-  }, [issues, userMemberId, teamId, onIssuesLoaded]);
-
-  return null;
-}
-
 export function MyIssues() {
-  const navigate = useNavigate();
   const { user } = useClerkUser();
-  const { teams, isLoading: teamsLoading, error: teamsError } = useTeams();
+  const { teams, teamsById, isLoading: teamsLoading, error: teamsError } = useTeams();
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [allIssues, setAllIssues] = useState<
     Record<string, TaskWithAttemptStatus[]>
   >({});
+
+  // Issue detail panel state
+  const [selectedIssue, setSelectedIssue] = useState<(TaskWithAttemptStatus & { teamId: string }) | null>(null);
+  const [issuePanelSize, setIssuePanelSize] = useState<number>(loadIssuePanelSize);
 
   // Get current user email from Clerk (reliable source)
   const userEmail = user?.primaryEmailAddress?.emailAddress || null;
@@ -190,14 +163,48 @@ export function MyIssues() {
 
   const handleRefresh = useCallback(() => {
     setAllIssues({});
+    setSelectedIssue(null);
   }, []);
 
+  // Open issue detail panel instead of navigating
   const handleIssueClick = useCallback(
     (issue: TaskWithAttemptStatus & { teamId: string }) => {
-      navigate(`/teams/${issue.teamId}/issues`);
+      setSelectedIssue(issue);
     },
-    [navigate]
+    []
   );
+
+  // Handle panel resize
+  const handlePanelResize = useCallback((sizes: number[]) => {
+    if (
+      sizes.length === 2 &&
+      sizes[1] >= PANEL_DEFAULTS.ISSUE_PANEL_MIN &&
+      sizes[1] <= PANEL_DEFAULTS.ISSUE_PANEL_MAX
+    ) {
+      setIssuePanelSize(sizes[1]);
+      saveIssuePanelSize(sizes[1]);
+    }
+  }, []);
+
+  // Handle ESC key to close panel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedIssue) {
+        setSelectedIssue(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedIssue]);
+
+  // Generate issue key for selected issue
+  const selectedIssueKey = useMemo(() => {
+    if (!selectedIssue || selectedIssue.issue_number == null) return undefined;
+    const team = teamsById[selectedIssue.teamId];
+    if (!team) return undefined;
+    const prefix = team.identifier || team.name.slice(0, 3).toUpperCase();
+    return `${prefix}-${selectedIssue.issue_number}`;
+  }, [selectedIssue, teamsById]);
 
   if (teamsLoading) {
     return <Loader message="Loading teams..." size={32} className="py-8" />;
@@ -310,228 +317,101 @@ export function MyIssues() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-6xl mx-auto p-6">
-          {!hasIssues ? (
-            <Card className="border-dashed">
-              <CardContent className="text-center py-12">
-                <div className="p-4 rounded-full bg-muted inline-block mb-4">
-                  <ListTodo className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-medium mb-1">No issues found</h3>
-                <p className="text-sm text-muted-foreground">
-                  {viewFilter === 'all'
-                    ? 'When you get assigned to issues, they will appear here'
-                    : `No ${viewFilter} issues assigned to you`}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-8">
-              {/* Render issues grouped by status */}
-              {(['inprogress', 'inreview', 'todo', 'done'] as TaskStatus[]).map(
-                (status) => {
-                  const statusIssues = issuesByStatus[status];
-                  if (statusIssues.length === 0) return null;
+      {/* Content with resizable panel for issue details */}
+      <div className="flex-1 min-h-0">
+        <ResizablePanelGroup
+          direction="horizontal"
+          className="h-full"
+          onLayout={handlePanelResize}
+        >
+          {/* Main content area */}
+          <ResizablePanel
+            defaultSize={selectedIssue ? 100 - issuePanelSize : 100}
+            minSize={40}
+            className="min-w-0"
+          >
+            <div className="h-full overflow-auto">
+              <div className="max-w-6xl mx-auto p-6">
+                {!hasIssues ? (
+                  <Card className="border-dashed">
+                    <CardContent className="text-center py-12">
+                      <div className="p-4 rounded-full bg-muted inline-block mb-4">
+                        <ListTodo className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-lg font-medium mb-1">No issues found</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {viewFilter === 'all'
+                          ? 'When you get assigned to issues, they will appear here'
+                          : `No ${viewFilter} issues assigned to you`}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-8">
+                    {/* Render issues grouped by status */}
+                    {(['inprogress', 'inreview', 'todo', 'done'] as TaskStatus[]).map(
+                      (status) => {
+                        const statusIssues = issuesByStatus[status];
+                        if (statusIssues.length === 0) return null;
 
-                  return (
-                    <div key={status}>
-                      <div className="flex items-center gap-2 mb-4 pb-2 border-b">
-                        <StatusIcon
-                          status={status}
-                          className={cn('h-5 w-5', STATUS_COLORS[status])}
-                        />
-                        <h2 className="font-medium">{STATUS_LABELS[status]}</h2>
-                        <Badge variant="secondary" className="rounded-full">
-                          {statusIssues.length}
-                        </Badge>
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
-                        {statusIssues.map((issue) => (
-                          <IssueCard
-                            key={issue.id}
-                            issue={issue}
-                            teams={teams}
-                            onClick={() => handleIssueClick(issue)}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                }
-              )}
+                        return (
+                          <div key={status}>
+                            <div className="flex items-center gap-2 mb-4 pb-2 border-b">
+                              <StatusIcon
+                                status={status}
+                                className={cn('h-5 w-5', STATUS_COLORS[status])}
+                              />
+                              <h2 className="font-medium">{STATUS_LABELS[status]}</h2>
+                              <Badge variant="secondary" className="rounded-full">
+                                {statusIssues.length}
+                              </Badge>
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
+                              {statusIssues.map((issue) => (
+                                <IssueCard
+                                  key={issue.id}
+                                  issue={issue}
+                                  teams={teams}
+                                  selected={selectedIssue?.id === issue.id}
+                                  onClick={() => handleIssueClick(issue)}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
+          </ResizablePanel>
+
+          {/* Issue Detail Panel with resize handle */}
+          {selectedIssue && (
+            <>
+              <ResizableHandle withHandle />
+              <ResizablePanel
+                defaultSize={issuePanelSize}
+                minSize={25}
+                maxSize={60}
+                className="min-w-0"
+              >
+                <IssueDetailPanel
+                  issue={selectedIssue}
+                  teamId={selectedIssue.teamId}
+                  issueKey={selectedIssueKey}
+                  onClose={() => setSelectedIssue(null)}
+                  onUpdate={async () => {
+                    // Refresh the issues list by clearing and reloading
+                    setAllIssues({});
+                  }}
+                />
+              </ResizablePanel>
+            </>
           )}
-        </div>
+        </ResizablePanelGroup>
       </div>
     </div>
-  );
-}
-
-// Filter tab component
-function FilterTab({
-  active,
-  onClick,
-  icon: Icon,
-  label,
-  count,
-  highlight,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: typeof CircleDot;
-  label: string;
-  count: number;
-  highlight?: boolean;
-}) {
-  return (
-    <Button
-      variant={active ? 'default' : 'ghost'}
-      size="sm"
-      onClick={onClick}
-      className={cn(
-        'gap-2 transition-all',
-        active
-          ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-          : 'hover:bg-muted',
-        highlight &&
-          !active &&
-          count > 0 &&
-          'text-yellow-600 dark:text-yellow-400'
-      )}
-    >
-      <Icon className="h-4 w-4" />
-      {label}
-      <Badge
-        variant={active ? 'outline' : 'secondary'}
-        className={cn(
-          'rounded-full h-5 min-w-[20px] px-1.5',
-          active && 'bg-white/20 text-white border-white/30'
-        )}
-      >
-        {count}
-      </Badge>
-    </Button>
-  );
-}
-
-// Helper component to load team member ID and then issues
-function TeamMemberIssueLoader({
-  teamId,
-  userEmail,
-  onIssuesLoaded,
-}: {
-  teamId: string;
-  userEmail: string;
-  onIssuesLoaded: (teamId: string, issues: TaskWithAttemptStatus[]) => void;
-}) {
-  const { members } = useTeamMembers(teamId);
-
-  // Find current user's member ID in this team
-  const userMemberId = useMemo(() => {
-    const member = members.find((m) => m.email === userEmail);
-    return member?.id ?? null;
-  }, [members, userEmail]);
-
-  return (
-    <TeamIssuesLoader
-      teamId={teamId}
-      userMemberId={userMemberId}
-      onIssuesLoaded={onIssuesLoaded}
-    />
-  );
-}
-
-// Issue card component
-function IssueCard({
-  issue,
-  teams,
-  onClick,
-}: {
-  issue: TaskWithAttemptStatus & { teamId: string };
-  teams: Team[];
-  onClick: () => void;
-}) {
-  const team = teams.find((t) => t.id === issue.teamId);
-  const issueKey =
-    team && issue.issue_number != null
-      ? `${team.identifier || team.name.slice(0, 3).toUpperCase()}-${issue.issue_number}`
-      : undefined;
-
-  const priority = issue.priority ?? 0;
-  const priorityConfig = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG[0];
-  const PriorityIcon = priorityConfig.icon;
-
-  return (
-    <Card
-      className={cn(
-        'cursor-pointer transition-all duration-200 group',
-        'hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800',
-        'border-l-4',
-        issue.status === 'inprogress' && 'border-l-yellow-500',
-        issue.status === 'inreview' && 'border-l-blue-500',
-        issue.status === 'todo' && 'border-l-gray-300 dark:border-l-gray-600',
-        issue.status === 'done' && 'border-l-green-500'
-      )}
-      onClick={onClick}
-    >
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            {/* Top row: Issue key + Team badge */}
-            <div className="flex items-center gap-2 mb-2">
-              {issueKey && (
-                <code className="text-xs font-medium px-1.5 py-0.5 rounded bg-muted">
-                  {issueKey}
-                </code>
-              )}
-              {team && (
-                <Badge variant="outline" className="text-xs font-normal gap-1">
-                  {team.icon && <span>{team.icon}</span>}
-                  {team.name}
-                </Badge>
-              )}
-              {priority > 0 && priority <= 2 && (
-                <PriorityIcon
-                  className={cn('h-4 w-4 ml-auto', priorityConfig.color)}
-                />
-              )}
-            </div>
-
-            {/* Title */}
-            <h3 className="font-medium line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-              {issue.title}
-            </h3>
-
-            {/* Description */}
-            {issue.description && (
-              <p className="text-sm text-muted-foreground mt-1.5 line-clamp-2">
-                {issue.description}
-              </p>
-            )}
-
-            {/* Bottom row: metadata */}
-            <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {new Date(issue.created_at).toLocaleDateString()}
-              </span>
-              {priority > 0 && (
-                <span
-                  className={cn(
-                    'flex items-center gap-1',
-                    priorityConfig.color
-                  )}
-                >
-                  <PriorityIcon className="h-3 w-3" />
-                  {priorityConfig.label}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
