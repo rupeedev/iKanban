@@ -49,6 +49,38 @@ Work on: $ARGUMENTS
 
 ---
 
+## 🔍 MANDATORY - WHEN BUG/ISSUE IS REPORTED
+
+**Before reading code or checking git history, TEST THE API FIRST:**
+
+```bash
+# 1. Load auth token
+export VIBE_API_TOKEN=$(grep '^VIBE_API_TOKEN=' /Users/rupeshpanwar/Downloads/Projects/iKanban/.env | cut -d'=' -f2)
+
+# 2. Test the exact failing endpoint (copy URL from console error)
+curl -s -X PUT "https://api.scho1ar.com/api/tasks/{id}" \
+  -H "Authorization: Bearer $VIBE_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"field": "value"}'
+
+# 3. The error response reveals the actual problem
+```
+
+**Why this is mandatory:**
+- Console shows 422/404 but doesn't show WHY
+- Testing with auth reveals actual error (e.g., "task not found" = wrong table/endpoint)
+- Saves time by identifying root cause BEFORE reading code
+
+**Order of operations for bug reports:**
+1. **TEST** - Hit the API with curl + auth token
+2. **ANALYZE** - Read error response to understand root cause
+3. **INVESTIGATE** - Then check code/routes based on what error reveals
+4. **FIX** - Write code with clear understanding of problem
+
+**⛔ DO NOT** check git commits, deployment status, or read code files before testing the API.
+
+---
+
 > [!IMPORTANT]
 > ## GitHub Actions Adaptation
 > 
