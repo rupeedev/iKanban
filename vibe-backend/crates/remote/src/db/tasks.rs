@@ -61,6 +61,8 @@ pub struct CreateSharedTaskData {
     pub project_id: Uuid,
     pub title: String,
     pub description: Option<String>,
+    pub status: Option<TaskStatus>,
+    pub priority: Option<i32>,
     pub creator_user_id: Uuid,
     pub assignee_user_id: Option<Uuid>,
 }
@@ -210,6 +212,8 @@ impl<'a> SharedTaskRepository<'a> {
             project_id,
             title,
             description,
+            status,
+            priority,
             creator_user_id,
             assignee_user_id,
         } = data;
@@ -225,6 +229,9 @@ impl<'a> SharedTaskRepository<'a> {
 
         let organization_id = project.organization_id;
 
+        // Default status to 'todo' if not provided
+        let status_value = status.unwrap_or(TaskStatus::Todo);
+
         let task = sqlx::query_as!(
             SharedTask,
             r#"
@@ -235,9 +242,11 @@ impl<'a> SharedTaskRepository<'a> {
                 assignee_user_id,
                 title,
                 description,
+                status,
+                priority,
                 shared_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
             RETURNING id                 AS "id!",
                       organization_id    AS "organization_id!: Uuid",
                       project_id         AS "project_id!",
@@ -258,7 +267,9 @@ impl<'a> SharedTaskRepository<'a> {
             creator_user_id,
             assignee_user_id,
             title,
-            description
+            description,
+            status_value as TaskStatus,
+            priority
         )
         .fetch_one(&mut *tx)
         .await?;

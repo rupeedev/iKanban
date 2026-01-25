@@ -146,7 +146,14 @@ pub async fn create_shared_task(
         project_id,
         title,
         description,
-        assignee_user_id,
+        status,
+        priority,
+        due_date: _, // Ignored - shared_tasks doesn't have due_date column yet
+        assignee_id,
+        parent_workspace_id: _, // Ignored - not stored in shared_tasks
+        image_ids: _,          // Ignored - not stored in shared_tasks
+        shared_task_id: _,     // Ignored - not stored in shared_tasks
+        team_id: _,            // Ignored - not stored in shared_tasks
     } = payload;
 
     if let Err(error) = ensure_text_size(&title, description.as_deref()) {
@@ -161,7 +168,7 @@ pub async fn create_shared_task(
         Err(error) => return error.into_response(),
     };
 
-    if let Some(assignee) = assignee_user_id.as_ref() {
+    if let Some(assignee) = assignee_id.as_ref() {
         if let Err(err) = user_repo.fetch_user(*assignee).await {
             return identity_error_response(err, "assignee not found or inactive");
         }
@@ -176,8 +183,10 @@ pub async fn create_shared_task(
         project_id,
         title,
         description,
+        status,
+        priority,
         creator_user_id: ctx.user.id,
-        assignee_user_id,
+        assignee_user_id: assignee_id,
     };
 
     match repo.create(data).await {
@@ -420,7 +429,21 @@ pub struct CreateSharedTaskRequest {
     pub project_id: Uuid,
     pub title: String,
     pub description: Option<String>,
-    pub assignee_user_id: Option<Uuid>,
+    pub status: Option<TaskStatus>,
+    pub priority: Option<i32>,
+    pub due_date: Option<String>,
+    /// Accepts both `assignee_id` (frontend) and `assignee_user_id` (legacy)
+    #[serde(alias = "assignee_user_id")]
+    pub assignee_id: Option<Uuid>,
+    // Ignored fields (sent by frontend but not stored in shared_tasks)
+    #[serde(default)]
+    pub parent_workspace_id: Option<String>,
+    #[serde(default)]
+    pub image_ids: Option<Vec<String>>,
+    #[serde(default)]
+    pub shared_task_id: Option<String>,
+    #[serde(default)]
+    pub team_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
