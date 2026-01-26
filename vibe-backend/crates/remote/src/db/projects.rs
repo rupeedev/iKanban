@@ -398,66 +398,6 @@ impl ProjectRepository {
         .map_err(ProjectError::from)
     }
 
-    /// Fetch multiple projects by their IDs in a single query (batch fetch)
-    pub async fn fetch_by_ids(
-        pool: &PgPool,
-        project_ids: &[Uuid],
-    ) -> Result<Vec<Project>, ProjectError> {
-        if project_ids.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let rows = sqlx::query!(
-            r#"
-            SELECT
-                id               AS "id!: Uuid",
-                COALESCE(tenant_workspace_id, organization_id) AS "organization_id!: Uuid",
-                name             AS "name!",
-                metadata         AS "metadata!: Value",
-                priority         AS "priority: i32",
-                lead_id          AS "lead_id: Uuid",
-                start_date       AS "start_date: DateTime<Utc>",
-                target_date      AS "target_date: DateTime<Utc>",
-                status::TEXT     AS "status",
-                health           AS "health: i32",
-                description,
-                summary,
-                icon,
-                created_at       AS "created_at!: DateTime<Utc>",
-                COALESCE(updated_at, created_at) AS "updated_at!: DateTime<Utc>"
-            FROM projects
-            WHERE id = ANY($1)
-            ORDER BY created_at DESC
-            "#,
-            project_ids
-        )
-        .fetch_all(pool)
-        .await?;
-
-        Ok(rows
-            .into_iter()
-            .map(|r| {
-                map_row_to_project(
-                    r.id,
-                    r.organization_id,
-                    r.name,
-                    r.metadata,
-                    r.priority,
-                    r.lead_id,
-                    r.start_date,
-                    r.target_date,
-                    r.status,
-                    r.health,
-                    r.description,
-                    r.summary,
-                    r.icon,
-                    r.created_at,
-                    r.updated_at,
-                )
-            })
-            .collect())
-    }
-
     /// Update a project
     pub async fn update(
         pool: &PgPool,
