@@ -6,9 +6,9 @@ import { useTeams } from '@/hooks/useTeams';
 import { useProjectTeamMap } from '@/hooks/useProjectTeamMap';
 import { Button } from '@/components/ui/button';
 import { getTeamSlug, getProjectSlug } from '@/lib/urlUtils';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/clerk-react';
-import { superadminApi } from '@/lib/api';
+import { superadminApi, teamsApi } from '@/lib/api';
 import {
   Tooltip,
   TooltipContent,
@@ -211,6 +211,7 @@ interface SidebarTeamItemProps {
   pathname: string;
   onEdit: (team: Team) => void;
   onInvite: (team: Team) => void;
+  onPrefetch?: (teamId: string) => void;
 }
 
 function SidebarTeamItem({
@@ -221,6 +222,7 @@ function SidebarTeamItem({
   pathname,
   onEdit,
   onInvite,
+  onPrefetch,
 }: SidebarTeamItemProps) {
   const teamSlug = getTeamSlug(team);
   const teamBasePath = `/teams/${teamSlug}`;
@@ -234,7 +236,11 @@ function SidebarTeamItem({
       <TooltipProvider delayDuration={0}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Link to={`${teamBasePath}/issues`} className="block">
+            <Link
+              to={`${teamBasePath}/issues`}
+              className="block"
+              onMouseEnter={() => onPrefetch?.(team.id)}
+            >
               <div
                 className={cn(
                   'flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-colors cursor-pointer',
@@ -265,6 +271,7 @@ function SidebarTeamItem({
             ? 'text-foreground font-medium'
             : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
         )}
+        onMouseEnter={() => onPrefetch?.(team.id)}
       >
         <button
           onClick={onToggle}
@@ -387,6 +394,18 @@ export function Sidebar() {
   });
 
   const isSuperadmin = superadminCheck?.is_superadmin ?? false;
+
+  // Query client for prefetching (IKA-302)
+  const queryClient = useQueryClient();
+
+  // Prefetch team dashboard on hover for faster navigation (IKA-302)
+  const handlePrefetchTeam = (teamId: string) => {
+    queryClient.prefetchQuery({
+      queryKey: ['team-dashboard', teamId],
+      queryFn: () => teamsApi.getDashboard(teamId),
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    });
+  };
 
   const handleCreateProject = async () => {
     try {
@@ -543,6 +562,7 @@ export function Sidebar() {
                   pathname={location.pathname}
                   onEdit={handleEditTeam}
                   onInvite={handleInviteTeam}
+                  onPrefetch={handlePrefetchTeam}
                 />
               ))}
               {!isCollapsed && teams.length === 0 && (

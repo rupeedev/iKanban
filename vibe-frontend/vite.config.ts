@@ -77,5 +77,24 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ["wa-sqlite"],
   },
-  build: { sourcemap: true },
+  build: {
+    // Disable sourcemaps in production for smaller bundle (IKA-302)
+    sourcemap: process.env.NODE_ENV === 'development',
+    rollupOptions: {
+      output: {
+        // Vendor chunk optimization for better browser caching (IKA-302)
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-ui': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-popover',
+            '@radix-ui/react-tooltip',
+          ],
+          'vendor-clerk': ['@clerk/clerk-react'],
+        },
+      },
+    },
+  },
 });

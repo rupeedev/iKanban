@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '@/i18n';
@@ -47,22 +47,47 @@ import {
   SettingsLayout,
   WorkspaceSettings,
 } from '@/pages/settings/';
-import {
-  AdminLayout,
-  AdminDashboard,
-  AdminInvitations,
-  AdminPermissions,
-  AdminConfiguration,
-  AdminUsers,
-  AdminFlaggedUsers,
-} from '@/pages/admin/';
-import {
-  SuperadminLayout,
-  SuperadminDashboard,
-  RegistrationRequests,
-  SuperadminRegistrationDetail,
-  SuperadminStatsPage,
-} from '@/pages/superadmin/';
+// Lazy load admin pages for code splitting (IKA-302)
+const AdminLayout = lazy(() =>
+  import('@/pages/admin/AdminLayout').then((m) => ({ default: m.AdminLayout }))
+);
+const AdminDashboard = lazy(() =>
+  import('@/pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
+);
+const AdminInvitations = lazy(() =>
+  import('@/pages/admin/AdminInvitations').then((m) => ({ default: m.AdminInvitations }))
+);
+const AdminPermissions = lazy(() =>
+  import('@/pages/admin/AdminPermissions').then((m) => ({ default: m.AdminPermissions }))
+);
+const AdminConfiguration = lazy(() =>
+  import('@/pages/admin/AdminConfiguration').then((m) => ({ default: m.AdminConfiguration }))
+);
+const AdminUsers = lazy(() =>
+  import('@/pages/admin/AdminUsers').then((m) => ({ default: m.AdminUsers }))
+);
+const AdminFlaggedUsers = lazy(() =>
+  import('@/pages/admin/AdminFlaggedUsers').then((m) => ({ default: m.AdminFlaggedUsers }))
+);
+
+// Lazy load superadmin pages for code splitting (IKA-302)
+const SuperadminLayout = lazy(() =>
+  import('@/pages/superadmin/SuperadminLayout').then((m) => ({ default: m.SuperadminLayout }))
+);
+const SuperadminDashboard = lazy(() =>
+  import('@/pages/superadmin/SuperadminDashboard').then((m) => ({ default: m.SuperadminDashboard }))
+);
+const RegistrationRequests = lazy(() =>
+  import('@/pages/superadmin/RegistrationRequests').then((m) => ({ default: m.RegistrationRequests }))
+);
+const SuperadminRegistrationDetail = lazy(() =>
+  import('@/pages/superadmin/SuperadminRegistrationDetail').then((m) => ({
+    default: m.SuperadminRegistrationDetail,
+  }))
+);
+const SuperadminStatsPage = lazy(() =>
+  import('@/pages/superadmin/SuperadminStatsPage').then((m) => ({ default: m.SuperadminStatsPage }))
+);
 import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { SearchProvider } from '@/contexts/SearchContext';
@@ -281,8 +306,15 @@ function AppContent() {
                     element={<AiProviderKeysSettings />}
                   />
                 </Route>
-                {/* Admin panel routes */}
-                <Route path="/admin/*" element={<AdminLayout />}>
+                {/* Admin panel routes - lazy loaded (IKA-302) */}
+                <Route
+                  path="/admin/*"
+                  element={
+                    <Suspense fallback={<Loader message="Loading admin..." size={32} />}>
+                      <AdminLayout />
+                    </Suspense>
+                  }
+                >
                   <Route index element={<AdminDashboard />} />
                   <Route path="invitations" element={<AdminInvitations />} />
                   <Route path="permissions" element={<AdminPermissions />} />
@@ -293,9 +325,16 @@ function AppContent() {
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="flagged-users" element={<AdminFlaggedUsers />} />
                 </Route>
-                {/* Superadmin panel routes (app owner only) */}
+                {/* Superadmin panel routes - lazy loaded (IKA-302) */}
                 <Route element={<SuperadminRoute />}>
-                  <Route path="/superadmin/*" element={<SuperadminLayout />}>
+                  <Route
+                    path="/superadmin/*"
+                    element={
+                      <Suspense fallback={<Loader message="Loading..." size={32} />}>
+                        <SuperadminLayout />
+                      </Suspense>
+                    }
+                  >
                     <Route index element={<SuperadminDashboard />} />
                     <Route
                       path="registrations"
