@@ -1,10 +1,17 @@
-import { useMemo } from 'react';
-import { FileText, ChevronRight } from 'lucide-react';
+import { useMemo, useCallback, useState, useRef, useEffect } from 'react';
+import { FileText, ChevronRight, Copy, Edit, Check, ChevronDown } from 'lucide-react';
 import { MarkdownViewer } from '@/components/documents/MarkdownViewer';
 import { PdfViewer } from '@/components/documents/PdfViewer';
 import { CsvViewer } from '@/components/documents/CsvViewer';
 import { ImageViewer } from '@/components/documents/ImageViewer';
 import { Loader } from '@/components/ui/loader';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import type { Document, DocumentContentResponse } from 'shared/types';
 
@@ -14,6 +21,7 @@ interface DocsContentProps {
   isLoading: boolean;
   fileUrl: string | null;
   className?: string;
+  onEdit?: (doc: Document) => void;
 }
 
 interface HeadingItem {
@@ -46,12 +54,97 @@ export function DocsContent({
   isLoading,
   fileUrl,
   className,
+  onEdit,
 }: DocsContentProps) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
+  const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
+
   // Extract headings for "On this page" sidebar
   const headings = useMemo(() => {
     if (!content?.content) return [];
     return extractHeadings(content.content);
   }, [content?.content]);
+
+  // Handle TOC click - scroll to heading within the content container
+  const handleTocClick = useCallback((e: React.MouseEvent, headingId: string) => {
+    e.preventDefault();
+    const element = window.document.getElementById(headingId);
+    if (element && contentRef.current) {
+      // Scroll the content container, not the window
+      const container = contentRef.current;
+      const elementTop = element.offsetTop;
+      container.scrollTo({
+        top: elementTop - 80, // Account for header
+        behavior: 'smooth',
+      });
+      // Update URL hash without scrolling
+      window.history.pushState(null, '', `#${headingId}`);
+      setActiveHeadingId(headingId);
+    }
+  }, []);
+
+  // Track active heading on scroll
+  useEffect(() => {
+    const container = contentRef.current;
+    if (!container || headings.length === 0) return;
+
+    const handleScroll = () => {
+      const scrollTop = container.scrollTop;
+      let currentHeading: string | null = null;
+
+      for (const heading of headings) {
+        const element = window.document.getElementById(heading.id);
+        if (element) {
+          const elementTop = element.offsetTop - 100;
+          if (scrollTop >= elementTop) {
+            currentHeading = heading.id;
+          }
+        }
+      }
+      setActiveHeadingId(currentHeading);
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [headings]);
+
+  // Scroll to hash on initial load
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (hash && contentRef.current) {
+      // Wait for content to render
+      setTimeout(() => {
+        const element = window.document.getElementById(hash);
+        if (element && contentRef.current) {
+          contentRef.current.scrollTo({
+            top: element.offsetTop - 80,
+            behavior: 'smooth',
+          });
+          setActiveHeadingId(hash);
+        }
+      }, 100);
+    }
+  }, [content]);
+
+  // Copy document as markdown
+  const handleCopyMarkdown = useCallback(async () => {
+    if (!content?.content) return;
+    try {
+      await navigator.clipboard.writeText(content.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  }, [content?.content]);
+
+  // Handle edit click
+  const handleEdit = useCallback(() => {
+    if (document && onEdit) {
+      onEdit(document);
+    }
+  }, [document, onEdit]);
 
   // Loading state
   if (isLoading) {
@@ -96,15 +189,50 @@ export function DocsContent({
   return (
     <div className={cn('flex h-full', className)}>
       {/* Main content area */}
-      <div className="flex-1 min-w-0 overflow-auto">
-        {/* Breadcrumb - using document title as simple breadcrumb */}
-        <div className="px-8 pt-6 pb-2">
+      <div ref={contentRef} className="flex-1 min-w-0 overflow-auto">
+        {/* Header with breadcrumb and actions */}
+        <div className="px-8 pt-6 pb-2 flex items-center justify-between">
+          {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>Docs</span>
             <ChevronRight className="h-4 w-4" />
             <span className="text-foreground font-medium">
               {document.title}
             </span>
+          </div>
+
+          {/* Document actions menu */}
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      <span>Copy page</span>
+                      <ChevronDown className="h-3 w-3" />
+                    </>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleCopyMarkdown}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy page as Markdown
+                </DropdownMenuItem>
+                {onEdit && (
+                  <DropdownMenuItem onClick={handleEdit}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit document
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -158,20 +286,23 @@ export function DocsContent({
             </h4>
             <nav className="space-y-1">
               {headings.map((heading) => (
-                <a
+                <button
                   key={heading.id}
-                  href={`#${heading.id}`}
+                  onClick={(e) => handleTocClick(e, heading.id)}
                   className={cn(
-                    'block text-sm py-1 transition-colors hover:text-foreground',
+                    'block w-full text-left text-sm py-1 transition-colors hover:text-foreground',
                     heading.level === 1
-                      ? 'font-medium text-foreground'
+                      ? 'font-medium'
                       : heading.level === 2
-                        ? 'text-muted-foreground pl-2'
-                        : 'text-muted-foreground/70 pl-4 text-xs'
+                        ? 'pl-2'
+                        : 'pl-4 text-xs',
+                    activeHeadingId === heading.id
+                      ? 'text-primary font-medium'
+                      : 'text-muted-foreground'
                   )}
                 >
                   {heading.text}
-                </a>
+                </button>
               ))}
             </nav>
           </div>

@@ -89,6 +89,11 @@ export function DocumentsPage() {
     [setSelectedDocId, setSearchQuery]
   );
 
+  // Handle edit document - switch to manage mode
+  const handleEditDocument = useCallback(() => {
+    setViewMode('manage');
+  }, []);
+
   // Get file URL for viewers
   const fileUrl =
     selectedDocument && teamId
@@ -185,6 +190,7 @@ export function DocumentsPage() {
           isLoading={false}
           fileUrl={fileUrl}
           className="flex-1"
+          onEdit={handleEditDocument}
         />
       </div>
     </div>
