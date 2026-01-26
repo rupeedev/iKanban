@@ -37,7 +37,11 @@ export function useTaskDocumentLinks(taskId: string | undefined) {
   const linkDocumentsMutation = useMutation({
     mutationFn: async (documentIds: string[]) => {
       if (!taskId) throw new Error('Task ID required');
-      console.log('[linkDocuments] Linking documents to task:', taskId, documentIds);
+      console.log(
+        '[linkDocuments] Linking documents to task:',
+        taskId,
+        documentIds
+      );
 
       // Backend only accepts one document at a time, so we call API for each
       const results: LinkedDocument[] = [];
@@ -46,7 +50,10 @@ export function useTaskDocumentLinks(taskId: string | undefined) {
           const result = await tasksApi.linkDocument(taskId, documentId);
           results.push(result);
         } catch (err) {
-          console.error(`[linkDocuments] Failed to link document ${documentId}:`, err);
+          console.error(
+            `[linkDocuments] Failed to link document ${documentId}:`,
+            err
+          );
           // Continue with other documents even if one fails
         }
       }

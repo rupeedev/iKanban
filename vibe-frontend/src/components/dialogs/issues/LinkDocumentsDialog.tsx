@@ -70,7 +70,8 @@ export function LinkDocumentsDialog({
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((doc) => {
         // Handle both 'title' and 'name' fields (API returns 'name' for team documents)
-        const docTitle = (doc as unknown as { name?: string }).name || doc.title || '';
+        const docTitle =
+          (doc as unknown as { name?: string }).name || doc.title || '';
         return (
           docTitle.toLowerCase().includes(query) ||
           (doc.content && doc.content.toLowerCase().includes(query))
@@ -207,7 +208,10 @@ export function LinkDocumentsDialog({
                     <div className="space-y-1">
                       {docs.map((doc) => {
                         // Handle both 'title' and 'name' fields (API returns 'name' for team documents)
-                        const docTitle = (doc as unknown as { name?: string }).name || doc.title || 'Untitled';
+                        const docTitle =
+                          (doc as unknown as { name?: string }).name ||
+                          doc.title ||
+                          'Untitled';
                         return (
                           <div
                             key={doc.id}

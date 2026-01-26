@@ -384,10 +384,7 @@ export function IssueFullView({
             <IssueLinkedDocuments issueId={issue.id} teamId={teamId} />
 
             {/* Inline Prompt Input - handles both comments and AI prompts */}
-            <InlinePromptInput
-              taskId={issue.id}
-              teamId={teamId}
-            />
+            <InlinePromptInput taskId={issue.id} teamId={teamId} />
 
             {/* Activity / Comments Section */}
             <div className="space-y-4 pt-4 border-t">

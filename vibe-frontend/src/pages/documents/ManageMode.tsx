@@ -103,7 +103,9 @@ export function ManageMode({
 
   // Helper to get document title (API returns 'name' but frontend type expects 'title')
   const getDocTitle = useCallback((doc: Document): string => {
-    return (doc as unknown as { name?: string }).name || doc.title || 'Untitled';
+    return (
+      (doc as unknown as { name?: string }).name || doc.title || 'Untitled'
+    );
   }, []);
 
   const currentDocuments = useMemo(() => {
@@ -577,7 +579,9 @@ export function ManageMode({
                       <FileText className="h-5 w-5 text-gray-500" />
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{getDocTitle(doc)}</span>
+                          <span className="font-medium">
+                            {getDocTitle(doc)}
+                          </span>
                           {doc.is_pinned && (
                             <Pin className="h-3 w-3 text-amber-500" />
                           )}
