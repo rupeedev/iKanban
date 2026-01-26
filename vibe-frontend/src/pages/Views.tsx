@@ -1,20 +1,11 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from '@/components/ui/resizable';
 import { useProjects } from '@/hooks/useProjects';
 import { useTeams } from '@/hooks/useTeams';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { Loader } from '@/components/ui/loader';
-import { IssueDetailPanel } from '@/components/tasks/IssueDetailPanel';
-import {
-  loadIssuePanelSize,
-  saveIssuePanelSize,
-  PANEL_DEFAULTS,
-} from '@/lib/panelStorage';
+import { IssueFullView } from '@/components/tasks/IssueFullView';
 import {
   DisplayMode,
   loadDisplayMode,
@@ -25,6 +16,7 @@ import {
   ViewsHeader,
 } from './views-components';
 import type { TaskWithAttemptStatus } from 'shared/types';
+import type { TeamMember } from '@/components/selectors';
 
 function AllIssuesView() {
   // Get teamId from URL params (for /teams/:teamId/views route)
@@ -39,37 +31,60 @@ function AllIssuesView() {
   // Fetch issues for the active team
   const { issues, isLoading, refresh } = useTeamIssues(activeTeamId);
 
+  // Fetch team members for the active team
+  const { members: activeTeamMembers } = useTeamMembers(activeTeamId);
+
   // Display mode state with localStorage persistence
   const [displayMode, setDisplayMode] = useState<DisplayMode>(loadDisplayMode);
   const [activeTab, setActiveTab] = useState<'issues' | 'projects'>('issues');
 
-  // Issue detail panel state
+  // Issue full-view state
   const [selectedIssue, setSelectedIssue] =
     useState<TaskWithAttemptStatus | null>(null);
-  const [issuePanelSize, setIssuePanelSize] =
-    useState<number>(loadIssuePanelSize);
 
   const handleDisplayModeChange = useCallback((mode: DisplayMode) => {
     setDisplayMode(mode);
     saveDisplayMode(mode);
   }, []);
 
-  // Handle issue click - open detail panel
+  // Handle issue click - open full-view
   const handleIssueClick = useCallback((issue: TaskWithAttemptStatus) => {
     setSelectedIssue(issue);
   }, []);
 
-  // Handle panel resize
-  const handlePanelResize = useCallback((sizes: number[]) => {
-    if (
-      sizes.length === 2 &&
-      sizes[1] >= PANEL_DEFAULTS.ISSUE_PANEL_MIN &&
-      sizes[1] <= PANEL_DEFAULTS.ISSUE_PANEL_MAX
-    ) {
-      setIssuePanelSize(sizes[1]);
-      saveIssuePanelSize(sizes[1]);
+  // Get current index of selected issue for navigation
+  const selectedIssueIndex = useMemo(() => {
+    if (!selectedIssue) return -1;
+    return issues.findIndex((i) => i.id === selectedIssue.id);
+  }, [selectedIssue, issues]);
+
+  // Navigation handlers for full-view
+  const handleNavigatePrev = useCallback(() => {
+    if (selectedIssueIndex > 0) {
+      setSelectedIssue(issues[selectedIssueIndex - 1]);
     }
-  }, []);
+  }, [selectedIssueIndex, issues]);
+
+  const handleNavigateNext = useCallback(() => {
+    if (selectedIssueIndex < issues.length - 1) {
+      setSelectedIssue(issues[selectedIssueIndex + 1]);
+    }
+  }, [selectedIssueIndex, issues]);
+
+  // Transform team members to IssueFullView format
+  const teamMembers: TeamMember[] = useMemo(() => {
+    return activeTeamMembers.map((m) => ({
+      id: m.id,
+      name: m.display_name || m.email?.split('@')[0] || 'Unknown',
+      email: m.email,
+      avatar: m.avatar_url || undefined,
+    }));
+  }, [activeTeamMembers]);
+
+  // Get projects for dropdown - return all user's projects
+  const teamProjects = useMemo(() => {
+    return projects.map((p) => ({ id: p.id, name: p.name }));
+  }, [projects]);
 
   // Handle ESC key to close panel
   useEffect(() => {
@@ -130,6 +145,27 @@ function AllIssuesView() {
     );
   }
 
+  // Full-view mode: show issue detail as full page when selected
+  if (selectedIssue) {
+    return (
+      <div className="flex-1 flex flex-col min-h-0">
+        <IssueFullView
+          issue={selectedIssue}
+          teamId={activeTeamId}
+          issueKey={selectedIssueKey}
+          teamMembers={teamMembers}
+          teamProjects={teamProjects}
+          onClose={() => setSelectedIssue(null)}
+          onUpdate={refresh}
+          onNavigatePrev={handleNavigatePrev}
+          onNavigateNext={handleNavigateNext}
+          currentIndex={selectedIssueIndex}
+          totalCount={issues.length}
+        />
+      </div>
+    );
+  }
+
   const issueContent =
     displayMode === 'list' ? (
       /* List View */
@@ -144,7 +180,7 @@ function AllIssuesView() {
                 status={status}
                 issues={statusIssues}
                 projectNamesById={projectNamesById}
-                selectedIssueId={selectedIssue?.id}
+                selectedIssueId={undefined}
                 onIssueClick={handleIssueClick}
               />
             );
@@ -170,7 +206,7 @@ function AllIssuesView() {
                 status={status}
                 issues={statusIssues}
                 projectNamesById={projectNamesById}
-                selectedIssueId={selectedIssue?.id}
+                selectedIssueId={undefined}
                 onIssueClick={handleIssueClick}
               />
             );
@@ -189,44 +225,8 @@ function AllIssuesView() {
         onDisplayModeChange={handleDisplayModeChange}
       />
 
-      {/* Content area with resizable panel */}
-      <div className="flex-1 min-h-0">
-        <ResizablePanelGroup
-          direction="horizontal"
-          className="h-full"
-          onLayout={handlePanelResize}
-        >
-          {/* Main content area */}
-          <ResizablePanel
-            defaultSize={selectedIssue ? 100 - issuePanelSize : 100}
-            minSize={40}
-            className="min-w-0"
-          >
-            {issueContent}
-          </ResizablePanel>
-
-          {/* Issue Detail Panel with resize handle */}
-          {selectedIssue && (
-            <>
-              <ResizableHandle withHandle />
-              <ResizablePanel
-                defaultSize={issuePanelSize}
-                minSize={25}
-                maxSize={60}
-                className="min-w-0"
-              >
-                <IssueDetailPanel
-                  issue={selectedIssue}
-                  teamId={activeTeamId}
-                  issueKey={selectedIssueKey}
-                  onClose={() => setSelectedIssue(null)}
-                  onUpdate={refresh}
-                />
-              </ResizablePanel>
-            </>
-          )}
-        </ResizablePanelGroup>
-      </div>
+      {/* Content - issue list or board */}
+      <div className="flex-1 min-h-0">{issueContent}</div>
     </div>
   );
 }

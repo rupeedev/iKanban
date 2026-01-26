@@ -13,22 +13,14 @@ import {
 import { Loader } from '@/components/ui/loader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from '@/components/ui/resizable';
 
 import { useClerkUser } from '@/hooks/auth/useClerkAuth';
 import { useTeams } from '@/hooks/useTeams';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useProjects } from '@/hooks/useProjects';
 import { StatusIcon } from '@/utils/StatusIcons';
 import { cn } from '@/lib/utils';
-import { IssueDetailPanel } from '@/components/tasks/IssueDetailPanel';
-import {
-  loadIssuePanelSize,
-  saveIssuePanelSize,
-  PANEL_DEFAULTS,
-} from '@/lib/panelStorage';
+import { IssueFullView } from '@/components/tasks/IssueFullView';
 import {
   FilterTab,
   TeamMemberIssueLoader,
@@ -36,6 +28,7 @@ import {
 } from './my-issues/MyIssueComponents';
 
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
+import type { TeamMember } from '@/components/selectors';
 
 type ViewFilter = 'all' | 'active' | 'backlog' | 'done';
 
@@ -63,17 +56,21 @@ export function MyIssues() {
     isLoading: teamsLoading,
     error: teamsError,
   } = useTeams();
+  const { projects } = useProjects();
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [allIssues, setAllIssues] = useState<
     Record<string, TaskWithAttemptStatus[]>
   >({});
 
-  // Issue detail panel state
+  // Issue full-view state
   const [selectedIssue, setSelectedIssue] = useState<
     (TaskWithAttemptStatus & { teamId: string }) | null
   >(null);
-  const [issuePanelSize, setIssuePanelSize] =
-    useState<number>(loadIssuePanelSize);
+
+  // Fetch team members for the selected issue's team
+  const { members: selectedTeamMembers } = useTeamMembers(
+    selectedIssue?.teamId
+  );
 
   // Get current user email from Clerk (reliable source)
   const userEmail = user?.primaryEmailAddress?.emailAddress || null;
@@ -174,7 +171,7 @@ export function MyIssues() {
     setSelectedIssue(null);
   }, []);
 
-  // Open issue detail panel instead of navigating
+  // Open issue full-view instead of side panel
   const handleIssueClick = useCallback(
     (issue: TaskWithAttemptStatus & { teamId: string }) => {
       setSelectedIssue(issue);
@@ -182,17 +179,39 @@ export function MyIssues() {
     []
   );
 
-  // Handle panel resize
-  const handlePanelResize = useCallback((sizes: number[]) => {
-    if (
-      sizes.length === 2 &&
-      sizes[1] >= PANEL_DEFAULTS.ISSUE_PANEL_MIN &&
-      sizes[1] <= PANEL_DEFAULTS.ISSUE_PANEL_MAX
-    ) {
-      setIssuePanelSize(sizes[1]);
-      saveIssuePanelSize(sizes[1]);
+  // Get current index of selected issue for navigation
+  const selectedIssueIndex = useMemo(() => {
+    if (!selectedIssue) return -1;
+    return filteredIssues.findIndex((i) => i.id === selectedIssue.id);
+  }, [selectedIssue, filteredIssues]);
+
+  // Navigation handlers for full-view
+  const handleNavigatePrev = useCallback(() => {
+    if (selectedIssueIndex > 0) {
+      setSelectedIssue(filteredIssues[selectedIssueIndex - 1]);
     }
-  }, []);
+  }, [selectedIssueIndex, filteredIssues]);
+
+  const handleNavigateNext = useCallback(() => {
+    if (selectedIssueIndex < filteredIssues.length - 1) {
+      setSelectedIssue(filteredIssues[selectedIssueIndex + 1]);
+    }
+  }, [selectedIssueIndex, filteredIssues]);
+
+  // Transform team members to IssueFullView format
+  const teamMembers: TeamMember[] = useMemo(() => {
+    return selectedTeamMembers.map((m) => ({
+      id: m.id,
+      name: m.display_name || m.email?.split('@')[0] || 'Unknown',
+      email: m.email,
+      avatar: m.avatar_url || undefined,
+    }));
+  }, [selectedTeamMembers]);
+
+  // Get projects for dropdown - return all user's projects
+  const teamProjects = useMemo(() => {
+    return projects.map((p) => ({ id: p.id, name: p.name }));
+  }, [projects]);
 
   // Handle ESC key to close panel
   useEffect(() => {
@@ -251,6 +270,39 @@ export function MyIssues() {
   }
 
   const hasIssues = filteredIssues.length > 0;
+
+  // Full-view mode: show issue detail as full page when selected
+  if (selectedIssue) {
+    return (
+      <div className="h-full flex flex-col bg-background">
+        {/* Load issues from each team (hidden loaders) */}
+        {teams.map((team) => (
+          <TeamMemberIssueLoader
+            key={team.id}
+            teamId={team.id}
+            userEmail={userEmail}
+            onIssuesLoaded={handleIssuesLoaded}
+          />
+        ))}
+        <IssueFullView
+          issue={selectedIssue}
+          teamId={selectedIssue.teamId}
+          issueKey={selectedIssueKey}
+          teamMembers={teamMembers}
+          teamProjects={teamProjects}
+          onClose={() => setSelectedIssue(null)}
+          onUpdate={async () => {
+            // Refresh the issues list by clearing and reloading
+            setAllIssues({});
+          }}
+          onNavigatePrev={handleNavigatePrev}
+          onNavigateNext={handleNavigateNext}
+          currentIndex={selectedIssueIndex}
+          totalCount={filteredIssues.length}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -325,104 +377,61 @@ export function MyIssues() {
         </div>
       </div>
 
-      {/* Content with resizable panel for issue details */}
-      <div className="flex-1 min-h-0">
-        <ResizablePanelGroup
-          direction="horizontal"
-          className="h-full"
-          onLayout={handlePanelResize}
-        >
-          {/* Main content area */}
-          <ResizablePanel
-            defaultSize={selectedIssue ? 100 - issuePanelSize : 100}
-            minSize={40}
-            className="min-w-0"
-          >
-            <div className="h-full overflow-auto">
-              <div className="max-w-6xl mx-auto p-6">
-                {!hasIssues ? (
-                  <Card className="border-dashed">
-                    <CardContent className="text-center py-12">
-                      <div className="p-4 rounded-full bg-muted inline-block mb-4">
-                        <ListTodo className="h-8 w-8 text-muted-foreground" />
+      {/* Content - issue list */}
+      <div className="flex-1 min-h-0 overflow-auto">
+        <div className="max-w-6xl mx-auto p-6">
+          {!hasIssues ? (
+            <Card className="border-dashed">
+              <CardContent className="text-center py-12">
+                <div className="p-4 rounded-full bg-muted inline-block mb-4">
+                  <ListTodo className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-medium mb-1">No issues found</h3>
+                <p className="text-sm text-muted-foreground">
+                  {viewFilter === 'all'
+                    ? 'When you get assigned to issues, they will appear here'
+                    : `No ${viewFilter} issues assigned to you`}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-8">
+              {/* Render issues grouped by status */}
+              {(['inprogress', 'inreview', 'todo', 'done'] as TaskStatus[]).map(
+                (status) => {
+                  const statusIssues = issuesByStatus[status];
+                  if (statusIssues.length === 0) return null;
+
+                  return (
+                    <div key={status}>
+                      <div className="flex items-center gap-2 mb-4 pb-2 border-b">
+                        <StatusIcon
+                          status={status}
+                          className={cn('h-5 w-5', STATUS_COLORS[status])}
+                        />
+                        <h2 className="font-medium">{STATUS_LABELS[status]}</h2>
+                        <Badge variant="secondary" className="rounded-full">
+                          {statusIssues.length}
+                        </Badge>
                       </div>
-                      <h3 className="text-lg font-medium mb-1">
-                        No issues found
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {viewFilter === 'all'
-                          ? 'When you get assigned to issues, they will appear here'
-                          : `No ${viewFilter} issues assigned to you`}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-8">
-                    {/* Render issues grouped by status */}
-                    {(
-                      ['inprogress', 'inreview', 'todo', 'done'] as TaskStatus[]
-                    ).map((status) => {
-                      const statusIssues = issuesByStatus[status];
-                      if (statusIssues.length === 0) return null;
-
-                      return (
-                        <div key={status}>
-                          <div className="flex items-center gap-2 mb-4 pb-2 border-b">
-                            <StatusIcon
-                              status={status}
-                              className={cn('h-5 w-5', STATUS_COLORS[status])}
-                            />
-                            <h2 className="font-medium">
-                              {STATUS_LABELS[status]}
-                            </h2>
-                            <Badge variant="secondary" className="rounded-full">
-                              {statusIssues.length}
-                            </Badge>
-                          </div>
-                          <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
-                            {statusIssues.map((issue) => (
-                              <IssueCard
-                                key={issue.id}
-                                issue={issue}
-                                teams={teams}
-                                selected={selectedIssue?.id === issue.id}
-                                onClick={() => handleIssueClick(issue)}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                      <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
+                        {statusIssues.map((issue) => (
+                          <IssueCard
+                            key={issue.id}
+                            issue={issue}
+                            teams={teams}
+                            selected={false}
+                            onClick={() => handleIssueClick(issue)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+              )}
             </div>
-          </ResizablePanel>
-
-          {/* Issue Detail Panel with resize handle */}
-          {selectedIssue && (
-            <>
-              <ResizableHandle withHandle />
-              <ResizablePanel
-                defaultSize={issuePanelSize}
-                minSize={25}
-                maxSize={60}
-                className="min-w-0"
-              >
-                <IssueDetailPanel
-                  issue={selectedIssue}
-                  teamId={selectedIssue.teamId}
-                  issueKey={selectedIssueKey}
-                  onClose={() => setSelectedIssue(null)}
-                  onUpdate={async () => {
-                    // Refresh the issues list by clearing and reloading
-                    setAllIssues({});
-                  }}
-                />
-              </ResizablePanel>
-            </>
           )}
-        </ResizablePanelGroup>
+        </div>
       </div>
     </div>
   );
