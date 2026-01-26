@@ -8,6 +8,8 @@ export function useTags(teamId?: string) {
   const tagsQuery = useQuery({
     queryKey: ['tags', teamId],
     queryFn: () => tagsApi.list({ team_id: teamId }),
+    // Only fetch when teamId is defined - /api/tags requires team_id parameter
+    enabled: !!teamId,
     // Cache for 5 minutes
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
