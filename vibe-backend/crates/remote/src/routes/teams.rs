@@ -235,6 +235,7 @@ async fn get_team(
 }
 
 /// Get team dashboard - aggregated team data (accepts ID or slug)
+/// Performance optimized: uses tokio::join! for parallel queries and batch fetch
 #[instrument(
     name = "teams.get_team_dashboard",
     skip(state, ctx),
@@ -269,44 +270,45 @@ async fn get_team_dashboard(
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }
 
-    // Get members
-    let members = TeamRepository::get_members(pool, team_uuid)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to get team members");
-            ErrorResponse::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to get team members",
-            )
-        })?;
+    // IKA-303: Parallelize queries using tokio::join! for better performance
+    let (members_result, project_ids_result, issues_result) = tokio::join!(
+        TeamRepository::get_members(pool, team_uuid),
+        TeamRepository::get_project_ids(pool, team_uuid),
+        TeamRepository::get_issues(pool, team_uuid)
+    );
 
-    // Get project IDs
-    let project_ids = TeamRepository::get_project_ids(pool, team_uuid)
+    let members = members_result.map_err(|error| {
+        tracing::error!(?error, %team_id, "failed to get team members");
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to get team members",
+        )
+    })?;
+
+    let project_ids = project_ids_result.map_err(|error| {
+        tracing::error!(?error, %team_id, "failed to get team project IDs");
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to get team projects",
+        )
+    })?;
+
+    let issues = issues_result.map_err(|error| {
+        tracing::error!(?error, %team_id, "failed to get team issues");
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to get team issues",
+        )
+    })?;
+
+    // IKA-303: Use batch fetch instead of N+1 loop
+    let projects = ProjectRepository::fetch_by_ids(pool, &project_ids)
         .await
         .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to get team project IDs");
+            tracing::error!(?error, %team_id, "failed to fetch projects by IDs");
             ErrorResponse::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "failed to get team projects",
-            )
-        })?;
-
-    // Get projects (fetch all by their IDs)
-    let mut projects = Vec::new();
-    for project_id in &project_ids {
-        if let Ok(Some(project)) = ProjectRepository::fetch_by_id(pool, *project_id).await {
-            projects.push(project);
-        }
-    }
-
-    // Get issues
-    let issues = TeamRepository::get_issues(pool, team_uuid)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to get team issues");
-            ErrorResponse::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to get team issues",
             )
         })?;
 
