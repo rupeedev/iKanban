@@ -130,7 +130,6 @@ import {
   ScanFilesystemResponse,
   ScanAllResponse,
   DiscoverFoldersResponse,
-  DocumentContentResponse,
   GitHubRepoSyncConfig,
   ConfigureMultiFolderSync,
   TeamMember,
@@ -2636,17 +2635,6 @@ export const documentsApi = {
       }
     );
     return handleApiResponse<ScanAllResponse>(response);
-  },
-
-  // Get document content with type-specific handling
-  getContent: async (
-    teamId: string,
-    documentId: string
-  ): Promise<DocumentContentResponse> => {
-    const response = await makeRequest(
-      `/api/teams/${teamId}/documents/${documentId}/content`
-    );
-    return handleApiResponse<DocumentContentResponse>(response);
   },
 
   // Get document file URL for direct file access (PDF viewer, images, etc.)

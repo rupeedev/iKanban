@@ -25,7 +25,7 @@ export interface UseUserRegistrationResult {
 
 export function useUserRegistration(): UseUserRegistrationResult {
   const queryClient = useQueryClient();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
 
   const {
     data: registration = null,
@@ -34,15 +34,23 @@ export function useUserRegistration(): UseUserRegistrationResult {
     error,
   } = useQuery<UserRegistration | null, Error>({
     queryKey: REGISTRATION_QUERY_KEY,
-    queryFn: () => registrationsApi.getMyRegistration(),
+    queryFn: async () => {
+      // Verify token is available before making the request
+      // This prevents 401 errors from race conditions with auth initialization
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Auth token not available yet');
+      }
+      return registrationsApi.getMyRegistration();
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
     // Retry more times with delay to handle race condition with auth token setup
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * (attemptIndex + 1), 3000),
-    // Only fetch registration when user is signed in to avoid 401 errors
-    enabled: isSignedIn,
+    // Only fetch registration when user is signed in AND Clerk is fully loaded
+    enabled: isLoaded && isSignedIn === true,
   });
 
   const refresh = useCallback(async () => {

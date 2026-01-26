@@ -48,39 +48,27 @@ export function DocumentsPage() {
   const [docContent, setDocContent] = useState<DocumentContentResponse | null>(
     null
   );
-  const [isLoadingContent, setIsLoadingContent] = useState(false);
 
-  // Load document content when selection changes
+  // Set document content when selection changes
+  // The document already contains content from the list/get endpoint
   useEffect(() => {
-    if (!selectedDocument || !teamId) {
+    if (!selectedDocument) {
       setDocContent(null);
       return;
     }
 
-    setIsLoadingContent(true);
-
-    documentsApi
-      .getContent(teamId, selectedDocument.id)
-      .then((content) => {
-        setDocContent(content);
-      })
-      .catch((err) => {
-        console.error('Failed to load document content:', err);
-        // Fallback to stored content
-        setDocContent({
-          document_id: selectedDocument.id,
-          content_type: 'text',
-          content: selectedDocument.content || '',
-          csv_data: null,
-          file_path: selectedDocument.file_path,
-          file_type: selectedDocument.file_type,
-          mime_type: selectedDocument.mime_type,
-        });
-      })
-      .finally(() => {
-        setIsLoadingContent(false);
-      });
-  }, [selectedDocument, teamId]);
+    // Use the content already present in the document object
+    // No separate API call needed - content is included in the base document response
+    setDocContent({
+      document_id: selectedDocument.id,
+      content_type: 'text',
+      content: selectedDocument.content || '',
+      csv_data: null,
+      file_path: selectedDocument.file_path,
+      file_type: selectedDocument.file_type,
+      mime_type: selectedDocument.mime_type,
+    });
+  }, [selectedDocument]);
 
   // Handle document selection from sidebar
   const handleSelectDocument = useCallback(
@@ -194,7 +182,7 @@ export function DocumentsPage() {
         <DocsContent
           document={selectedDocument}
           content={docContent}
-          isLoading={isLoadingContent}
+          isLoading={false}
           fileUrl={fileUrl}
           className="flex-1"
         />
