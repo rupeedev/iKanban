@@ -803,6 +803,85 @@ Some shadcn/ui components require context providers:
 
 ---
 
+## Document Content Rendering (CRITICAL)
+
+**These rules ensure documents display as formatted content, not raw Markdown syntax.**
+
+### Rule 1: ALWAYS Render Text Content Through MarkdownViewer
+
+All text-based document content MUST be rendered through the `MarkdownViewer` component, regardless of file extension.
+
+```typescript
+// BAD - Shows raw Markdown syntax (# heading, ## subheading, etc.)
+{isText && content && (
+  <pre className="...">
+    {content.content}
+  </pre>
+)}
+
+// GOOD - Renders formatted content (headings, tables, code blocks, links)
+{isText && content && (
+  <MarkdownViewer
+    content={content.content || ''}
+    showOutline={false}
+    className="flex-1"
+  />
+)}
+```
+
+### Why This Matters
+
+| Rendering Method | User Sees | Example |
+|------------------|-----------|---------|
+| Raw `<pre>` tag | `# Migration to Postgres` | Raw syntax characters |
+| `MarkdownViewer` | **Migration to Postgres** (H1) | Formatted heading |
+
+Without MarkdownViewer:
+- Headings show as `# Title` instead of formatted H1
+- Tables show as `| col | col |` instead of HTML tables
+- Code blocks show as triple backticks instead of syntax-highlighted blocks
+- Links show as `[text](url)` instead of clickable links
+
+### What MarkdownViewer Handles
+
+| Markdown Syntax | Rendered Output |
+|-----------------|-----------------|
+| `# Heading` | H1 styled heading |
+| `## Subheading` | H2 styled heading |
+| `**bold**` | **bold text** |
+| `` `code` `` | Inline code styling |
+| ` ```code block``` ` | Syntax-highlighted code block |
+| `[link](url)` | Clickable hyperlink |
+| `| table |` | HTML table with borders |
+| `- list item` | Bulleted list |
+| `> quote` | Styled blockquote |
+
+### When to Use Each Viewer
+
+| Content Type | Viewer | Why |
+|--------------|--------|-----|
+| `.md` / `.markdown` files | `MarkdownViewer` | Explicit Markdown |
+| Text content (`content_type: 'text'`) | `MarkdownViewer` | May contain Markdown syntax |
+| PDF text extraction | `MarkdownViewer` | May have structure |
+| `.pdf` files | `PdfViewer` | Binary PDF rendering |
+| `.csv` files | `CsvViewer` | Tabular data grid |
+| Images | `ImageViewer` | Binary image rendering |
+
+### IKA-307 Incident Summary
+
+**Problem:** Documents showed raw Markdown syntax instead of formatted content.
+
+**Root Cause:** Text content without `.md` extension was rendered in a `<pre>` tag instead of `MarkdownViewer`.
+
+**Fix:** Changed all text content to render through `MarkdownViewer`:
+- Markdown gracefully handles plain text (renders as paragraphs)
+- If content has Markdown syntax, it's properly formatted
+- Matches Claude API Docs behavior
+
+**Prevention:** Always use `MarkdownViewer` for any text-based content, never raw `<pre>` tags for document display.
+
+---
+
 ## File Organization
 
 ### When to Split Files
@@ -867,6 +946,7 @@ components/
 | **No unsafe data access (use `?.`)** | N/A | Code review |
 | **URL params resolved before API calls** | N/A | Code review |
 | **Tooltip wrapped in TooltipProvider** | N/A | Code review |
+| **Text content uses MarkdownViewer** | N/A | Code review |
 
 ---
 
@@ -884,6 +964,7 @@ components/
 | **IKA-84** | URL slug passed to API | Resolve param to entity first |
 | **IKA-148** | Optimistic update with server-computed data | Invalidate + refetch if server transforms data |
 | **IKA-234** | Tooltip without TooltipProvider | Always wrap Tooltip in TooltipProvider |
+| **IKA-307** | Raw Markdown syntax in documents | Use MarkdownViewer for all text content |
 | **VIB-70** | Migration file modified | Never modify existing migrations |
 | **IKA-215** | Non-idempotent migrations | Use IF NOT EXISTS, DO blocks, DROP IF EXISTS |
 | **IKA-215** | Axum `:param` syntax panic | Use `{param}` syntax (Axum 0.7+) |
@@ -916,6 +997,14 @@ components/
 1. Always wrap `Tooltip` components in `TooltipProvider`
 2. Check shadcn/ui docs for provider requirements when using new components
 3. Runtime errors like "X must be used within Y" indicate missing provider
+
+### Document Content Rendering (IKA-307)
+
+1. NEVER render text content with raw `<pre>` tags
+2. ALWAYS use `MarkdownViewer` for document text content
+3. Markdown handles plain text gracefully (renders as paragraphs)
+4. If content has Markdown syntax, it's properly formatted
+5. This applies regardless of file extension - check `content_type`, not just `file_type`
 
 ### Backend Deployment Prevention (IKA-215)
 
