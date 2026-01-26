@@ -1,5 +1,12 @@
 import { useMemo, useCallback, useState, useRef, useEffect } from 'react';
-import { FileText, ChevronRight, Copy, Edit, Check, ChevronDown } from 'lucide-react';
+import {
+  FileText,
+  ChevronRight,
+  Copy,
+  Edit,
+  Check,
+  ChevronDown,
+} from 'lucide-react';
 import { MarkdownViewer } from '@/components/documents/MarkdownViewer';
 import { PdfViewer } from '@/components/documents/PdfViewer';
 import { CsvViewer } from '@/components/documents/CsvViewer';
@@ -67,22 +74,25 @@ export function DocsContent({
   }, [content?.content]);
 
   // Handle TOC click - scroll to heading within the content container
-  const handleTocClick = useCallback((e: React.MouseEvent, headingId: string) => {
-    e.preventDefault();
-    const element = window.document.getElementById(headingId);
-    if (element && contentRef.current) {
-      // Scroll the content container, not the window
-      const container = contentRef.current;
-      const elementTop = element.offsetTop;
-      container.scrollTo({
-        top: elementTop - 80, // Account for header
-        behavior: 'smooth',
-      });
-      // Update URL hash without scrolling
-      window.history.pushState(null, '', `#${headingId}`);
-      setActiveHeadingId(headingId);
-    }
-  }, []);
+  const handleTocClick = useCallback(
+    (e: React.MouseEvent, headingId: string) => {
+      e.preventDefault();
+      const element = window.document.getElementById(headingId);
+      if (element && contentRef.current) {
+        // Scroll the content container, not the window
+        const container = contentRef.current;
+        const elementTop = element.offsetTop;
+        container.scrollTo({
+          top: elementTop - 80, // Account for header
+          behavior: 'smooth',
+        });
+        // Update URL hash without scrolling
+        window.history.pushState(null, '', `#${headingId}`);
+        setActiveHeadingId(headingId);
+      }
+    },
+    []
+  );
 
   // Track active heading on scroll
   useEffect(() => {
@@ -268,11 +278,11 @@ export function DocsContent({
         )}
 
         {isText && !isMarkdown && content && (
-          <div className="px-8 pb-8">
-            <pre className="p-4 bg-muted rounded-lg font-mono text-sm whitespace-pre-wrap overflow-x-auto">
-              {content.content}
-            </pre>
-          </div>
+          <MarkdownViewer
+            content={content.content || ''}
+            showOutline={false}
+            className="flex-1"
+          />
         )}
       </div>
 
