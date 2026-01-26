@@ -301,16 +301,14 @@ async fn get_team_dashboard(
         )
     })?;
 
-    // IKA-303: Use batch fetch instead of N+1 loop
-    let projects = ProjectRepository::fetch_by_ids(pool, &project_ids)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %team_id, "failed to fetch projects by IDs");
-            ErrorResponse::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to get team projects",
-            )
-        })?;
+    // IKA-303: Fetch projects by IDs
+    // Note: Using N+1 loop for now; batch fetch with ANY($1) has runtime type issues
+    let mut projects = Vec::new();
+    for project_id in &project_ids {
+        if let Ok(Some(project)) = ProjectRepository::fetch_by_id(pool, *project_id).await {
+            projects.push(project);
+        }
+    }
 
     Ok(ApiResponse::success(TeamDashboard {
         team,
