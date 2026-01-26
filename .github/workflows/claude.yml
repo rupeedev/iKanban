@@ -31,7 +31,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Run Claude Code
         id: claude
@@ -40,47 +40,131 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           show_full_output: true
           prompt: |
-            IMPORTANT: Before starting any work, read and follow IN ORDER:
-            1. .claude/ikanban-fullstack-dev.md - COMPLETE workflow with validation gates
+            You are an autonomous GitHub Actions agent for the iKanban project.
+
+            ## MANDATORY: READ CONTEXT FILES FIRST
+
+            Before ANY work, read these files IN ORDER:
+            1. .claude/github-fullstack-dev.md - GitHub-specific workflow (CRITICAL)
             2. .claude/FILE-MAP.md - Find file paths (DO NOT explore/grep)
             3. .claude/CODING-GUIDELINES.md - Code rules and file size limits
-            4. .claude/PATTERNS.md - Code patterns (if implementing features)
+            4. .claude/CODEBASE-GAPS.md - Known issues and correct API patterns
 
-            GITHUB ACTIONS SPECIFIC:
-            - You are single-agent (no Task() subagents)
-            - No MCP available - skip task management steps
+            ## TASK CONTEXT
+
+            Issue Number: #${{ github.event.issue.number }}
+            Issue Title: ${{ github.event.issue.title }}
+            Issue Body: See the issue for full description
+
+            ## GITHUB ACTIONS CONSTRAINTS
+
+            - You are SINGLE-AGENT mode (no Task() subagents available)
+            - No MCP available - skip MCP task management steps
             - Run validation gates SEQUENTIALLY (not parallel)
-            - Use relative paths from repo root
-            - IKANBAN_API_URL is available: ${{ env.IKANBAN_API_URL }}
-            - IKANBAN_API_TOKEN is available: ${{ secrets.VIBE_API_TOKEN }}
+            - Use relative paths from repo root (no absolute paths)
+            - IKANBAN_API_URL: ${{ env.IKANBAN_API_URL }}
+            - IKANBAN_API_TOKEN: ${{ secrets.VIBE_API_TOKEN }}
 
-            WORKFLOW:
-            1. Classify task: fix/bug/typo → QUICK, add/implement/new → FEATURE
-            2. Extract task_id and assignment_id from issue body (look for <!-- ikanban-metadata -->)
-            3. Create feature branch: git checkout -b <type>/issue-${{ github.event.issue.number }}-<desc>
-            4. Implement following the ikanban-fullstack-dev workflow
-            5. Run validations: pnpm lint, cargo check, cargo clippy
-            6. Commit and push to feature branch
-            7. Create PR: gh pr create --title "<type>: <desc>" --body "Fixes #${{ github.event.issue.number }}"
-            8. Register PR with iKanban (if task_id and assignment_id found):
-               curl -X POST "${{ env.IKANBAN_API_URL }}/tasks/{task_id}/assignments/{assignment_id}/pr" \
-                 -H "Authorization: Bearer ${{ secrets.VIBE_API_TOKEN }}" \
-                 -H "Content-Type: application/json" \
-                 -d '{"pr_number": <pr_number>, "pr_url": "<pr_url>"}'
-            9. MERGE the PR: gh pr merge --auto --squash --delete-branch
-            10. Deployment will trigger automatically on main
+            ## MANDATORY WORKFLOW (Follow EXACTLY)
 
-            IMPORTANT:
-            - You are autonomous - merge your own PR after validation passes
-            - Use --auto flag so merge happens when checks pass
-            - The system will callback to iKanban when merge completes
-            - If you fail, comment on the issue with the error
+            ### Phase 1: Understand the Task
+            1. Read the issue title and body to understand what needs to be done
+            2. Classify: fix/bug/typo = QUICK, add/implement/new = FEATURE
+            3. Extract any metadata from issue body (look for <!-- ikanban-metadata -->)
 
-            ON FAILURE:
-            If implementation fails, add a comment to the issue:
-            gh issue comment ${{ github.event.issue.number }} --body "❌ Claude failed to implement: <error reason>"
+            ### Phase 2: Create Feature Branch
+            ```bash
+            git checkout -b <type>/issue-${{ github.event.issue.number }}-<short-desc>
+            # Example: fix/issue-40-toc-sidebar-width
+            ```
 
-            Now proceed with the task from the issue/comment.
+            ### Phase 3: Implement the Fix/Feature
+            1. Read the relevant files identified from FILE-MAP.md
+            2. Make the necessary code changes
+            3. Follow CODING-GUIDELINES.md strictly
+
+            ### Phase 4: Validate (SEQUENTIAL)
+            Run these commands in order:
+            ```bash
+            # Frontend validation
+            cd vibe-frontend && pnpm install && pnpm lint && pnpm check
+
+            # Backend validation (if backend changes)
+            cd vibe-backend && cargo check --workspace && cargo clippy --workspace -- -D warnings
+            ```
+
+            ### Phase 5: Commit and Push
+            ```bash
+            git add .
+            git commit -m "<type>(IKA-XXX): <description>
+
+            Co-Authored-By: Claude <noreply@anthropic.com>"
+            git push -u origin <branch-name>
+            ```
+
+            ### Phase 6: Create PR and Comment on Issue
+            ```bash
+            # Create PR
+            PR_URL=$(gh pr create --title "<type>: <description>" --body "## Summary
+            <what was done>
+
+            ## Changes
+            - <change 1>
+            - <change 2>
+
+            Fixes #${{ github.event.issue.number }}
+
+            ---
+            Generated by Claude Code Action" --head <branch-name>)
+
+            # MANDATORY: Comment on issue that PR was created
+            gh issue comment ${{ github.event.issue.number }} --body "🚀 **PR Created**
+
+            I've created a pull request to fix this issue: $PR_URL
+
+            **Changes made:**
+            - <brief summary of changes>
+
+            The PR will be automatically merged once all checks pass."
+            ```
+
+            ### Phase 7: Merge PR
+            ```bash
+            # Wait for PR to be mergeable, then merge
+            gh pr merge --auto --squash --delete-branch
+
+            # MANDATORY: Comment on issue that PR was merged
+            gh issue comment ${{ github.event.issue.number }} --body "✅ **Merged to main**
+
+            The fix has been merged and will be deployed automatically.
+
+            **Summary:**
+            - <what was fixed/implemented>
+
+            Closing this issue as completed."
+
+            # Close the issue
+            gh issue close ${{ github.event.issue.number }}
+            ```
+
+            ## CRITICAL REQUIREMENTS
+
+            1. **ALWAYS create a PR** - Never push directly to main
+            2. **ALWAYS comment on issue when PR is created** - Use the template above
+            3. **ALWAYS comment on issue when merged** - Use the template above
+            4. **ALWAYS close the issue after merge**
+            5. If ANY step fails, comment on the issue with the error:
+               ```bash
+               gh issue comment ${{ github.event.issue.number }} --body "❌ **Failed**
+
+               Error: <error description>
+
+               Please check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details."
+               ```
+
+            ## BEGIN EXECUTION
+
+            Now proceed with the task. Start by reading the context files, then follow the workflow phases above.
 
       - name: Comment on failure
         if: failure()
