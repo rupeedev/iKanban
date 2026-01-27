@@ -4,12 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## 🔄 SYNC BEFORE STARTING (MANDATORY)
+
+**ALWAYS sync with remote before starting any work:**
+
+```bash
+git fetch origin && git pull origin main
+```
+
+This is required because the GitHub Actions Claude bot may have pushed changes to main.
+
+---
+
 ## 🛑 STOP - BEFORE ANY CODE CHANGE
 
 **Answer these questions FIRST (copy this checklist into your response):**
 
 ```
 ## Pre-Code Checklist
+- [ ] 0. Synced with remote: git fetch origin && git pull origin main
 - [ ] 1a. Read FILE-MAP.md? (find file paths without exploration)
 - [ ] 1b. Read CODING-GUIDELINES.md? (file limits, lint rules)
 - [ ] 1c. Read CODEBASE-GAPS.md? (known issues, correct API patterns)
@@ -21,6 +34,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **DO NOT write any code until all boxes are checked.**
 
 After code changes, **MUST run `vibe-check`** for validation before merge (replaces Task agents).
+
+**Full workflow:** Use `/ikanban-fullstack-dev` skill for complete development workflow.
 
 ---
 
@@ -285,6 +300,18 @@ When `/full-stack-dev` is invoked, follow all 8 phases in order:
 | 8 | Task Done | Add summary comment, then mark done |
 
 ## Task Management
+
+### MCP Tools & Scripts
+
+**Location:** `/Users/rupeshpanwar/Downloads/docs/common-mcp/`
+
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
+| `ikanban.py` | Task management CLI | Create, update, list tasks via API |
+| `ikanban_railway_mcp.py` | Railway deployment MCP | Check deployments, logs, restart services |
+| `ikanban_db_mcp.py` | Database operations MCP | Query DB, check migrations, debug data |
+
+**Full workflow skill:** `/ikanban-fullstack-dev` (in `~/.claude/commands/ikanban-fullstack-dev.md`)
 
 ### CLI Script Setup
 
