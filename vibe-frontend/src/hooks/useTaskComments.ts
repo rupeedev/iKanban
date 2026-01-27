@@ -49,11 +49,24 @@ export function useTaskComments(taskId: string | null) {
       if (!taskId) throw new Error('Task ID is required');
       return tasksApi.createComment(taskId, payload);
     },
-    onSuccess: () => {
-      // Use 'active' to refetch immediately since user expects to see their comment
+    onSuccess: (newComment) => {
+      // Add optimistic update: immediately add the new comment to the cache
+      queryClient.setQueryData(
+        ['task-comments', taskId],
+        (oldData: typeof commentsQuery.data) => {
+          if (!oldData) return [newComment];
+          // Check if comment already exists to avoid duplicates
+          if (oldData.some((c) => c.id === newComment.id)) return oldData;
+          return [...oldData, newComment];
+        }
+      );
+    },
+    onSettled: () => {
+      // Always refetch after mutation settles (success or error) to ensure sync
+      // Use 'all' to ensure all components watching this query get updated
       queryClient.invalidateQueries({
         queryKey: ['task-comments', taskId],
-        refetchType: 'active',
+        refetchType: 'all',
       });
     },
   });
@@ -69,11 +82,11 @@ export function useTaskComments(taskId: string | null) {
       if (!taskId) throw new Error('Task ID is required');
       return tasksApi.updateComment(taskId, commentId, payload);
     },
-    onSuccess: () => {
-      // Use 'active' to refetch immediately since user expects to see their edit
+    onSettled: () => {
+      // Always refetch after mutation settles to ensure sync
       queryClient.invalidateQueries({
         queryKey: ['task-comments', taskId],
-        refetchType: 'active',
+        refetchType: 'all',
       });
     },
   });
@@ -83,11 +96,33 @@ export function useTaskComments(taskId: string | null) {
       if (!taskId) throw new Error('Task ID is required');
       await tasksApi.deleteComment(taskId, commentId);
     },
-    onSuccess: () => {
-      // Use 'active' to refetch immediately since user expects to see comment removed
+    onMutate: async (commentId) => {
+      // Optimistic delete: remove comment immediately from cache
+      await queryClient.cancelQueries({ queryKey: ['task-comments', taskId] });
+      const previousComments = queryClient.getQueryData<
+        typeof commentsQuery.data
+      >(['task-comments', taskId]);
+      queryClient.setQueryData(
+        ['task-comments', taskId],
+        (oldData: typeof commentsQuery.data) =>
+          oldData?.filter((c) => c.id !== commentId) ?? []
+      );
+      return { previousComments };
+    },
+    onError: (_err, _commentId, context) => {
+      // Rollback on error
+      if (context?.previousComments) {
+        queryClient.setQueryData(
+          ['task-comments', taskId],
+          context.previousComments
+        );
+      }
+    },
+    onSettled: () => {
+      // Always refetch after mutation settles to ensure sync
       queryClient.invalidateQueries({
         queryKey: ['task-comments', taskId],
-        refetchType: 'active',
+        refetchType: 'all',
       });
     },
   });
