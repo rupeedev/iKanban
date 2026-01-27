@@ -129,12 +129,22 @@ jobs:
             ### Phase 1: Understand the Task
             1. Read the issue title and body to understand what needs to be done
             2. Classify: fix/bug/typo = QUICK, add/implement/new = FEATURE
-            3. Extract iKanban task_id from issue body (if present):
+            3. Extract iKanban metadata from issue body (if present):
                ```bash
-               # Look for <!-- ikanban-metadata task_id: UUID --> in issue body
-               TASK_ID=$(echo "$ISSUE_BODY" | grep -oP '(?<=<!-- ikanban-metadata task_id: )[a-f0-9-]+(?= -->)' || echo "")
+               # Look for ikanban-metadata block in issue body (handles multiline format)
+               # Format: <!-- ikanban-metadata\ntask_id: UUID\nteam_id: UUID\nassignment_id: UUID\n-->
+               ISSUE_BODY=$(gh issue view ${{ github.event.issue.number }} --json body -q .body)
+               TASK_ID=$(echo "$ISSUE_BODY" | grep -oP 'task_id:\s*[a-f0-9-]+' | head -1 | sed 's/task_id:\s*//')
+               TEAM_ID=$(echo "$ISSUE_BODY" | grep -oP 'team_id:\s*[a-f0-9-]+' | head -1 | sed 's/team_id:\s*//')
+
+               # Fallback to IKA team if team_id not in metadata (for backward compatibility)
+               if [ -z "$TEAM_ID" ]; then
+                 TEAM_ID="a263e43f-43d3-4af7-a947-5f70e6670921"  # IKA team
+               fi
+
                if [ -n "$TASK_ID" ]; then
-                 echo "Found iKanban task: $TASK_ID"
+                 echo "Found iKanban task: $TASK_ID (team: $TEAM_ID)"
+                 export TASK_ID TEAM_ID
                else
                  echo "No iKanban metadata found - skipping task sync"
                fi
@@ -172,7 +182,7 @@ jobs:
 
             # Update iKanban task to "inprogress" (if task_id found in Phase 1)
             if [ -n "$TASK_ID" ]; then
-              curl -s -X PATCH "${{ env.IKANBAN_API_URL }}/tasks/$TASK_ID" \
+              curl -s -X PATCH "${{ env.IKANBAN_API_URL }}/teams/$TEAM_ID/issues/$TASK_ID" \
                 -H "Authorization: Bearer ${{ secrets.VIBE_API_TOKEN }}" \
                 -H "Content-Type: application/json" \
                 -d '{"status": "inprogress"}' || echo "Warning: Failed to update iKanban task status"
@@ -249,7 +259,7 @@ jobs:
 
             # Update iKanban task to "done" (if task_id found in Phase 1)
             if [ -n "$TASK_ID" ]; then
-              curl -s -X PATCH "${{ env.IKANBAN_API_URL }}/tasks/$TASK_ID" \
+              curl -s -X PATCH "${{ env.IKANBAN_API_URL }}/teams/$TEAM_ID/issues/$TASK_ID" \
                 -H "Authorization: Bearer ${{ secrets.VIBE_API_TOKEN }}" \
                 -H "Content-Type: application/json" \
                 -d '{"status": "done"}' || echo "Warning: Failed to update iKanban task status"
@@ -306,12 +316,18 @@ jobs:
 
             If the issue body contains metadata in this format:
             ```
-            <!-- ikanban-metadata task_id: UUID-HERE -->
+            <!-- ikanban-metadata
+            task_id: UUID-HERE
+            team_id: UUID-HERE
+            assignment_id: UUID-HERE
+            -->
             ```
 
             The workflow will automatically:
             - Phase 2: Update task status to "inprogress"
             - Phase 6: Update task status to "done"
+
+            **Note:** If team_id is not present, falls back to IKA team (a263e43f-43d3-4af7-a947-5f70e6670921).
 
             If no metadata is found, sync is skipped (workflow continues normally).
 
