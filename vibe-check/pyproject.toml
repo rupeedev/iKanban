@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vibe-check"
+version = "0.1.0"
+description = "Quality checker for full-stack projects (Rust + TypeScript/React)"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [
+    { name = "iKanban Team", email = "support@scho1ar.com" }
+]
+keywords = ["lint", "quality", "rust", "typescript", "react", "cargo", "pnpm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "click>=8.0.0",
+    "rich>=13.0.0",
+    "tomli>=2.0.0;python_version<'3.11'",  # TOML parser for Python 3.9-3.10
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.scripts]
+vibe-check = "vibe_check.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/rupeedev/iKanban"
+Repository = "https://github.com/rupeedev/iKanban"
+Documentation = "https://github.com/rupeedev/iKanban/tree/main/tools/vibe-check"
+
+[tool.hatch.build.targets.wheel]
+packages = ["vibe_check"]
