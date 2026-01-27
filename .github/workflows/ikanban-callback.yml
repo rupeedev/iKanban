@@ -92,7 +92,9 @@ jobs:
         github.event.pull_request.user.login == 'claude[bot]' ||
         contains(github.event.pull_request.head.ref, 'copilot/') ||
         contains(github.event.pull_request.head.ref, 'claude/') ||
-        contains(github.event.pull_request.head.ref, 'gemini/')
+        contains(github.event.pull_request.head.ref, 'gemini/') ||
+        contains(github.event.pull_request.head.ref, 'fix/issue-') ||
+        contains(github.event.pull_request.head.ref, 'feature/issue-')
       )
     steps:
       - name: Find linked issue and post comment
@@ -152,13 +154,17 @@ jobs:
               return;
             }
 
-            // Determine agent type from PR author
+            // Determine agent type from PR author or branch naming
+            // Claude Code Action uses fix/issue-XX or feature/issue-XX branch naming
             if (pr.user.login === 'claude[bot]' || pr.head.ref.includes('claude/')) {
               agentType = 'Claude';
             } else if (pr.user.login === 'copilot-swe-agent[bot]' || pr.head.ref.includes('copilot/')) {
               agentType = 'Copilot';
             } else if (pr.head.ref.includes('gemini/')) {
               agentType = 'Gemini';
+            } else if (pr.head.ref.includes('fix/issue-') || pr.head.ref.includes('feature/issue-')) {
+              // Claude Code Action workflow uses this branch naming convention
+              agentType = 'Claude';
             }
 
             console.log(`Found iKanban metadata: task=${taskId}, agent=${agentType}`);
@@ -211,7 +217,9 @@ jobs:
         github.event.pull_request.user.login == 'claude[bot]' ||
         contains(github.event.pull_request.head.ref, 'copilot/') ||
         contains(github.event.pull_request.head.ref, 'claude/') ||
-        contains(github.event.pull_request.head.ref, 'gemini/')
+        contains(github.event.pull_request.head.ref, 'gemini/') ||
+        contains(github.event.pull_request.head.ref, 'fix/issue-') ||
+        contains(github.event.pull_request.head.ref, 'feature/issue-')
       )
     steps:
       - name: Find linked issue and post completion comment
@@ -270,11 +278,17 @@ jobs:
               return;
             }
 
-            // Determine agent type from PR author
+            // Determine agent type from PR author or branch naming
+            // Claude Code Action uses fix/issue-XX or feature/issue-XX branch naming
             if (pr.user.login === 'claude[bot]' || pr.head.ref.includes('claude/')) {
               agentType = 'Claude';
             } else if (pr.user.login === 'copilot-swe-agent[bot]' || pr.head.ref.includes('copilot/')) {
               agentType = 'Copilot';
+            } else if (pr.head.ref.includes('gemini/')) {
+              agentType = 'Gemini';
+            } else if (pr.head.ref.includes('fix/issue-') || pr.head.ref.includes('feature/issue-')) {
+              // Claude Code Action workflow uses this branch naming convention
+              agentType = 'Claude';
             }
 
             console.log(`Found iKanban metadata: task=${taskId}, agent=${agentType}`);
