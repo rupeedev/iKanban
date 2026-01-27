@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Link2, X, Loader2 } from 'lucide-react';
+import { Plus, Search, Link2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
@@ -16,9 +16,14 @@ import { useTeams } from '@/hooks/useTeams';
 import { teamsApi } from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { TaskWithAttemptStatus } from 'shared/types';
-import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { showIssueFormDialog } from './IssueFormDialog';
+import {
+  StatusFilterTabs,
+  AvailableIssuesList,
+  LinkedSubIssuesList,
+  STATUS_PRIORITY,
+  type StatusFilter,
+} from './SubIssuesComponents';
 
 export interface SubIssuesDialogProps {
   issueId: string;
@@ -29,32 +34,22 @@ export interface SubIssuesDialogProps {
 
 export type SubIssuesDialogResult = 'linked' | 'canceled';
 
-// Status badge colors
-const statusColors: Record<string, string> = {
-  todo: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
-  inprogress: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  inreview:
-    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  done: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-};
-
 const SubIssuesDialogImpl = NiceModal.create(
   ({ issueId, issueTitle, teamId, projectId }: SubIssuesDialogProps) => {
     const modal = useModal();
     const queryClient = useQueryClient();
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-    // Get team info for identifier prefix (e.g., "IKA")
     const { teamsById } = useTeams();
     const team = teamsById[teamId];
-    const teamPrefix = team?.identifier || team?.name?.slice(0, 3).toUpperCase() || '';
+    const teamPrefix =
+      team?.identifier || team?.name?.slice(0, 3).toUpperCase() || '';
 
-    // Fetch all team issues to use for search/linking
     const { issues: teamIssues, isLoading: isLoadingTeamIssues } =
       useTeamIssues(teamId);
 
-    // Fetch sub-issues for current issue
     const {
       data: subIssues = [],
       isLoading: isLoadingSubIssues,
@@ -65,7 +60,6 @@ const SubIssuesDialogImpl = NiceModal.create(
       enabled: !!teamId && !!issueId,
     });
 
-    // Mutation to link an issue as sub-issue
     const linkMutation = useMutation({
       mutationFn: (childIssueId: string) =>
         teamsApi.updateIssue(teamId, childIssueId, { parent_id: issueId }),
@@ -75,7 +69,6 @@ const SubIssuesDialogImpl = NiceModal.create(
       },
     });
 
-    // Mutation to unlink a sub-issue (set parent_id to null UUID to clear)
     const unlinkMutation = useMutation({
       mutationFn: (childIssueId: string) =>
         teamsApi.updateIssue(teamId, childIssueId, {
@@ -87,45 +80,51 @@ const SubIssuesDialogImpl = NiceModal.create(
       },
     });
 
-    // Filter out current issue and already-linked issues from search results
     const subIssueIds = useMemo(
       () => new Set(subIssues.map((i: TaskWithAttemptStatus) => i.id)),
       [subIssues]
     );
 
-    // Filter issues that can be linked (not current, not already linked)
+    // Smart sort: active work (todo/inprogress) first for Epic management
     const availableIssues = useMemo(() => {
       if (!teamIssues) return [];
-      return teamIssues.filter((issue) => {
-        // Exclude current issue
-        if (issue.id === issueId) return false;
-        // Exclude already linked sub-issues
-        if (subIssueIds.has(issue.id)) return false;
-        return true;
-      });
+      return teamIssues
+        .filter((issue) => {
+          if (issue.id === issueId) return false;
+          if (subIssueIds.has(issue.id)) return false;
+          return true;
+        })
+        .sort((a, b) => {
+          const priorityA = STATUS_PRIORITY[a.status] ?? 5;
+          const priorityB = STATUS_PRIORITY[b.status] ?? 5;
+          if (priorityA !== priorityB) return priorityA - priorityB;
+          return (
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+        });
     }, [teamIssues, issueId, subIssueIds]);
 
-    // Helper to generate issue key (e.g., "IKA-320")
     const getIssueKey = useCallback(
       (issue: TaskWithAttemptStatus) => {
         if (!issue.issue_number) return '';
-        return teamPrefix ? `${teamPrefix}-${issue.issue_number}` : `#${issue.issue_number}`;
+        return teamPrefix
+          ? `${teamPrefix}-${issue.issue_number}`
+          : `#${issue.issue_number}`;
       },
       [teamPrefix]
     );
 
-    // Filter by search query or show recent issues when search is empty
+    // Filter by status, then by search (25 issues for Epic management)
     const filteredIssues = useMemo(() => {
       const query = searchQuery.trim().toLowerCase();
+      let filtered = availableIssues;
 
-      // If no search query, show recent available issues (up to 10)
-      if (!query) {
-        return availableIssues.slice(0, 10);
+      if (statusFilter !== 'all') {
+        filtered = filtered.filter((issue) => issue.status === statusFilter);
       }
 
-      // Filter by search - support title, issue key (IKA-320), issue number
-      return availableIssues
-        .filter((issue) => {
+      if (query) {
+        filtered = filtered.filter((issue) => {
           const issueKey = getIssueKey(issue).toLowerCase();
           return (
             issue.title.toLowerCase().includes(query) ||
@@ -134,9 +133,11 @@ const SubIssuesDialogImpl = NiceModal.create(
             (issue.issue_number && `${issue.issue_number}`.includes(query)) ||
             issue.id.toLowerCase().includes(query)
           );
-        })
-        .slice(0, 10); // Limit results
-    }, [availableIssues, searchQuery, getIssueKey]);
+        });
+      }
+
+      return filtered.slice(0, 25);
+    }, [availableIssues, searchQuery, statusFilter, getIssueKey]);
 
     const handleClose = useCallback(() => {
       modal.resolve('canceled' as SubIssuesDialogResult);
@@ -147,9 +148,43 @@ const SubIssuesDialogImpl = NiceModal.create(
       async (childIssue: TaskWithAttemptStatus) => {
         await linkMutation.mutateAsync(childIssue.id);
         setSearchQuery('');
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(childIssue.id);
+          return next;
+        });
       },
       [linkMutation]
     );
+
+    const toggleSelection = useCallback((id: string) => {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+    }, []);
+
+    const toggleSelectAll = useCallback(() => {
+      const visibleIds = filteredIssues.map((i) => i.id);
+      const allSelected = visibleIds.every((id) => selectedIds.has(id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        visibleIds.forEach((id) =>
+          allSelected ? next.delete(id) : next.add(id)
+        );
+        return next;
+      });
+    }, [filteredIssues, selectedIds]);
+
+    const handleBulkLink = useCallback(async () => {
+      for (const id of Array.from(selectedIds)) {
+        await linkMutation.mutateAsync(id);
+      }
+      setSelectedIds(new Set());
+      setSearchQuery('');
+    }, [selectedIds, linkMutation]);
 
     const handleUnlinkIssue = useCallback(
       async (childIssueId: string) => {
@@ -160,7 +195,6 @@ const SubIssuesDialogImpl = NiceModal.create(
 
     const handleCreateSubIssue = useCallback(async () => {
       if (!projectId) return;
-
       const result = await showIssueFormDialog({
         teamId,
         projectId,
@@ -168,12 +202,16 @@ const SubIssuesDialogImpl = NiceModal.create(
         mode: 'create',
         title: 'Create Sub-issue',
       });
-
       if (result === 'created') {
         refetchSubIssues();
         queryClient.invalidateQueries({ queryKey: ['teamIssues', teamId] });
       }
     }, [teamId, projectId, issueId, refetchSubIssues, queryClient]);
+
+    const handleFilterChange = useCallback((filter: StatusFilter) => {
+      setStatusFilter(filter);
+      setSelectedIds(new Set());
+    }, []);
 
     const isLoading = isLoadingTeamIssues || isLoadingSubIssues;
     const isMutating = linkMutation.isPending || unlinkMutation.isPending;
@@ -192,7 +230,6 @@ const SubIssuesDialogImpl = NiceModal.create(
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Search input */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -204,52 +241,29 @@ const SubIssuesDialogImpl = NiceModal.create(
               />
             </div>
 
-            {/* Available issues list (shows recent or filtered results) */}
-            {filteredIssues.length > 0 && (
-              <div className="space-y-1">
-                <h4 className="text-xs font-medium text-muted-foreground">
-                  {searchQuery.trim() ? 'Search Results' : 'Recent Issues'}
-                </h4>
-                <div className="border rounded-md max-h-48 overflow-y-auto">
-                  {filteredIssues.map((issue) => (
-                    <button
-                      key={issue.id}
-                      onClick={() => handleLinkIssue(issue)}
-                      disabled={isMutating}
-                      className={cn(
-                        'w-full px-3 py-2 text-left hover:bg-muted flex items-center gap-2',
-                        'border-b last:border-b-0',
-                        isMutating && 'opacity-50 cursor-not-allowed'
-                      )}
-                    >
-                      <span className="text-muted-foreground text-xs font-mono">
-                        {getIssueKey(issue)}
-                      </span>
-                      <span className="flex-1 truncate text-sm">
-                        {issue.title}
-                      </span>
-                      <Badge
-                        variant="secondary"
-                        className={cn('text-xs', statusColors[issue.status])}
-                      >
-                        {issue.status}
-                      </Badge>
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <StatusFilterTabs
+              statusFilter={statusFilter}
+              onFilterChange={handleFilterChange}
+            />
+
+            <AvailableIssuesList
+              issues={filteredIssues}
+              selectedIds={selectedIds}
+              isMutating={isMutating}
+              searchQuery={searchQuery}
+              statusFilter={statusFilter}
+              getIssueKey={getIssueKey}
+              onToggleSelection={toggleSelection}
+              onToggleSelectAll={toggleSelectAll}
+              onLinkIssue={handleLinkIssue}
+              onBulkLink={handleBulkLink}
+            />
+
+            {searchQuery.trim() && filteredIssues.length === 0 && !isLoading && (
+              <p className="text-sm text-muted-foreground text-center py-2">
+                No matching issues found
+              </p>
             )}
-
-            {/* No search results message */}
-            {searchQuery.trim() &&
-              filteredIssues.length === 0 &&
-              !isLoading && (
-                <p className="text-sm text-muted-foreground text-center py-2">
-                  No matching issues found
-                </p>
-              )}
-
-            {/* Empty state when no issues available */}
             {!searchQuery.trim() &&
               filteredIssues.length === 0 &&
               !isLoading && (
@@ -258,59 +272,14 @@ const SubIssuesDialogImpl = NiceModal.create(
                 </p>
               )}
 
-            {/* Linked sub-issues list */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">
-                Linked Sub-issues ({subIssues.length})
-              </h4>
-              {isLoadingSubIssues ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : subIssues.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-6 text-center">
-                  <div className="rounded-full bg-muted p-3 mb-3">
-                    <Plus className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    No sub-issues linked yet
-                  </p>
-                </div>
-              ) : (
-                <div className="border rounded-md divide-y">
-                  {subIssues.map((issue: TaskWithAttemptStatus) => (
-                    <div
-                      key={issue.id}
-                      className="px-3 py-2 flex items-center gap-2"
-                    >
-                      <span className="text-muted-foreground text-xs font-mono">
-                        {getIssueKey(issue)}
-                      </span>
-                      <span className="flex-1 truncate text-sm">
-                        {issue.title}
-                      </span>
-                      <Badge
-                        variant="secondary"
-                        className={cn('text-xs', statusColors[issue.status])}
-                      >
-                        {issue.status}
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleUnlinkIssue(issue.id)}
-                        disabled={isMutating}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <LinkedSubIssuesList
+              subIssues={subIssues}
+              isLoading={isLoadingSubIssues}
+              isMutating={isMutating}
+              getIssueKey={getIssueKey}
+              onUnlink={handleUnlinkIssue}
+            />
 
-            {/* Create sub-issue button */}
             {projectId && (
               <Button
                 variant="outline"
@@ -340,7 +309,6 @@ export const SubIssuesDialog = defineModal<
   SubIssuesDialogResult
 >(SubIssuesDialogImpl);
 
-// Convenience function to show the dialog
 export function showSubIssuesDialog(
   props: SubIssuesDialogProps
 ): Promise<SubIssuesDialogResult> {
