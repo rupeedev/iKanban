@@ -12,6 +12,7 @@ import { Plus, Search, Link2, X, Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
+import { useTeams } from '@/hooks/useTeams';
 import { teamsApi } from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { TaskWithAttemptStatus } from 'shared/types';
@@ -43,6 +44,11 @@ const SubIssuesDialogImpl = NiceModal.create(
     const modal = useModal();
     const queryClient = useQueryClient();
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Get team info for identifier prefix (e.g., "IKA")
+    const { teamsById } = useTeams();
+    const team = teamsById[teamId];
+    const teamPrefix = team?.identifier || team?.name?.slice(0, 3).toUpperCase() || '';
 
     // Fetch all team issues to use for search/linking
     const { issues: teamIssues, isLoading: isLoadingTeamIssues } =
@@ -99,19 +105,38 @@ const SubIssuesDialogImpl = NiceModal.create(
       });
     }, [teamIssues, issueId, subIssueIds]);
 
-    // Filter by search query
+    // Helper to generate issue key (e.g., "IKA-320")
+    const getIssueKey = useCallback(
+      (issue: TaskWithAttemptStatus) => {
+        if (!issue.issue_number) return '';
+        return teamPrefix ? `${teamPrefix}-${issue.issue_number}` : `#${issue.issue_number}`;
+      },
+      [teamPrefix]
+    );
+
+    // Filter by search query or show recent issues when search is empty
     const filteredIssues = useMemo(() => {
-      if (!searchQuery.trim()) return [];
-      const query = searchQuery.toLowerCase();
+      const query = searchQuery.trim().toLowerCase();
+
+      // If no search query, show recent available issues (up to 10)
+      if (!query) {
+        return availableIssues.slice(0, 10);
+      }
+
+      // Filter by search - support title, issue key (IKA-320), issue number
       return availableIssues
-        .filter(
-          (issue) =>
+        .filter((issue) => {
+          const issueKey = getIssueKey(issue).toLowerCase();
+          return (
             issue.title.toLowerCase().includes(query) ||
+            issueKey.includes(query) ||
             (issue.issue_number && `#${issue.issue_number}`.includes(query)) ||
+            (issue.issue_number && `${issue.issue_number}`.includes(query)) ||
             issue.id.toLowerCase().includes(query)
-        )
+          );
+        })
         .slice(0, 10); // Limit results
-    }, [availableIssues, searchQuery]);
+    }, [availableIssues, searchQuery, getIssueKey]);
 
     const handleClose = useCallback(() => {
       modal.resolve('canceled' as SubIssuesDialogResult);
@@ -179,34 +204,39 @@ const SubIssuesDialogImpl = NiceModal.create(
               />
             </div>
 
-            {/* Search results dropdown */}
-            {searchQuery.trim() && filteredIssues.length > 0 && (
-              <div className="border rounded-md max-h-48 overflow-y-auto">
-                {filteredIssues.map((issue) => (
-                  <button
-                    key={issue.id}
-                    onClick={() => handleLinkIssue(issue)}
-                    disabled={isMutating}
-                    className={cn(
-                      'w-full px-3 py-2 text-left hover:bg-muted flex items-center gap-2',
-                      'border-b last:border-b-0',
-                      isMutating && 'opacity-50 cursor-not-allowed'
-                    )}
-                  >
-                    <span className="text-muted-foreground text-xs">
-                      #{issue.issue_number}
-                    </span>
-                    <span className="flex-1 truncate text-sm">
-                      {issue.title}
-                    </span>
-                    <Badge
-                      variant="secondary"
-                      className={cn('text-xs', statusColors[issue.status])}
+            {/* Available issues list (shows recent or filtered results) */}
+            {filteredIssues.length > 0 && (
+              <div className="space-y-1">
+                <h4 className="text-xs font-medium text-muted-foreground">
+                  {searchQuery.trim() ? 'Search Results' : 'Recent Issues'}
+                </h4>
+                <div className="border rounded-md max-h-48 overflow-y-auto">
+                  {filteredIssues.map((issue) => (
+                    <button
+                      key={issue.id}
+                      onClick={() => handleLinkIssue(issue)}
+                      disabled={isMutating}
+                      className={cn(
+                        'w-full px-3 py-2 text-left hover:bg-muted flex items-center gap-2',
+                        'border-b last:border-b-0',
+                        isMutating && 'opacity-50 cursor-not-allowed'
+                      )}
                     >
-                      {issue.status}
-                    </Badge>
-                  </button>
-                ))}
+                      <span className="text-muted-foreground text-xs font-mono">
+                        {getIssueKey(issue)}
+                      </span>
+                      <span className="flex-1 truncate text-sm">
+                        {issue.title}
+                      </span>
+                      <Badge
+                        variant="secondary"
+                        className={cn('text-xs', statusColors[issue.status])}
+                      >
+                        {issue.status}
+                      </Badge>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -216,6 +246,15 @@ const SubIssuesDialogImpl = NiceModal.create(
               !isLoading && (
                 <p className="text-sm text-muted-foreground text-center py-2">
                   No matching issues found
+                </p>
+              )}
+
+            {/* Empty state when no issues available */}
+            {!searchQuery.trim() &&
+              filteredIssues.length === 0 &&
+              !isLoading && (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  No available issues to link
                 </p>
               )}
 
@@ -244,8 +283,8 @@ const SubIssuesDialogImpl = NiceModal.create(
                       key={issue.id}
                       className="px-3 py-2 flex items-center gap-2"
                     >
-                      <span className="text-muted-foreground text-xs">
-                        #{issue.issue_number}
+                      <span className="text-muted-foreground text-xs font-mono">
+                        {getIssueKey(issue)}
                       </span>
                       <span className="flex-1 truncate text-sm">
                         {issue.title}
