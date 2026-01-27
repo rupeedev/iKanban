@@ -27,6 +27,7 @@ import { MarkdownViewer } from '@/components/documents/MarkdownViewer';
 import { IssuePropertiesSidebar } from '@/components/tasks/IssuePropertiesSidebar';
 import { InlinePromptInput } from '@/components/tasks/TaskDetails/InlinePromptInput';
 import { showSubIssuesDialog } from '@/components/dialogs';
+import { SubIssuesList } from '@/components/tasks/SubIssuesList';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 import type { PriorityValue } from '@/components/selectors/PrioritySelector';
@@ -395,14 +396,16 @@ export function IssueFullView({
                       className="text-sm [&_article]:p-3 [&_article]:max-w-none"
                     />
                   ) : (
-                    <span className="text-sm">Click to add a description...</span>
+                    <span className="text-sm">
+                      Click to add a description...
+                    </span>
                   )}
                 </div>
               )}
             </div>
 
             {/* Sub-issues */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
@@ -414,6 +417,15 @@ export function IssueFullView({
                   Add sub-issues
                 </Button>
               </div>
+              {teamId && (
+                <SubIssuesList
+                  issueId={issue.id}
+                  teamId={teamId}
+                  teamPrefix={team?.identifier || team?.name?.slice(0, 3).toUpperCase()}
+                  teamMembers={teamMembers}
+                  teamProjects={teamProjects}
+                />
+              )}
             </div>
 
             {/* Linked Documents */}
