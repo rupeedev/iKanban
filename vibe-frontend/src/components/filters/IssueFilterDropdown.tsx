@@ -16,6 +16,7 @@ import {
   Minus,
   User,
   FolderKanban,
+  Tag as TagIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus } from 'shared/types';
@@ -24,6 +25,7 @@ export interface FilterState {
   priority: number[] | null;
   assigneeId: string[] | null;
   projectId: string | null;
+  tags: string[] | null;
 }
 
 interface TeamMember {
@@ -37,12 +39,20 @@ interface Project {
   name: string;
 }
 
+interface Tag {
+  id: string;
+  tag_name: string;
+  color?: string | null;
+}
+
 interface IssueFilterDropdownProps {
   filters: FilterState;
   onFiltersChange: (filters: FilterState) => void;
   teamMembers: TeamMember[];
   projects: Project[];
+  tags?: Tag[];
   issues?: TaskWithAttemptStatus[];
+  issueTagsMap?: Map<string, string[]>;
 }
 
 const PRIORITY_OPTIONS = [
@@ -58,7 +68,9 @@ export function IssueFilterDropdown({
   onFiltersChange,
   teamMembers,
   projects,
+  tags = [],
   issues = [],
+  issueTagsMap,
 }: IssueFilterDropdownProps) {
   // Count active filters
   const activeFilterCount = useMemo(() => {
@@ -66,6 +78,7 @@ export function IssueFilterDropdown({
     if (filters.priority?.length) count += filters.priority.length;
     if (filters.assigneeId?.length) count += filters.assigneeId.length;
     if (filters.projectId) count += 1;
+    if (filters.tags?.length) count += filters.tags.length;
     return count;
   }, [filters]);
 
@@ -79,6 +92,19 @@ export function IssueFilterDropdown({
     });
     return counts;
   }, [issues]);
+
+  // Count issues per tag
+  const tagCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    if (!issueTagsMap) return counts;
+    issues.forEach((issue) => {
+      const issueTags = issueTagsMap.get(issue.id) || [];
+      issueTags.forEach((tagId) => {
+        counts[tagId] = (counts[tagId] || 0) + 1;
+      });
+    });
+    return counts;
+  }, [issues, issueTagsMap]);
 
   const handlePriorityToggle = (priority: number) => {
     const current = filters.priority || [];
@@ -111,11 +137,24 @@ export function IssueFilterDropdown({
     });
   };
 
+  const handleTagToggle = (tagId: string) => {
+    const current = filters.tags || [];
+    const newTags = current.includes(tagId)
+      ? current.filter((t) => t !== tagId)
+      : [...current, tagId];
+
+    onFiltersChange({
+      ...filters,
+      tags: newTags.length > 0 ? newTags : null,
+    });
+  };
+
   const handleClearAll = () => {
     onFiltersChange({
       priority: null,
       assigneeId: null,
       projectId: null,
+      tags: null,
     });
   };
 
@@ -224,7 +263,7 @@ export function IssueFilterDropdown({
 
           {/* Project Section */}
           {projects.length > 0 && (
-            <div className="p-3">
+            <div className="border-b p-3">
               <div className="flex items-center gap-2 mb-2">
                 <FolderKanban className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Project</span>
@@ -243,6 +282,44 @@ export function IssueFilterDropdown({
                         className="border-muted-foreground"
                       />
                       <span className="text-sm">{project.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Tags Section */}
+          {tags.length > 0 && (
+            <div className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <TagIcon className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Tags</span>
+              </div>
+              <div className="space-y-1">
+                {tags.map((tag) => {
+                  const isChecked = filters.tags?.includes(tag.id) || false;
+                  const issueCount = tagCounts[tag.id] || 0;
+                  return (
+                    <label
+                      key={tag.id}
+                      className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50 cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={isChecked}
+                        onCheckedChange={() => handleTagToggle(tag.id)}
+                        className="border-muted-foreground"
+                      />
+                      <span
+                        className="h-3 w-3 rounded-full shrink-0"
+                        style={{ backgroundColor: tag.color || '#6B7280' }}
+                      />
+                      <span className="text-sm flex-1 truncate">
+                        {tag.tag_name}
+                      </span>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {issueCount}
+                      </span>
                     </label>
                   );
                 })}

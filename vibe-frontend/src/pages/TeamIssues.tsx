@@ -8,6 +8,8 @@ import { openIssueForm } from '@/lib/openIssueForm';
 
 import { useTeamDashboard } from '@/hooks/useTeamDashboard';
 import { useIssueUpdateHandlers } from '@/hooks/useIssueUpdateHandlers';
+import { useTags } from '@/hooks/useTags';
+import { useBulkTaskTags } from '@/hooks/useBulkTaskTags';
 
 import { TeamIssuesContent } from '@/components/tasks/TeamIssuesContent';
 import {
@@ -89,10 +91,30 @@ export function TeamIssues() {
     priority: null,
     assigneeId: null,
     projectId: null,
+    tags: null,
   });
 
   // Use actual team ID for API calls
   const actualTeamId = team?.id;
+
+  // Fetch tags for the team
+  const { tags: teamTags } = useTags(actualTeamId);
+
+  // Fetch tags for all issues (for filtering)
+  const issueIds = useMemo(() => issues.map((i) => i.id), [issues]);
+  const { tagsMap: issueTagsDetailMap } = useBulkTaskTags(issueIds);
+
+  // Convert tagsMap (taskId -> TaskTagWithDetails[]) to (taskId -> tagId[])
+  const issueTagsMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    issueTagsDetailMap.forEach((tags, taskId) => {
+      map.set(
+        taskId,
+        tags.map((t) => t.tag_id)
+      );
+    });
+    return map;
+  }, [issueTagsDetailMap]);
 
   // Transform team members to AssigneeSelector format
   const teamMembers: TeamMember[] = useMemo(() => {
@@ -169,8 +191,16 @@ export function TeamIssues() {
       result = result.filter((i) => i.project_id === filters.projectId);
     }
 
+    // Apply tag filter (AND logic - issue must have ALL selected tags)
+    if (filters.tags?.length) {
+      result = result.filter((i) => {
+        const issueTags = issueTagsMap.get(i.id) || [];
+        return filters.tags!.every((tagId) => issueTags.includes(tagId));
+      });
+    }
+
     return result;
-  }, [issues, viewFilter, filters]);
+  }, [issues, viewFilter, filters, issueTagsMap]);
 
   const kanbanColumns = useMemo(() => {
     const columns: Record<
@@ -233,7 +263,12 @@ export function TeamIssues() {
   // Handler for clearing all filters
   const handleClearFilters = useCallback(() => {
     setViewFilter('all');
-    setFilters({ priority: null, assigneeId: null, projectId: null });
+    setFilters({
+      priority: null,
+      assigneeId: null,
+      projectId: null,
+      tags: null,
+    });
   }, []);
 
   // Get the selected issue from state
@@ -327,7 +362,8 @@ export function TeamIssues() {
     viewFilter !== 'all' ||
     (filters.priority?.length ?? 0) > 0 ||
     (filters.assigneeId?.length ?? 0) > 0 ||
-    !!filters.projectId;
+    !!filters.projectId ||
+    (filters.tags?.length ?? 0) > 0;
 
   // Full-view mode: show issue detail as full page when selected
   if (selectedIssue) {
@@ -360,7 +396,9 @@ export function TeamIssues() {
         displayMode={displayMode}
         teamMembers={teamMembers}
         teamProjects={teamProjectsForDropdown}
+        tags={teamTags}
         issues={issues}
+        issueTagsMap={issueTagsMap}
         isFetching={isFetching}
         onViewFilterChange={setViewFilter}
         onFiltersChange={setFilters}

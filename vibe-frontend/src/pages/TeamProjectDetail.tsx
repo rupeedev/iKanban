@@ -9,6 +9,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useProjectTaskTags } from '@/hooks/useProjectTaskTags';
+import { useTags } from '@/hooks/useTags';
 import { ProjectInsightsPanel } from '@/components/projects/ProjectInsightsPanel';
 import { TimelineView } from '@/components/projects/TimelineView';
 import { EpicStoryDashboard } from '@/components/projects/EpicStoryDashboard';
@@ -49,13 +50,33 @@ export function TeamProjectDetail() {
     priority: null,
     assigneeId: null,
     projectId: null,
+    tags: null,
   });
+
+  // Fetch tags for the team
+  const { tags: teamTags } = useTags(actualTeamId);
 
   // Filter issues for this project only
   const projectIssues = useMemo(() => {
     if (!project) return [];
     return issues.filter((issue) => issue.project_id === project.id);
   }, [issues, project]);
+
+  // Fetch tags for all tasks in the project (before filtering)
+  const { taskTagsMap, isLoading: tagsLoading } =
+    useProjectTaskTags(projectIssues);
+
+  // Convert taskTagsMap (taskId -> Tag[]) to (taskId -> tagId[]) for filtering
+  const issueTagsMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    taskTagsMap.forEach((tags, taskId) => {
+      map.set(
+        taskId,
+        tags.map((t) => t.id)
+      );
+    });
+    return map;
+  }, [taskTagsMap]);
 
   // Apply filters to project issues
   const filteredIssues = useMemo(() => {
@@ -73,12 +94,16 @@ export function TeamProjectDetail() {
       );
     }
 
-    return result;
-  }, [projectIssues, filters]);
+    // Apply tag filter (AND logic - issue must have ALL selected tags)
+    if (filters.tags?.length) {
+      result = result.filter((i) => {
+        const issueTags = issueTagsMap.get(i.id) || [];
+        return filters.tags!.every((tagId) => issueTags.includes(tagId));
+      });
+    }
 
-  // Fetch tags for all tasks in the project
-  const { taskTagsMap, isLoading: tagsLoading } =
-    useProjectTaskTags(filteredIssues);
+    return result;
+  }, [projectIssues, filters, issueTagsMap]);
 
   const handleCreateIssue = async () => {
     try {
@@ -173,7 +198,9 @@ export function TeamProjectDetail() {
                 onFiltersChange={setFilters}
                 teamMembers={[]}
                 projects={[]}
+                tags={teamTags}
                 issues={projectIssues}
+                issueTagsMap={issueTagsMap}
               />
               <Button
                 variant="outline"

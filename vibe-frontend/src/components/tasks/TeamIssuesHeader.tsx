@@ -25,6 +25,12 @@ interface TeamProject {
   name: string;
 }
 
+interface Tag {
+  id: string;
+  tag_name: string;
+  color?: string | null;
+}
+
 interface TeamIssuesHeaderProps {
   team: { icon?: string | null; name: string };
   viewFilter: ViewFilter;
@@ -33,7 +39,9 @@ interface TeamIssuesHeaderProps {
   displayMode: DisplayMode;
   teamMembers: TeamMember[];
   teamProjects: TeamProject[];
+  tags?: Tag[];
   issues: TaskWithAttemptStatus[];
+  issueTagsMap?: Map<string, string[]>;
   isFetching?: boolean;
   onViewFilterChange: (filter: ViewFilter) => void;
   onFiltersChange: (filters: FilterState) => void;
@@ -51,7 +59,9 @@ export function TeamIssuesHeader({
   displayMode,
   teamMembers,
   teamProjects,
+  tags = [],
   issues,
+  issueTagsMap,
   isFetching = false,
   onViewFilterChange,
   onFiltersChange,
@@ -127,7 +137,9 @@ export function TeamIssuesHeader({
               onFiltersChange={onFiltersChange}
               teamMembers={teamMembers}
               projects={teamProjects}
+              tags={tags}
               issues={issues}
+              issueTagsMap={issueTagsMap}
             />
           </div>
 
