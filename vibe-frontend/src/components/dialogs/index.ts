@@ -139,3 +139,9 @@ export {
   type IssueDetailDialogProps,
   type IssueDetailDialogResult,
 } from './issues/IssueDetailDialog';
+export {
+  SubIssuesDialog,
+  showSubIssuesDialog,
+  type SubIssuesDialogProps,
+  type SubIssuesDialogResult,
+} from './issues/SubIssuesDialog';

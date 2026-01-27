@@ -12,6 +12,7 @@ import {
   ChevronUp,
   ChevronDown,
   Plus,
+  RefreshCw,
 } from 'lucide-react';
 import { useTeams } from '@/hooks/useTeams';
 import { useIssueCommentHandlers } from '@/hooks/useIssueCommentHandlers';
@@ -24,6 +25,7 @@ import { CommentList } from '@/components/comments';
 import { IssueLinkedDocuments } from '@/components/tasks/IssueLinkedDocuments';
 import { IssuePropertiesSidebar } from '@/components/tasks/IssuePropertiesSidebar';
 import { InlinePromptInput } from '@/components/tasks/TaskDetails/InlinePromptInput';
+import { showSubIssuesDialog } from '@/components/dialogs';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 import type { PriorityValue } from '@/components/selectors/PrioritySelector';
@@ -84,11 +86,33 @@ export function IssueFullView({
     comments,
     commentsLoading,
     commentsFetching,
+    refetchComments,
     isUpdating,
     isDeleting,
     handleUpdateComment,
     handleDeleteComment,
   } = useIssueCommentHandlers({ issue, teamId, onUpdate });
+
+  // Handler for opening sub-issues dialog
+  const handleOpenSubIssuesDialog = useCallback(() => {
+    showSubIssuesDialog({
+      issueId: issue.id,
+      issueTitle: issue.title,
+      teamId,
+    });
+  }, [issue.id, issue.title, teamId]);
+
+  // State for comments refresh
+  const [isRefreshingComments, setIsRefreshingComments] = useState(false);
+
+  const handleRefreshComments = useCallback(async () => {
+    setIsRefreshingComments(true);
+    try {
+      await refetchComments();
+    } finally {
+      setIsRefreshingComments(false);
+    }
+  }, [refetchComments]);
 
   // Agent status refresh state
   const [isRefreshingAgentStatus, setIsRefreshingAgentStatus] = useState(false);
@@ -366,13 +390,14 @@ export function IssueFullView({
               )}
             </div>
 
-            {/* Sub-issues placeholder */}
+            {/* Sub-issues */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-8 text-muted-foreground hover:text-foreground"
+                  onClick={handleOpenSubIssuesDialog}
                 >
                   <Plus className="h-4 w-4 mr-1" />
                   Add sub-issues
@@ -390,9 +415,28 @@ export function IssueFullView({
             <div className="space-y-4 pt-4 border-t">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium">Activity</h3>
-                {commentsFetching && !commentsLoading && (
-                  <span className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
-                )}
+                <div className="flex items-center gap-2">
+                  {(commentsFetching || isRefreshingComments) &&
+                    !commentsLoading && (
+                      <span className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
+                    )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={handleRefreshComments}
+                    disabled={isRefreshingComments || commentsFetching}
+                    title="Refresh comments"
+                  >
+                    <RefreshCw
+                      className={cn(
+                        'h-4 w-4',
+                        (isRefreshingComments || commentsFetching) &&
+                          'animate-spin'
+                      )}
+                    />
+                  </Button>
+                </div>
               </div>
               <CommentList
                 comments={comments}

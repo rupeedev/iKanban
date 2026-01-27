@@ -104,6 +104,7 @@ export function useTaskComments(taskId: string | null) {
     isLoading: commentsQuery.isLoading,
     isFetching: commentsQuery.isFetching,
     error: commentsQuery.error,
+    refetch: commentsQuery.refetch,
     createComment: createCommentMutation.mutateAsync,
     updateComment: updateCommentMutation.mutateAsync,
     deleteComment: deleteCommentMutation.mutateAsync,
