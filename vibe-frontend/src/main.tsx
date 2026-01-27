@@ -80,12 +80,19 @@ const persistOptions = {
 };
 
 // Render app with optional ClerkProvider wrapper
-const AppWithProviders = () => (
+// Props to indicate if Clerk auth is enabled
+interface AppWithProvidersProps {
+  withClerkAuth?: boolean;
+}
+
+const AppWithProviders = ({ withClerkAuth = false }: AppWithProvidersProps) => (
   <React.StrictMode>
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={persistOptions}
     >
+      {/* AuthInitializer must be inside QueryClientProvider since it uses useQueryClient */}
+      {withClerkAuth && <AuthInitializer />}
       <ConnectionProvider>
         <SyncQueueProvider>
           <PostHogProvider client={posthog}>
@@ -107,8 +114,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
     >
-      <AuthInitializer />
-      <AppWithProviders />
+      <AppWithProviders withClerkAuth />
     </ClerkProvider>
   ) : (
     <AppWithProviders />
