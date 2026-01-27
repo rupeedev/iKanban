@@ -158,9 +158,21 @@ jobs:
                ```
 
             ### Phase 2: Create Branch + DRAFT PR (for visibility)
+
+            **CRITICAL: Branch Naming Convention**
+            - If task is QUICK (fix/bug/typo/update/tweak) → `fix/issue-XX-short-desc`
+            - If task is FEATURE (add/implement/create/build/new/docs) → `feature/issue-XX-short-desc`
+            - NEVER use other prefixes like `docs/`, `chore/`, `feat/` - ONLY `fix/` or `feature/`
+
             ```bash
-            # Create feature branch
-            BRANCH_NAME="<type>/issue-${{ github.event.issue.number }}-<short-desc>"
+            # Determine branch type based on task classification from Phase 1
+            # QUICK tasks (fix/bug/typo) → fix/
+            # FEATURE tasks (add/implement/create/new/docs) → feature/
+            BRANCH_TYPE="feature"  # Default to feature
+            # If issue title/body contains fix/bug/typo keywords, use fix/
+
+            # Create feature branch with CORRECT naming (fix/ or feature/ ONLY)
+            BRANCH_NAME="${BRANCH_TYPE}/issue-${{ github.event.issue.number }}-<short-desc>"
             git checkout -b $BRANCH_NAME
 
             # Create an empty commit to enable PR creation
@@ -168,7 +180,8 @@ jobs:
             git push -u origin $BRANCH_NAME
 
             # Create DRAFT PR immediately so user can track progress
-            PR_URL=$(gh pr create --draft --title "[WIP] <type>: <description>" --body "## Work in Progress
+            # PR title format: <commit-type>: <description> (commit-type can be fix/feat/docs/chore)
+            PR_URL=$(gh pr create --draft --title "[WIP] <commit-type>: <description>" --body "## Work in Progress
 
             This PR is being worked on by Claude Code Action.
 
@@ -204,7 +217,9 @@ jobs:
             4. Commit and push changes frequently so user can see progress:
             ```bash
             git add .
-            git commit -m "<type>(scope): <description>"
+            # Commit message uses conventional commit type (fix/feat/docs/chore/refactor)
+            # This is DIFFERENT from branch prefix which is ONLY fix/ or feature/
+            git commit -m "<commit-type>(scope): <description>"
             git push
             ```
 
