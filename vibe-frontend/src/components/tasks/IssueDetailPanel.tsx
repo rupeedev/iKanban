@@ -21,6 +21,7 @@ import { tasksApi } from '@/lib/api';
 import { CommentList } from '@/components/comments';
 import { IssueAttemptsSection } from '@/components/tasks/IssueAttemptsSection';
 import { IssueLinkedDocuments } from '@/components/tasks/IssueLinkedDocuments';
+import { MarkdownViewer } from '@/components/documents/MarkdownViewer';
 import { ProjectSelector } from '@/components/tasks/ProjectSelector';
 import { TaskTagsSection } from '@/components/tags/TaskTagsSection';
 import { cn } from '@/lib/utils';
@@ -341,12 +342,20 @@ export function IssueDetailPanel({
             ) : (
               <div
                 className={cn(
-                  'min-h-[50px] p-2 rounded-md border cursor-pointer hover:bg-muted/50 text-sm',
-                  !issue.description && 'text-muted-foreground italic'
+                  'min-h-[50px] rounded-md border cursor-pointer hover:bg-muted/50',
+                  !issue.description && 'text-muted-foreground italic p-2'
                 )}
                 onClick={() => setIsEditingDescription(true)}
               >
-                {issue.description || 'Click to add a description...'}
+                {issue.description ? (
+                  <MarkdownViewer
+                    content={issue.description}
+                    showOutline={false}
+                    className="text-sm [&_article]:p-2 [&_article]:max-w-none"
+                  />
+                ) : (
+                  <span className="text-sm">Click to add a description...</span>
+                )}
               </div>
             )}
           </div>

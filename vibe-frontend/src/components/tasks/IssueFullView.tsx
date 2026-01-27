@@ -23,6 +23,7 @@ import { CommentList } from '@/components/comments';
 // Attempts section hidden per IKA-295 - keeping import for future use
 // import { IssueAttemptsSection } from '@/components/tasks/IssueAttemptsSection';
 import { IssueLinkedDocuments } from '@/components/tasks/IssueLinkedDocuments';
+import { MarkdownViewer } from '@/components/documents/MarkdownViewer';
 import { IssuePropertiesSidebar } from '@/components/tasks/IssuePropertiesSidebar';
 import { InlinePromptInput } from '@/components/tasks/TaskDetails/InlinePromptInput';
 import { showSubIssuesDialog } from '@/components/dialogs';
@@ -380,12 +381,20 @@ export function IssueFullView({
               ) : (
                 <div
                   className={cn(
-                    'min-h-[60px] max-h-[180px] overflow-y-auto p-3 rounded-md border cursor-pointer hover:bg-muted/50 text-sm whitespace-pre-wrap',
-                    !issue.description && 'text-muted-foreground italic'
+                    'min-h-[60px] max-h-[180px] overflow-y-auto rounded-md border cursor-pointer hover:bg-muted/50',
+                    !issue.description && 'text-muted-foreground italic p-3'
                   )}
                   onClick={() => setIsEditingDescription(true)}
                 >
-                  {issue.description || 'Click to add a description...'}
+                  {issue.description ? (
+                    <MarkdownViewer
+                      content={issue.description}
+                      showOutline={false}
+                      className="text-sm [&_article]:p-3 [&_article]:max-w-none"
+                    />
+                  ) : (
+                    <span className="text-sm">Click to add a description...</span>
+                  )}
                 </div>
               )}
             </div>
