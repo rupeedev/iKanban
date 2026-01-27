@@ -73,7 +73,7 @@ pub fn router(state: AppState) -> Router {
 
     let v1_public = Router::<AppState>::new()
         .route("/health", get(health))
-        .route("/info", get(server_info))
+        .route("/server-info", get(server_info))
         .merge(oauth::public_router())
         .merge(organization_members::public_router())
         .merge(tokens::public_router())
