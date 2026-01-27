@@ -131,6 +131,7 @@ function LeadCell({
         align="start"
         className="max-h-60 overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
       >
         <DropdownMenuItem
           onClick={(e) => {
