@@ -1,9 +1,4 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  keepPreviousData,
-} from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tasksApi } from '../lib/api';
 import type {
   CreateTaskComment,
@@ -26,15 +21,22 @@ export function useTaskComments(taskId: string | null) {
     queryKey: ['task-comments', taskId],
     queryFn: async () => {
       if (!taskId) return [];
-      return tasksApi.getComments(taskId);
+      try {
+        const comments = await tasksApi.getComments(taskId);
+        return comments;
+      } catch (error) {
+        // Log error for debugging (IKA-322)
+        console.error('[useTaskComments] Failed to fetch comments:', error);
+        throw error;
+      }
     },
     enabled: !!taskId,
     // Cache comments for 5 minutes to reduce API calls
     staleTime: 5 * 60 * 1000,
     // Keep in cache for 15 minutes
     gcTime: 15 * 60 * 1000,
-    // Keep previous data while fetching new task's comments
-    placeholderData: keepPreviousData,
+    // Don't use placeholderData - it causes confusing loading states (IKA-322)
+    // When switching tasks, we want to show loading indicator, not stale data
     // Don't retry rate limit errors
     retry: (failureCount, error) => {
       if (isRateLimitError(error)) return false;
@@ -45,6 +47,8 @@ export function useTaskComments(taskId: string | null) {
   });
 
   const createCommentMutation = useMutation({
+    // Mutation key ensures proper tracking per task (IKA-322)
+    mutationKey: ['create-comment', taskId],
     mutationFn: async (payload: CreateTaskComment) => {
       if (!taskId) throw new Error('Task ID is required');
       return tasksApi.createComment(taskId, payload);
@@ -61,7 +65,12 @@ export function useTaskComments(taskId: string | null) {
         }
       );
     },
+    onError: (error) => {
+      // Log error for debugging (IKA-322)
+      console.error('[useTaskComments] Create comment failed:', error);
+    },
     onSettled: () => {
+      if (!taskId) return;
       // Always refetch after mutation settles (success or error) to ensure sync
       // Use 'all' to ensure all components watching this query get updated
       queryClient.invalidateQueries({
@@ -72,6 +81,7 @@ export function useTaskComments(taskId: string | null) {
   });
 
   const updateCommentMutation = useMutation({
+    mutationKey: ['update-comment', taskId],
     mutationFn: async ({
       commentId,
       payload,
@@ -82,7 +92,11 @@ export function useTaskComments(taskId: string | null) {
       if (!taskId) throw new Error('Task ID is required');
       return tasksApi.updateComment(taskId, commentId, payload);
     },
+    onError: (error) => {
+      console.error('[useTaskComments] Update comment failed:', error);
+    },
     onSettled: () => {
+      if (!taskId) return;
       // Always refetch after mutation settles to ensure sync
       queryClient.invalidateQueries({
         queryKey: ['task-comments', taskId],
@@ -92,6 +106,7 @@ export function useTaskComments(taskId: string | null) {
   });
 
   const deleteCommentMutation = useMutation({
+    mutationKey: ['delete-comment', taskId],
     mutationFn: async (commentId: string) => {
       if (!taskId) throw new Error('Task ID is required');
       await tasksApi.deleteComment(taskId, commentId);
@@ -109,7 +124,8 @@ export function useTaskComments(taskId: string | null) {
       );
       return { previousComments };
     },
-    onError: (_err, _commentId, context) => {
+    onError: (err, _commentId, context) => {
+      console.error('[useTaskComments] Delete comment failed:', err);
       // Rollback on error
       if (context?.previousComments) {
         queryClient.setQueryData(
@@ -119,6 +135,7 @@ export function useTaskComments(taskId: string | null) {
       }
     },
     onSettled: () => {
+      if (!taskId) return;
       // Always refetch after mutation settles to ensure sync
       queryClient.invalidateQueries({
         queryKey: ['task-comments', taskId],

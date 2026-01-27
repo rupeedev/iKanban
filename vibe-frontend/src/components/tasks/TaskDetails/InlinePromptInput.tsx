@@ -301,7 +301,7 @@ export function InlinePromptInput({
           author_id: currentUser.id,
         });
       } catch (err) {
-        console.error('Failed to create comment:', err);
+        console.error('[InlinePromptInput] Failed to create comment:', err);
         toast.error('Failed to add comment');
         return;
       }
@@ -313,8 +313,10 @@ export function InlinePromptInput({
           data: { prompt: cleanPrompt },
         });
         setPromptText('');
+        // Success toast is handled by useAssignToClaude's onSuccess
       } catch (err) {
-        // Error is handled by onError callback
+        // Error toast is handled by useAssignToClaude's onError
+        console.error('[InlinePromptInput] Claude assignment failed:', err);
         setPromptText('');
       }
       return;
