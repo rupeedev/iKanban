@@ -1,3 +1,4 @@
+import { useRef, useCallback } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/contexts/SidebarContext';
@@ -8,7 +9,10 @@ import { Button } from '@/components/ui/button';
 import { getTeamSlug, getProjectSlug } from '@/lib/urlUtils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/clerk-react';
-import { superadminApi, teamsApi } from '@/lib/api';
+import { superadminApi, teamsApi, documentsApi } from '@/lib/api';
+import { teamDashboardKeys } from '@/hooks/useTeamDashboard';
+import { teamMembersKeys } from '@/hooks/useTeamMembers';
+import { documentsKeys } from '@/hooks/useDocuments';
 import {
   Tooltip,
   TooltipContent,
@@ -166,6 +170,7 @@ interface SidebarItemProps {
   indent?: boolean;
   teamIndicator?: string;
   teamIcon?: string;
+  onPrefetch?: () => void;
 }
 
 function SidebarItem({
@@ -179,6 +184,7 @@ function SidebarItem({
   indent,
   teamIndicator,
   teamIcon,
+  onPrefetch,
 }: SidebarItemProps) {
   const teamDisplay = teamIcon || teamIndicator;
 
@@ -220,11 +226,15 @@ function SidebarItem({
         <Tooltip>
           <TooltipTrigger asChild>
             {to ? (
-              <Link to={to} className="block">
+              <Link to={to} className="block" onMouseEnter={onPrefetch}>
                 {content}
               </Link>
             ) : (
-              <button onClick={onClick} className="w-full">
+              <button
+                onClick={onClick}
+                className="w-full"
+                onMouseEnter={onPrefetch}
+              >
                 {content}
               </button>
             )}
@@ -248,11 +258,15 @@ function SidebarItem({
   }
 
   if (to) {
-    return <Link to={to}>{content}</Link>;
+    return (
+      <Link to={to} onMouseEnter={onPrefetch}>
+        {content}
+      </Link>
+    );
   }
 
   return (
-    <button onClick={onClick} className="w-full">
+    <button onClick={onClick} className="w-full" onMouseEnter={onPrefetch}>
       {content}
     </button>
   );
@@ -266,7 +280,9 @@ interface SidebarTeamItemProps {
   pathname: string;
   onEdit: (team: Team) => void;
   onInvite: (team: Team) => void;
-  onPrefetch?: (teamId: string) => void;
+  onPrefetchDashboard?: (teamId: string) => void;
+  onPrefetchDocuments?: (teamId: string) => void;
+  onPrefetchMembers?: (teamId: string) => void;
 }
 
 function SidebarTeamItem({
@@ -277,7 +293,9 @@ function SidebarTeamItem({
   pathname,
   onEdit,
   onInvite,
-  onPrefetch,
+  onPrefetchDashboard,
+  onPrefetchDocuments,
+  onPrefetchMembers,
 }: SidebarTeamItemProps) {
   const teamSlug = getTeamSlug(team);
   const teamBasePath = `/teams/${teamSlug}`;
@@ -294,7 +312,7 @@ function SidebarTeamItem({
             <Link
               to={`${teamBasePath}/issues`}
               className="block"
-              onMouseEnter={() => onPrefetch?.(team.id)}
+              onMouseEnter={() => onPrefetchDashboard?.(team.id)}
             >
               <div
                 className={cn(
@@ -326,7 +344,7 @@ function SidebarTeamItem({
             ? 'text-foreground font-medium'
             : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
         )}
-        onMouseEnter={() => onPrefetch?.(team.id)}
+        onMouseEnter={() => onPrefetchDashboard?.(team.id)}
       >
         <button
           onClick={onToggle}
@@ -373,7 +391,7 @@ function SidebarTeamItem({
         </DropdownMenu>
       </div>
 
-      {/* Sub-items */}
+      {/* Sub-items with prefetching (IKA-335) */}
       {isExpanded && (
         <div className="space-y-0.5">
           <SidebarItem
@@ -382,6 +400,7 @@ function SidebarTeamItem({
             to={`${teamBasePath}/issues`}
             isActive={pathname.includes('/issues') && isTeamActive}
             indent
+            onPrefetch={() => onPrefetchDashboard?.(team.id)}
           />
           <SidebarItem
             icon={FolderKanban}
@@ -389,6 +408,7 @@ function SidebarTeamItem({
             to={`${teamBasePath}/projects`}
             isActive={pathname.includes('/projects') && isTeamActive}
             indent
+            onPrefetch={() => onPrefetchDashboard?.(team.id)}
           />
           <SidebarItem
             icon={Layers}
@@ -396,6 +416,7 @@ function SidebarTeamItem({
             to={`${teamBasePath}/views`}
             isActive={pathname.includes('/views') && isTeamActive}
             indent
+            onPrefetch={() => onPrefetchDashboard?.(team.id)}
           />
           <SidebarItem
             icon={FileText}
@@ -403,6 +424,7 @@ function SidebarTeamItem({
             to={`${teamBasePath}/documents`}
             isActive={pathname.includes('/documents') && isTeamActive}
             indent
+            onPrefetch={() => onPrefetchDocuments?.(team.id)}
           />
           <SidebarItem
             icon={Users}
@@ -410,6 +432,7 @@ function SidebarTeamItem({
             to={`${teamBasePath}/members`}
             isActive={pathname.includes('/members') && isTeamActive}
             indent
+            onPrefetch={() => onPrefetchMembers?.(team.id)}
           />
         </div>
       )}
@@ -450,17 +473,74 @@ export function Sidebar() {
 
   const isSuperadmin = superadminCheck?.is_superadmin ?? false;
 
-  // Query client for prefetching (IKA-302)
+  // Query client for prefetching (IKA-302, IKA-335)
   const queryClient = useQueryClient();
 
-  // Prefetch team dashboard on hover for faster navigation (IKA-302)
-  const handlePrefetchTeam = (teamId: string) => {
-    queryClient.prefetchQuery({
-      queryKey: ['team-dashboard', teamId],
-      queryFn: () => teamsApi.getDashboard(teamId),
-      staleTime: 5 * 60 * 1000, // 5 minutes
-    });
-  };
+  // Debounce timer refs to prevent rapid prefetching on fast mouse movement (IKA-335)
+  const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const PREFETCH_DELAY_MS = 100; // Wait 100ms before prefetching to debounce
+
+  // Prefetch team dashboard on hover for faster navigation (IKA-302, enhanced in IKA-335)
+  const handlePrefetchDashboard = useCallback(
+    (teamId: string) => {
+      // Clear any pending prefetch
+      if (prefetchTimerRef.current) {
+        clearTimeout(prefetchTimerRef.current);
+      }
+
+      // Debounce prefetch to avoid rapid firing on fast mouse movement
+      prefetchTimerRef.current = setTimeout(() => {
+        queryClient.prefetchQuery({
+          queryKey: teamDashboardKeys.team(teamId),
+          queryFn: () => teamsApi.getDashboard(teamId),
+          staleTime: 5 * 60 * 1000, // 5 minutes
+        });
+      }, PREFETCH_DELAY_MS);
+    },
+    [queryClient]
+  );
+
+  // Prefetch documents data on hover (IKA-335)
+  const handlePrefetchDocuments = useCallback(
+    (teamId: string) => {
+      if (prefetchTimerRef.current) {
+        clearTimeout(prefetchTimerRef.current);
+      }
+
+      prefetchTimerRef.current = setTimeout(() => {
+        // Prefetch both documents list (root folder) and folders list
+        queryClient.prefetchQuery({
+          queryKey: documentsKeys.list(teamId, null),
+          queryFn: () => documentsApi.list(teamId, {}),
+          staleTime: 5 * 60 * 1000,
+        });
+        queryClient.prefetchQuery({
+          queryKey: documentsKeys.folders(teamId),
+          queryFn: () => documentsApi.listFolders(teamId),
+          staleTime: 5 * 60 * 1000,
+        });
+      }, PREFETCH_DELAY_MS);
+    },
+    [queryClient]
+  );
+
+  // Prefetch members data on hover (IKA-335)
+  const handlePrefetchMembers = useCallback(
+    (teamId: string) => {
+      if (prefetchTimerRef.current) {
+        clearTimeout(prefetchTimerRef.current);
+      }
+
+      prefetchTimerRef.current = setTimeout(() => {
+        queryClient.prefetchQuery({
+          queryKey: teamMembersKeys.members(teamId),
+          queryFn: () => teamsApi.getMembers(teamId),
+          staleTime: 6 * 60 * 60 * 1000, // 6 hours - members rarely change
+        });
+      }, PREFETCH_DELAY_MS);
+    },
+    [queryClient]
+  );
 
   const handleCreateProject = async () => {
     try {
@@ -619,7 +699,9 @@ export function Sidebar() {
                   pathname={location.pathname}
                   onEdit={handleEditTeam}
                   onInvite={handleInviteTeam}
-                  onPrefetch={handlePrefetchTeam}
+                  onPrefetchDashboard={handlePrefetchDashboard}
+                  onPrefetchDocuments={handlePrefetchDocuments}
+                  onPrefetchMembers={handlePrefetchMembers}
                 />
               ))}
               {teams.length === 0 && (
