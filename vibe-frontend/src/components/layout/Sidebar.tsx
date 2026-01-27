@@ -16,6 +16,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   ChevronDown,
   ChevronRight,
   ChevronsLeft,
@@ -54,6 +59,7 @@ interface SidebarSectionProps {
   children: React.ReactNode;
   isCollapsed?: boolean;
   onAdd?: () => void;
+  collapsedIcon?: React.ElementType;
 }
 
 function SidebarSection({
@@ -63,11 +69,60 @@ function SidebarSection({
   children,
   isCollapsed,
   onAdd,
+  collapsedIcon: CollapsedIcon,
 }: SidebarSectionProps) {
+  // Collapsed sidebar: show icon with popover dropdown (IKA-323)
   if (isCollapsed) {
-    return <div className="py-2">{children}</div>;
+    const Icon = CollapsedIcon || FolderKanban;
+    return (
+      <div className="py-1">
+        <Popover>
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <button
+                    className={cn(
+                      'flex items-center justify-center w-full px-3 py-1.5 text-sm rounded-md transition-colors',
+                      'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <ChevronRight className="h-3 w-3 ml-0.5 opacity-50" />
+                  </button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="right">{title}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <PopoverContent
+            side="right"
+            align="start"
+            className="w-56 p-2"
+            sideOffset={8}
+          >
+            <div className="flex items-center justify-between mb-2 px-2">
+              <span className="text-xs font-medium text-muted-foreground">
+                {title}
+              </span>
+              {onAdd && (
+                <button
+                  onClick={onAdd}
+                  className="p-0.5 text-muted-foreground hover:text-foreground transition-all"
+                  title={`Add new ${title.toLowerCase().replace('your ', '')}`}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            <div className="space-y-0.5">{children}</div>
+          </PopoverContent>
+        </Popover>
+      </div>
+    );
   }
 
+  // Expanded sidebar: normal collapsible section
   return (
     <div className="py-1 group/section">
       <div className="flex items-center w-full px-3 py-1.5">
@@ -514,6 +569,7 @@ export function Sidebar() {
             onToggle={() => toggleSection('teams')}
             isCollapsed={isCollapsed}
             onAdd={handleCreateProject}
+            collapsedIcon={FolderKanban}
           >
             <div className="space-y-0.5">
               {projects.map((project) => {
@@ -525,7 +581,7 @@ export function Sidebar() {
                     label={project.name}
                     to={`/projects/${getProjectSlug(project)}/tasks`}
                     isActive={isProjectActive(project)}
-                    isCollapsed={isCollapsed}
+                    isCollapsed={false}
                     teamIndicator={
                       teamInfo?.teamIdentifier || teamInfo?.teamName
                     }
@@ -533,7 +589,7 @@ export function Sidebar() {
                   />
                 );
               })}
-              {!isCollapsed && projects.length === 0 && (
+              {projects.length === 0 && (
                 <div className="px-3 py-1.5 text-sm text-muted-foreground">
                   No projects yet
                 </div>
@@ -550,6 +606,7 @@ export function Sidebar() {
             onToggle={() => toggleSection('yourTeams')}
             isCollapsed={isCollapsed}
             onAdd={handleCreateTeam}
+            collapsedIcon={Users}
           >
             <div className="space-y-0.5">
               {teams.map((team) => (
@@ -558,14 +615,14 @@ export function Sidebar() {
                   team={team}
                   isExpanded={expandedTeams[team.id] ?? false}
                   onToggle={() => toggleTeamExpanded(team.id)}
-                  isCollapsed={isCollapsed}
+                  isCollapsed={false}
                   pathname={location.pathname}
                   onEdit={handleEditTeam}
                   onInvite={handleInviteTeam}
                   onPrefetch={handlePrefetchTeam}
                 />
               ))}
-              {!isCollapsed && teams.length === 0 && (
+              {teams.length === 0 && (
                 <div className="px-3 py-1.5 text-sm text-muted-foreground">
                   No teams yet
                 </div>
