@@ -35,10 +35,7 @@ import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDial
 import { ConfirmDialog } from '@/components/dialogs/shared/ConfirmDialog';
 import { TargetDateCell } from '@/components/projects/TargetDateCell';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
-import { useTeamProjects } from '@/hooks/useTeamProjects';
-import { useTeamIssues } from '@/hooks/useTeamIssues';
-import { useTeamMembers } from '@/hooks/useTeamMembers';
-import { useTeams } from '@/hooks/useTeams';
+import { useTeamDashboard } from '@/hooks/useTeamDashboard';
 import { useKeyCreate, Scope } from '@/keyboard';
 import { getTeamSlug, getProjectSlug } from '@/lib/urlUtils';
 import type { Project } from 'shared/types';
@@ -316,14 +313,19 @@ const DEFAULT_COLUMN_WIDTHS = {
 export function TeamProjects() {
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
-  const { resolveTeam } = useTeams();
-  const team = teamId ? resolveTeam(teamId) : undefined;
-  const actualTeamId = team?.id;
 
-  const { projects, isLoading, error, refetch, isFetching } =
-    useTeamProjects(actualTeamId);
-  const { issues } = useTeamIssues(actualTeamId);
-  const { members } = useTeamMembers(actualTeamId);
+  // Single aggregated API call - replaces 3 separate hooks (IKA-325)
+  const {
+    team,
+    projects,
+    issues,
+    members,
+    isLoading,
+    isFetching,
+    error,
+    refresh,
+  } = useTeamDashboard(teamId);
+  const actualTeamId = team?.id;
   const { updateProject, deleteProject } = useProjectMutations();
 
   // Column widths state for resizable columns
@@ -483,7 +485,7 @@ export function TeamProjects() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => refetch()}
+            onClick={() => refresh()}
             disabled={isFetching}
           >
             <RefreshCw
