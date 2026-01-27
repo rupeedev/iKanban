@@ -26,6 +26,7 @@ import {
 } from '@/pages/auth';
 import { MyIssues } from '@/pages/MyIssues';
 import { Inbox } from '@/pages/Inbox';
+import { Pulse } from '@/pages/Pulse';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { SuperadminRoute } from '@/components/auth/SuperadminRoute';
@@ -281,6 +282,7 @@ function AppContent() {
               >
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/projects/:projectId" element={<Projects />} />
+                <Route path="/pulse" element={<Pulse />} />
                 <Route path="/inbox" element={<Inbox />} />
                 <Route path="/my-issues" element={<MyIssues />} />
                 <Route path="/views" element={<Views />} />
