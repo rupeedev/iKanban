@@ -803,6 +803,103 @@ Some shadcn/ui components require context providers:
 
 ---
 
+## Container & Layout Overflow (CRITICAL)
+
+**These rules prevent content from being cut off at viewport edges or causing unwanted scrollbars.**
+
+### Rule 1: Fixed-Width Sidebars MUST Have Overflow Control
+
+Any fixed-width container (sidebar, panel, TOC) MUST explicitly handle overflow:
+
+```typescript
+// BAD - Content can overflow and get cut off at viewport edge
+<aside className="w-64 shrink-0 border-l">
+  <nav>{items.map(item => <span>{item.text}</span>)}</nav>
+</aside>
+
+// GOOD - Overflow is contained within the sidebar
+<aside className="w-64 shrink-0 border-l overflow-y-auto overflow-x-hidden">
+  <nav>{items.map(item => <span className="truncate">{item.text}</span>)}</nav>
+</aside>
+```
+
+### Rule 2: Text Truncation Requires Explicit Classes
+
+The `truncate` utility may not work reliably in all contexts. Use explicit classes:
+
+```typescript
+// MAY NOT WORK - truncate alone in some flex/grid contexts
+<button className="truncate">Long text here...</button>
+
+// GOOD - Explicit truncation with all required properties
+<button className="overflow-hidden text-ellipsis whitespace-nowrap">
+  Long text here...
+</button>
+
+// ALSO GOOD - Add max-width constraint when in flex container
+<button className="truncate max-w-full">Long text here...</button>
+```
+
+### Rule 3: Flex Containers Need min-w-0 for Truncation
+
+Child elements in flex containers won't truncate without `min-w-0`:
+
+```typescript
+// BAD - Text overflows flex container
+<div className="flex">
+  <span className="truncate">{longText}</span>  // Won't truncate!
+</div>
+
+// GOOD - min-w-0 allows flex child to shrink below content size
+<div className="flex">
+  <span className="truncate min-w-0">{longText}</span>
+</div>
+
+// ALSO GOOD - Apply to the flex item wrapper
+<div className="flex">
+  <div className="min-w-0 flex-1">
+    <span className="truncate">{longText}</span>
+  </div>
+</div>
+```
+
+### Fixed-Width Container Checklist
+
+When creating sidebars, panels, or fixed-width sections:
+
+| Property | Purpose | Required? |
+|----------|---------|-----------|
+| `overflow-y-auto` | Vertical scroll for tall content | Yes |
+| `overflow-x-hidden` | Prevent horizontal overflow | Yes |
+| `shrink-0` | Prevent flex shrinking | For sidebars |
+| `min-w-0` | Allow children to truncate | For flex children |
+
+### Common Patterns That Cause Layout Issues
+
+| Anti-Pattern | Problem | Fix |
+|--------------|---------|-----|
+| Fixed-width without `overflow-x-hidden` | Content clips at viewport | Add `overflow-x-hidden` |
+| `truncate` without width constraint | Text doesn't truncate | Add `max-w-full` or explicit width |
+| Flex child without `min-w-0` | Child can't shrink below content | Add `min-w-0` to flex child |
+| Nested scrollable containers | Conflicting scroll behaviors | Only one container should scroll |
+| Missing `shrink-0` on sidebar | Sidebar shrinks on small screens | Add `shrink-0` |
+
+### IKA-331 Incident Summary
+
+**Problem:** "On this page" TOC sidebar text was cut off at the viewport edge.
+
+**Root Cause:**
+1. Sidebar lacked `overflow-x-hidden` to contain horizontal overflow
+2. `truncate` class wasn't working reliably
+
+**Fix:**
+1. Added `overflow-x-hidden` to the `<aside>` container
+2. Used explicit `overflow-hidden text-ellipsis whitespace-nowrap` for text
+
+**Prevention:** Always add overflow control to fixed-width containers and verify truncation works.
+
+---
+
 ## Document Content Rendering (CRITICAL)
 
 **These rules ensure documents display as formatted content, not raw Markdown syntax.**
@@ -947,6 +1044,8 @@ components/
 | **URL params resolved before API calls** | N/A | Code review |
 | **Tooltip wrapped in TooltipProvider** | N/A | Code review |
 | **Text content uses MarkdownViewer** | N/A | Code review |
+| **Fixed-width containers have overflow control** | N/A | Code review |
+| **Text truncation uses explicit classes** | N/A | Code review |
 
 ---
 
@@ -965,6 +1064,7 @@ components/
 | **IKA-148** | Optimistic update with server-computed data | Invalidate + refetch if server transforms data |
 | **IKA-234** | Tooltip without TooltipProvider | Always wrap Tooltip in TooltipProvider |
 | **IKA-307** | Raw Markdown syntax in documents | Use MarkdownViewer for all text content |
+| **IKA-331** | TOC cut off at viewport edge | Add overflow-x-hidden to fixed-width containers |
 | **VIB-70** | Migration file modified | Never modify existing migrations |
 | **IKA-215** | Non-idempotent migrations | Use IF NOT EXISTS, DO blocks, DROP IF EXISTS |
 | **IKA-215** | Axum `:param` syntax panic | Use `{param}` syntax (Axum 0.7+) |
@@ -1005,6 +1105,14 @@ components/
 3. Markdown handles plain text gracefully (renders as paragraphs)
 4. If content has Markdown syntax, it's properly formatted
 5. This applies regardless of file extension - check `content_type`, not just `file_type`
+
+### Layout Overflow Prevention (IKA-331)
+
+1. Fixed-width sidebars/panels MUST have `overflow-x-hidden`
+2. Use `overflow-y-auto` for vertical scrolling
+3. Text truncation needs explicit `overflow-hidden text-ellipsis whitespace-nowrap`
+4. Flex children need `min-w-0` to allow truncation
+5. Always test layouts at minimum supported viewport width
 
 ### Backend Deployment Prevention (IKA-215)
 
