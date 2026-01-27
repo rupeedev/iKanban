@@ -71,7 +71,16 @@ jobs:
             ### Phase 1: Understand the Task
             1. Read the issue title and body to understand what needs to be done
             2. Classify: fix/bug/typo = QUICK, add/implement/new = FEATURE
-            3. Extract any metadata from issue body (look for <!-- ikanban-metadata -->)
+            3. Extract iKanban task_id from issue body (if present):
+               ```bash
+               # Look for <!-- ikanban-metadata task_id: UUID --> in issue body
+               TASK_ID=$(echo "$ISSUE_BODY" | grep -oP '(?<=<!-- ikanban-metadata task_id: )[a-f0-9-]+(?= -->)' || echo "")
+               if [ -n "$TASK_ID" ]; then
+                 echo "Found iKanban task: $TASK_ID"
+               else
+                 echo "No iKanban metadata found - skipping task sync"
+               fi
+               ```
 
             ### Phase 2: Create Branch + DRAFT PR (for visibility)
             ```bash
@@ -102,6 +111,15 @@ jobs:
             **Current status:** Reading context files and analyzing the issue...
 
             I'll update this PR as I make progress."
+
+            # Update iKanban task to "inprogress" (if task_id found in Phase 1)
+            if [ -n "$TASK_ID" ]; then
+              curl -s -X PATCH "${{ env.IKANBAN_API_URL }}/tasks/$TASK_ID" \
+                -H "Authorization: Bearer ${{ secrets.VIBE_API_TOKEN }}" \
+                -H "Content-Type: application/json" \
+                -d '{"status": "inprogress"}' || echo "Warning: Failed to update iKanban task status"
+              echo "Updated iKanban task $TASK_ID to inprogress"
+            fi
             ```
 
             ### Phase 3: Implement the Fix/Feature
@@ -171,6 +189,15 @@ jobs:
             # Merge the PR
             gh pr merge --squash --delete-branch
 
+            # Update iKanban task to "done" (if task_id found in Phase 1)
+            if [ -n "$TASK_ID" ]; then
+              curl -s -X PATCH "${{ env.IKANBAN_API_URL }}/tasks/$TASK_ID" \
+                -H "Authorization: Bearer ${{ secrets.VIBE_API_TOKEN }}" \
+                -H "Content-Type: application/json" \
+                -d '{"status": "done"}' || echo "Warning: Failed to update iKanban task status"
+              echo "Updated iKanban task $TASK_ID to done"
+            fi
+
             # Comment on issue that merge is complete
             gh issue comment ${{ github.event.issue.number }} --body "**Merged to main**
 
@@ -204,9 +231,9 @@ jobs:
             ## WORKFLOW SUMMARY
 
             ```
-            Phase 1: Understand Task
+            Phase 1: Understand Task + Extract iKanban task_id (if present)
                 |
-            Phase 2: Create Branch + DRAFT PR + Comment "Work Started"
+            Phase 2: Create Branch + DRAFT PR + Comment "Work Started" + Update task→inprogress
                 |
             Phase 3: Implement (push commits as you go)
                 |
@@ -214,8 +241,21 @@ jobs:
                 |
             Phase 5: Mark PR Ready + Comment "Implementation Complete"
                 |
-            Phase 6: Merge + Comment "Merged" + Close Issue
+            Phase 6: Merge + Update task→done + Comment "Merged" + Close Issue
             ```
+
+            ## iKANBAN TASK SYNC (Automatic)
+
+            If the issue body contains metadata in this format:
+            ```
+            <!-- ikanban-metadata task_id: UUID-HERE -->
+            ```
+
+            The workflow will automatically:
+            - Phase 2: Update task status to "inprogress"
+            - Phase 6: Update task status to "done"
+
+            If no metadata is found, sync is skipped (workflow continues normally).
 
             ## BEGIN EXECUTION
 
