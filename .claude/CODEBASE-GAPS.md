@@ -101,6 +101,42 @@ const { data: teamMembers } = useQuery({
 
 ## Backend Gaps
 
+### 0. Missing GET /tasks/{id} Endpoint (IKA-312)
+
+**Location:** `vibe-backend/crates/remote/src/routes/tasks.rs:42-45`
+
+**Problem:** The `/tasks/{task_id}` endpoint only supports PUT and DELETE, not GET.
+
+```rust
+// CURRENT - No GET handler
+.route(
+    "/tasks/{task_id}",
+    put(update_shared_task),  // Only PUT
+)
+.route("/tasks/{task_id}", delete(delete_shared_task))  // And DELETE
+
+// MISSING - Should also have GET
+.route("/tasks/{task_id}", get(get_shared_task))
+```
+
+**Impact:**
+- CLI `task IKA-XX` command fails with HTTP 405
+- Cannot retrieve single task details via API
+- Must use workaround: `issues IKA` and filter
+
+**Workaround:**
+```bash
+# Instead of (fails with 405):
+python3 ikanban.py task IKA-298
+
+# Use this (works):
+python3 ikanban.py issues IKA --json | jq '.[] | select(.identifier == "IKA-298")'
+```
+
+**Fix Required:** Add `get_shared_task` handler to tasks.rs routes.
+
+---
+
 ### 1. Field Naming Inconsistencies
 
 **Location:** `vibe-backend/crates/services/src/services/share/publisher.rs`
@@ -307,6 +343,7 @@ Body: { title?, description?, status?, ... }
 
 | Priority | Gap | Effort | Impact |
 |----------|-----|--------|--------|
+| **P0** | **Add GET /tasks/{id} endpoint** | **Low** | **High** |
 | P1 | Replace mock team members | Low | High |
 | P1 | Add cross-team validation for move | Low | High |
 | P2 | Add error toast notifications | Low | Medium |

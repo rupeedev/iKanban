@@ -294,7 +294,11 @@ The `ikanban.py` CLI manages tasks via the production API at `api.scho1ar.com`.
 
 **Required:** Set `VIBE_API_TOKEN` before running any commands:
 ```bash
-export VIBE_API_TOKEN=$(grep '^VIBE_API_TOKEN=' /Users/rupeshpanwar/Downloads/Projects/iKanban/.env | cut -d'=' -f2)
+# From project root directory:
+export VIBE_API_TOKEN=$(grep '^VIBE_API_TOKEN=' .env | cut -d'=' -f2)
+
+# Or if using python-dotenv (recommended):
+# The CLI auto-loads from .env in current directory
 ```
 
 ### Available Commands
@@ -305,23 +309,36 @@ python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py create IKA "tit
 
 # Create with all options
 python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py create IKA "title" \
-  -s todo \                    # Status: todo, inprogress, done
+  -s todo \                    # Status: todo, inprogress, inreview, done, cancelled
   -d "description" \           # Task description
-  -p 1 \                       # Priority: 1 (high) to 4 (low)
+  -p 1 \                       # Priority: urgent, high, medium, low (or 1-4)
   --assignee <user-id> \       # Assignee UUID
   --due-date 2026-02-01        # Due date (ISO format)
 
 # List tasks
 python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py issues IKA
 
-# View single task
-python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py get IKA-243
+# View single task (use 'task' NOT 'get')
+# NOTE: Currently returns HTTP 405 due to missing backend endpoint (see CODEBASE-GAPS.md)
+# Workaround: Use issues command and filter
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py task IKA-243
+# Or use workaround:
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py issues IKA --json | jq '.[] | select(.identifier == "IKA-243")'
 
 # Update task status
 python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py update IKA-XX --status done
 
 # Add comment (use for completion summaries)
 python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py comment IKA-XX "Summary: what was done"
+
+# List comments on a task
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py comments IKA-XX
+
+# Delete task
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py delete <task-uuid> --force
+
+# Move task to different project
+python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py move <task-uuid> --project <project-uuid>
 
 # List teams
 python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py teams
@@ -336,9 +353,12 @@ python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py projects IKA
 |---------|----------|--------|
 | `create` | `/teams/{team_id}/issues` | POST |
 | `issues` | `/teams/{team_id}/issues` | GET |
-| `get` | `/tasks/{task_id}` | GET |
+| `task` | `/tasks/{task_id}` | GET |
 | `update` | `/tasks/{task_id}` | PUT |
 | `comment` | `/tasks/{task_id}/comments` | POST |
+| `comments` | `/tasks/{task_id}/comments` | GET |
+| `delete` | `/tasks/{task_id}` | DELETE |
+| `move` | `/tasks/{task_id}` | PUT |
 | `teams` | `/teams` | GET |
 | `projects` | `/teams/{team_id}/projects` | GET |
 
@@ -346,8 +366,12 @@ python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py projects IKA
 
 If MCP servers (ikanban-local/ikanban-remote) are unavailable, **always use the CLI**:
 ```bash
-export VIBE_API_TOKEN=$(grep '^VIBE_API_TOKEN=' /Users/rupeshpanwar/Downloads/Projects/iKanban/.env | cut -d'=' -f2)
-python3 /Users/rupeshpanwar/Downloads/docs/common-mcp/ikanban.py create IKA "title" -s inprogress -d "description"
+# From project root (loads .env automatically):
+cd /path/to/iKanban
+python3 ../docs/common-mcp/ikanban.py create IKA "title" -s inprogress -d "description"
+
+# Or export token manually:
+export VIBE_API_TOKEN=$(grep '^VIBE_API_TOKEN=' .env | cut -d'=' -f2)
 ```
 
 **Important:** Description is set at creation. Use comments for completion summaries.
@@ -443,7 +467,8 @@ GitHub Actions → Docker Hub → Railway
 
 Requires `VIBE_API_TOKEN` from `.env`:
 ```bash
-export VIBE_API_TOKEN=$(grep '^VIBE_API_TOKEN=' /Users/rupeshpanwar/Downloads/Projects/iKanban/.env | cut -d'=' -f2)
+# From project root:
+export VIBE_API_TOKEN=$(grep '^VIBE_API_TOKEN=' .env | cut -d'=' -f2)
 ```
 
 ### Remote MCP Server (ikanban-remote)
