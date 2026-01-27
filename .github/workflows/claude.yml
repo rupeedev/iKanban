@@ -10,16 +10,74 @@ on:
   pull_request_review:
     types: [submitted]
 
+# Prevent duplicate runs for the same issue
+# Only one workflow runs per issue at a time
+concurrency:
+  group: claude-issue-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
 env:
   IKANBAN_API_URL: https://api.scho1ar.com/api
 
 jobs:
-  claude:
+  # Check if work is already in progress for this issue
+  check-existing-pr:
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.check.outputs.should_skip }}
+      pr_url: ${{ steps.check.outputs.pr_url }}
+    steps:
+      - name: Check for existing PR
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = context.issue?.number || context.payload.issue?.number;
+            if (!issueNumber) {
+              core.setOutput('should_skip', 'false');
+              return;
+            }
+
+            // Search for open PRs that reference this issue
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open'
+            });
+
+            // Check if any PR references this issue
+            const linkedPR = prs.find(pr => {
+              const body = pr.body || '';
+              return body.includes(`#${issueNumber}`) ||
+                     body.includes(`issues/${issueNumber}`) ||
+                     pr.head.ref.includes(`issue-${issueNumber}`);
+            });
+
+            if (linkedPR) {
+              console.log(`Found existing PR #${linkedPR.number} for issue #${issueNumber}`);
+              core.setOutput('should_skip', 'true');
+              core.setOutput('pr_url', linkedPR.html_url);
+
+              // Comment on issue that we're skipping
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `⏭️ **Skipping duplicate run**\n\nWork is already in progress for this issue.\n\n**Existing PR:** ${linkedPR.html_url}\n\nPlease review the existing PR or close it if you want to start fresh.`
+              });
+            } else {
+              console.log(`No existing PR found for issue #${issueNumber}`);
+              core.setOutput('should_skip', 'false');
+            }
+
+  claude:
+    needs: check-existing-pr
+    if: needs.check-existing-pr.outputs.should_skip != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
