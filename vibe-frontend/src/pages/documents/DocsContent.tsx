@@ -289,19 +289,20 @@ export function DocsContent({
       {/* Right sidebar - On this page */}
       {headings.length > 0 && (isMarkdown || isText) && (
         <aside className="w-64 shrink-0 border-l overflow-y-auto overflow-x-hidden hidden lg:block">
-          <div className="sticky top-0 py-6 px-4">
+          <div className="sticky top-0 py-6 px-4 min-w-0">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
               <span className="inline-block w-1 h-1 bg-muted-foreground rounded-full" />
               On this page
             </h4>
-            <nav className="space-y-1">
+            <nav className="space-y-1 min-w-0">
               {headings.map((heading) => (
                 <button
                   key={heading.id}
                   onClick={(e) => handleTocClick(e, heading.id)}
                   title={heading.text}
                   className={cn(
-                    'block w-full text-left text-sm py-1 transition-colors hover:text-foreground overflow-hidden text-ellipsis whitespace-nowrap',
+                    'block w-full text-left text-sm py-1 transition-colors hover:text-foreground',
+                    'overflow-hidden text-ellipsis whitespace-nowrap max-w-full',
                     heading.level === 1
                       ? 'font-medium'
                       : heading.level === 2
