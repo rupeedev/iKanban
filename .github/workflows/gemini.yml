@@ -9,12 +9,24 @@ on:
   issues:
     types: [opened, assigned]
 
+# Prevent duplicate runs for the same issue
+concurrency:
+  group: gemini-issue-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
 jobs:
   gemini:
+    # Skip if comment is from a bot (prevents Claude/Gemini triggering each other)
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@gemini')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@gemini')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@gemini') || contains(github.event.issue.title, '@gemini')))
+      (
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@gemini')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@gemini')) ||
+        (github.event_name == 'issues' && (contains(github.event.issue.body, '@gemini') || contains(github.event.issue.title, '@gemini')))
+      ) &&
+      (
+        github.event_name == 'issues' ||
+        (github.event_name != 'issues' && !endsWith(github.event.comment.user.login, '[bot]') && !endsWith(github.event.sender.login, '[bot]'))
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: write

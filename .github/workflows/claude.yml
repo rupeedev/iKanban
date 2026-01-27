@@ -22,11 +22,18 @@ env:
 jobs:
   # Check if work is already in progress for this issue
   check-existing-pr:
+    # Skip if comment is from a bot (prevents Claude/Gemini triggering each other)
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+        (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      ) &&
+      (
+        github.event_name == 'issues' ||
+        (github.event_name != 'issues' && !endsWith(github.event.comment.user.login, '[bot]') && !endsWith(github.event.sender.login, '[bot]'))
+      )
     runs-on: ubuntu-latest
     outputs:
       should_skip: ${{ steps.check.outputs.should_skip }}

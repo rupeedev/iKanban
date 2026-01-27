@@ -11,6 +11,11 @@ on:
   check_suite:
     types: [completed]
 
+# Prevent duplicate runs for the same PR
+concurrency:
+  group: auto-merge-${{ github.event.pull_request.number || github.event.check_suite.pull_requests[0].number }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   pull-requests: write
@@ -51,9 +56,12 @@ jobs:
   # Auto-approve PRs from agents when checks pass
   auto-approve:
     runs-on: ubuntu-latest
+    # Skip if PR is already merged or closed
     if: |
       github.event_name == 'pull_request' &&
       github.event.action != 'closed' &&
+      github.event.pull_request.state == 'open' &&
+      github.event.pull_request.merged != true &&
       github.event.pull_request.draft == false &&
       (
         github.event.pull_request.user.login == 'copilot-swe-agent[bot]' ||
