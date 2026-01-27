@@ -1880,6 +1880,7 @@ export const teamsApi = {
       due_date?: string | null;
       assignee_id?: string | null;
       project_id?: string | null;
+      parent_id?: string | null;
     }
   ): Promise<TaskWithAttemptStatus> => {
     const response = await makeRequest(
@@ -1902,6 +1903,7 @@ export const teamsApi = {
       priority?: number | null;
       due_date?: string | null;
       assignee_id?: string | null;
+      parent_id?: string | null;
     }
   ): Promise<TaskWithAttemptStatus> => {
     const response = await makeRequest(`/api/teams/${teamId}/issues`, {
@@ -1909,6 +1911,16 @@ export const teamsApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<TaskWithAttemptStatus>(response);
+  },
+
+  getSubIssues: async (
+    teamId: string,
+    issueId: string
+  ): Promise<TaskWithAttemptStatus[]> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/issues/${issueId}/sub-issues`
+    );
+    return handleApiResponse<TaskWithAttemptStatus[]>(response);
   },
 
   getDashboard: async (teamId: string): Promise<TeamDashboard> => {
