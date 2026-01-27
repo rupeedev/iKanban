@@ -157,8 +157,8 @@ export function useProjects(): UseProjectsResult {
     queryKey,
     queryFn: () => fetchProjects(token, currentWorkspaceId),
     enabled: isCloudMode && isSignedIn && !!token,
-    staleTime: 5 * 60 * 1000, // 5 minutes - projects don't change frequently
-    gcTime: 15 * 60 * 1000, // 15 minutes cache retention
+    staleTime: 6 * 60 * 60 * 1000, // 6 hours - projects rarely change
+    gcTime: 12 * 60 * 60 * 1000, // 12 hours cache retention
     refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes (not 30 seconds!)
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,

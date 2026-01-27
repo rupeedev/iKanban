@@ -73,8 +73,8 @@ export function useTeamMembers(
     queryKey: teamMembersKeys.members(teamId!),
     queryFn: () => teamsApi.getMembers(teamId!),
     enabled: !!teamId,
-    staleTime: 5 * 60 * 1000, // 5 minutes - members don't change frequently
-    gcTime: 15 * 60 * 1000, // 15 minutes cache retention
+    staleTime: 6 * 60 * 60 * 1000, // 6 hours - members rarely change
+    gcTime: 12 * 60 * 60 * 1000, // 12 hours cache retention
     refetchOnWindowFocus: false, // Don't refetch when tab gets focus
     refetchOnReconnect: false, // Don't refetch on network reconnect
     retry: (failureCount, error) => {

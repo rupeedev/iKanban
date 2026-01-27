@@ -1,6 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { setAuthTokenGetter } from '@/lib/api';
+import { clearPersistedCache } from '@/lib/indexedDBPersister';
 
 /**
  * AuthInitializer sets up the API auth token getter using Clerk's getToken.
@@ -9,6 +11,9 @@ import { setAuthTokenGetter } from '@/lib/api';
  */
 export function AuthInitializer() {
   const { getToken, isSignedIn, isLoaded } = useAuth();
+  const queryClient = useQueryClient();
+  // Track previous sign-in state to detect sign-out
+  const wasSignedInRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     // Don't set up token getter until Clerk is fully loaded
@@ -33,11 +38,24 @@ export function AuthInitializer() {
           return null;
         }
       });
+      wasSignedInRef.current = true;
     } else {
       // Clear the token getter when signed out
       setAuthTokenGetter(async () => null);
+
+      // Security: Clear all cached data on logout to prevent sensitive data exposure
+      // Only clear if the user was previously signed in (not on initial load)
+      if (wasSignedInRef.current === true) {
+        // Clear TanStack Query in-memory cache
+        queryClient.clear();
+        // Clear IndexedDB persisted cache
+        clearPersistedCache().catch((err) =>
+          console.warn('Failed to clear persisted cache on logout:', err)
+        );
+      }
+      wasSignedInRef.current = false;
     }
-  }, [getToken, isSignedIn, isLoaded]);
+  }, [getToken, isSignedIn, isLoaded, queryClient]);
 
   return null;
 }

@@ -50,8 +50,8 @@ export function useTeams(): UseTeamsResult {
   } = useQuery<Team[], Error>({
     queryKey,
     queryFn: () => teamsApi.list(currentWorkspaceId ?? undefined),
-    staleTime: 5 * 60 * 1000, // 5 minutes - teams rarely change
-    gcTime: 15 * 60 * 1000, // 15 minutes cache retention
+    staleTime: 6 * 60 * 60 * 1000, // 6 hours - teams rarely change
+    gcTime: 12 * 60 * 60 * 1000, // 12 hours cache retention
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     retry: (failureCount, error) => {
