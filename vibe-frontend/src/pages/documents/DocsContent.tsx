@@ -302,7 +302,7 @@ export function DocsContent({
                   title={heading.text}
                   className={cn(
                     'block w-full text-left text-sm py-1 transition-colors hover:text-foreground',
-                    'overflow-hidden text-ellipsis whitespace-nowrap max-w-full',
+                    'break-words max-w-full',
                     heading.level === 1
                       ? 'font-medium'
                       : heading.level === 2
