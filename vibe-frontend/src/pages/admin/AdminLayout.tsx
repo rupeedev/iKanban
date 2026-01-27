@@ -10,7 +10,6 @@ import {
   LayoutDashboard,
   Mail,
   Shield,
-  Settings,
   Users,
   X,
   ShieldCheck,
@@ -35,12 +34,6 @@ const adminNavigation = [
     label: 'Permissions',
     description: 'Role and access control',
     icon: Shield,
-  },
-  {
-    path: 'configuration',
-    label: 'Configuration',
-    description: 'System settings',
-    icon: Settings,
   },
   {
     path: 'users',

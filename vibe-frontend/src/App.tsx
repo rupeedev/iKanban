@@ -60,9 +60,6 @@ const AdminInvitations = lazy(() =>
 const AdminPermissions = lazy(() =>
   import('@/pages/admin/AdminPermissions').then((m) => ({ default: m.AdminPermissions }))
 );
-const AdminConfiguration = lazy(() =>
-  import('@/pages/admin/AdminConfiguration').then((m) => ({ default: m.AdminConfiguration }))
-);
 const AdminUsers = lazy(() =>
   import('@/pages/admin/AdminUsers').then((m) => ({ default: m.AdminUsers }))
 );
@@ -318,10 +315,6 @@ function AppContent() {
                   <Route index element={<AdminDashboard />} />
                   <Route path="invitations" element={<AdminInvitations />} />
                   <Route path="permissions" element={<AdminPermissions />} />
-                  <Route
-                    path="configuration"
-                    element={<AdminConfiguration />}
-                  />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="flagged-users" element={<AdminFlaggedUsers />} />
                 </Route>
