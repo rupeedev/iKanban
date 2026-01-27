@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT\n                    t.id             AS \"id!: Uuid\",\n                    t.project_id     AS \"project_id!: Uuid\",\n                    t.parent_id,\n                    t.title          AS \"title!\",\n                    t.description,\n                    t.status         AS \"status!\",\n                    t.priority,\n                    t.due_date,\n                    t.assignee_id,\n                    t.issue_number,\n                    t.created_at     AS \"created_at!: DateTime<Utc>\",\n                    t.updated_at     AS \"updated_at!: DateTime<Utc>\"\n                FROM tasks t\n                WHERE t.team_id = $1\n                  AND t.id IN (\n                      SELECT tt.task_id\n                      FROM task_tags tt\n                      WHERE tt.tag_id = ANY($2)\n                      GROUP BY tt.task_id\n                      HAVING COUNT(DISTINCT tt.tag_id) = $3\n                  )\n                ORDER BY t.created_at DESC\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "parent_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "title!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "status!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "priority",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "due_date",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "assignee_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 9,
+        "name": "issue_number",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "7e4414ab30489b9609898628ff7defcf06dbec31be25e7885610c2b0052a0c87"
+}

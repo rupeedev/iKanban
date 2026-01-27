@@ -498,7 +498,11 @@ async fn get_team_issues(
             .split(',')
             .filter_map(|s| s.trim().parse::<Uuid>().ok())
             .collect();
-        if parsed.is_empty() { None } else { Some(parsed) }
+        if parsed.is_empty() {
+            None
+        } else {
+            Some(parsed)
+        }
     });
 
     let issues = TeamRepository::get_issues(pool, team.id, tag_ids.as_deref())
@@ -514,6 +518,46 @@ async fn get_team_issues(
     Ok(ApiResponse::success(issues))
 }
 
+/// Get sub-issues for a parent issue
+async fn get_sub_issues(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path((team_id, issue_id)): Path<(String, Uuid)>,
+) -> Result<Json<ApiResponse<Vec<TeamIssue>>>, ErrorResponse> {
+    let pool = state.pool();
+
+    let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    if let Some(workspace_id) =
+        TeamRepository::workspace_id(pool, team.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %team_id, "failed to get team workspace");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+            })?
+    {
+        ensure_member_access(pool, workspace_id, ctx.user.id).await?;
+    }
+
+    let sub_issues = TeamRepository::get_sub_issues(pool, team.id, issue_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, %issue_id, "failed to get sub-issues");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to get sub-issues",
+            )
+        })?;
+
+    Ok(ApiResponse::success(sub_issues))
+}
+
 /// Request payload for creating a team issue
 #[derive(Debug, Deserialize)]
 pub struct CreateTeamIssueRequest {
@@ -524,6 +568,7 @@ pub struct CreateTeamIssueRequest {
     pub priority: Option<i32>,
     pub due_date: Option<DateTime<Utc>>,
     pub assignee_id: Option<Uuid>,
+    pub parent_id: Option<Uuid>,
 }
 
 /// Request payload for updating a team issue
@@ -536,6 +581,7 @@ pub struct UpdateTeamIssueRequest {
     pub due_date: Option<DateTime<Utc>>,
     pub assignee_id: Option<Uuid>,
     pub project_id: Option<Uuid>,
+    pub parent_id: Option<Uuid>,
 }
 
 /// Create a new team issue
@@ -592,6 +638,7 @@ async fn create_team_issue(
         priority: payload.priority,
         due_date: payload.due_date,
         assignee_id: payload.assignee_id,
+        parent_id: payload.parent_id,
     };
 
     let issue = TeamRepository::create_issue(pool, team.id, payload.project_id, create_data)
@@ -653,6 +700,7 @@ async fn update_team_issue(
         due_date: payload.due_date,
         assignee_id: payload.assignee_id,
         project_id: payload.project_id,
+        parent_id: payload.parent_id,
     };
 
     let issue = TeamRepository::update_issue(pool, team.id, issue_id, update_data)

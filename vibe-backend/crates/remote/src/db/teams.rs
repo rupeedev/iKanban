@@ -486,49 +486,109 @@ impl TeamRepository {
             .collect())
     }
 
-    /// Get issues (tasks) for a team
-    pub async fn get_issues(pool: &PgPool, team_id: Uuid) -> Result<Vec<TeamIssue>, TeamError> {
-        let rows = sqlx::query!(
-            r#"
-            SELECT
-                t.id             AS "id!: Uuid",
-                t.project_id     AS "project_id!: Uuid",
-                t.parent_id,
-                t.title          AS "title!",
-                t.description,
-                t.status         AS "status!",
-                t.priority,
-                t.due_date,
-                t.assignee_id,
-                t.issue_number,
-                t.created_at     AS "created_at!: DateTime<Utc>",
-                t.updated_at     AS "updated_at!: DateTime<Utc>"
-            FROM tasks t
-            WHERE t.team_id = $1
-            ORDER BY t.created_at DESC
-            "#,
-            team_id
-        )
-        .fetch_all(pool)
-        .await?;
+    /// Get issues (tasks) for a team, optionally filtered by tags
+    /// When tag_ids is provided, returns only issues that have ALL specified tags (AND logic)
+    pub async fn get_issues(
+        pool: &PgPool,
+        team_id: Uuid,
+        tag_ids: Option<&[Uuid]>,
+    ) -> Result<Vec<TeamIssue>, TeamError> {
+        if let Some(tags) = tag_ids {
+            // Filter by tags using subquery with GROUP BY + HAVING
+            // This ensures tasks have ALL the specified tags (AND logic)
+            let rows = sqlx::query!(
+                r#"
+                SELECT
+                    t.id             AS "id!: Uuid",
+                    t.project_id     AS "project_id!: Uuid",
+                    t.parent_id,
+                    t.title          AS "title!",
+                    t.description,
+                    t.status         AS "status!",
+                    t.priority,
+                    t.due_date,
+                    t.assignee_id,
+                    t.issue_number,
+                    t.created_at     AS "created_at!: DateTime<Utc>",
+                    t.updated_at     AS "updated_at!: DateTime<Utc>"
+                FROM tasks t
+                WHERE t.team_id = $1
+                  AND t.id IN (
+                      SELECT tt.task_id
+                      FROM task_tags tt
+                      WHERE tt.tag_id = ANY($2)
+                      GROUP BY tt.task_id
+                      HAVING COUNT(DISTINCT tt.tag_id) = $3
+                  )
+                ORDER BY t.created_at DESC
+                "#,
+                team_id,
+                tags,
+                tags.len() as i64
+            )
+            .fetch_all(pool)
+            .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| TeamIssue {
-                id: r.id,
-                project_id: Some(r.project_id),
-                parent_id: r.parent_id,
-                title: r.title,
-                description: r.description,
-                status: r.status,
-                priority: r.priority,
-                due_date: r.due_date,
-                assignee_id: r.assignee_id,
-                issue_number: r.issue_number,
-                created_at: r.created_at,
-                updated_at: r.updated_at,
-            })
-            .collect())
+            Ok(rows
+                .into_iter()
+                .map(|r| TeamIssue {
+                    id: r.id,
+                    project_id: Some(r.project_id),
+                    parent_id: r.parent_id,
+                    title: r.title,
+                    description: r.description,
+                    status: r.status,
+                    priority: r.priority,
+                    due_date: r.due_date,
+                    assignee_id: r.assignee_id,
+                    issue_number: r.issue_number,
+                    created_at: r.created_at,
+                    updated_at: r.updated_at,
+                })
+                .collect())
+        } else {
+            let rows = sqlx::query!(
+                r#"
+                SELECT
+                    t.id             AS "id!: Uuid",
+                    t.project_id     AS "project_id!: Uuid",
+                    t.parent_id,
+                    t.title          AS "title!",
+                    t.description,
+                    t.status         AS "status!",
+                    t.priority,
+                    t.due_date,
+                    t.assignee_id,
+                    t.issue_number,
+                    t.created_at     AS "created_at!: DateTime<Utc>",
+                    t.updated_at     AS "updated_at!: DateTime<Utc>"
+                FROM tasks t
+                WHERE t.team_id = $1
+                ORDER BY t.created_at DESC
+                "#,
+                team_id
+            )
+            .fetch_all(pool)
+            .await?;
+
+            Ok(rows
+                .into_iter()
+                .map(|r| TeamIssue {
+                    id: r.id,
+                    project_id: Some(r.project_id),
+                    parent_id: r.parent_id,
+                    title: r.title,
+                    description: r.description,
+                    status: r.status,
+                    priority: r.priority,
+                    due_date: r.due_date,
+                    assignee_id: r.assignee_id,
+                    issue_number: r.issue_number,
+                    created_at: r.created_at,
+                    updated_at: r.updated_at,
+                })
+                .collect())
+        }
     }
 
     /// Get sub-issues for a parent issue

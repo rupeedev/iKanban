@@ -96,12 +96,14 @@ export function IssueFullView({
 
   // Handler for opening sub-issues dialog
   const handleOpenSubIssuesDialog = useCallback(() => {
+    if (!teamId) return;
     showSubIssuesDialog({
       issueId: issue.id,
       issueTitle: issue.title,
       teamId,
+      projectId: issue.project_id || undefined,
     });
-  }, [issue.id, issue.title, teamId]);
+  }, [issue.id, issue.title, issue.project_id, teamId]);
 
   // State for comments refresh
   const [isRefreshingComments, setIsRefreshingComments] = useState(false);

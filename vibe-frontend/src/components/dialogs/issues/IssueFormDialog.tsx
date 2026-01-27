@@ -43,6 +43,9 @@ import {
 export interface IssueFormDialogProps {
   teamId?: string;
   projectId?: string;
+  parentId?: string;
+  mode?: 'create' | 'edit';
+  title?: string;
 }
 
 export type IssueFormDialogResult = 'created' | 'canceled';
@@ -129,7 +132,13 @@ function getDueDate(preset: (typeof DUE_DATE_PRESETS)[number]): string {
 }
 
 const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(
-  ({ teamId, projectId: initialProjectId }) => {
+  ({
+    teamId,
+    projectId: initialProjectId,
+    parentId,
+    mode = 'create',
+    title: dialogTitle,
+  }) => {
     const modal = useModal();
     const { teamsById } = useTeams();
     const { projects } = useProjects();
@@ -176,6 +185,7 @@ const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(
             priority: priority || null,
             due_date: dueDate,
             assignee_id: assigneeId,
+            parent_id: parentId || null,
           });
         } else {
           await createTask.mutateAsync({
@@ -216,6 +226,7 @@ const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(
       priority,
       projectId,
       teamId,
+      parentId,
       dueDate,
       assigneeId,
       createMore,
@@ -275,7 +286,7 @@ const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(
                 <ChevronRight className="h-4 w-4" />
               </>
             ) : null}
-            <span>New issue</span>
+            <span>{dialogTitle || (mode === 'edit' ? 'Edit issue' : 'New issue')}</span>
           </div>
 
           {/* Main form */}
@@ -502,3 +513,10 @@ export const IssueFormDialog = defineModal<
   IssueFormDialogProps,
   IssueFormDialogResult
 >(IssueFormDialogImpl);
+
+// Convenience function to show the dialog
+export function showIssueFormDialog(
+  props: IssueFormDialogProps
+): Promise<IssueFormDialogResult> {
+  return IssueFormDialog.show(props);
+}

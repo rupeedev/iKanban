@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO tasks (id, team_id, project_id, title, description, status, priority, due_date, assignee_id, issue_number, created_at, updated_at)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())\n            RETURNING\n                id             AS \"id!: Uuid\",\n                project_id     AS \"project_id!: Uuid\",\n                title          AS \"title!\",\n                description,\n                status         AS \"status!\",\n                priority,\n                due_date,\n                assignee_id,\n                issue_number,\n                created_at     AS \"created_at!: DateTime<Utc>\",\n                updated_at     AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "query": "\n            SELECT\n                t.id             AS \"id!: Uuid\",\n                t.project_id     AS \"project_id!: Uuid\",\n                t.parent_id,\n                t.title          AS \"title!\",\n                t.description,\n                t.status         AS \"status!\",\n                t.priority,\n                t.due_date,\n                t.assignee_id,\n                t.issue_number,\n                t.created_at     AS \"created_at!: DateTime<Utc>\",\n                t.updated_at     AS \"updated_at!: DateTime<Utc>\"\n            FROM tasks t\n            WHERE t.team_id = $1 AND t.parent_id = $2\n            ORDER BY t.created_at DESC\n            ",
   "describe": {
     "columns": [
       {
@@ -15,46 +15,51 @@
       },
       {
         "ordinal": 2,
+        "name": "parent_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
         "name": "title!",
         "type_info": "Text"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "description",
         "type_info": "Text"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "status!",
         "type_info": "Text"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "priority",
         "type_info": "Int4"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "due_date",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "assignee_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "issue_number",
         "type_info": "Int4"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -62,20 +67,13 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Uuid",
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        "Int4",
-        "Timestamptz",
-        "Uuid",
-        "Int4"
+        "Uuid"
       ]
     },
     "nullable": [
       false,
       false,
+      true,
       false,
       true,
       false,
@@ -87,5 +85,5 @@
       false
     ]
   },
-  "hash": "5f36f5a690f2f0b2f0acf3fa6168a84cb366bdba6567f3781f85c38ba87ce96c"
+  "hash": "82a52f03441c9a04150d1adcbbe9c41adb98b92ad3e85ffe8e2f450fab3807b6"
 }
