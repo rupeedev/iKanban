@@ -493,6 +493,7 @@ impl TeamRepository {
             SELECT
                 t.id             AS "id!: Uuid",
                 t.project_id     AS "project_id!: Uuid",
+                t.parent_id,
                 t.title          AS "title!",
                 t.description,
                 t.status         AS "status!",
@@ -516,6 +517,57 @@ impl TeamRepository {
             .map(|r| TeamIssue {
                 id: r.id,
                 project_id: Some(r.project_id),
+                parent_id: r.parent_id,
+                title: r.title,
+                description: r.description,
+                status: r.status,
+                priority: r.priority,
+                due_date: r.due_date,
+                assignee_id: r.assignee_id,
+                issue_number: r.issue_number,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+            })
+            .collect())
+    }
+
+    /// Get sub-issues for a parent issue
+    pub async fn get_sub_issues(
+        pool: &PgPool,
+        team_id: Uuid,
+        parent_id: Uuid,
+    ) -> Result<Vec<TeamIssue>, TeamError> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                t.id             AS "id!: Uuid",
+                t.project_id     AS "project_id!: Uuid",
+                t.parent_id,
+                t.title          AS "title!",
+                t.description,
+                t.status         AS "status!",
+                t.priority,
+                t.due_date,
+                t.assignee_id,
+                t.issue_number,
+                t.created_at     AS "created_at!: DateTime<Utc>",
+                t.updated_at     AS "updated_at!: DateTime<Utc>"
+            FROM tasks t
+            WHERE t.team_id = $1 AND t.parent_id = $2
+            ORDER BY t.created_at DESC
+            "#,
+            team_id,
+            parent_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| TeamIssue {
+                id: r.id,
+                project_id: Some(r.project_id),
+                parent_id: r.parent_id,
                 title: r.title,
                 description: r.description,
                 status: r.status,
@@ -553,11 +605,12 @@ impl TeamRepository {
 
         let row = sqlx::query!(
             r#"
-            INSERT INTO tasks (id, team_id, project_id, title, description, status, priority, due_date, assignee_id, issue_number, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+            INSERT INTO tasks (id, team_id, project_id, parent_id, title, description, status, priority, due_date, assignee_id, issue_number, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
             RETURNING
                 id             AS "id!: Uuid",
                 project_id     AS "project_id!: Uuid",
+                parent_id,
                 title          AS "title!",
                 description,
                 status         AS "status!",
@@ -571,6 +624,7 @@ impl TeamRepository {
             id,
             team_id,
             project_id,
+            data.parent_id,
             data.title,
             data.description,
             status,
@@ -585,6 +639,7 @@ impl TeamRepository {
         Ok(TeamIssue {
             id: row.id,
             project_id: Some(row.project_id),
+            parent_id: row.parent_id,
             title: row.title,
             description: row.description,
             status: row.status,
@@ -598,12 +653,24 @@ impl TeamRepository {
     }
 
     /// Update an existing team issue
+    /// Note: To unlink parent (set parent_id to NULL), pass parent_id: Some(Uuid::nil())
     pub async fn update_issue(
         pool: &PgPool,
         team_id: Uuid,
         issue_id: Uuid,
         data: UpdateTeamIssue,
     ) -> Result<Option<TeamIssue>, TeamError> {
+        // Handle parent_id specially to allow setting it to NULL
+        // If parent_id is Some(nil UUID), we interpret as "set to NULL"
+        let parent_id_value = data.parent_id.and_then(|id| {
+            if id == Uuid::nil() {
+                None // Will be set to NULL in DB
+            } else {
+                Some(id)
+            }
+        });
+        let should_update_parent = data.parent_id.is_some();
+
         let row = sqlx::query!(
             r#"
             UPDATE tasks
@@ -615,11 +682,13 @@ impl TeamRepository {
                 due_date = COALESCE($7, due_date),
                 assignee_id = COALESCE($8, assignee_id),
                 project_id = COALESCE($9, project_id),
+                parent_id = CASE WHEN $11 THEN $10 ELSE parent_id END,
                 updated_at = NOW()
             WHERE id = $1 AND team_id = $2
             RETURNING
                 id             AS "id!: Uuid",
                 project_id     AS "project_id!: Uuid",
+                parent_id,
                 title          AS "title!",
                 description,
                 status         AS "status!",
@@ -638,7 +707,9 @@ impl TeamRepository {
             data.priority,
             data.due_date,
             data.assignee_id,
-            data.project_id
+            data.project_id,
+            parent_id_value,
+            should_update_parent
         )
         .fetch_optional(pool)
         .await?;
@@ -646,6 +717,7 @@ impl TeamRepository {
         Ok(row.map(|r| TeamIssue {
             id: r.id,
             project_id: Some(r.project_id),
+            parent_id: r.parent_id,
             title: r.title,
             description: r.description,
             status: r.status,
@@ -1197,6 +1269,7 @@ impl TeamMember {
 pub struct TeamIssue {
     pub id: Uuid,
     pub project_id: Option<Uuid>,
+    pub parent_id: Option<Uuid>,
     pub title: String,
     pub description: Option<String>,
     pub status: String,
@@ -1217,6 +1290,7 @@ pub struct CreateTeamIssue {
     pub priority: Option<i32>,
     pub due_date: Option<DateTime<Utc>>,
     pub assignee_id: Option<Uuid>,
+    pub parent_id: Option<Uuid>,
 }
 
 /// Request payload for updating a team issue
@@ -1229,6 +1303,7 @@ pub struct UpdateTeamIssue {
     pub due_date: Option<DateTime<Utc>>,
     pub assignee_id: Option<Uuid>,
     pub project_id: Option<Uuid>,
+    pub parent_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

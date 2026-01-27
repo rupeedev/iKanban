@@ -36,6 +36,13 @@ pub struct ListTeamsQuery {
     pub workspace_id: Option<Uuid>,
 }
 
+/// Query parameters for getting team issues
+#[derive(Debug, Deserialize)]
+pub struct GetTeamIssuesQuery {
+    /// Comma-separated list of tag UUIDs to filter by (AND logic)
+    pub tags: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 pub struct CreateTeamRequest {
@@ -121,6 +128,10 @@ pub fn router() -> Router<AppState> {
         .route(
             "/teams/{team_id}/issues/{issue_id}",
             patch(update_team_issue),
+        )
+        .route(
+            "/teams/{team_id}/issues/{issue_id}/sub-issues",
+            get(get_sub_issues),
         )
         .route("/teams/{team_id}/members", get(get_team_members))
         .route(
@@ -274,7 +285,7 @@ async fn get_team_dashboard(
     let (members_result, project_ids_result, issues_result) = tokio::join!(
         TeamRepository::get_members(pool, team_uuid),
         TeamRepository::get_project_ids(pool, team_uuid),
-        TeamRepository::get_issues(pool, team_uuid)
+        TeamRepository::get_issues(pool, team_uuid, None)
     );
 
     let members = members_result.map_err(|error| {
@@ -458,6 +469,7 @@ async fn get_team_issues(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(team_id): Path<String>,
+    Query(query): Query<GetTeamIssuesQuery>,
 ) -> Result<Json<ApiResponse<Vec<TeamIssue>>>, ErrorResponse> {
     let pool = state.pool();
 
@@ -480,7 +492,16 @@ async fn get_team_issues(
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }
 
-    let issues = TeamRepository::get_issues(pool, team.id)
+    // Parse tag UUIDs from comma-separated string
+    let tag_ids: Option<Vec<Uuid>> = query.tags.as_ref().and_then(|tags_str| {
+        let parsed: Vec<Uuid> = tags_str
+            .split(',')
+            .filter_map(|s| s.trim().parse::<Uuid>().ok())
+            .collect();
+        if parsed.is_empty() { None } else { Some(parsed) }
+    });
+
+    let issues = TeamRepository::get_issues(pool, team.id, tag_ids.as_deref())
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to get team issues");
