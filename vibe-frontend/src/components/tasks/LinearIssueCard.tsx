@@ -1,7 +1,9 @@
 import { memo, useCallback, useRef, useEffect } from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { tasksApi } from '@/lib/api';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 import { StatusIcon } from '@/utils/StatusIcons';
 import {
@@ -56,6 +58,8 @@ function LinearIssueCardComponent({
   onProjectChange,
 }: LinearIssueCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+  const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -80,6 +84,30 @@ function LinearIssueCardComponent({
       });
     }
   }, [isSelected]);
+
+  // Prefetch task details (comments, links, tags) on hover for instant panel load
+  const handleMouseEnter = useCallback(() => {
+    // Clear any pending prefetch
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current);
+    }
+    // Debounce 100ms to avoid rapid prefetching on fast mouse movement
+    prefetchTimerRef.current = setTimeout(() => {
+      queryClient.prefetchQuery({
+        queryKey: ['task-details', task.id],
+        queryFn: () => tasksApi.getDetails(task.id),
+        staleTime: 5 * 60 * 1000, // 5 minutes
+      });
+    }, 100);
+  }, [queryClient, task.id]);
+
+  const handleMouseLeave = useCallback(() => {
+    // Cancel pending prefetch if user moves away quickly
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current);
+      prefetchTimerRef.current = null;
+    }
+  }, []);
 
   const handleClick = useCallback(() => {
     onViewDetails(task);
@@ -137,6 +165,8 @@ function LinearIssueCardComponent({
       {...listeners}
       {...attributes}
       onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className={cn(
         'p-3 cursor-pointer transition-all duration-150',
         'bg-card hover:bg-accent/30 border border-border/50',

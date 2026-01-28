@@ -1,6 +1,30 @@
-import { Loader } from '@/components/ui/loader';
+import { Skeleton } from '@/components/ui/skeleton';
 import { CommentItem } from './CommentItem';
 import type { TaskComment } from 'shared/types';
+
+/** Skeleton loader for comments - shows animated placeholders instead of "Loading..." */
+function CommentSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="flex gap-3 p-3 rounded-lg bg-muted/30">
+          {/* Avatar skeleton */}
+          <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+          <div className="flex-1 space-y-2">
+            {/* Name and date */}
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+            {/* Comment text lines */}
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 interface CommentListProps {
   comments: TaskComment[];
@@ -29,12 +53,9 @@ export function CommentList({
   isDeleting = false,
   isRefreshingAgentStatus = false,
 }: CommentListProps) {
+  // Show skeleton loader instead of "Loading comments..." text
   if (isLoading) {
-    return (
-      <div className="py-8">
-        <Loader message="Loading comments..." size={24} />
-      </div>
-    );
+    return <CommentSkeleton />;
   }
 
   if (comments.length === 0) {

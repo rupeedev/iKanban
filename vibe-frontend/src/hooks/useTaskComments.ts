@@ -31,12 +31,10 @@ export function useTaskComments(taskId: string | null) {
       }
     },
     enabled: !!taskId,
-    // Cache comments for 5 minutes to reduce API calls
-    staleTime: 5 * 60 * 1000,
+    // Cache comments - show cached data instantly, refetch in background (IKA-344)
+    staleTime: 30 * 1000, // 30 seconds - after this, refetch in background
     // Keep in cache for 15 minutes
     gcTime: 15 * 60 * 1000,
-    // Don't use placeholderData - it causes confusing loading states (IKA-322)
-    // When switching tasks, we want to show loading indicator, not stale data
     // Don't retry rate limit errors
     retry: (failureCount, error) => {
       if (isRateLimitError(error)) return false;
