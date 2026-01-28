@@ -10,6 +10,7 @@ import {
   Briefcase,
   Bot,
   CreditCard,
+  Tag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,10 @@ const settingsNavigation = [
   {
     path: 'projects',
     icon: FolderOpen,
+  },
+  {
+    path: 'issue-labels',
+    icon: Tag,
   },
   {
     path: 'workspace',

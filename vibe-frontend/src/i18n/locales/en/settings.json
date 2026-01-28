@@ -20,7 +20,46 @@
         "ai-provider-keys": "AI Provider Keys",
         "ai-provider-keysDesc": "Configure API keys for Claude, Gemini, and OpenAI",
         "billing": "Billing",
-        "billingDesc": "Manage subscription, plans, and usage"
+        "billingDesc": "Manage subscription, plans, and usage",
+        "issue-labels": "Issue Labels",
+        "issue-labelsDesc": "Create and manage labels for categorizing issues"
+      }
+    },
+    "labels": {
+      "title": "Issue Labels",
+      "description": "Manage labels used for categorizing issues in your teams.",
+      "selectTeam": "Select Team:",
+      "newLabel": "New Label",
+      "noTeamSelected": "Please select a team to manage its labels.",
+      "noTags": "No labels found for this team.",
+      "createFirst": "Create your first label",
+      "createSuccess": "Label created successfully",
+      "createError": "Failed to create label",
+      "updateSuccess": "Label updated successfully",
+      "updateError": "Failed to update label",
+      "deleteSuccess": "Label deleted successfully",
+      "deleteError": "Failed to delete label",
+      "table": {
+        "name": "Name",
+        "description": "Description",
+        "actions": "Actions"
+      },
+      "create": {
+        "title": "Create Label",
+        "description": "Add a new label to organize issues."
+      },
+      "edit": {
+        "title": "Edit Label",
+        "description": "Update label details."
+      },
+      "delete": {
+        "title": "Delete Label?",
+        "confirmation": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone and will remove this label from all issues."
+      },
+      "form": {
+        "name": "Name",
+        "description": "Description",
+        "color": "Color"
       }
     },
     "billing": {
