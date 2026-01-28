@@ -393,7 +393,73 @@ export function useMyData(id: string | undefined) {
 
 **Do NOT duplicate these in individual hooks** unless you need different behavior.
 
-### Rule 3: Use Targeted Query Invalidation
+### Rule 3: NEVER Manage Auth Token State Locally in Hooks
+
+**Use centralized `getAuthToken()` from `api.ts` - NEVER manage token via local useState.**
+
+```typescript
+// BAD - Race condition: query can fire before token is set in state
+export function useMyData() {
+  const { getToken, isSignedIn } = useClerkAuth();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      getToken().then(setToken);  // Async - query might fire first!
+    }
+  }, [getToken, isSignedIn]);
+
+  return useQuery({
+    queryFn: async () => {
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },  // token might be null!
+      });
+    },
+    enabled: isSignedIn && !!token,  // Race condition: enabled before token ready
+  });
+}
+
+// GOOD - Use centralized getAuthToken() inside queryFn
+import { getAuthToken } from '@/lib/api';
+
+export function useMyData() {
+  const { isSignedIn } = useClerkAuth();
+
+  return useQuery({
+    queryFn: async () => {
+      const token = await getAuthToken();  // Always gets current token
+      if (!token) return null;
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    },
+    enabled: isSignedIn,  // No race condition - token fetched inside queryFn
+  });
+}
+
+// BEST - Use centralized API client (handles auth automatically)
+import { myApi } from '@/lib/api';
+
+export function useMyData() {
+  return useQuery({
+    queryFn: () => myApi.getData(),  // makeRequest adds auth header automatically
+    enabled: isSignedIn,
+  });
+}
+```
+
+**Why this matters (IKA-345 incident):**
+- Token managed via `useState` + `useEffect` creates a race condition
+- `useEffect` runs AFTER render, so initial query fires with `token = null`
+- Result: 401 Unauthorized errors even when user is signed in
+- The centralized `authTokenGetter` is set by `AuthInitializer` when user signs in
+
+**Pattern hierarchy (prefer in this order):**
+1. **Use existing API methods** from `lib/api.ts` (e.g., `teamsApi.list()`, `tasksApi.get()`)
+2. **Use `getAuthToken()` inside queryFn** if you need custom fetch logic
+3. **NEVER** manage token state locally in hooks
+
+### Rule 4: Use Targeted Query Invalidation
 
 ```typescript
 // BAD - Invalidates ALL queries, causes cascade of refetches
@@ -413,7 +479,7 @@ queryClient.invalidateQueries({
 });
 ```
 
-### Rule 4: Rate Limit Error Handling (Centralized)
+### Rule 5: Rate Limit Error Handling (Centralized)
 
 **Rate limit handling is now GLOBAL** - defined once in `main.tsx`:
 
@@ -445,7 +511,7 @@ const queryClient = new QueryClient({
 
 **DO NOT add rate limit handling to individual hooks** - it's already inherited globally.
 
-### Rule 5: Choose the Right Mutation Cache Update Strategy
+### Rule 6: Choose the Right Mutation Cache Update Strategy
 
 When a mutation succeeds, you need to update the cache. Choose the right strategy based on what the server does:
 
@@ -487,7 +553,7 @@ const mutation = useMutation({
 
 **Real example from IKA-148:** The profiles API saves only *overrides* (differences from defaults), not the full config. Using optimistic update with the sent data caused the UI to show different data after refresh.
 
-### Common Patterns That Cause 429 Errors
+### Common Patterns That Cause 429/401 Errors
 
 | Anti-Pattern | Problem | Fix |
 |--------------|---------|-----|
@@ -497,6 +563,7 @@ const mutation = useMutation({
 | Overriding `retry` without 429 check | Amplifies problem | Use global default (don't override) |
 | Overriding `staleTime` to low value | Refetches too often | Use global 30min default or justify |
 | Overriding `refetchOnWindowFocus: true` | Unexpected refetches | Use global default (don't override) |
+| **Token in useState + useEffect** | **Race condition → 401** | **Use `getAuthToken()` inside queryFn** |
 
 ### Quick Reference: Safe API Call Pattern
 
@@ -1034,6 +1101,7 @@ components/
 | **Route prefix matches frontend (`/api/`)** | Code review | N/A |
 | **Migrations use idempotent patterns** | Code review | N/A |
 | **No direct API calls in useEffect** | N/A | Code review |
+| **No token state in hooks (use getAuthToken)** | N/A | Code review |
 | **useQuery uses global defaults (don't override)** | N/A | Code review |
 | **invalidateQueries uses refetchType: 'none'** | N/A | Code review |
 | **Mutation cache strategy matches server behavior** | N/A | Code review |
@@ -1065,6 +1133,7 @@ components/
 | **IKA-234** | Tooltip without TooltipProvider | Always wrap Tooltip in TooltipProvider |
 | **IKA-307** | Raw Markdown syntax in documents | Use MarkdownViewer for all text content |
 | **IKA-331** | TOC cut off at viewport edge | Add overflow-x-hidden to fixed-width containers |
+| **IKA-345** | 401 auth race condition in hooks | Use `getAuthToken()` inside queryFn, not useState |
 | **VIB-70** | Migration file modified | Never modify existing migrations |
 | **IKA-215** | Non-idempotent migrations | Use IF NOT EXISTS, DO blocks, DROP IF EXISTS |
 | **IKA-215** | Axum `:param` syntax panic | Use `{param}` syntax (Axum 0.7+) |
@@ -1077,6 +1146,14 @@ components/
 2. Always add `refetchType: 'none'` to `invalidateQueries()` calls
 3. Use global defaults - don't override in individual hooks
 4. Don't override `retry`, `refetchOnWindowFocus`, or `refetchOnReconnect`
+
+### Auth Token Race Condition Prevention (IKA-345)
+
+1. **NEVER** manage auth token via `useState` + `useEffect` in hooks
+2. **ALWAYS** use centralized `getAuthToken()` from `lib/api.ts` inside `queryFn`
+3. **BEST**: Use API methods from `lib/api.ts` (e.g., `teamsApi.list()`) which handle auth automatically
+4. If you must do custom fetch, call `await getAuthToken()` at the start of `queryFn`
+5. The `enabled` condition should check `isSignedIn`, not `!!token` (token is fetched inside queryFn)
 
 ### Mutation Cache Strategy (IKA-148)
 
