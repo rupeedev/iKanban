@@ -601,6 +601,160 @@ const { data, isLoading, error } = useMyHook(id);
 
 ---
 
+## Loading State Management (CRITICAL)
+
+**These rules prevent UI freezes during async operations. Learned from IKA-348 (UI blocked for 20+ seconds, entire task view frozen).**
+
+### Rule 1: NEVER Use Shared Loading State for Independent Operations
+
+Each UI element must have its own loading state. A single shared `isSaving` state will block the entire UI when ANY operation is in progress.
+
+```typescript
+// BAD - Single state blocks everything (IKA-348 incident)
+function IssueView() {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleStatusChange = async () => {
+    setIsSaving(true);  // Blocks labels, assignee, project...
+    await updateStatus();
+    setIsSaving(false);
+  };
+
+  return (
+    <>
+      <StatusDropdown disabled={isSaving} />      {/* Blocked! */}
+      <AssigneeDropdown disabled={isSaving} />    {/* Blocked! */}
+      <LabelsSection disabled={isSaving} />       {/* Blocked! */}
+      <ProjectDropdown disabled={isSaving} />     {/* Blocked! */}
+    </>
+  );
+}
+
+// GOOD - Each mutation has its own loading state
+function IssueView() {
+  const statusMutation = useMutation({ mutationFn: updateStatus });
+  const assigneeMutation = useMutation({ mutationFn: updateAssignee });
+  const projectMutation = useMutation({ mutationFn: updateProject });
+
+  return (
+    <>
+      <StatusDropdown disabled={statusMutation.isPending} />
+      <AssigneeDropdown disabled={assigneeMutation.isPending} />
+      <LabelsSection />  {/* Has own internal isAdding/isRemoving state */}
+      <ProjectDropdown disabled={projectMutation.isPending} />
+    </>
+  );
+}
+```
+
+### Rule 2: API Timeouts Must Be User-Friendly
+
+Timeout should be 10 seconds or less. Users won't wait 30+ seconds for feedback.
+
+```typescript
+// BAD - 30 second timeout is too long
+const RETRY_CONFIG = {
+  requestTimeoutMs: 30000,  // User will think app is frozen
+};
+
+// GOOD - 10 second timeout with clear feedback
+const RETRY_CONFIG = {
+  requestTimeoutMs: 10000,  // Fail fast, let user retry
+};
+
+// BETTER - Show progress during operation
+<Button onClick={handleSave} disabled={isPending}>
+  {isPending ? (
+    <>
+      <Loader2 className="animate-spin" />
+      <span>Saving...</span>  {/* User knows something is happening */}
+    </>
+  ) : (
+    'Save'
+  )}
+</Button>
+```
+
+### Rule 3: Use refetchType: 'none' to Prevent Hanging
+
+After mutations, don't force immediate refetch - it can hang indefinitely if server is slow.
+
+```typescript
+// BAD - Forces refetch that might hang (IKA-348 incident)
+onSuccess: () => {
+  queryClient.invalidateQueries({
+    queryKey: ['task-comments', taskId],
+    // Default refetchType: 'all' - triggers immediate refetch
+  });
+},
+
+// GOOD - Mark stale, refetch on next access
+onSuccess: () => {
+  queryClient.invalidateQueries({
+    queryKey: ['task-comments', taskId],
+    refetchType: 'none',  // Just mark as stale
+  });
+},
+```
+
+### Rule 4: Optimistic Updates Should Not Depend on Refetch
+
+When using optimistic updates, update the cache directly. Don't rely on refetch after mutation.
+
+```typescript
+// BAD - Optimistic update then refetch (double work, might hang)
+onMutate: async (newData) => {
+  queryClient.setQueryData(['key'], newData);  // Optimistic
+},
+onSettled: () => {
+  queryClient.invalidateQueries({ queryKey: ['key'] });  // Refetch might hang
+},
+
+// GOOD - Optimistic update, mark stale, refetch on error only
+onMutate: async (newData) => {
+  const previous = queryClient.getQueryData(['key']);
+  queryClient.setQueryData(['key'], newData);
+  return { previous };
+},
+onError: (_, __, context) => {
+  queryClient.setQueryData(['key'], context.previous);  // Rollback
+},
+onSettled: () => {
+  queryClient.invalidateQueries({
+    queryKey: ['key'],
+    refetchType: 'none',  // Just mark stale, don't refetch
+  });
+},
+```
+
+### Loading State Checklist
+
+| Check | What to Verify |
+|-------|---------------|
+| No shared `isSaving` | Each action has its own `isPending` state |
+| Timeout ≤ 10s | API client timeout is 10000ms or less |
+| refetchType: 'none' | All `invalidateQueries` calls use `refetchType: 'none'` |
+| Loading feedback | Buttons show "Saving..." or spinner during operation |
+| UI not blocked | User can interact with other elements during save |
+
+### IKA-348 Incident Summary
+
+**Problems:**
+1. 30-second API timeout - users thought app was frozen
+2. Single `isSaving` state blocked entire issue sidebar
+3. `refetchType: 'all'` caused spinner to hang after comment was saved
+4. No visual feedback during save operations
+
+**Fixes:**
+1. Reduced timeout to 10 seconds
+2. Removed shared `isSaving` - each dropdown/section has own state
+3. Changed all `invalidateQueries` to use `refetchType: 'none'`
+4. Added "Saving..." text in submit buttons
+
+**Key Lesson:** Independent operations need independent loading states. Never let one slow operation block the entire UI.
+
+---
+
 ## Component Resilience (CRITICAL)
 
 **These rules prevent the frontend from crashing when APIs fail.**
@@ -1104,6 +1258,8 @@ components/
 | **No token state in hooks (use getAuthToken)** | N/A | Code review |
 | **useQuery uses global defaults (don't override)** | N/A | Code review |
 | **invalidateQueries uses refetchType: 'none'** | N/A | Code review |
+| **No shared isSaving state (use isPending per mutation)** | N/A | Code review |
+| **API timeout ≤ 10 seconds** | Code review | Code review |
 | **Mutation cache strategy matches server behavior** | N/A | Code review |
 | **Components handle isLoading state** | N/A | Code review |
 | **Components handle isError state** | N/A | Code review |
@@ -1134,6 +1290,7 @@ components/
 | **IKA-307** | Raw Markdown syntax in documents | Use MarkdownViewer for all text content |
 | **IKA-331** | TOC cut off at viewport edge | Add overflow-x-hidden to fixed-width containers |
 | **IKA-345** | 401 auth race condition in hooks | Use `getAuthToken()` inside queryFn, not useState |
+| **IKA-348** | UI frozen during save, spinner hung 20+ sec | Independent loading states, 10s timeout, refetchType: 'none' |
 | **VIB-70** | Migration file modified | Never modify existing migrations |
 | **IKA-215** | Non-idempotent migrations | Use IF NOT EXISTS, DO blocks, DROP IF EXISTS |
 | **IKA-215** | Axum `:param` syntax panic | Use `{param}` syntax (Axum 0.7+) |
@@ -1182,6 +1339,15 @@ components/
 3. Markdown handles plain text gracefully (renders as paragraphs)
 4. If content has Markdown syntax, it's properly formatted
 5. This applies regardless of file extension - check `content_type`, not just `file_type`
+
+### Loading State & UI Responsiveness Prevention (IKA-348)
+
+1. **NEVER use single shared `isSaving` state** for multiple independent operations
+2. Each mutation should use its own `isPending` state from `useMutation`
+3. API timeout should be **10 seconds or less** - users won't wait 30 seconds
+4. Always use `refetchType: 'none'` in `invalidateQueries()` when using optimistic updates
+5. Show clear feedback ("Saving...", spinner) during operations
+6. User should be able to interact with OTHER UI elements while one operation is pending
 
 ### Layout Overflow Prevention (IKA-331)
 
