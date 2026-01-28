@@ -15,6 +15,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{
+        notifications,
         projects::ProjectRepository,
         pulse::{
             CreateProjectUpdate, ProjectUpdate, ProjectUpdateWithReactions, PulseRepository,
@@ -160,6 +161,25 @@ async fn create_update(
         })?;
 
     tracing::info!(%project_id, update_id = %update.id, "created project update");
+
+    // Extract @mentions and notify mentioned users (fire and forget)
+    let mentions = notifications::extract_mentions(&payload.content);
+    for mention in mentions {
+        if let Ok(Some(mentioned_user_id)) =
+            notifications::resolve_mention_to_user_id(state.pool(), &mention).await
+        {
+            let _ = notifications::notify_mentioned_in_update(
+                state.pool(),
+                mentioned_user_id,
+                ctx.user.id,
+                &payload.content,
+                project_id,
+                None,
+            )
+            .await
+            .inspect_err(|e| tracing::warn!(?e, "failed to send mentioned_in_update notification"));
+        }
+    }
 
     Ok(ApiResponse::success(update))
 }

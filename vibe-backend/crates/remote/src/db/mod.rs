@@ -18,6 +18,7 @@ pub mod gitlab_connections;
 pub mod identity_errors;
 pub mod inbox;
 pub mod invitations;
+pub mod notifications;
 pub mod oauth;
 pub mod oauth_accounts;
 pub mod organization_members;

@@ -19,6 +19,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{
+        notifications,
         organization_members,
         tags::TagRepository,
         task_comments::{CreateTaskComment, TaskCommentRepository},
@@ -289,6 +290,84 @@ pub async fn update_shared_task(
             )
             .await;
 
+            // Send notifications (fire and forget - don't fail if notification fails)
+            // Check if assignee changed
+            let old_assignee = existing.assignee_user_id;
+            let new_assignee = task.task.assignee_user_id;
+            if old_assignee != new_assignee {
+                // Notify new assignee
+                if let Some(new_id) = new_assignee {
+                    let _ = notifications::notify_task_assigned(
+                        pool,
+                        new_id,
+                        ctx.user.id,
+                        task.task.id,
+                        &task.task.title,
+                        Some(task.task.project_id),
+                        None,
+                    )
+                    .await
+                    .inspect_err(|e| tracing::warn!(?e, "failed to send task_assigned notification"));
+                }
+                // Notify old assignee they were unassigned
+                if let Some(old_id) = old_assignee {
+                    let _ = notifications::notify_task_unassigned(
+                        pool,
+                        old_id,
+                        ctx.user.id,
+                        task.task.id,
+                        &task.task.title,
+                        Some(task.task.project_id),
+                        None,
+                    )
+                    .await
+                    .inspect_err(|e| tracing::warn!(?e, "failed to send task_unassigned notification"));
+                }
+            }
+
+            // Check if status changed
+            if let Some(ref new_status) = status
+                && existing.status != *new_status {
+                    // Notify assignee of status change
+                    if let Some(assignee_id) = task.task.assignee_user_id {
+                        // Check if it's a completion
+                        if *new_status == TaskStatus::Done {
+                            if let Err(e) = notifications::notify_task_completed(
+                                pool,
+                                assignee_id,
+                                ctx.user.id,
+                                task.task.id,
+                                &task.task.title,
+                                Some(task.task.project_id),
+                                None,
+                            )
+                            .await
+                            {
+                                tracing::warn!(?e, "failed to send task_completed notification");
+                            }
+                        } else {
+                            if let Err(e) = notifications::notify_task_status_changed(
+                                pool,
+                                assignee_id,
+                                ctx.user.id,
+                                task.task.id,
+                                &task.task.title,
+                                &format!("{:?}", existing.status),
+                                &format!("{:?}", new_status),
+                                Some(task.task.project_id),
+                                None,
+                            )
+                            .await
+                            {
+                                tracing::warn!(
+                                    ?e,
+                                    "failed to send task_status_changed notification"
+                                );
+                            }
+                        }
+                    }
+                }
+
             (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response()
         }
         Err(error) => task_error_response(error, "failed to update shared task"),
@@ -345,7 +424,24 @@ pub async fn assign_task(
     };
 
     match repo.assign_task(task_id, data).await {
-        Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
+        Ok(task) => {
+            // Send notification to new assignee (fire and forget)
+            if let Some(new_assignee_id) = payload.new_assignee_user_id
+                && let Err(e) = notifications::notify_task_assigned(
+                    pool,
+                    new_assignee_id,
+                    ctx.user.id,
+                    task.task.id,
+                    &task.task.title,
+                    Some(task.task.project_id),
+                    None,
+                )
+                .await
+                {
+                    tracing::warn!(?e, "failed to send task_assigned notification");
+                }
+            (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response()
+        }
         Err(error) => task_error_response(error, "failed to transfer task assignment"),
     }
 }
@@ -627,6 +723,9 @@ pub async fn create_task_comment(
         None
     };
 
+    // Clone content for notifications before moving into create_data
+    let comment_content = payload.content.clone();
+
     let create_data = CreateTaskComment {
         content: payload.content,
         is_internal: payload.is_internal,
@@ -636,7 +735,73 @@ pub async fn create_task_comment(
     };
 
     match TaskCommentRepository::create(pool, task_id, &create_data).await {
-        Ok(comment) => (StatusCode::CREATED, ApiResponse::success(comment)).into_response(),
+        Ok(comment) => {
+            // Get task info for notifications
+            let task_repo = SharedTaskRepository::new(pool);
+            if let Ok(Some(task)) = task_repo.find_by_id(task_id).await {
+                // Extract @mentions and notify mentioned users
+                let mentions = notifications::extract_mentions(&comment_content);
+                for mention in mentions {
+                    if let Ok(Some(mentioned_user_id)) =
+                        notifications::resolve_mention_to_user_id(pool, &mention).await
+                        && let Err(e) = notifications::notify_task_mentioned(
+                            pool,
+                            mentioned_user_id,
+                            ctx.user.id,
+                            task_id,
+                            &task.title,
+                            &comment_content,
+                            Some(task.project_id),
+                            None,
+                        )
+                        .await
+                        {
+                            tracing::warn!(?e, "failed to send task_mentioned notification");
+                        }
+                }
+
+                // Notify task assignee about the comment (if not the commenter)
+                if let Some(assignee_id) = task.assignee_user_id
+                    && assignee_id != ctx.user.id
+                        && let Err(e) = notifications::notify_task_comment(
+                            pool,
+                            assignee_id,
+                            ctx.user.id,
+                            task_id,
+                            &task.title,
+                            &comment_content,
+                            Some(task.project_id),
+                            None,
+                        )
+                        .await
+                        {
+                            tracing::warn!(?e, "failed to send task_comment notification");
+                        }
+
+                // Also notify task creator if different from assignee and commenter
+                if let Some(creator_id) = task.creator_user_id
+                    && creator_id != ctx.user.id && Some(creator_id) != task.assignee_user_id
+                        && let Err(e) = notifications::notify_task_comment(
+                            pool,
+                            creator_id,
+                            ctx.user.id,
+                            task_id,
+                            &task.title,
+                            &comment_content,
+                            Some(task.project_id),
+                            None,
+                        )
+                        .await
+                        {
+                            tracing::warn!(
+                                ?e,
+                                "failed to send task_comment notification to creator"
+                            );
+                        }
+            }
+
+            (StatusCode::CREATED, ApiResponse::success(comment)).into_response()
+        }
         Err(e) => {
             tracing::error!(?e, "failed to create task comment");
             (

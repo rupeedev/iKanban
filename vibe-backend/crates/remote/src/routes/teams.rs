@@ -23,6 +23,7 @@ use crate::{
             CreateDocumentFolder, DocumentFolder, DocumentFolderRepository, UpdateDocumentFolder,
         },
         documents::{CreateDocument, Document, DocumentRepository, UpdateDocument},
+        notifications,
         projects::{Project, ProjectRepository},
         teams::{
             CreateTeamIssue, Team, TeamDocument, TeamFolder, TeamInvitation, TeamIssue, TeamMember,
@@ -655,6 +656,22 @@ async fn create_team_issue(
         "created team issue"
     );
 
+    // Send notification to assignee if assigned on creation (fire and forget)
+    if let Some(assignee_id) = payload.assignee_id
+        && let Err(e) = notifications::notify_task_assigned(
+            pool,
+            assignee_id,
+            ctx.user.id,
+            issue.id,
+            &issue.title,
+            issue.project_id,
+            None,
+        )
+        .await
+        {
+            tracing::warn!(?e, "failed to send task_assigned notification for team issue");
+        }
+
     Ok(ApiResponse::success(issue))
 }
 
@@ -692,10 +709,21 @@ async fn update_team_issue(
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }
 
+    // Get existing issue to compare for notifications
+    let existing_issues = TeamRepository::get_issues(pool, team.id, None)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %team_id, "failed to get existing issues");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get issue")
+        })?;
+    let existing = existing_issues.iter().find(|i| i.id == issue_id);
+    let old_assignee = existing.and_then(|i| i.assignee_id);
+    let old_status = existing.map(|i| i.status.clone());
+
     let update_data = UpdateTeamIssue {
-        title: payload.title,
-        description: payload.description,
-        status: payload.status,
+        title: payload.title.clone(),
+        description: payload.description.clone(),
+        status: payload.status.clone(),
         priority: payload.priority,
         due_date: payload.due_date,
         assignee_id: payload.assignee_id,
@@ -716,6 +744,81 @@ async fn update_team_issue(
         issue_id = %issue.id,
         "updated team issue"
     );
+
+    // Send notifications (fire and forget)
+    // Check if assignee changed
+    let new_assignee = issue.assignee_id;
+    if old_assignee != new_assignee {
+        // Notify new assignee
+        if let Some(new_id) = new_assignee
+            && let Err(e) = notifications::notify_task_assigned(
+                pool,
+                new_id,
+                ctx.user.id,
+                issue.id,
+                &issue.title,
+                issue.project_id,
+                None,
+            )
+            .await
+            {
+                tracing::warn!(?e, "failed to send task_assigned notification for team issue");
+            }
+        // Notify old assignee they were unassigned
+        if let Some(old_id) = old_assignee
+            && let Err(e) = notifications::notify_task_unassigned(
+                pool,
+                old_id,
+                ctx.user.id,
+                issue.id,
+                &issue.title,
+                issue.project_id,
+                None,
+            )
+            .await
+            {
+                tracing::warn!(?e, "failed to send task_unassigned notification for team issue");
+            }
+    }
+
+    // Check if status changed
+    if let (Some(ref old_st), Some(new_st)) = (old_status, payload.status.as_ref())
+        && old_st != new_st {
+            // Notify assignee of status change
+            if let Some(assignee_id) = issue.assignee_id {
+                if new_st == "done" {
+                    if let Err(e) = notifications::notify_task_completed(
+                        pool,
+                        assignee_id,
+                        ctx.user.id,
+                        issue.id,
+                        &issue.title,
+                        issue.project_id,
+                        None,
+                    )
+                    .await
+                    {
+                        tracing::warn!(?e, "failed to send task_completed notification for team issue");
+                    }
+                } else {
+                    if let Err(e) = notifications::notify_task_status_changed(
+                        pool,
+                        assignee_id,
+                        ctx.user.id,
+                        issue.id,
+                        &issue.title,
+                        old_st,
+                        new_st,
+                        issue.project_id,
+                        None,
+                    )
+                    .await
+                    {
+                        tracing::warn!(?e, "failed to send task_status_changed notification for team issue");
+                    }
+                }
+            }
+        }
 
     Ok(ApiResponse::success(issue))
 }
