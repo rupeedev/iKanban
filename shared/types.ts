@@ -478,6 +478,8 @@ export type CreateInboxItem = { notification_type: InboxNotificationType, title:
 
 export type InboxSummary = { total_count: bigint, unread_count: bigint, };
 
+export type PulseSummary = { total_count: bigint, unread_count: bigint, };
+
 // Pulse (Activity) types
 export type ProjectHealthStatus = "on_track" | "at_risk" | "off_track" | "completed" | "paused";
 

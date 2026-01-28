@@ -6,6 +6,7 @@ import type {
   CreateProjectUpdate,
   UpdateProjectUpdate,
   PulseFilter,
+  PulseSummary,
   SubscriptionSettings,
   DigestFrequency,
 } from 'shared/types';
@@ -29,15 +30,18 @@ export const pulseKeys = {
     [...pulseKeys.all, 'project', projectId] as const,
   detail: (updateId: string) => [...pulseKeys.all, 'detail', updateId] as const,
   subscriptions: () => [...pulseKeys.all, 'subscriptions'] as const,
+  summary: () => [...pulseKeys.all, 'summary'] as const,
 };
 
 export interface UsePulseResult {
   updates: ProjectUpdate[];
+  summary: PulseSummary | null;
   isLoading: boolean;
   error: Error | null;
   filter: PulseFilter;
   setFilter: (filter: PulseFilter) => void;
   refresh: () => Promise<void>;
+  refreshSummary: () => Promise<void>;
   createUpdate: (
     projectId: string,
     data: CreateProjectUpdate
@@ -49,6 +53,8 @@ export interface UsePulseResult {
   deleteUpdate: (updateId: string) => Promise<void>;
   addReaction: (updateId: string, emoji: string) => Promise<void>;
   removeReaction: (updateId: string, emoji: string) => Promise<void>;
+  markAsRead: (updateId: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
 }
 
 export interface UseSubscriptionsResult {
@@ -88,12 +94,34 @@ export function usePulse(
     retryDelay: 60000,
   });
 
+  // Query for pulse summary (for notification badge)
+  const { data: summary = null } = useQuery<PulseSummary>({
+    queryKey: pulseKeys.summary(),
+    queryFn: () => pulseApi.getSummary(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: (failureCount, error) => {
+      if (isRateLimitError(error)) return false;
+      return failureCount < 1;
+    },
+    retryDelay: 60000,
+  });
+
   const refresh = useCallback(async () => {
     await queryClient.invalidateQueries({
       queryKey: pulseKeys.list(initialFilter),
       refetchType: 'none',
     });
   }, [queryClient, initialFilter]);
+
+  const refreshSummary = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: pulseKeys.summary(),
+      refetchType: 'none',
+    });
+  }, [queryClient]);
 
   const setFilter = useCallback(
     (newFilter: PulseFilter) => {
@@ -170,6 +198,26 @@ export function usePulse(
     },
   });
 
+  const markAsReadMutation = useMutation({
+    mutationFn: (updateId: string) => pulseApi.markAsRead(updateId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: pulseKeys.summary(),
+        refetchType: 'none',
+      });
+    },
+  });
+
+  const markAllAsReadMutation = useMutation({
+    mutationFn: () => pulseApi.markAllAsRead(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: pulseKeys.summary(),
+        refetchType: 'none',
+      });
+    },
+  });
+
   const createUpdate = useCallback(
     async (projectId: string, data: CreateProjectUpdate) =>
       createMutation.mutateAsync({ projectId, data }),
@@ -203,8 +251,20 @@ export function usePulse(
     [removeReactionMutation]
   );
 
+  const markAsRead = useCallback(
+    async (updateId: string) => {
+      await markAsReadMutation.mutateAsync(updateId);
+    },
+    [markAsReadMutation]
+  );
+
+  const markAllAsRead = useCallback(async () => {
+    await markAllAsReadMutation.mutateAsync();
+  }, [markAllAsReadMutation]);
+
   return {
     updates,
+    summary,
     isLoading,
     error: updatesError
       ? updatesError instanceof Error
@@ -214,11 +274,14 @@ export function usePulse(
     filter: initialFilter,
     setFilter,
     refresh,
+    refreshSummary,
     createUpdate,
     updateUpdate,
     deleteUpdate,
     addReaction,
     removeReaction,
+    markAsRead,
+    markAllAsRead,
   };
 }
 

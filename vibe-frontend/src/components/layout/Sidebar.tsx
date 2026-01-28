@@ -5,6 +5,8 @@ import { useSidebar } from '@/contexts/SidebarContext';
 import { useProjects } from '@/hooks/useProjects';
 import { useTeams } from '@/hooks/useTeams';
 import { useProjectTeamMap } from '@/hooks/useProjectTeamMap';
+import { useInbox } from '@/hooks/useInbox';
+import { usePulse } from '@/hooks/usePulse';
 import { Button } from '@/components/ui/button';
 import { getTeamSlug, getProjectSlug } from '@/lib/urlUtils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -458,6 +460,10 @@ export function Sidebar() {
   const { getTeamForProject } = useProjectTeamMap(teams);
   const { user, isLoaded: isClerkLoaded } = useUser();
 
+  // Notification summaries for badges (IKA-343)
+  const { summary: inboxSummary } = useInbox();
+  const { summary: pulseSummary } = usePulse();
+
   // Check if user is superadmin (for showing Superadmin link)
   const { data: superadminCheck } = useQuery({
     queryKey: ['superadmin', 'check'],
@@ -640,6 +646,11 @@ export function Sidebar() {
             to="/activity"
             isActive={location.pathname === '/activity'}
             isCollapsed={isCollapsed}
+            badge={
+              pulseSummary?.unread_count
+                ? Number(pulseSummary.unread_count)
+                : undefined
+            }
           />
           <SidebarItem
             icon={ListFilter}
@@ -647,6 +658,11 @@ export function Sidebar() {
             to="/triage"
             isActive={location.pathname === '/triage'}
             isCollapsed={isCollapsed}
+            badge={
+              inboxSummary?.unread_count
+                ? Number(inboxSummary.unread_count)
+                : undefined
+            }
           />
           <SidebarItem
             icon={ListTodo}

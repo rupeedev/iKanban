@@ -103,6 +103,7 @@ import {
   InboxItem,
   CreateInboxItem,
   InboxSummary,
+  PulseSummary,
   ProjectUpdate,
   ProjectUpdateWithReactions,
   CreateProjectUpdate,
@@ -2593,6 +2594,25 @@ export const pulseApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+
+  getSummary: async (): Promise<PulseSummary> => {
+    const response = await makeRequest('/api/pulse/summary');
+    return handleApiResponse<PulseSummary>(response);
+  },
+
+  markAsRead: async (updateId: string): Promise<void> => {
+    const response = await makeRequest(`/api/updates/${updateId}/mark-read`, {
+      method: 'PUT',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  markAllAsRead: async (): Promise<number> => {
+    const response = await makeRequest('/api/pulse/mark-all-read', {
+      method: 'PUT',
+    });
+    return handleApiResponse<number>(response);
   },
 };
 

@@ -19,7 +19,7 @@ use crate::{
         projects::ProjectRepository,
         pulse::{
             CreateProjectUpdate, ProjectUpdate, ProjectUpdateWithReactions, PulseRepository,
-            UpdateProjectUpdate, UpdateReaction,
+            PulseSummary, UpdateProjectUpdate, UpdateReaction,
         },
     },
 };
@@ -46,6 +46,13 @@ pub fn router() -> Router<AppState> {
     Router::new()
         // Pulse feed
         .route("/pulse", get(list_updates))
+        // Pulse summary for notification badges
+        .route("/pulse/summary", get(get_pulse_summary))
+        // Mark all pulse updates as read
+        .route(
+            "/pulse/mark-all-read",
+            axum::routing::put(mark_all_updates_as_read),
+        )
         // Project updates
         .route(
             "/projects/{project_id}/updates",
@@ -55,6 +62,11 @@ pub fn router() -> Router<AppState> {
         .route(
             "/updates/{update_id}",
             get(get_update).put(update_update).delete(delete_update),
+        )
+        // Mark single update as read
+        .route(
+            "/updates/{update_id}/mark-read",
+            axum::routing::put(mark_update_as_read),
         )
         // Reactions
         .route(
@@ -349,6 +361,70 @@ async fn remove_reaction(
             "reaction not found",
         ))
     }
+}
+
+/// Get pulse summary for notification badges
+#[instrument(
+    name = "pulse.summary",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id)
+)]
+async fn get_pulse_summary(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+) -> Result<Json<ApiResponse<PulseSummary>>, ErrorResponse> {
+    let summary = PulseRepository::get_summary(state.pool(), ctx.user.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to get pulse summary");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get summary")
+        })?;
+
+    Ok(ApiResponse::success(summary))
+}
+
+/// Mark a single update as read
+#[instrument(
+    name = "pulse.mark_read",
+    skip(state, ctx),
+    fields(update_id = %update_id, user_id = %ctx.user.id)
+)]
+async fn mark_update_as_read(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(update_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<()>>, ErrorResponse> {
+    PulseRepository::mark_as_read(state.pool(), update_id, ctx.user.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %update_id, "failed to mark update as read");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to mark as read")
+        })?;
+
+    Ok(ApiResponse::success(()))
+}
+
+/// Mark all pulse updates as read
+#[instrument(
+    name = "pulse.mark_all_read",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id)
+)]
+async fn mark_all_updates_as_read(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+) -> Result<Json<ApiResponse<i64>>, ErrorResponse> {
+    let count = PulseRepository::mark_all_as_read(state.pool(), ctx.user.id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to mark all updates as read");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to mark all as read",
+            )
+        })?;
+
+    Ok(ApiResponse::success(count))
 }
 
 /// Helper to enrich updates with reaction data

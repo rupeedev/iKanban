@@ -105,6 +105,13 @@ pub enum PulseFilter {
     Popular,
 }
 
+/// Summary of pulse items for notification badge
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PulseSummary {
+    pub total_count: i64,
+    pub unread_count: i64,
+}
+
 #[derive(Debug, Error)]
 pub enum PulseError {
     #[error("update not found")]
@@ -551,5 +558,59 @@ impl PulseRepository {
         .await?;
 
         Ok(result.rows_affected() > 0)
+    }
+
+    // ========================================================================
+    // Summary & Read Status
+    // ========================================================================
+
+    /// Get summary counts for pulse notifications (for badge display)
+    pub async fn get_summary(pool: &PgPool, user_id: Uuid) -> Result<PulseSummary, PulseError> {
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                COUNT(*) AS "total_count!",
+                COUNT(*) FILTER (WHERE is_read = false) AS "unread_count!"
+            FROM project_updates
+            WHERE author_id = $1
+            "#,
+            user_id
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(PulseSummary {
+            total_count: row.total_count,
+            unread_count: row.unread_count,
+        })
+    }
+
+    /// Mark a single update as read
+    pub async fn mark_as_read(
+        pool: &PgPool,
+        update_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<bool, PulseError> {
+        let result = sqlx::query(
+            "UPDATE project_updates SET is_read = true WHERE id = $1 AND author_id = $2",
+        )
+        .bind(update_id)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Mark all updates as read for a user
+    pub async fn mark_all_as_read(pool: &PgPool, user_id: Uuid) -> Result<i64, PulseError> {
+        let result = sqlx::query(
+            "UPDATE project_updates SET is_read = true WHERE author_id = $1 AND is_read = false",
+        )
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+
+        Ok(result.rows_affected() as i64)
     }
 }
