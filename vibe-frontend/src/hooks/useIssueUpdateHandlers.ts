@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { toast } from 'sonner';
 import { teamsApi } from '@/lib/api';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 
@@ -20,8 +21,15 @@ export function useIssueUpdateHandlers({
   // Handler for assignee changes
   const handleAssigneeChange = useCallback(
     async (taskId: string, assigneeId: string | null) => {
+      if (!teamId) {
+        toast.error('Team not loaded yet');
+        return;
+      }
       const issue = issuesById[taskId];
-      if (!issue) return;
+      if (!issue) {
+        toast.error('Issue not found');
+        return;
+      }
 
       try {
         await teamsApi.updateIssue(teamId, taskId, {
@@ -30,6 +38,7 @@ export function useIssueUpdateHandlers({
         await refresh();
       } catch (err) {
         console.error('Failed to update assignee:', err);
+        toast.error('Failed to update assignee');
       }
     },
     [teamId, issuesById, refresh]
@@ -38,8 +47,15 @@ export function useIssueUpdateHandlers({
   // Handler for priority changes
   const handlePriorityChange = useCallback(
     async (taskId: string, priority: number) => {
+      if (!teamId) {
+        toast.error('Team not loaded yet');
+        return;
+      }
       const issue = issuesById[taskId];
-      if (!issue) return;
+      if (!issue) {
+        toast.error('Issue not found');
+        return;
+      }
 
       try {
         await teamsApi.updateIssue(teamId, taskId, {
@@ -48,6 +64,7 @@ export function useIssueUpdateHandlers({
         await refresh();
       } catch (err) {
         console.error('Failed to update priority:', err);
+        toast.error('Failed to update priority');
       }
     },
     [teamId, issuesById, refresh]
@@ -56,8 +73,16 @@ export function useIssueUpdateHandlers({
   // Handler for project changes - moves issue to a different project
   const handleProjectChange = useCallback(
     async (taskId: string, newProjectId: string) => {
+      if (!teamId) {
+        toast.error('Team not loaded yet');
+        return;
+      }
       const issue = issuesById[taskId];
-      if (!issue || issue.project_id === newProjectId) return;
+      if (!issue) {
+        toast.error('Issue not found');
+        return;
+      }
+      if (issue.project_id === newProjectId) return;
 
       try {
         await teamsApi.updateIssue(teamId, taskId, {
@@ -66,6 +91,7 @@ export function useIssueUpdateHandlers({
         await refresh();
       } catch (err) {
         console.error('Failed to move issue to project:', err);
+        toast.error('Failed to move issue');
       }
     },
     [teamId, issuesById, refresh]
@@ -74,8 +100,16 @@ export function useIssueUpdateHandlers({
   // Handler for status changes (drag and drop)
   const handleStatusChange = useCallback(
     async (taskId: string, newStatus: TaskStatus) => {
+      if (!teamId) {
+        toast.error('Team not loaded yet');
+        return;
+      }
       const issue = issuesById[taskId];
-      if (!issue || issue.status === newStatus) return;
+      if (!issue) {
+        toast.error('Issue not found');
+        return;
+      }
+      if (issue.status === newStatus) return;
 
       try {
         await teamsApi.updateIssue(teamId, taskId, {
@@ -84,6 +118,7 @@ export function useIssueUpdateHandlers({
         await refresh();
       } catch (err) {
         console.error('Failed to update issue status:', err);
+        toast.error('Failed to update status');
       }
     },
     [teamId, issuesById, refresh]
