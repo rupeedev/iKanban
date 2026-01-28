@@ -30,7 +30,6 @@ interface IssuePropertiesSidebarProps {
   onPriorityChange?: (priority: PriorityValue) => Promise<void>;
   onAssigneeChange?: (assigneeId: string | null) => Promise<void>;
   onProjectChange?: (projectId: string) => Promise<void>;
-  isSaving?: boolean;
 }
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string; color: string }[] = [
@@ -50,7 +49,6 @@ export function IssuePropertiesSidebar({
   onPriorityChange,
   onAssigneeChange,
   onProjectChange,
-  isSaving = false,
 }: IssuePropertiesSidebarProps) {
   const currentStatus =
     STATUS_OPTIONS.find((s) => s.value === issue.status) || STATUS_OPTIONS[0];
@@ -86,7 +84,7 @@ export function IssuePropertiesSidebar({
                 variant="outline"
                 size="sm"
                 className="w-full justify-between h-9"
-                disabled={isSaving || !onStatusChange}
+                disabled={!onStatusChange}
               >
                 <span
                   className={cn('flex items-center gap-2', currentStatus.color)}
@@ -120,7 +118,7 @@ export function IssuePropertiesSidebar({
           <PrioritySelector
             value={(issue.priority || 0) as PriorityValue}
             onChange={(p) => onPriorityChange?.(p)}
-            disabled={isSaving || !onPriorityChange}
+            disabled={!onPriorityChange}
           />
         </div>
 
@@ -136,7 +134,7 @@ export function IssuePropertiesSidebar({
                 variant="outline"
                 size="sm"
                 className="w-full justify-between h-9"
-                disabled={isSaving || !onAssigneeChange}
+                disabled={!onAssigneeChange}
               >
                 <span className="flex items-center gap-2 truncate">
                   {currentAssignee ? (
@@ -201,7 +199,7 @@ export function IssuePropertiesSidebar({
           <TaskTagsSection
             taskId={issue.id}
             teamId={teamId}
-            editable={!isSaving}
+            editable
           />
         </div>
 
@@ -218,7 +216,7 @@ export function IssuePropertiesSidebar({
                   variant="outline"
                   size="sm"
                   className="w-full justify-between h-9"
-                  disabled={isSaving || !onProjectChange}
+                  disabled={!onProjectChange}
                 >
                   <span className="truncate">
                     {currentProject?.name || 'No project'}

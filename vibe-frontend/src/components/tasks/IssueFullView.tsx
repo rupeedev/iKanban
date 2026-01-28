@@ -500,7 +500,6 @@ export function IssueFullView({
           onPriorityChange={handlePriorityChange}
           onAssigneeChange={handleAssigneeChange}
           onProjectChange={handleProjectChange}
-          isSaving={isSaving}
         />
       </div>
     </div>
