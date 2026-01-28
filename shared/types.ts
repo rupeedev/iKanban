@@ -470,11 +470,11 @@ search: string | null,
  */
 all: boolean | null, };
 
-export type InboxNotificationType = "task_assigned" | "task_mentioned" | "task_comment" | "task_status_changed" | "task_completed" | "workspace_created" | "system_notification";
+export type InboxNotificationType = "task_assigned" | "task_unassigned" | "task_mentioned" | "task_comment" | "task_status_changed" | "task_completed" | "mentioned_in_update" | "project_role_added" | "due_date_approaching" | "workspace_created" | "system_notification";
 
-export type InboxItem = { id: string, notification_type: InboxNotificationType, title: string, message: string | null, task_id: string | null, project_id: string | null, workspace_id: string | null, is_read: boolean, created_at: string, updated_at: string, };
+export type InboxItem = { id: string, user_id: string, actor_id: string | null, notification_type: InboxNotificationType, title: string, message: string | null, task_id: string | null, project_id: string | null, workspace_id: string | null, is_read: boolean, created_at: string, updated_at: string, };
 
-export type CreateInboxItem = { notification_type: InboxNotificationType, title: string, message: string | null, task_id: string | null, project_id: string | null, workspace_id: string | null, };
+export type CreateInboxItem = { notification_type: InboxNotificationType, title: string, message: string | null, actor_id: string | null, task_id: string | null, project_id: string | null, workspace_id: string | null, };
 
 export type InboxSummary = { total_count: bigint, unread_count: bigint, };
 

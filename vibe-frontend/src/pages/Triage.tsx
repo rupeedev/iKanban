@@ -24,10 +24,14 @@ type ViewFilter = 'all' | 'unread';
 // Notification type icons
 const NOTIFICATION_ICONS: Record<InboxNotificationType, typeof Bell> = {
   task_assigned: AlertCircle,
+  task_unassigned: AlertCircle,
   task_completed: CheckCircle2,
   task_comment: MessageSquare,
   task_status_changed: RefreshCw,
   task_mentioned: Bell,
+  mentioned_in_update: Bell,
+  project_role_added: Bell,
+  due_date_approaching: AlertCircle,
   workspace_created: Bell,
   system_notification: Bell,
 };
