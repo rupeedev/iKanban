@@ -807,6 +807,22 @@ export const tasksApi = {
     return handleApiResponse<Task>(response);
   },
 
+  // Combined task details (comments + links + tags in one request)
+  getDetails: async (
+    taskId: string
+  ): Promise<{
+    comments: TaskComment[];
+    links: LinkedDocument[];
+    tags: TaskTagWithDetails[];
+  }> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/details`);
+    return handleApiResponse<{
+      comments: TaskComment[];
+      links: LinkedDocument[];
+      tags: TaskTagWithDetails[];
+    }>(response);
+  },
+
   // Task comments
   getComments: async (taskId: string): Promise<TaskComment[]> => {
     const response = await makeRequest(`/api/tasks/${taskId}/comments`);

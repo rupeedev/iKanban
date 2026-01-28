@@ -34,3 +34,4 @@ export { useVariant } from './useVariant';
 export { useRetryProcess } from './useRetryProcess';
 export { useAgentMentions } from './useAgentMentions';
 export type { AgentMention } from './useAgentMentions';
+export { useTaskDetails, usePrefetchTaskDetails } from './useTaskDetails';

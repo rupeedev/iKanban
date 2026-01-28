@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ import { useTeams } from '@/hooks/useTeams';
 import { useIssueCommentHandlers } from '@/hooks/useIssueCommentHandlers';
 import { copilotAssignmentKeys } from '@/hooks/useCopilotAssignment';
 import { claudeAssignmentKeys } from '@/hooks/useClaudeAssignment';
+import { taskDetailsKeys } from '@/hooks/useTaskDetails';
 import { tasksApi } from '@/lib/api';
 import { CommentList } from '@/components/comments';
 import { IssueAttemptsSection } from '@/components/tasks/IssueAttemptsSection';
@@ -80,6 +81,35 @@ export function IssueDetailPanel({
   const queryClient = useQueryClient();
   const { teamsById } = useTeams();
   const team = teamId ? teamsById[teamId] : null;
+
+  // Prefetch all task details in one API call (IKA-342: Performance Optimization)
+  // This populates the cache for comments, links, and tags in a single request
+  // before individual hooks run, reducing 3 API calls to 1
+  useEffect(() => {
+    if (issue.id) {
+      queryClient.prefetchQuery({
+        queryKey: taskDetailsKeys.details(issue.id),
+        queryFn: async () => {
+          const details = await tasksApi.getDetails(issue.id);
+          // Populate individual caches for backwards compatibility
+          queryClient.setQueryData(
+            taskDetailsKeys.comments(issue.id),
+            details.comments
+          );
+          queryClient.setQueryData(
+            taskDetailsKeys.links(issue.id),
+            details.links
+          );
+          queryClient.setQueryData(
+            taskDetailsKeys.tags(issue.id),
+            details.tags
+          );
+          return details;
+        },
+        staleTime: 5 * 60 * 1000,
+      });
+    }
+  }, [issue.id, queryClient]);
 
   // Local state for editing
   const [title, setTitle] = useState(issue.title);
