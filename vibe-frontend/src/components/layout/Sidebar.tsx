@@ -747,13 +747,40 @@ export function Sidebar() {
       </div>
 
       {/* Footer */}
-      {!isCollapsed && (
-        <div className="p-3 border-t">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="truncate">iKanban</span>
-          </div>
+      <div className="border-t">
+        {/* Settings Link */}
+        <div className={cn('px-2 py-2', isCollapsed && 'flex justify-center')}>
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  to="/settings"
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-colors',
+                    'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                    location.pathname.startsWith('/settings') &&
+                      'bg-accent text-accent-foreground font-medium'
+                  )}
+                >
+                  <Settings className="h-4 w-4 shrink-0" />
+                  {!isCollapsed && <span>Settings</span>}
+                </Link>
+              </TooltipTrigger>
+              {isCollapsed && (
+                <TooltipContent side="right">Settings</TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </div>
-      )}
+        {/* Brand */}
+        {!isCollapsed && (
+          <div className="px-3 pb-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="truncate">iKanban</span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

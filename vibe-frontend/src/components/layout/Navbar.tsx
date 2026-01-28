@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   FolderOpen,
-  Settings,
   BookOpen,
   MessageCircleQuestion,
   Menu,
@@ -229,24 +228,6 @@ export function Navbar() {
             )}
 
             <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9"
-                asChild
-                aria-label="Settings"
-              >
-                <Link
-                  to={
-                    projectId
-                      ? `/settings/projects?projectId=${projectId}`
-                      : '/settings'
-                  }
-                >
-                  <Settings className="h-4 w-4" />
-                </Link>
-              </Button>
-
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
