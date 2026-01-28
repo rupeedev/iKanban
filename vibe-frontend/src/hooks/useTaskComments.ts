@@ -3,6 +3,7 @@ import { tasksApi } from '../lib/api';
 import type {
   CreateTaskComment,
   UpdateTaskComment,
+  TaskComment,
 } from '../../../shared/types';
 
 // Helper to detect rate limit errors
@@ -51,21 +52,67 @@ export function useTaskComments(taskId: string | null) {
       if (!taskId) throw new Error('Task ID is required');
       return tasksApi.createComment(taskId, payload);
     },
+    onMutate: async (newCommentData) => {
+      // Cancel any outgoing refetches to avoid overwriting our optimistic update
+      await queryClient.cancelQueries({ queryKey: ['task-comments', taskId] });
+
+      // Snapshot the previous value
+      const previousComments = queryClient.getQueryData<TaskComment[]>([
+        'task-comments',
+        taskId,
+      ]);
+
+      // Optimistically update to the new value
+      if (previousComments && taskId) {
+        const optimisticComment = {
+          id: `temp-${Date.now()}`,
+          task_id: taskId,
+          content: newCommentData.content,
+          is_internal: newCommentData.is_internal || false,
+          author_name: 'author_name' in newCommentData ? String(newCommentData.author_name) : 'You',
+          author_email: 'author_email' in newCommentData ? String(newCommentData.author_email) : undefined,
+          author_id: 'author_id' in newCommentData ? (newCommentData.author_id as string) : undefined,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as unknown as TaskComment; // Cast to satisfy type (some fields might be missing in strict mode)
+
+        queryClient.setQueryData(
+          ['task-comments', taskId],
+          (old: TaskComment[] | undefined) => {
+            return [...(old || []), optimisticComment];
+          }
+        );
+      }
+
+      // Return a context object with the snapshotted value
+      return { previousComments };
+    },
     onSuccess: (newComment) => {
-      // Add optimistic update: immediately add the new comment to the cache
+      // Replace the optimistic comment with the real one
       queryClient.setQueryData(
         ['task-comments', taskId],
         (oldData: typeof commentsQuery.data) => {
           if (!oldData) return [newComment];
-          // Check if comment already exists to avoid duplicates
-          if (oldData.some((c) => c.id === newComment.id)) return oldData;
-          return [...oldData, newComment];
+          // Filter out the temp comment and append the real one
+          // We assume the temp comment is the last one or we filter by temp- prefix
+          const cleanData = oldData.filter(c => !c.id.startsWith('temp-'));
+
+          // Check for duplicates just in case
+          if (cleanData.some((c) => c.id === newComment.id)) return cleanData;
+          return [...cleanData, newComment];
         }
       );
     },
-    onError: (error) => {
+    onError: (error, _newComment, context) => {
       // Log error for debugging (IKA-322)
       console.error('[useTaskComments] Create comment failed:', error);
+      // Rollback to the previous value
+      if (context?.previousComments) {
+        queryClient.setQueryData(
+          ['task-comments', taskId],
+          context.previousComments
+        );
+      }
     },
     onSettled: () => {
       if (!taskId) return;
@@ -90,8 +137,47 @@ export function useTaskComments(taskId: string | null) {
       if (!taskId) throw new Error('Task ID is required');
       return tasksApi.updateComment(taskId, commentId, payload);
     },
-    onError: (error) => {
+    onMutate: async ({ commentId, payload }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['task-comments', taskId] });
+
+      // Snapshot the previous value
+      const previousComments = queryClient.getQueryData<TaskComment[]>([
+        'task-comments',
+        taskId,
+      ]);
+
+      // Optimistically update
+      if (previousComments) {
+        queryClient.setQueryData(
+          ['task-comments', taskId],
+          (old: TaskComment[] | undefined) => {
+            if (!old) return [];
+            return old.map((comment) => {
+              if (comment.id === commentId) {
+                return {
+                  ...comment,
+                  ...payload, // Apply partial updates (content, is_internal)
+                  updated_at: new Date().toISOString(),
+                };
+              }
+              return comment;
+            });
+          }
+        );
+      }
+
+      return { previousComments };
+    },
+    onError: (error, _variables, context) => {
       console.error('[useTaskComments] Update comment failed:', error);
+      // Rollback
+      if (context?.previousComments) {
+        queryClient.setQueryData(
+          ['task-comments', taskId],
+          context.previousComments
+        );
+      }
     },
     onSettled: () => {
       if (!taskId) return;

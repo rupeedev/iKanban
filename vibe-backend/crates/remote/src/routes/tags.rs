@@ -25,7 +25,8 @@ use crate::{
 
 #[derive(Debug, Deserialize)]
 pub struct ListTagsQuery {
-    pub team_id: Option<Uuid>,
+    /// Team ID (UUID) or team identifier (e.g., "IKA")
+    pub team_id: Option<String>,
 }
 
 pub fn router() -> Router<AppState> {
@@ -38,6 +39,7 @@ pub fn router() -> Router<AppState> {
 }
 
 /// List tags - returns tags filtered by team_id
+/// Accepts either a UUID or team identifier (e.g., "IKA")
 #[instrument(
     name = "tags.list_tags",
     skip(state, ctx, params),
@@ -48,9 +50,20 @@ async fn list_tags(
     Extension(ctx): Extension<RequestContext>,
     Query(params): Query<ListTagsQuery>,
 ) -> Result<Json<ApiResponse<Vec<Tag>>>, ErrorResponse> {
-    let team_id = params
+    let team_id_or_slug = params
         .team_id
         .ok_or_else(|| ErrorResponse::new(StatusCode::BAD_REQUEST, "team_id is required"))?;
+
+    // Resolve team by ID, slug, or identifier (e.g., "IKA")
+    let team = TeamRepository::get_by_id_or_slug(state.pool(), &team_id_or_slug)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, team_id = %team_id_or_slug, "failed to get team");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+
+    let team_id = team.id;
 
     // Verify user has access to team's workspace
     if let Some(workspace_id) = TeamRepository::workspace_id(state.pool(), team_id)
@@ -61,8 +74,6 @@ async fn list_tags(
         })?
     {
         ensure_member_access(state.pool(), workspace_id, ctx.user.id).await?;
-    } else {
-        return Err(ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"));
     }
 
     let tags = TagRepository::find_by_team(state.pool(), team_id)

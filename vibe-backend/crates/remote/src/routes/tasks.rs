@@ -815,7 +815,7 @@ pub async fn create_task_comment(
     };
 
     // Clone content for notifications before moving into create_data
-    let comment_content = payload.content.clone();
+    let _comment_content = payload.content.clone();
 
     let create_data = CreateTaskComment {
         content: payload.content,
@@ -827,18 +827,42 @@ pub async fn create_task_comment(
 
     match TaskCommentRepository::create(pool, task_id, &create_data).await {
         Ok(comment) => {
-            // Get task info for notifications
-            let task_repo = SharedTaskRepository::new(pool);
-            if let Ok(Some(task)) = task_repo.find_by_id(task_id).await {
-                // Extract @mentions and notify mentioned users
-                let mentions = notifications::extract_mentions(&comment_content);
-                for mention in mentions {
-                    if let Ok(Some(mentioned_user_id)) =
-                        notifications::resolve_mention_to_user_id(pool, &mention).await
-                        && let Err(e) = notifications::notify_task_mentioned(
-                            pool,
-                            mentioned_user_id,
-                            ctx.user.id,
+            // Spawn background task for notifications
+            let pool = pool.clone();
+            let comment_content = comment.content.clone();
+            let current_user_id = ctx.user.id;
+
+            tokio::spawn(async move {
+                let task_repo = SharedTaskRepository::new(&pool);
+                if let Ok(Some(task)) = task_repo.find_by_id(task_id).await {
+                    // Extract @mentions and notify mentioned users
+                    let mentions = notifications::extract_mentions(&comment_content);
+                    for mention in mentions {
+                        if let Ok(Some(mentioned_user_id)) =
+                            notifications::resolve_mention_to_user_id(&pool, &mention).await
+                            && let Err(e) = notifications::notify_task_mentioned(
+                                &pool,
+                                mentioned_user_id,
+                                current_user_id,
+                                task_id,
+                                &task.title,
+                                &comment_content,
+                                Some(task.project_id),
+                                None,
+                            )
+                            .await
+                        {
+                            tracing::warn!(?e, "failed to send task_mentioned notification");
+                        }
+                    }
+
+                    // Notify task assignee about the comment (if not the commenter)
+                    if let Some(assignee_id) = task.assignee_user_id
+                        && assignee_id != current_user_id
+                        && let Err(e) = notifications::notify_task_comment(
+                            &pool,
+                            assignee_id,
+                            current_user_id,
                             task_id,
                             &task.title,
                             &comment_content,
@@ -847,47 +871,29 @@ pub async fn create_task_comment(
                         )
                         .await
                     {
-                        tracing::warn!(?e, "failed to send task_mentioned notification");
+                        tracing::warn!(?e, "failed to send task_comment notification");
+                    }
+
+                    // Also notify task creator if different from assignee and commenter
+                    if let Some(creator_id) = task.creator_user_id
+                        && creator_id != current_user_id
+                        && Some(creator_id) != task.assignee_user_id
+                        && let Err(e) = notifications::notify_task_comment(
+                            &pool,
+                            creator_id,
+                            current_user_id,
+                            task_id,
+                            &task.title,
+                            &comment_content,
+                            Some(task.project_id),
+                            None,
+                        )
+                        .await
+                    {
+                        tracing::warn!(?e, "failed to send task_comment notification to creator");
                     }
                 }
-
-                // Notify task assignee about the comment (if not the commenter)
-                if let Some(assignee_id) = task.assignee_user_id
-                    && assignee_id != ctx.user.id
-                    && let Err(e) = notifications::notify_task_comment(
-                        pool,
-                        assignee_id,
-                        ctx.user.id,
-                        task_id,
-                        &task.title,
-                        &comment_content,
-                        Some(task.project_id),
-                        None,
-                    )
-                    .await
-                {
-                    tracing::warn!(?e, "failed to send task_comment notification");
-                }
-
-                // Also notify task creator if different from assignee and commenter
-                if let Some(creator_id) = task.creator_user_id
-                    && creator_id != ctx.user.id
-                    && Some(creator_id) != task.assignee_user_id
-                    && let Err(e) = notifications::notify_task_comment(
-                        pool,
-                        creator_id,
-                        ctx.user.id,
-                        task_id,
-                        &task.title,
-                        &comment_content,
-                        Some(task.project_id),
-                        None,
-                    )
-                    .await
-                {
-                    tracing::warn!(?e, "failed to send task_comment notification to creator");
-                }
-            }
+            });
 
             (StatusCode::CREATED, ApiResponse::success(comment)).into_response()
         }

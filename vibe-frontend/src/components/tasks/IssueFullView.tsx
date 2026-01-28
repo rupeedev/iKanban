@@ -28,6 +28,7 @@ import { IssuePropertiesSidebar } from '@/components/tasks/IssuePropertiesSideba
 import { InlinePromptInput } from '@/components/tasks/TaskDetails/InlinePromptInput';
 import { showSubIssuesDialog } from '@/components/dialogs';
 import { SubIssuesList } from '@/components/tasks/SubIssuesList';
+import { useTaskDetails, taskDetailsKeys } from '@/hooks/useTaskDetails';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 import type { PriorityValue } from '@/components/selectors/PrioritySelector';
@@ -68,6 +69,10 @@ export function IssueFullView({
   const navigate = useNavigate();
   const { teamsById } = useTeams();
   const team = teamId ? teamsById[teamId] : null;
+
+  // Use consolidated data fetching for improved performance (IKA-342)
+  // This will populate the cache for comments, links, and tags
+  useTaskDetails(issue.id);
 
   // Navigate back to team issues page
   const handleNavigateToIssues = useCallback(() => {
@@ -131,6 +136,11 @@ export function IssueFullView({
         queryClient.invalidateQueries({
           queryKey: claudeAssignmentKeys.list(issue.id),
         }),
+        // Invalidate the main details query which will refresh logical parts
+        queryClient.invalidateQueries({
+          queryKey: taskDetailsKeys.details(issue.id),
+        }),
+        // Also invalidate specific keys just in case independent hooks are used
         queryClient.invalidateQueries({
           queryKey: ['task-comments', issue.id],
         }),
@@ -460,7 +470,7 @@ export function IssueFullView({
                         // Don't spin during initial load - CommentList shows its own loading state
                         (isRefreshingComments ||
                           (commentsFetching && !commentsLoading)) &&
-                          'animate-spin'
+                        'animate-spin'
                       )}
                     />
                   </Button>

@@ -54,7 +54,10 @@ export function IssueLinkedDocuments({
       {linksLoading ? (
         <div className="space-y-1">
           {[1, 2].map((i) => (
-            <div key={i} className="flex items-center gap-2 p-2 rounded-md border bg-muted/10">
+            <div
+              key={i}
+              className="flex items-center gap-2 p-2 rounded-md border bg-muted/10"
+            >
               <Skeleton className="h-4 w-4 rounded shrink-0" />
               <Skeleton className="h-4 flex-1" />
             </div>
