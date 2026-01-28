@@ -1,7 +1,7 @@
 import { TagChip } from './TagChip';
 import { TagSelector } from './TagSelector';
 import { useTaskTags } from '@/hooks/useTaskTags';
-import { Loader2, Tag as TagIcon, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface TaskTagsSectionProps {
@@ -47,14 +47,6 @@ export function TaskTagsSection({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <TagIcon className="h-4 w-4 text-muted-foreground" />
-        <h3 className="text-sm font-medium text-muted-foreground">Tags</h3>
-        {isProcessing && (
-          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-        )}
-      </div>
-
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />

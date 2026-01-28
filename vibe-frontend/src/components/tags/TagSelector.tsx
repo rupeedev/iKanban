@@ -90,7 +90,7 @@ export function TagSelector({
           disabled={disabled}
         >
           <Plus className="h-3 w-3" />
-          Add Tag
+          Add Label
           <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
