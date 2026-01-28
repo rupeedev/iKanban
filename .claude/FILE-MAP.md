@@ -16,7 +16,8 @@
 | Team GitHub | `src/pages/TeamGitHub.tsx` | GitHub integration |
 | Project Tasks | `src/pages/ProjectTasks.tsx` | TaskKanbanBoard |
 | My Issues | `src/pages/MyIssues.tsx` | Personal issues view |
-| Inbox | `src/pages/Inbox.tsx` | Notifications |
+| Triage | `src/pages/Triage.tsx` | Notifications (was Inbox) |
+| Activity | `src/pages/Activity.tsx` | Pulse feed (was Pulse) |
 | Views | `src/pages/Views.tsx` | Custom views |
 
 ### Settings Pages (src/pages/settings/)
@@ -189,6 +190,9 @@
 |-------|-----------|
 | Tasks | `src/routes/tasks.rs` |
 | Projects | `src/routes/projects.rs` |
+| Inbox | `src/routes/inbox.rs` |
+| Pulse | `src/routes/pulse.rs` |
+| Subscriptions | `src/routes/subscriptions.rs` |
 | Organizations | `src/routes/organizations.rs` |
 | Organization Members | `src/routes/organization_members.rs` |
 | OAuth | `src/routes/oauth.rs` |
@@ -235,6 +239,9 @@
 | Organizations | `src/db/organizations.rs` | Org queries |
 | Organization Members | `src/db/organization_members.rs` | Member queries |
 | Tasks | `src/db/tasks.rs` | Task queries |
+| Inbox | `src/db/inbox.rs` | Inbox/notification queries |
+| Pulse | `src/db/pulse.rs` | Project updates & reactions |
+| Subscriptions | `src/db/subscriptions.rs` | User subscription preferences |
 | OAuth | `src/db/oauth.rs` | OAuth storage |
 | OAuth Accounts | `src/db/oauth_accounts.rs` | OAuth accounts |
 | Invitations | `src/db/invitations.rs` | Invitation queries |
@@ -281,33 +288,43 @@
 
 ---
 
-## Vibe-Check Tool (tools/vibe-check/)
+## Vibe-Check Tool (vibe-check/)
 
 **Purpose:** Local validation CLI that replaces expensive Task agents for quality/security checks.
 
+**Location:** `/Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-check/`
+
 | File | Path | Purpose |
 |------|------|---------|
-| Main CLI | `tools/vibe-check/vibe_check/cli.py` | CLI entry point |
-| Config Loader | `tools/vibe-check/vibe_check/config.py` | TOML config parser |
-| Generic Checker | `tools/vibe-check/vibe_check/checkers/generic.py` | Runs configured commands |
-| Frontend Checker | `tools/vibe-check/vibe_check/checkers/frontend.py` | Auto-detect frontend |
-| Backend Checker | `tools/vibe-check/vibe_check/checkers/backend.py` | Auto-detect backend |
-| Security Checker | `tools/vibe-check/vibe_check/checkers/security.py` | Audit + secrets scan |
-| Stack Detectors | `tools/vibe-check/vibe_check/detectors.py` | Auto-detect stack |
+| Main CLI | `vibe-check/vibe_check/cli.py` | CLI entry point |
+| Config Loader | `vibe-check/vibe_check/config.py` | TOML config parser |
+| Generic Checker | `vibe-check/vibe_check/checkers/generic.py` | Runs configured commands |
+| Frontend Checker | `vibe-check/vibe_check/checkers/frontend.py` | Auto-detect frontend |
+| Backend Checker | `vibe-check/vibe_check/checkers/backend.py` | Auto-detect backend |
+| Security Checker | `vibe-check/vibe_check/checkers/security.py` | Audit + secrets scan |
+| Stack Detectors | `vibe-check/vibe_check/detectors.py` | Auto-detect stack |
 | **Project Config** | `.vibe-check.toml` | **iKanban's config file** |
 
 ### Commands
 
 | Command | Purpose | Token Savings |
 |---------|---------|---------------|
-| `vibe-check` | Run all checks (quality + security) | ~140K → 0 |
-| `vibe-check quality` | Lint, format, compile, clippy | ~45K → 0 |
-| `vibe-check quality --fix` | Auto-fix linting issues | ~45K → 0 |
-| `vibe-check security` | Audit deps, scan for secrets | ~45K → 0 |
-| `vibe-check test` | Run configured tests | ~45K → 0 |
-| `vibe-check review` | Show git diff for code review | ~51K → partial |
-| `vibe-check init` | Generate .vibe-check.toml template | - |
-| `vibe-check init --preset go-react` | Use preset for Go + React | - |
+| `python3 vibe-check/vibe_check/cli.py` | Run all checks | ~140K → 0 |
+| `python3 vibe-check/vibe_check/cli.py quality` | Lint, format, compile | ~45K → 0 |
+| `python3 vibe-check/vibe_check/cli.py quality --fix` | Auto-fix linting issues | ~45K → 0 |
+| `python3 vibe-check/vibe_check/cli.py security` | Audit deps, scan secrets | ~45K → 0 |
+| `python3 vibe-check/vibe_check/cli.py test` | Run configured tests | ~45K → 0 |
+| `python3 vibe-check/vibe_check/cli.py review` | Show git diff | ~51K → partial |
+
+### Installation (one-time)
+
+```bash
+cd /Users/rupeshpanwar/Downloads/Projects/iKanban/vibe-check
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+# After install, can use: vibe-check (if venv activated)
+```
 
 ### Configuration File (.vibe-check.toml)
 
@@ -347,15 +364,6 @@ base_branch = "main"
 | `python-vue` | Python + Vue | `vibe-check init --preset python-vue` |
 | `node` | Node.js fullstack | `vibe-check init --preset node` |
 
-### Installation (one-time)
-
-```bash
-cd tools/vibe-check
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .
-```
-
 ---
 
 ## Quick Lookup by Feature
@@ -383,6 +391,16 @@ pip install -e .
 ### Backend API
 - Tasks API: `crates/remote/src/routes/tasks.rs`
 - DB queries: `crates/remote/src/db/tasks.rs`
+
+### Triage/Inbox API
+- Routes: `crates/remote/src/routes/inbox.rs`
+- DB: `crates/remote/src/db/inbox.rs`
+
+### Activity/Pulse API
+- Routes: `crates/remote/src/routes/pulse.rs`
+- DB: `crates/remote/src/db/pulse.rs`
+- Subscriptions routes: `crates/remote/src/routes/subscriptions.rs`
+- Subscriptions DB: `crates/remote/src/db/subscriptions.rs`
 
 ### MCP Server
 - Core MCP: `crates/remote/src/mcp/task_server.rs`
