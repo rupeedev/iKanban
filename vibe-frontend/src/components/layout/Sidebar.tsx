@@ -747,39 +747,33 @@ export function Sidebar() {
       </div>
 
       {/* Footer */}
-      <div className="border-t">
-        {/* Settings Link */}
-        <div className={cn('px-2 py-2', isCollapsed && 'flex justify-center')}>
+      <div className="border-t p-3">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          {!isCollapsed && (
+            <span className="truncate">iKanban d@v by Rupesh</span>
+          )}
           <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link
                   to="/settings"
                   className={cn(
-                    'flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-colors',
-                    'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                    'p-1.5 rounded-md transition-colors',
+                    'hover:text-foreground hover:bg-accent/50',
                     location.pathname.startsWith('/settings') &&
-                      'bg-accent text-accent-foreground font-medium'
+                      'bg-accent text-accent-foreground',
+                    isCollapsed && 'mx-auto'
                   )}
                 >
-                  <Settings className="h-4 w-4 shrink-0" />
-                  {!isCollapsed && <span>Settings</span>}
+                  <Settings className="h-4 w-4" />
                 </Link>
               </TooltipTrigger>
-              {isCollapsed && (
-                <TooltipContent side="right">Settings</TooltipContent>
-              )}
+              <TooltipContent side={isCollapsed ? 'right' : 'top'}>
+                Settings
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
-        {/* Brand */}
-        {!isCollapsed && (
-          <div className="px-3 pb-3">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="truncate">iKanban</span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
