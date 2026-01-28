@@ -76,7 +76,8 @@ export function TaskTagsSection({
               onRemove={() => handleRemoveTag(tag.tag_id)}
             />
           ))}
-          {editable && (
+          {/* Only show Add Label when no label is selected (single-label per issue) */}
+          {editable && tags.length === 0 && (
             <TagSelector
               teamId={teamId}
               selectedTagIds={selectedTagIds}
@@ -86,7 +87,7 @@ export function TaskTagsSection({
           )}
           {!editable && tags.length === 0 && (
             <span className="text-sm text-muted-foreground italic">
-              No tags
+              No labels
             </span>
           )}
         </div>
