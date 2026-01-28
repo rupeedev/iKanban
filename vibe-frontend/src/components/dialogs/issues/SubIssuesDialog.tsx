@@ -259,11 +259,13 @@ const SubIssuesDialogImpl = NiceModal.create(
               onBulkLink={handleBulkLink}
             />
 
-            {searchQuery.trim() && filteredIssues.length === 0 && !isLoading && (
-              <p className="text-sm text-muted-foreground text-center py-2">
-                No matching issues found
-              </p>
-            )}
+            {searchQuery.trim() &&
+              filteredIssues.length === 0 &&
+              !isLoading && (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  No matching issues found
+                </p>
+              )}
             {!searchQuery.trim() &&
               filteredIssues.length === 0 &&
               !isLoading && (

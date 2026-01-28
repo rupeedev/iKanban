@@ -166,7 +166,8 @@ export function AvailableIssuesList({
           ) : (
             <Check className="h-4 w-4 mr-2" />
           )}
-          Link {selectedIds.size} Selected Issue{selectedIds.size > 1 ? 's' : ''}
+          Link {selectedIds.size} Selected Issue
+          {selectedIds.size > 1 ? 's' : ''}
         </Button>
       )}
     </div>

@@ -170,6 +170,7 @@ impl Default for EditorConfig {
 
 /// GitHub configuration
 #[derive(Debug, Serialize, Deserialize)]
+#[derive(Default)]
 struct GitHubConfig {
     pat: Option<String>,
     oauth_token: Option<String>,
@@ -178,17 +179,6 @@ struct GitHubConfig {
     default_pr_base: Option<String>,
 }
 
-impl Default for GitHubConfig {
-    fn default() -> Self {
-        Self {
-            pat: None,
-            oauth_token: None,
-            username: None,
-            primary_email: None,
-            default_pr_base: None,
-        }
-    }
-}
 
 /// Executor profile ID
 #[derive(Debug, Serialize, Deserialize)]
@@ -208,17 +198,11 @@ impl Default for ExecutorProfileId {
 
 /// Showcase state
 #[derive(Debug, Serialize, Deserialize)]
+#[derive(Default)]
 struct ShowcaseState {
     seen_features: Vec<String>,
 }
 
-impl Default for ShowcaseState {
-    fn default() -> Self {
-        Self {
-            seen_features: vec![],
-        }
-    }
-}
 
 /// User configuration - matches frontend Config type
 #[derive(Debug, Serialize, Deserialize)]
@@ -355,7 +339,7 @@ async fn update_profiles(
             content: body,
             path: "~/.config/ikanban/profiles.json".to_string(),
         }),
-        Err(e) => ApiResponse::error(&format!("Invalid JSON: {}", e)),
+        Err(e) => ApiResponse::error(format!("Invalid JSON: {}", e)),
     }
 }
 

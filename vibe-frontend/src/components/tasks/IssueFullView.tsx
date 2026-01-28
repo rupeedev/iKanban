@@ -421,7 +421,9 @@ export function IssueFullView({
                 <SubIssuesList
                   issueId={issue.id}
                   teamId={teamId}
-                  teamPrefix={team?.identifier || team?.name?.slice(0, 3).toUpperCase()}
+                  teamPrefix={
+                    team?.identifier || team?.name?.slice(0, 3).toUpperCase()
+                  }
                   teamMembers={teamMembers}
                   teamProjects={teamProjects}
                 />
@@ -454,7 +456,10 @@ export function IssueFullView({
                     <RefreshCw
                       className={cn(
                         'h-4 w-4',
-                        (isRefreshingComments || commentsFetching) &&
+                        // Only spin during background refetch (when data exists) or manual refresh
+                        // Don't spin during initial load - CommentList shows its own loading state
+                        (isRefreshingComments ||
+                          (commentsFetching && !commentsLoading)) &&
                           'animate-spin'
                       )}
                     />

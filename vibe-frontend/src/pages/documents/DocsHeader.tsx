@@ -64,14 +64,18 @@ export function DocsHeader({
   // Handle click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setIsSearchFocused(false);
       }
     };
 
     if (isSearchFocused) {
       document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      return () =>
+        document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isSearchFocused]);
 
@@ -177,7 +181,6 @@ export function DocsHeader({
           </button>
         ))}
       </div>
-
     </header>
   );
 }

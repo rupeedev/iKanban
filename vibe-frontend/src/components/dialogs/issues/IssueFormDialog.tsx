@@ -286,7 +286,9 @@ const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(
                 <ChevronRight className="h-4 w-4" />
               </>
             ) : null}
-            <span>{dialogTitle || (mode === 'edit' ? 'Edit issue' : 'New issue')}</span>
+            <span>
+              {dialogTitle || (mode === 'edit' ? 'Edit issue' : 'New issue')}
+            </span>
           </div>
 
           {/* Main form */}
