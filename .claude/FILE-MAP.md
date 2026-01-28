@@ -162,6 +162,8 @@
 | useAuth | `src/hooks/useAuth.ts` | Auth utilities |
 | useTasks | `src/hooks/useTasks.ts` | Task operations |
 | useProjects | `src/hooks/useProjects.ts` | Project operations |
+| useInbox | `src/hooks/useInbox.ts` | Inbox/Triage notifications |
+| usePulse | `src/hooks/usePulse.ts` | Pulse/Activity feed + subscriptions |
 
 ### API (src/api/)
 
