@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { tasksApi } from '@/lib/api';
+import { toast } from 'sonner';
+import { tasksApi, RequestTimeoutError } from '@/lib/api';
 import { TaskTagWithDetails } from 'shared/types';
 
 export function useTaskTags(taskId: string | undefined) {
@@ -28,6 +29,16 @@ export function useTaskTags(taskId: string | undefined) {
       // Invalidate to fetch fresh data with tag details
       queryClient.invalidateQueries({ queryKey: ['task-tags', taskId] });
     },
+    onError: (error) => {
+      console.error('[useTaskTags] Add tag failed:', error);
+      if (error instanceof RequestTimeoutError) {
+        toast.error('Request timed out', {
+          description: 'Failed to add label. Please try again.',
+        });
+      } else {
+        toast.error('Failed to add label');
+      }
+    },
   });
 
   const removeTagMutation = useMutation({
@@ -40,6 +51,18 @@ export function useTaskTags(taskId: string | undefined) {
         ['task-tags', taskId],
         (old) => old?.filter((t) => t.tag_id !== tagId) ?? []
       );
+    },
+    onError: (error) => {
+      console.error('[useTaskTags] Remove tag failed:', error);
+      if (error instanceof RequestTimeoutError) {
+        toast.error('Request timed out', {
+          description: 'Failed to remove label. Please try again.',
+        });
+      } else {
+        toast.error('Failed to remove label');
+      }
+      // Refetch to restore correct state
+      queryClient.invalidateQueries({ queryKey: ['task-tags', taskId] });
     },
   });
 
