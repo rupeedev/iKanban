@@ -5,6 +5,7 @@ import type { Project } from 'shared/types';
 import { resolveProjectFromParam } from '@/lib/urlUtils';
 import { useClerkAuth } from '@/hooks/auth/useClerkAuth';
 import { useWorkspaceOptional } from '@/contexts/WorkspaceContext';
+import { getAuthToken } from '@/lib/api';
 
 type ProjectsState = {
   projects: Record<string, Project>;
@@ -71,11 +72,16 @@ export const projectsKeys = {
 };
 
 // Fetch function for TanStack Query (cloud mode)
+// Uses centralized getAuthToken() to avoid race conditions with token state
 async function fetchProjects(
-  token: string | null,
   workspaceId?: string | null
 ): Promise<Record<string, Project>> {
-  if (!token) return {};
+  // Get token from centralized auth getter (set by AuthInitializer)
+  const token = await getAuthToken();
+  if (!token) {
+    // Return empty if no token - query will be disabled anyway when not signed in
+    return {};
+  }
 
   const params = new URLSearchParams();
   if (workspaceId) params.set('workspace_id', workspaceId);
@@ -149,14 +155,16 @@ export function useProjects(): UseProjectsResult {
   );
 
   // TanStack Query for cloud mode - provides request deduplication and caching
+  // Uses centralized getAuthToken() inside fetchProjects to avoid race conditions
   const {
     data: restProjects = {},
     isLoading: restLoading,
     error: restError,
   } = useQuery({
     queryKey,
-    queryFn: () => fetchProjects(token, currentWorkspaceId),
-    enabled: isCloudMode && isSignedIn && !!token,
+    queryFn: () => fetchProjects(currentWorkspaceId),
+    // Enable when signed in - token is fetched inside queryFn from centralized auth
+    enabled: isCloudMode && isSignedIn,
     staleTime: 6 * 60 * 60 * 1000, // 6 hours - projects rarely change
     gcTime: 12 * 60 * 60 * 1000, // 12 hours cache retention
     refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes (not 30 seconds!)
