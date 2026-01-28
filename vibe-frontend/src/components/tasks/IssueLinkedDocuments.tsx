@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FileText, Link as LinkIcon, Paperclip, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useTaskDocumentLinks } from '@/hooks/useTaskDocumentLinks';
 import { useNavigateWithSearch } from '@/hooks';
 import { LinkDocumentsDialog } from '@/components/dialogs/issues/LinkDocumentsDialog';
@@ -51,8 +52,13 @@ export function IssueLinkedDocuments({
         </Button>
       </div>
       {linksLoading ? (
-        <div className="text-sm text-muted-foreground p-2 border rounded-md bg-muted/20">
-          Loading...
+        <div className="space-y-1">
+          {[1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-2 p-2 rounded-md border bg-muted/10">
+              <Skeleton className="h-4 w-4 rounded shrink-0" />
+              <Skeleton className="h-4 flex-1" />
+            </div>
+          ))}
         </div>
       ) : linkedDocuments.length === 0 ? (
         <div
