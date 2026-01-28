@@ -130,11 +130,10 @@ export function useTaskComments(taskId: string | null) {
     },
     onSettled: () => {
       if (!taskId) return;
-      // Always refetch after mutation settles (success or error) to ensure sync
-      // Use 'all' to ensure all components watching this query get updated
+      // Just mark cache as stale - don't force immediate refetch
       queryClient.invalidateQueries({
         queryKey: ['task-comments', taskId],
-        refetchType: 'all',
+        refetchType: 'none', // Prevents hanging refetch
       });
     },
   });
@@ -195,10 +194,10 @@ export function useTaskComments(taskId: string | null) {
     },
     onSettled: () => {
       if (!taskId) return;
-      // Always refetch after mutation settles to ensure sync
+      // Just mark cache as stale - don't force immediate refetch
       queryClient.invalidateQueries({
         queryKey: ['task-comments', taskId],
-        refetchType: 'all',
+        refetchType: 'none',
       });
     },
   });
@@ -234,10 +233,10 @@ export function useTaskComments(taskId: string | null) {
     },
     onSettled: () => {
       if (!taskId) return;
-      // Always refetch after mutation settles to ensure sync
+      // Just mark cache as stale - don't force immediate refetch
       queryClient.invalidateQueries({
         queryKey: ['task-comments', taskId],
-        refetchType: 'all',
+        refetchType: 'none',
       });
     },
   });

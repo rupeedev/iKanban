@@ -26,8 +26,11 @@ export function useTaskTags(taskId: string | undefined) {
       return tasksApi.addTag(taskId, tagId);
     },
     onSuccess: () => {
-      // Invalidate to fetch fresh data with tag details
-      queryClient.invalidateQueries({ queryKey: ['task-tags', taskId] });
+      // Invalidate to fetch fresh data with tag details - don't force refetch
+      queryClient.invalidateQueries({
+        queryKey: ['task-tags', taskId],
+        refetchType: 'none',
+      });
     },
     onError: (error) => {
       console.error('[useTaskTags] Add tag failed:', error);
@@ -61,8 +64,11 @@ export function useTaskTags(taskId: string | undefined) {
       } else {
         toast.error('Failed to remove label');
       }
-      // Refetch to restore correct state
-      queryClient.invalidateQueries({ queryKey: ['task-tags', taskId] });
+      // Mark cache stale to restore correct state on next access
+      queryClient.invalidateQueries({
+        queryKey: ['task-tags', taskId],
+        refetchType: 'none',
+      });
     },
   });
 
