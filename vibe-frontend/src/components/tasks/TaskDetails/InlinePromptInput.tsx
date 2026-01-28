@@ -527,10 +527,10 @@ export function InlinePromptInput({
 
         <Button
           type="button"
-          size="icon"
+          size="sm"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="h-10 w-10 flex-shrink-0"
+          className="h-10 min-w-10 px-3 flex-shrink-0 gap-1.5"
           data-testid="inline-prompt-submit"
         >
           {isCreating ||
@@ -538,7 +538,10 @@ export function InlinePromptInput({
           isAssigningCopilot ||
           isAssigningClaude ||
           isAssigningGemini ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-xs">Saving...</span>
+            </>
           ) : (
             <SendHorizonal className="h-4 w-4" />
           )}

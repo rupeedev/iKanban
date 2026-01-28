@@ -288,7 +288,18 @@ const RETRY_CONFIG = {
   baseDelayMs: 2000, // 2 seconds
   maxDelayMs: 5000, // 5 seconds max
   retryableStatuses: [503, 502, 504], // Server errors only - NOT 429!
+  requestTimeoutMs: 30000, // 30 seconds request timeout
 };
+
+/**
+ * Custom error for request timeouts - allows UI to show meaningful feedback
+ */
+export class RequestTimeoutError extends Error {
+  constructor(url: string) {
+    super(`Request timed out after ${RETRY_CONFIG.requestTimeoutMs / 1000} seconds: ${url}`);
+    this.name = 'RequestTimeoutError';
+  }
+}
 
 /**
  * Sleep for a given number of milliseconds
@@ -367,11 +378,20 @@ const makeRequest = async (url: string, options: RequestInit = {}) => {
     // Retry logic with exponential backoff for rate limiting
     let lastError: Error | null = null;
     for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+      // Create AbortController for request timeout (IKA-348)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, RETRY_CONFIG.requestTimeoutMs);
+
       try {
         const response = await fetch(fullUrl, {
           ...options,
           headers,
+          signal: options.signal || controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         // Record success for circuit breaker on successful response (even 4xx)
         // Only 5xx server errors should count as failures
@@ -395,12 +415,20 @@ const makeRequest = async (url: string, options: RequestInit = {}) => {
         }
 
         // Calculate backoff delay
+        clearTimeout(timeoutId); // Clear timeout before retry sleep
         const delay = getBackoffDelay(attempt);
         console.warn(
           `[API] Received ${response.status} for ${url}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries})`
         );
         await sleep(delay);
       } catch (error) {
+        clearTimeout(timeoutId);
+
+        // Handle timeout specially - throw immediately without retry (IKA-348)
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new RequestTimeoutError(url);
+        }
+
         lastError = error as Error;
         // Record failure for circuit breaker on network errors
         circuitBreaker.recordFailure();

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { tasksApi } from '../lib/api';
+import { toast } from 'sonner';
+import { tasksApi, RequestTimeoutError } from '../lib/api';
 import type {
   CreateTaskComment,
   UpdateTaskComment,
@@ -13,6 +14,11 @@ function isRateLimitError(error: unknown): boolean {
     return msg.includes('429') || msg.includes('too many requests');
   }
   return false;
+}
+
+// Helper to detect timeout errors (IKA-348)
+function isTimeoutError(error: unknown): boolean {
+  return error instanceof RequestTimeoutError;
 }
 
 export function useTaskComments(taskId: string | null) {
@@ -106,6 +112,14 @@ export function useTaskComments(taskId: string | null) {
     onError: (error, _newComment, context) => {
       // Log error for debugging (IKA-322)
       console.error('[useTaskComments] Create comment failed:', error);
+
+      // Show user-friendly toast for timeout errors (IKA-348)
+      if (isTimeoutError(error)) {
+        toast.error('Request timed out', {
+          description: 'The server took too long to respond. Please try again.',
+        });
+      }
+
       // Rollback to the previous value
       if (context?.previousComments) {
         queryClient.setQueryData(

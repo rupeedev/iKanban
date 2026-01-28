@@ -50,12 +50,12 @@ export function TaskTagsSection({
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading tags...
+          Loading labels...
         </div>
       ) : error ? (
         <div className="flex items-center gap-2 text-sm text-destructive">
           <AlertCircle className="h-4 w-4" />
-          <span>Failed to load tags</span>
+          <span>Failed to load labels</span>
           <Button
             variant="link"
             size="sm"
@@ -72,23 +72,32 @@ export function TaskTagsSection({
               key={tag.id}
               name={tag.tag_name}
               color={tag.color}
-              removable={editable}
+              removable={editable && !isProcessing}
               onRemove={() => handleRemoveTag(tag.tag_id)}
             />
           ))}
           {/* Only show Add Label when no label is selected (single-label per issue) */}
           {editable && tags.length === 0 && (
-            <TagSelector
-              teamId={teamId}
-              selectedTagIds={selectedTagIds}
-              onTagSelect={handleAddTag}
-              disabled={isProcessing}
-            />
+            <div className="flex items-center gap-1.5">
+              <TagSelector
+                teamId={teamId}
+                selectedTagIds={selectedTagIds}
+                onTagSelect={handleAddTag}
+                disabled={isProcessing}
+              />
+              {isProcessing && (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+              )}
+            </div>
           )}
           {!editable && tags.length === 0 && (
             <span className="text-sm text-muted-foreground italic">
               No labels
             </span>
+          )}
+          {/* Show spinner when removing a label */}
+          {editable && tags.length > 0 && isRemoving && (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
           )}
         </div>
       )}
