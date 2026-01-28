@@ -42,8 +42,8 @@ import {
   Settings,
   Trash2,
   FileText,
-  Zap,
-  Inbox,
+  Activity,
+  ListFilter,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -635,17 +635,17 @@ export function Sidebar() {
             isCollapsed={isCollapsed}
           />
           <SidebarItem
-            icon={Zap}
-            label="Pulse"
-            to="/pulse"
-            isActive={location.pathname === '/pulse'}
+            icon={Activity}
+            label="Activity"
+            to="/activity"
+            isActive={location.pathname === '/activity'}
             isCollapsed={isCollapsed}
           />
           <SidebarItem
-            icon={Inbox}
-            label="Inbox"
-            to="/inbox"
-            isActive={location.pathname === '/inbox'}
+            icon={ListFilter}
+            label="Triage"
+            to="/triage"
+            isActive={location.pathname === '/triage'}
             isCollapsed={isCollapsed}
           />
           <SidebarItem

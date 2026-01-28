@@ -159,12 +159,12 @@ export const useKeyCycleViewBackward = createSemanticHook(
 export const useKeyToggleSidebar = createSemanticHook(Action.TOGGLE_SIDEBAR);
 
 /**
- * Go to Inbox action - typically G then I sequence
+ * Go to Triage action - typically G then T sequence
  *
  * @example
- * useKeyGoInbox(() => navigate('/inbox'), { scope: Scope.GLOBAL });
+ * useKeyGoTriage(() => navigate('/triage'), { scope: Scope.GLOBAL });
  */
-export const useKeyGoInbox = createSemanticHook(Action.GO_INBOX);
+export const useKeyGoTriage = createSemanticHook(Action.GO_TRIAGE);
 
 /**
  * Go to My Issues action - typically G then M sequence

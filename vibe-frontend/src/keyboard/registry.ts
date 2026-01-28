@@ -33,7 +33,7 @@ export enum Action {
   CYCLE_VIEW_BACKWARD = 'cycle_view_backward',
   // Sidebar actions
   TOGGLE_SIDEBAR = 'toggle_sidebar',
-  GO_INBOX = 'go_inbox',
+  GO_TRIAGE = 'go_triage',
   GO_MY_ISSUES = 'go_my_issues',
   GO_PROJECTS = 'go_projects',
   COMMAND_PALETTE = 'command_palette',
@@ -235,10 +235,10 @@ export const keyBindings: KeyBinding[] = [
     group: 'Sidebar',
   },
   {
-    action: Action.GO_INBOX,
-    keys: 'g i',
+    action: Action.GO_TRIAGE,
+    keys: 'g t',
     scopes: [Scope.GLOBAL],
-    description: 'Go to Inbox',
+    description: 'Go to Triage',
     group: 'Sidebar',
   },
   {

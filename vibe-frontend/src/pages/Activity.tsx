@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Zap,
+  Activity as ActivityIcon,
   CheckCircle2,
   MessageSquare,
   GitPullRequest,
@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type ViewFilter = 'pulse' | 'for-me' | 'popular' | 'recent';
+type ViewFilter = 'activity' | 'for-me' | 'popular' | 'recent';
 
 interface ActivityItem {
   id: string;
@@ -34,8 +34,8 @@ const ACTIVITY_ICONS = {
   pr_merged: GitPullRequest,
 };
 
-export function Pulse() {
-  const [viewFilter, setViewFilter] = useState<ViewFilter>('pulse');
+export function Activity() {
+  const [viewFilter, setViewFilter] = useState<ViewFilter>('activity');
 
   // Group activities by date
   const groupActivitiesByDate = (activities: ActivityItem[]) => {
@@ -59,7 +59,8 @@ export function Pulse() {
         a.timestamp.toDateString() !== yesterday.toDateString()
     );
 
-    if (todayItems.length > 0) groups.push({ label: 'Today', items: todayItems });
+    if (todayItems.length > 0)
+      groups.push({ label: 'Today', items: todayItems });
     if (yesterdayItems.length > 0)
       groups.push({ label: 'Yesterday', items: yesterdayItems });
     if (lastWeekItems.length > 0)
@@ -76,8 +77,8 @@ export function Pulse() {
       <div className="shrink-0 border-b px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Zap className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-semibold">Pulse</h1>
+            <ActivityIcon className="h-5 w-5 text-primary" />
+            <h1 className="text-lg font-semibold">Activity</h1>
           </div>
           <Button variant="outline" size="sm" className="text-xs">
             Subscription
@@ -88,12 +89,12 @@ export function Pulse() {
       {/* Filter tabs */}
       <div className="shrink-0 border-b px-6 py-2 flex items-center gap-2">
         <Button
-          variant={viewFilter === 'pulse' ? 'secondary' : 'ghost'}
+          variant={viewFilter === 'activity' ? 'secondary' : 'ghost'}
           size="sm"
-          onClick={() => setViewFilter('pulse')}
+          onClick={() => setViewFilter('activity')}
           className="h-7 text-xs"
         >
-          Pulse
+          Activity
         </Button>
         <Button
           variant={viewFilter === 'for-me' ? 'secondary' : 'ghost'}
@@ -155,7 +156,9 @@ export function Pulse() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium">{item.title}</p>
+                              <p className="text-sm font-medium">
+                                {item.title}
+                              </p>
                               {item.status && (
                                 <Badge
                                   variant="secondary"

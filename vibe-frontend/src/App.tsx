@@ -25,8 +25,8 @@ import {
   RegisterPage,
 } from '@/pages/auth';
 import { MyIssues } from '@/pages/MyIssues';
-import { Inbox } from '@/pages/Inbox';
-import { Pulse } from '@/pages/Pulse';
+import { Triage } from '@/pages/Triage';
+import { Activity } from '@/pages/Activity';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { SuperadminRoute } from '@/components/auth/SuperadminRoute';
@@ -53,30 +53,44 @@ const AdminLayout = lazy(() =>
   import('@/pages/admin/AdminLayout').then((m) => ({ default: m.AdminLayout }))
 );
 const AdminDashboard = lazy(() =>
-  import('@/pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
+  import('@/pages/admin/AdminDashboard').then((m) => ({
+    default: m.AdminDashboard,
+  }))
 );
 const AdminInvitations = lazy(() =>
-  import('@/pages/admin/AdminInvitations').then((m) => ({ default: m.AdminInvitations }))
+  import('@/pages/admin/AdminInvitations').then((m) => ({
+    default: m.AdminInvitations,
+  }))
 );
 const AdminPermissions = lazy(() =>
-  import('@/pages/admin/AdminPermissions').then((m) => ({ default: m.AdminPermissions }))
+  import('@/pages/admin/AdminPermissions').then((m) => ({
+    default: m.AdminPermissions,
+  }))
 );
 const AdminUsers = lazy(() =>
   import('@/pages/admin/AdminUsers').then((m) => ({ default: m.AdminUsers }))
 );
 const AdminFlaggedUsers = lazy(() =>
-  import('@/pages/admin/AdminFlaggedUsers').then((m) => ({ default: m.AdminFlaggedUsers }))
+  import('@/pages/admin/AdminFlaggedUsers').then((m) => ({
+    default: m.AdminFlaggedUsers,
+  }))
 );
 
 // Lazy load superadmin pages for code splitting (IKA-302)
 const SuperadminLayout = lazy(() =>
-  import('@/pages/superadmin/SuperadminLayout').then((m) => ({ default: m.SuperadminLayout }))
+  import('@/pages/superadmin/SuperadminLayout').then((m) => ({
+    default: m.SuperadminLayout,
+  }))
 );
 const SuperadminDashboard = lazy(() =>
-  import('@/pages/superadmin/SuperadminDashboard').then((m) => ({ default: m.SuperadminDashboard }))
+  import('@/pages/superadmin/SuperadminDashboard').then((m) => ({
+    default: m.SuperadminDashboard,
+  }))
 );
 const RegistrationRequests = lazy(() =>
-  import('@/pages/superadmin/RegistrationRequests').then((m) => ({ default: m.RegistrationRequests }))
+  import('@/pages/superadmin/RegistrationRequests').then((m) => ({
+    default: m.RegistrationRequests,
+  }))
 );
 const SuperadminRegistrationDetail = lazy(() =>
   import('@/pages/superadmin/SuperadminRegistrationDetail').then((m) => ({
@@ -84,7 +98,9 @@ const SuperadminRegistrationDetail = lazy(() =>
   }))
 );
 const SuperadminStatsPage = lazy(() =>
-  import('@/pages/superadmin/SuperadminStatsPage').then((m) => ({ default: m.SuperadminStatsPage }))
+  import('@/pages/superadmin/SuperadminStatsPage').then((m) => ({
+    default: m.SuperadminStatsPage,
+  }))
 );
 import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -282,8 +298,8 @@ function AppContent() {
               >
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/projects/:projectId" element={<Projects />} />
-                <Route path="/pulse" element={<Pulse />} />
-                <Route path="/inbox" element={<Inbox />} />
+                <Route path="/activity" element={<Activity />} />
+                <Route path="/triage" element={<Triage />} />
                 <Route path="/my-issues" element={<MyIssues />} />
                 <Route path="/views" element={<Views />} />
                 <Route path="/views/new" element={<Views />} />
@@ -309,7 +325,9 @@ function AppContent() {
                 <Route
                   path="/admin/*"
                   element={
-                    <Suspense fallback={<Loader message="Loading admin..." size={32} />}>
+                    <Suspense
+                      fallback={<Loader message="Loading admin..." size={32} />}
+                    >
                       <AdminLayout />
                     </Suspense>
                   }
@@ -325,7 +343,9 @@ function AppContent() {
                   <Route
                     path="/superadmin/*"
                     element={
-                      <Suspense fallback={<Loader message="Loading..." size={32} />}>
+                      <Suspense
+                        fallback={<Loader message="Loading..." size={32} />}
+                      >
                         <SuperadminLayout />
                       </Suspense>
                     }

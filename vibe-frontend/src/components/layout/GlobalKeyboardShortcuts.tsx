@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSidebar } from '@/contexts/SidebarContext';
 import {
   useKeyToggleSidebar,
-  useKeyGoInbox,
+  useKeyGoTriage,
   useKeyGoMyIssues,
   useKeyGoProjects,
   useKeyCommandPalette,
@@ -26,10 +26,10 @@ export function GlobalKeyboardShortcuts() {
     { scope: Scope.GLOBAL, preventDefault: true }
   );
 
-  // Go to Inbox: G then I
-  useKeyGoInbox(
+  // Go to Triage: G then T
+  useKeyGoTriage(
     () => {
-      navigate('/inbox');
+      navigate('/triage');
     },
     { scope: Scope.GLOBAL }
   );

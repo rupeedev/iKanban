@@ -208,7 +208,7 @@ export function DocsPage() {
                   />
                   <ShortcutRow shortcut="?" action="Show keyboard shortcuts" />
                   <ShortcutRow shortcut="G then P" action="Go to Projects" />
-                  <ShortcutRow shortcut="G then I" action="Go to Inbox" />
+                  <ShortcutRow shortcut="G then T" action="Go to Triage" />
                   <ShortcutRow shortcut="G then M" action="Go to My Issues" />
                 </tbody>
               </table>

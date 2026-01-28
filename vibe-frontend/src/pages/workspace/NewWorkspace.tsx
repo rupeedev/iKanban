@@ -216,7 +216,7 @@ export function NewWorkspace() {
   // Handle finish - navigate to new workspace
   const handleFinish = useCallback(() => {
     if (state.createdWorkspaceId) {
-      navigate('/inbox');
+      navigate('/triage');
     } else {
       navigate('/');
     }

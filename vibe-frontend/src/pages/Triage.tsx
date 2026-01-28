@@ -32,7 +32,7 @@ const NOTIFICATION_ICONS: Record<InboxNotificationType, typeof Bell> = {
   system_notification: Bell,
 };
 
-export function Inbox() {
+export function Triage() {
   const navigate = useNavigate();
   const { items, summary, isLoading, markAsRead, markAllAsRead, deleteItem } =
     useInbox();
@@ -83,12 +83,12 @@ export function Inbox() {
 
   return (
     <div className="h-full flex bg-background">
-      {/* Left Panel - Inbox List */}
+      {/* Left Panel - Triage List */}
       <div className="w-[400px] border-r flex flex-col">
         {/* Header */}
         <div className="shrink-0 border-b px-4 py-3">
           <div className="flex items-center justify-between">
-            <h1 className="text-lg font-semibold">Inbox</h1>
+            <h1 className="text-lg font-semibold">Triage</h1>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="h-8 w-8">
                 <Filter className="h-4 w-4" />
@@ -148,7 +148,7 @@ export function Inbox() {
           )}
         </div>
 
-        {/* Inbox items list */}
+        {/* Triage items list */}
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center h-32">
@@ -291,7 +291,7 @@ export function Inbox() {
           </div>
         ) : (
           <div className="text-center">
-            {/* Empty inbox illustration - simple tray icon */}
+            {/* Empty triage illustration - simple tray icon */}
             <div className="mx-auto mb-4">
               <svg
                 width="120"
