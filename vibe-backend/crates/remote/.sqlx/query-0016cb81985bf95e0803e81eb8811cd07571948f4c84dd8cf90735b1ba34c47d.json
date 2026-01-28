@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                us.project_id AS \"project_id!: Uuid\",\n                p.name AS \"project_name!\",\n                us.subscribed_at AS \"subscribed_at!: DateTime<Utc>\"\n            FROM user_subscriptions us\n            JOIN projects p ON p.id = us.project_id\n            WHERE us.user_id = $1 AND us.project_id IS NOT NULL\n            ORDER BY us.subscribed_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "subscribed_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "0016cb81985bf95e0803e81eb8811cd07571948f4c84dd8cf90735b1ba34c47d"
+}

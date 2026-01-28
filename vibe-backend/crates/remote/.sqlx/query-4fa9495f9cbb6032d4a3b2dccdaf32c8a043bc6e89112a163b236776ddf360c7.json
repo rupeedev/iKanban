@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT emoji, COUNT(*) AS \"reaction_count!: i64\"\n            FROM update_reactions\n            WHERE update_id = $1\n            GROUP BY emoji\n            ORDER BY COUNT(*) DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "emoji",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "reaction_count!: i64",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "4fa9495f9cbb6032d4a3b2dccdaf32c8a043bc6e89112a163b236776ddf360c7"
+}

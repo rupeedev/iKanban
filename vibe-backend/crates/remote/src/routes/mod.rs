@@ -37,11 +37,13 @@ mod oauth_settings;
 pub(crate) mod organization_members;
 mod organizations;
 mod projects;
+mod pulse;
 pub mod registrations;
 mod repos;
 mod review;
 mod stripe;
 mod stubs;
+mod subscriptions;
 mod superadmins;
 mod tags;
 pub mod tasks;
@@ -88,6 +90,8 @@ pub fn router(state: AppState) -> Router {
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
         .merge(inbox::router())
+        .merge(pulse::router())
+        .merge(subscriptions::router())
         .merge(ai_keys::router())
         .merge(api_keys::router())
         .merge(projects::router())

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM update_reactions WHERE update_id = $1 AND user_id = $2 AND emoji = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "01d726a6303844a1a289b37bc7f31fd1da3b82f3aaa3025657aaf2e48dd189e6"
+}

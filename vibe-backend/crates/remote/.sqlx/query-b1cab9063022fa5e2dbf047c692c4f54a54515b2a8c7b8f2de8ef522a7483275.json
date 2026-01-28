@@ -1,0 +1,68 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE project_updates\n            SET\n                content = COALESCE($3, content),\n                health_status = CASE WHEN $4::TEXT IS NOT NULL THEN $4::project_health_status ELSE health_status END,\n                progress_data = COALESCE($5, progress_data),\n                updated_at = NOW()\n            WHERE id = $1 AND author_id = $2\n            RETURNING\n                id AS \"id!: Uuid\",\n                project_id AS \"project_id!: Uuid\",\n                author_id AS \"author_id!: Uuid\",\n                content AS \"content!\",\n                health_status::TEXT AS \"health_status\",\n                progress_data,\n                created_at AS \"created_at!: DateTime<Utc>\",\n                updated_at AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "author_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "content!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "health_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "progress_data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "b1cab9063022fa5e2dbf047c692c4f54a54515b2a8c7b8f2de8ef522a7483275"
+}

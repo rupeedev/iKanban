@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id AS \"id!: Uuid\",\n                user_id AS \"user_id!: Uuid\",\n                notification_type::TEXT AS \"notification_type!\",\n                title AS \"title!\",\n                message,\n                task_id AS \"task_id: Uuid\",\n                project_id AS \"project_id: Uuid\",\n                workspace_id AS \"workspace_id: Uuid\",\n                is_read AS \"is_read!: bool\",\n                created_at AS \"created_at!: DateTime<Utc>\",\n                updated_at AS \"updated_at!: DateTime<Utc>\"\n            FROM inbox_items\n            WHERE user_id = $1 AND is_read = FALSE\n            ORDER BY created_at DESC\n            LIMIT $2\n            ",
+  "query": "\n            SELECT\n                id AS \"id!: Uuid\",\n                user_id AS \"user_id!: Uuid\",\n                actor_id AS \"actor_id: Uuid\",\n                notification_type::TEXT AS \"notification_type!\",\n                title AS \"title!\",\n                message,\n                task_id AS \"task_id: Uuid\",\n                project_id AS \"project_id: Uuid\",\n                workspace_id AS \"workspace_id: Uuid\",\n                is_read AS \"is_read!: bool\",\n                created_at AS \"created_at!: DateTime<Utc>\",\n                updated_at AS \"updated_at!: DateTime<Utc>\"\n            FROM inbox_items\n            WHERE user_id = $1 AND is_read = FALSE\n            ORDER BY created_at DESC\n            LIMIT $2\n            ",
   "describe": {
     "columns": [
       {
@@ -15,46 +15,51 @@
       },
       {
         "ordinal": 2,
+        "name": "actor_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
         "name": "notification_type!",
         "type_info": "Text"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "title!",
         "type_info": "Text"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "message",
         "type_info": "Text"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "task_id: Uuid",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "project_id: Uuid",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "workspace_id: Uuid",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "is_read!: bool",
         "type_info": "Bool"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -68,6 +73,7 @@
     "nullable": [
       false,
       false,
+      true,
       null,
       false,
       true,
@@ -79,5 +85,5 @@
       false
     ]
   },
-  "hash": "6f8e9de20a88f59bc225784646cedd13267056e380682c8dd818f67b10ea1413"
+  "hash": "21a79a21eed86fd9754aa953391b1c7205dde72ed9187aef6a206e850651491b"
 }

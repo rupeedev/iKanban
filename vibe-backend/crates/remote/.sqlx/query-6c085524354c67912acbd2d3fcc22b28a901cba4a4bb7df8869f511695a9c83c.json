@@ -1,0 +1,66 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                pu.id AS \"id!: Uuid\",\n                pu.project_id AS \"project_id!: Uuid\",\n                pu.author_id AS \"author_id!: Uuid\",\n                pu.content AS \"content!\",\n                pu.health_status::TEXT AS \"health_status\",\n                pu.progress_data,\n                pu.created_at AS \"created_at!: DateTime<Utc>\",\n                pu.updated_at AS \"updated_at!: DateTime<Utc>\"\n            FROM project_updates pu\n            WHERE pu.project_id IN (\n                -- Projects where user is lead\n                SELECT id FROM projects WHERE lead_id = $1\n                UNION\n                -- Projects user is subscribed to\n                SELECT project_id FROM user_subscriptions WHERE user_id = $1 AND project_id IS NOT NULL\n            )\n            ORDER BY pu.created_at DESC\n            LIMIT $2 OFFSET $3\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "author_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "content!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "health_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "progress_data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "6c085524354c67912acbd2d3fcc22b28a901cba4a4bb7df8869f511695a9c83c"
+}

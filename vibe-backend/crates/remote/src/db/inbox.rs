@@ -11,10 +11,14 @@ use uuid::Uuid;
 #[serde(rename_all = "snake_case")]
 pub enum InboxNotificationType {
     TaskAssigned,
+    TaskUnassigned,
     TaskMentioned,
     TaskComment,
     TaskStatusChanged,
     TaskCompleted,
+    MentionedInUpdate,
+    ProjectRoleAdded,
+    DueDateApproaching,
     WorkspaceCreated,
     #[default]
     SystemNotification,
@@ -24,10 +28,14 @@ impl InboxNotificationType {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::TaskAssigned => "task_assigned",
+            Self::TaskUnassigned => "task_unassigned",
             Self::TaskMentioned => "task_mentioned",
             Self::TaskComment => "task_comment",
             Self::TaskStatusChanged => "task_status_changed",
             Self::TaskCompleted => "task_completed",
+            Self::MentionedInUpdate => "mentioned_in_update",
+            Self::ProjectRoleAdded => "project_role_added",
+            Self::DueDateApproaching => "due_date_approaching",
             Self::WorkspaceCreated => "workspace_created",
             Self::SystemNotification => "system_notification",
         }
@@ -36,10 +44,14 @@ impl InboxNotificationType {
     pub fn parse(s: &str) -> Self {
         match s {
             "task_assigned" => Self::TaskAssigned,
+            "task_unassigned" => Self::TaskUnassigned,
             "task_mentioned" => Self::TaskMentioned,
             "task_comment" => Self::TaskComment,
             "task_status_changed" => Self::TaskStatusChanged,
             "task_completed" => Self::TaskCompleted,
+            "mentioned_in_update" => Self::MentionedInUpdate,
+            "project_role_added" => Self::ProjectRoleAdded,
+            "due_date_approaching" => Self::DueDateApproaching,
             "workspace_created" => Self::WorkspaceCreated,
             _ => Self::SystemNotification,
         }
@@ -51,6 +63,7 @@ impl InboxNotificationType {
 pub struct InboxItem {
     pub id: Uuid,
     pub user_id: Uuid,
+    pub actor_id: Option<Uuid>,
     pub notification_type: InboxNotificationType,
     pub title: String,
     pub message: Option<String>,
@@ -68,6 +81,7 @@ pub struct CreateInboxItem {
     pub notification_type: InboxNotificationType,
     pub title: String,
     pub message: Option<String>,
+    pub actor_id: Option<Uuid>,
     pub task_id: Option<Uuid>,
     pub project_id: Option<Uuid>,
     pub workspace_id: Option<Uuid>,
@@ -103,6 +117,7 @@ impl InboxRepository {
             SELECT
                 id AS "id!: Uuid",
                 user_id AS "user_id!: Uuid",
+                actor_id AS "actor_id: Uuid",
                 notification_type::TEXT AS "notification_type!",
                 title AS "title!",
                 message,
@@ -128,6 +143,7 @@ impl InboxRepository {
             .map(|r| InboxItem {
                 id: r.id,
                 user_id: r.user_id,
+                actor_id: r.actor_id,
                 notification_type: InboxNotificationType::parse(&r.notification_type),
                 title: r.title,
                 message: r.message,
@@ -153,6 +169,7 @@ impl InboxRepository {
             SELECT
                 id AS "id!: Uuid",
                 user_id AS "user_id!: Uuid",
+                actor_id AS "actor_id: Uuid",
                 notification_type::TEXT AS "notification_type!",
                 title AS "title!",
                 message,
@@ -178,6 +195,7 @@ impl InboxRepository {
             .map(|r| InboxItem {
                 id: r.id,
                 user_id: r.user_id,
+                actor_id: r.actor_id,
                 notification_type: InboxNotificationType::parse(&r.notification_type),
                 title: r.title,
                 message: r.message,
@@ -198,6 +216,7 @@ impl InboxRepository {
             SELECT
                 id AS "id!: Uuid",
                 user_id AS "user_id!: Uuid",
+                actor_id AS "actor_id: Uuid",
                 notification_type::TEXT AS "notification_type!",
                 title AS "title!",
                 message,
@@ -218,6 +237,7 @@ impl InboxRepository {
         Ok(row.map(|r| InboxItem {
             id: r.id,
             user_id: r.user_id,
+            actor_id: r.actor_id,
             notification_type: InboxNotificationType::parse(&r.notification_type),
             title: r.title,
             message: r.message,
@@ -240,12 +260,13 @@ impl InboxRepository {
         // Use raw SQL to avoid enum type mapping issues
         let row = sqlx::query!(
             r#"
-            INSERT INTO inbox_items (user_id, notification_type, title, message, task_id, project_id, workspace_id, is_read)
-            SELECT $1, t.n::inbox_notification_type, $3, $4, $5, $6, $7, FALSE
-            FROM (SELECT $2::TEXT AS n) t
+            INSERT INTO inbox_items (user_id, actor_id, notification_type, title, message, task_id, project_id, workspace_id, is_read)
+            SELECT $1, $2, t.n::inbox_notification_type, $4, $5, $6, $7, $8, FALSE
+            FROM (SELECT $3::TEXT AS n) t
             RETURNING
                 id AS "id!: Uuid",
                 user_id AS "user_id!: Uuid",
+                actor_id AS "actor_id: Uuid",
                 notification_type::TEXT AS "notification_type!",
                 title AS "title!",
                 message,
@@ -257,6 +278,7 @@ impl InboxRepository {
                 updated_at AS "updated_at!: DateTime<Utc>"
             "#,
             user_id,
+            payload.actor_id,
             notification_type_str,
             payload.title,
             payload.message,
@@ -270,6 +292,7 @@ impl InboxRepository {
         Ok(InboxItem {
             id: row.id,
             user_id: row.user_id,
+            actor_id: row.actor_id,
             notification_type: InboxNotificationType::parse(&row.notification_type),
             title: row.title,
             message: row.message,
@@ -296,6 +319,7 @@ impl InboxRepository {
             RETURNING
                 id AS "id!: Uuid",
                 user_id AS "user_id!: Uuid",
+                actor_id AS "actor_id: Uuid",
                 notification_type::TEXT AS "notification_type!",
                 title AS "title!",
                 message,
@@ -315,6 +339,7 @@ impl InboxRepository {
         Ok(row.map(|r| InboxItem {
             id: r.id,
             user_id: r.user_id,
+            actor_id: r.actor_id,
             notification_type: InboxNotificationType::parse(&r.notification_type),
             title: r.title,
             message: r.message,

@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO user_subscriptions (user_id, project_id, digest_frequency)\n            SELECT $1, NULL, t.f::digest_frequency\n            FROM (SELECT $2::TEXT AS f) t\n            ON CONFLICT (user_id, project_id) DO UPDATE SET\n                digest_frequency = EXCLUDED.digest_frequency,\n                updated_at = NOW()\n            RETURNING\n                id AS \"id!: Uuid\",\n                user_id AS \"user_id!: Uuid\",\n                project_id AS \"project_id: Uuid\",\n                tenant_workspace_id AS \"tenant_workspace_id: Uuid\",\n                digest_frequency::TEXT AS \"digest_frequency!\",\n                subscribed_at AS \"subscribed_at!: DateTime<Utc>\",\n                updated_at AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "tenant_workspace_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "digest_frequency!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "subscribed_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      null,
+      false,
+      false
+    ]
+  },
+  "hash": "ca068b344edc79b04e9447749a8227f1326117daf8d45bbddb72cc4af18f90e2"
+}

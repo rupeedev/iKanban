@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                pu.id AS \"id!: Uuid\",\n                pu.project_id AS \"project_id!: Uuid\",\n                pu.author_id AS \"author_id!: Uuid\",\n                pu.content AS \"content!\",\n                pu.health_status::TEXT AS \"health_status\",\n                pu.progress_data,\n                pu.created_at AS \"created_at!: DateTime<Utc>\",\n                pu.updated_at AS \"updated_at!: DateTime<Utc>\"\n            FROM project_updates pu\n            LEFT JOIN (\n                SELECT update_id, COUNT(*) as reaction_count\n                FROM update_reactions\n                WHERE created_at > NOW() - INTERVAL '7 days'\n                GROUP BY update_id\n            ) rc ON rc.update_id = pu.id\n            WHERE pu.created_at > NOW() - INTERVAL '7 days'\n            ORDER BY COALESCE(rc.reaction_count, 0) DESC, pu.created_at DESC\n            LIMIT $1 OFFSET $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "author_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "content!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "health_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "progress_data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "bcfb2571c3509242574832551ae6e91051abed11dbca1248719efccd73db6d99"
+}

@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO update_reactions (update_id, user_id, emoji)\n            VALUES ($1, $2, $3)\n            ON CONFLICT (update_id, user_id, emoji) DO UPDATE SET created_at = update_reactions.created_at\n            RETURNING\n                id AS \"id!: Uuid\",\n                update_id AS \"update_id!: Uuid\",\n                user_id AS \"user_id!: Uuid\",\n                emoji AS \"emoji!\",\n                created_at AS \"created_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "update_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "emoji!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b5d1f135a99f09ee7b2828abdf91d10714d911e8dc3c459f7dffa8b7b7d94438"
+}
