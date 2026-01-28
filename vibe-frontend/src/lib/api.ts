@@ -288,7 +288,7 @@ const RETRY_CONFIG = {
   baseDelayMs: 2000, // 2 seconds
   maxDelayMs: 5000, // 5 seconds max
   retryableStatuses: [503, 502, 504], // Server errors only - NOT 429!
-  requestTimeoutMs: 30000, // 30 seconds request timeout
+  requestTimeoutMs: 10000, // 10 seconds - fail fast for better UX
 };
 
 /**
