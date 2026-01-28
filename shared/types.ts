@@ -478,6 +478,76 @@ export type CreateInboxItem = { notification_type: InboxNotificationType, title:
 
 export type InboxSummary = { total_count: bigint, unread_count: bigint, };
 
+// Pulse (Activity) types
+export type ProjectHealthStatus = "on_track" | "at_risk" | "off_track" | "completed" | "paused";
+
+export type ProjectUpdate = {
+  id: string,
+  project_id: string,
+  author_id: string,
+  content: string,
+  health_status: ProjectHealthStatus | null,
+  progress_data: Record<string, unknown> | null,
+  created_at: string,
+  updated_at: string,
+};
+
+export type ReactionCount = {
+  emoji: string,
+  count: number,
+};
+
+export type ProjectUpdateWithReactions = ProjectUpdate & {
+  reactions: ReactionCount[],
+  user_reactions: string[],
+};
+
+export type CreateProjectUpdate = {
+  content: string,
+  health_status?: ProjectHealthStatus | null,
+  progress_data?: Record<string, unknown> | null,
+};
+
+export type UpdateProjectUpdate = {
+  content?: string | null,
+  health_status?: ProjectHealthStatus | null,
+  progress_data?: Record<string, unknown> | null,
+};
+
+export type UpdateReaction = {
+  id: string,
+  update_id: string,
+  user_id: string,
+  emoji: string,
+  created_at: string,
+};
+
+export type PulseFilter = "recent" | "for_me" | "popular";
+
+// Subscription types
+export type DigestFrequency = "daily" | "weekly" | "never";
+
+export type ProjectSubscription = {
+  project_id: string,
+  project_name: string,
+  subscribed_at: string,
+};
+
+export type SubscriptionSettings = {
+  global_frequency: DigestFrequency,
+  project_subscriptions: ProjectSubscription[],
+};
+
+export type UserSubscription = {
+  id: string,
+  user_id: string,
+  project_id: string | null,
+  tenant_workspace_id: string | null,
+  digest_frequency: DigestFrequency,
+  subscribed_at: string,
+  updated_at: string,
+};
+
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
 export type TaskPriority = "None" | "Urgent" | "High" | "Medium" | "Low";

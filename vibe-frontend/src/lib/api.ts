@@ -103,6 +103,15 @@ import {
   InboxItem,
   CreateInboxItem,
   InboxSummary,
+  ProjectUpdate,
+  ProjectUpdateWithReactions,
+  CreateProjectUpdate,
+  UpdateProjectUpdate,
+  UpdateReaction,
+  PulseFilter,
+  SubscriptionSettings,
+  UserSubscription,
+  DigestFrequency,
   Document,
   DocumentFolder,
   CreateDocument,
@@ -2485,6 +2494,118 @@ export const inboxApi = {
 
   delete: async (itemId: string): Promise<void> => {
     const response = await makeRequest(`/api/inbox/${itemId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+};
+
+// Pulse (Activity) API
+export const pulseApi = {
+  list: async (
+    filter: PulseFilter = 'recent',
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<ProjectUpdate[]> => {
+    const response = await makeRequest(
+      `/api/pulse?filter=${filter}&limit=${limit}&offset=${offset}`
+    );
+    return handleApiResponse<ProjectUpdate[]>(response);
+  },
+
+  listByProject: async (
+    projectId: string,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<ProjectUpdate[]> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/updates?limit=${limit}&offset=${offset}`
+    );
+    return handleApiResponse<ProjectUpdate[]>(response);
+  },
+
+  create: async (
+    projectId: string,
+    data: CreateProjectUpdate
+  ): Promise<ProjectUpdate> => {
+    const response = await makeRequest(`/api/projects/${projectId}/updates`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ProjectUpdate>(response);
+  },
+
+  get: async (updateId: string): Promise<ProjectUpdateWithReactions> => {
+    const response = await makeRequest(`/api/updates/${updateId}`);
+    return handleApiResponse<ProjectUpdateWithReactions>(response);
+  },
+
+  update: async (
+    updateId: string,
+    data: UpdateProjectUpdate
+  ): Promise<ProjectUpdate> => {
+    const response = await makeRequest(`/api/updates/${updateId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ProjectUpdate>(response);
+  },
+
+  delete: async (updateId: string): Promise<void> => {
+    const response = await makeRequest(`/api/updates/${updateId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  addReaction: async (
+    updateId: string,
+    emoji: string
+  ): Promise<UpdateReaction> => {
+    const response = await makeRequest(`/api/updates/${updateId}/reactions`, {
+      method: 'POST',
+      body: JSON.stringify({ emoji }),
+    });
+    return handleApiResponse<UpdateReaction>(response);
+  },
+
+  removeReaction: async (updateId: string, emoji: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/updates/${updateId}/reactions/${encodeURIComponent(emoji)}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+};
+
+// Subscriptions API
+export const subscriptionsApi = {
+  getSettings: async (): Promise<SubscriptionSettings> => {
+    const response = await makeRequest('/api/subscriptions');
+    return handleApiResponse<SubscriptionSettings>(response);
+  },
+
+  updateGlobalSettings: async (
+    frequency: DigestFrequency
+  ): Promise<UserSubscription> => {
+    const response = await makeRequest('/api/subscriptions', {
+      method: 'PUT',
+      body: JSON.stringify({ digest_frequency: frequency }),
+    });
+    return handleApiResponse<UserSubscription>(response);
+  },
+
+  subscribeToProject: async (projectId: string): Promise<UserSubscription> => {
+    const response = await makeRequest(`/api/projects/${projectId}/subscribe`, {
+      method: 'POST',
+    });
+    return handleApiResponse<UserSubscription>(response);
+  },
+
+  unsubscribeFromProject: async (projectId: string): Promise<void> => {
+    const response = await makeRequest(`/api/projects/${projectId}/subscribe`, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
