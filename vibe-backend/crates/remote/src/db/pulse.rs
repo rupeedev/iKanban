@@ -553,4 +553,3 @@ impl PulseRepository {
         Ok(result.rows_affected() > 0)
     }
 }
-

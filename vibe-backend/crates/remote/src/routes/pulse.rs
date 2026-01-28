@@ -57,7 +57,10 @@ pub fn router() -> Router<AppState> {
             get(get_update).put(update_update).delete(delete_update),
         )
         // Reactions
-        .route("/updates/{update_id}/reactions", axum::routing::post(add_reaction))
+        .route(
+            "/updates/{update_id}/reactions",
+            axum::routing::post(add_reaction),
+        )
         .route(
             "/updates/{update_id}/reactions/{emoji}",
             axum::routing::delete(remove_reaction),
@@ -90,7 +93,8 @@ async fn list_updates(
     })?;
 
     // Enrich with reactions
-    let updates_with_reactions = enrich_updates_with_reactions(state.pool(), updates, ctx.user.id).await?;
+    let updates_with_reactions =
+        enrich_updates_with_reactions(state.pool(), updates, ctx.user.id).await?;
 
     Ok(ApiResponse::success(updates_with_reactions))
 }
@@ -127,7 +131,8 @@ async fn list_project_updates(
         })?;
 
     // Enrich with reactions
-    let updates_with_reactions = enrich_updates_with_reactions(state.pool(), updates, ctx.user.id).await?;
+    let updates_with_reactions =
+        enrich_updates_with_reactions(state.pool(), updates, ctx.user.id).await?;
 
     Ok(ApiResponse::success(updates_with_reactions))
 }
@@ -214,7 +219,10 @@ async fn get_update(
         .await
         .map_err(|error| {
             tracing::error!(?error, %update_id, "failed to get user reactions");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get user reactions")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to get user reactions",
+            )
         })?;
 
     Ok(ApiResponse::success(ProjectUpdateWithReactions {
@@ -301,12 +309,13 @@ async fn add_reaction(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "update not found"))?;
 
-    let reaction = PulseRepository::add_reaction(state.pool(), update_id, ctx.user.id, &payload.emoji)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %update_id, "failed to add reaction");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to add reaction")
-        })?;
+    let reaction =
+        PulseRepository::add_reaction(state.pool(), update_id, ctx.user.id, &payload.emoji)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %update_id, "failed to add reaction");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to add reaction")
+            })?;
 
     Ok(ApiResponse::success(reaction))
 }
@@ -326,13 +335,19 @@ async fn remove_reaction(
         .await
         .map_err(|error| {
             tracing::error!(?error, %update_id, "failed to remove reaction");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to remove reaction")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to remove reaction",
+            )
         })?;
 
     if removed {
         Ok(StatusCode::NO_CONTENT)
     } else {
-        Err(ErrorResponse::new(StatusCode::NOT_FOUND, "reaction not found"))
+        Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "reaction not found",
+        ))
     }
 }
 

@@ -30,7 +30,10 @@ pub struct UpdateGlobalSettingsRequest {
 pub fn router() -> Router<AppState> {
     Router::new()
         // Global subscription settings
-        .route("/subscriptions", get(get_settings).put(update_global_settings))
+        .route(
+            "/subscriptions",
+            get(get_settings).put(update_global_settings),
+        )
         // Project subscriptions
         .route(
             "/projects/{project_id}/subscribe",
@@ -77,7 +80,10 @@ async fn update_global_settings(
     .await
     .map_err(|error| {
         tracing::error!(?error, "failed to update global settings");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to update settings")
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to update settings",
+        )
     })?;
 
     Ok(ApiResponse::success(subscription))
@@ -103,12 +109,13 @@ async fn subscribe_to_project(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
 
-    let subscription = SubscriptionRepository::subscribe_to_project(state.pool(), ctx.user.id, project_id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %project_id, "failed to subscribe");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to subscribe")
-        })?;
+    let subscription =
+        SubscriptionRepository::subscribe_to_project(state.pool(), ctx.user.id, project_id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %project_id, "failed to subscribe");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to subscribe")
+            })?;
 
     tracing::info!(%project_id, "subscribed to project");
 
@@ -126,17 +133,21 @@ async fn unsubscribe_from_project(
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
 ) -> Result<StatusCode, ErrorResponse> {
-    let removed = SubscriptionRepository::unsubscribe_from_project(state.pool(), ctx.user.id, project_id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %project_id, "failed to unsubscribe");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to unsubscribe")
-        })?;
+    let removed =
+        SubscriptionRepository::unsubscribe_from_project(state.pool(), ctx.user.id, project_id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, %project_id, "failed to unsubscribe");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to unsubscribe")
+            })?;
 
     if removed {
         tracing::info!(%project_id, "unsubscribed from project");
         Ok(StatusCode::NO_CONTENT)
     } else {
-        Err(ErrorResponse::new(StatusCode::NOT_FOUND, "subscription not found"))
+        Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "subscription not found",
+        ))
     }
 }

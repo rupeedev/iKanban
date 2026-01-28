@@ -668,9 +668,12 @@ async fn create_team_issue(
             None,
         )
         .await
-        {
-            tracing::warn!(?e, "failed to send task_assigned notification for team issue");
-        }
+    {
+        tracing::warn!(
+            ?e,
+            "failed to send task_assigned notification for team issue"
+        );
+    }
 
     Ok(ApiResponse::success(issue))
 }
@@ -761,9 +764,12 @@ async fn update_team_issue(
                 None,
             )
             .await
-            {
-                tracing::warn!(?e, "failed to send task_assigned notification for team issue");
-            }
+        {
+            tracing::warn!(
+                ?e,
+                "failed to send task_assigned notification for team issue"
+            );
+        }
         // Notify old assignee they were unassigned
         if let Some(old_id) = old_assignee
             && let Err(e) = notifications::notify_task_unassigned(
@@ -776,49 +782,59 @@ async fn update_team_issue(
                 None,
             )
             .await
-            {
-                tracing::warn!(?e, "failed to send task_unassigned notification for team issue");
-            }
+        {
+            tracing::warn!(
+                ?e,
+                "failed to send task_unassigned notification for team issue"
+            );
+        }
     }
 
     // Check if status changed
     if let (Some(ref old_st), Some(new_st)) = (old_status, payload.status.as_ref())
-        && old_st != new_st {
-            // Notify assignee of status change
-            if let Some(assignee_id) = issue.assignee_id {
-                if new_st == "done" {
-                    if let Err(e) = notifications::notify_task_completed(
-                        pool,
-                        assignee_id,
-                        ctx.user.id,
-                        issue.id,
-                        &issue.title,
-                        issue.project_id,
-                        None,
-                    )
-                    .await
-                    {
-                        tracing::warn!(?e, "failed to send task_completed notification for team issue");
-                    }
-                } else {
-                    if let Err(e) = notifications::notify_task_status_changed(
-                        pool,
-                        assignee_id,
-                        ctx.user.id,
-                        issue.id,
-                        &issue.title,
-                        old_st,
-                        new_st,
-                        issue.project_id,
-                        None,
-                    )
-                    .await
-                    {
-                        tracing::warn!(?e, "failed to send task_status_changed notification for team issue");
-                    }
+        && old_st != new_st
+    {
+        // Notify assignee of status change
+        if let Some(assignee_id) = issue.assignee_id {
+            if new_st == "done" {
+                if let Err(e) = notifications::notify_task_completed(
+                    pool,
+                    assignee_id,
+                    ctx.user.id,
+                    issue.id,
+                    &issue.title,
+                    issue.project_id,
+                    None,
+                )
+                .await
+                {
+                    tracing::warn!(
+                        ?e,
+                        "failed to send task_completed notification for team issue"
+                    );
+                }
+            } else {
+                if let Err(e) = notifications::notify_task_status_changed(
+                    pool,
+                    assignee_id,
+                    ctx.user.id,
+                    issue.id,
+                    &issue.title,
+                    old_st,
+                    new_st,
+                    issue.project_id,
+                    None,
+                )
+                .await
+                {
+                    tracing::warn!(
+                        ?e,
+                        "failed to send task_status_changed notification for team issue"
+                    );
                 }
             }
         }
+    }
 
     Ok(ApiResponse::success(issue))
 }

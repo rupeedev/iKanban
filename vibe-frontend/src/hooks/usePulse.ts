@@ -27,8 +27,7 @@ export const pulseKeys = {
   list: (filter: PulseFilter) => [...pulseKeys.all, 'list', filter] as const,
   project: (projectId: string) =>
     [...pulseKeys.all, 'project', projectId] as const,
-  detail: (updateId: string) =>
-    [...pulseKeys.all, 'detail', updateId] as const,
+  detail: (updateId: string) => [...pulseKeys.all, 'detail', updateId] as const,
   subscriptions: () => [...pulseKeys.all, 'subscriptions'] as const,
 };
 
@@ -65,7 +64,9 @@ export interface UseSubscriptionsResult {
 /**
  * Hook for managing Pulse (Activity) feed with TanStack Query.
  */
-export function usePulse(initialFilter: PulseFilter = 'recent'): UsePulseResult {
+export function usePulse(
+  initialFilter: PulseFilter = 'recent'
+): UsePulseResult {
   const queryClient = useQueryClient();
 
   // Query for updates list

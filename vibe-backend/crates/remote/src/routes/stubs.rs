@@ -169,8 +169,7 @@ impl Default for EditorConfig {
 }
 
 /// GitHub configuration
-#[derive(Debug, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 struct GitHubConfig {
     pat: Option<String>,
     oauth_token: Option<String>,
@@ -178,7 +177,6 @@ struct GitHubConfig {
     primary_email: Option<String>,
     default_pr_base: Option<String>,
 }
-
 
 /// Executor profile ID
 #[derive(Debug, Serialize, Deserialize)]
@@ -197,12 +195,10 @@ impl Default for ExecutorProfileId {
 }
 
 /// Showcase state
-#[derive(Debug, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 struct ShowcaseState {
     seen_features: Vec<String>,
 }
-
 
 /// User configuration - matches frontend Config type
 #[derive(Debug, Serialize, Deserialize)]
