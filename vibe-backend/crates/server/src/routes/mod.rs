@@ -158,6 +158,8 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
             "https://vibe-kanban.fly.dev"
                 .parse::<HeaderValue>()
                 .unwrap(),
+            // Vercel deployment domains
+            "https://i-kanban.vercel.app".parse::<HeaderValue>().unwrap(),
         ])
         .allow_methods([
             Method::GET,
