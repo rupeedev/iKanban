@@ -69,7 +69,7 @@ interface UserSystemProviderProps {
 export function UserSystemProvider({ children }: UserSystemProviderProps) {
   const queryClient = useQueryClient();
   const { reportSuccess, reportFailure } = useConnectionSafe();
-  const { isLoaded } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
 
   const {
     data: userSystemInfo,
@@ -90,8 +90,9 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
         throw err;
       }
     },
-    // Only enable query when Clerk is fully loaded preventing 401 race conditions
-    enabled: isLoaded,
+    // Only enable query when Clerk is fully loaded AND user is signed in
+    // This prevents 401 errors when fetching protected UserSystemInfo on public pages/login
+    enabled: isLoaded && isSignedIn,
     staleTime: 30 * 60 * 1000, // 30 minutes (increased for better offline support)
     gcTime: 60 * 60 * 1000, // 1 hour cache retention
     retry: 3, // Retry failed requests 3 times
