@@ -99,13 +99,23 @@ export const useJsonPatchWsStream = <T extends object>(
       finishedRef.current = false;
 
       // Build full WebSocket URL using API base URL
+      // Build full WebSocket URL
       let wsEndpoint: string;
-      if (API_BASE_URL) {
+
+      // IKA-353: Prefer VITE_API_URL (dev/railway) or explicit VITE_WS_URL (vercel)
+      // Fallback to hardcoded api.scho1ar.com if we are on Vercel production without config
+      const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_WS_URL;
+
+      if (apiUrl) {
         // Convert https://api.example.com to wss://api.example.com
-        const wsBase = API_BASE_URL.replace(/^http/, 'ws');
+        const wsBase = apiUrl.replace(/^http/, 'ws');
         wsEndpoint = `${wsBase}${endpoint}`;
+      } else if (window.location.hostname.includes('vercel.app')) {
+        // Special case for Vercel deployments: default to production backend
+        // This handles the case where VITE_API_URL is empty for HTTP proxying
+        wsEndpoint = `wss://api.scho1ar.com${endpoint}`;
       } else {
-        // Relative path - use current host
+        // Relative path - use current host (local dev with proxy)
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         wsEndpoint = `${protocol}//${window.location.host}${endpoint}`;
       }
