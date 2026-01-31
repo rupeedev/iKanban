@@ -1,3 +1,4 @@
+```json
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "pnpm run build",
@@ -7,6 +8,11 @@
     {
       "source": "/api/:path*",
       "destination": "https://api.scho1ar.com/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
+```
