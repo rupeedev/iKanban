@@ -3,7 +3,7 @@ import { applyPatch } from 'rfc6902';
 import type { Operation } from 'rfc6902';
 
 // API base URL for WebSocket connections
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+// const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 type WsJsonPatchMsg = { JsonPatch: Operation[] };
 type WsFinishedMsg = { finished: boolean };
