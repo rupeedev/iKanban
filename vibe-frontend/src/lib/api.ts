@@ -258,6 +258,12 @@ const buildApiUrl = (path: string): string => {
 // Auth token getter - can be set by React components
 let authTokenGetter: (() => Promise<string | null>) | null = null;
 
+// Track if auth has been initialized to prevent race conditions (IKA-351)
+let resolveAuthInit: (() => void) | null = null;
+const authInitPromise = new Promise<void>((resolve) => {
+  resolveAuthInit = resolve;
+});
+
 /**
  * Set the auth token getter function.
  * Call this from your React app with Clerk's getToken function.
@@ -265,15 +271,40 @@ let authTokenGetter: (() => Promise<string | null>) | null = null;
  */
 export const setAuthTokenGetter = (getter: () => Promise<string | null>) => {
   authTokenGetter = getter;
+  if (resolveAuthInit) {
+    resolveAuthInit();
+    resolveAuthInit = null; // Only resolve once
+  }
 };
 
 /**
  * Get the current auth token (if available)
+ * Waits for initialization if called too early (IKA-351 fix)
  */
 export const getAuthToken = async (): Promise<string | null> => {
   if (!authTokenGetter) {
+    // If not initialized yet, wait for it (max 5s to prevent hanging)
+    // This prevents 401 race conditions on app startup
+    const timeoutPromise = new Promise<void>((_, reject) =>
+      setTimeout(() => reject(new Error('Auth initialization timed out')), 5000)
+    );
+
+    try {
+      await Promise.race([authInitPromise, timeoutPromise]);
+    } catch (e) {
+      console.warn(
+        'Proceeding without auth token (initialization timeout):',
+        e
+      );
+      return null;
+    }
+  }
+
+  // Double check after wait
+  if (!authTokenGetter) {
     return null;
   }
+
   try {
     return await authTokenGetter();
   } catch (e) {
