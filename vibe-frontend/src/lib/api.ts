@@ -288,7 +288,7 @@ const RETRY_CONFIG = {
   baseDelayMs: 2000, // 2 seconds
   maxDelayMs: 5000, // 5 seconds max
   retryableStatuses: [503, 502, 504], // Server errors only - NOT 429!
-  requestTimeoutMs: 10000, // 10 seconds - fail fast for better UX
+  requestTimeoutMs: 30000, // 30 seconds - increased for Europe/global latency
 };
 
 /**
@@ -296,7 +296,9 @@ const RETRY_CONFIG = {
  */
 export class RequestTimeoutError extends Error {
   constructor(url: string) {
-    super(`Request timed out after ${RETRY_CONFIG.requestTimeoutMs / 1000} seconds: ${url}`);
+    super(
+      `Request timed out after ${RETRY_CONFIG.requestTimeoutMs / 1000} seconds: ${url}`
+    );
     this.name = 'RequestTimeoutError';
   }
 }

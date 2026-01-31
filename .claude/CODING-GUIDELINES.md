@@ -649,17 +649,17 @@ function IssueView() {
 
 ### Rule 2: API Timeouts Must Be User-Friendly
 
-Timeout should be 10 seconds or less. Users won't wait 30+ seconds for feedback.
+Timeout should be 30 seconds or less. Users won't wait 60+ seconds for feedback.
 
 ```typescript
-// BAD - 30 second timeout is too long
+// BAD - 60 second timeout is too long
 const RETRY_CONFIG = {
-  requestTimeoutMs: 30000,  // User will think app is frozen
+  requestTimeoutMs: 60000,  // User will think app is frozen
 };
 
-// GOOD - 10 second timeout with clear feedback
+// GOOD - 30 second timeout for global latency support
 const RETRY_CONFIG = {
-  requestTimeoutMs: 10000,  // Fail fast, let user retry
+  requestTimeoutMs: 30000,  // Balance between UX and high-latency support
 };
 
 // BETTER - Show progress during operation
@@ -732,7 +732,7 @@ onSettled: () => {
 | Check | What to Verify |
 |-------|---------------|
 | No shared `isSaving` | Each action has its own `isPending` state |
-| Timeout ≤ 10s | API client timeout is 10000ms or less |
+| Timeout ≤ 30s | API client timeout is 30000ms or less |
 | refetchType: 'none' | All `invalidateQueries` calls use `refetchType: 'none'` |
 | Loading feedback | Buttons show "Saving..." or spinner during operation |
 | UI not blocked | User can interact with other elements during save |

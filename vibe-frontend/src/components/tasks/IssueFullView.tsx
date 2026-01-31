@@ -470,7 +470,7 @@ export function IssueFullView({
                         // Don't spin during initial load - CommentList shows its own loading state
                         (isRefreshingComments ||
                           (commentsFetching && !commentsLoading)) &&
-                        'animate-spin'
+                          'animate-spin'
                       )}
                     />
                   </Button>

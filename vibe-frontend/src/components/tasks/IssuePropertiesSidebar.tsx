@@ -196,11 +196,7 @@ export function IssuePropertiesSidebar({
             <Tag className="h-3 w-3" />
             Labels
           </label>
-          <TaskTagsSection
-            taskId={issue.id}
-            teamId={teamId}
-            editable
-          />
+          <TaskTagsSection taskId={issue.id} teamId={teamId} editable />
         </div>
 
         {/* Project */}

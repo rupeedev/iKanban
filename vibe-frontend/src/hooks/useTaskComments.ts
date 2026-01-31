@@ -75,9 +75,18 @@ export function useTaskComments(taskId: string | null) {
           task_id: taskId,
           content: newCommentData.content,
           is_internal: newCommentData.is_internal || false,
-          author_name: 'author_name' in newCommentData ? String(newCommentData.author_name) : 'You',
-          author_email: 'author_email' in newCommentData ? String(newCommentData.author_email) : undefined,
-          author_id: 'author_id' in newCommentData ? (newCommentData.author_id as string) : undefined,
+          author_name:
+            'author_name' in newCommentData
+              ? String(newCommentData.author_name)
+              : 'You',
+          author_email:
+            'author_email' in newCommentData
+              ? String(newCommentData.author_email)
+              : undefined,
+          author_id:
+            'author_id' in newCommentData
+              ? (newCommentData.author_id as string)
+              : undefined,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         } as unknown as TaskComment; // Cast to satisfy type (some fields might be missing in strict mode)
@@ -101,7 +110,7 @@ export function useTaskComments(taskId: string | null) {
           if (!oldData) return [newComment];
           // Filter out the temp comment and append the real one
           // We assume the temp comment is the last one or we filter by temp- prefix
-          const cleanData = oldData.filter(c => !c.id.startsWith('temp-'));
+          const cleanData = oldData.filter((c) => !c.id.startsWith('temp-'));
 
           // Check for duplicates just in case
           if (cleanData.some((c) => c.id === newComment.id)) return cleanData;

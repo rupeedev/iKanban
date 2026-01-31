@@ -312,7 +312,10 @@ function AppContent() {
                   <Route index element={<Navigate to="general" replace />} />
                   <Route path="general" element={<GeneralSettings />} />
                   <Route path="projects" element={<ProjectSettings />} />
-                  <Route path="issue-labels" element={<IssueLabelsSettings />} />
+                  <Route
+                    path="issue-labels"
+                    element={<IssueLabelsSettings />}
+                  />
                   <Route path="workspace" element={<WorkspaceSettings />} />
                   <Route path="billing" element={<BillingSettings />} />
                   <Route path="agents" element={<AgentSettings />} />
