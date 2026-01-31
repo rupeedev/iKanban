@@ -7,6 +7,7 @@ import {
   useMemo,
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@clerk/clerk-react';
 import {
   type Config,
   type Environment,
@@ -68,6 +69,7 @@ interface UserSystemProviderProps {
 export function UserSystemProvider({ children }: UserSystemProviderProps) {
   const queryClient = useQueryClient();
   const { reportSuccess, reportFailure } = useConnectionSafe();
+  const { isLoaded } = useAuth();
 
   const {
     data: userSystemInfo,
@@ -88,6 +90,8 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
         throw err;
       }
     },
+    // Only enable query when Clerk is fully loaded preventing 401 race conditions
+    enabled: isLoaded,
     staleTime: 30 * 60 * 1000, // 30 minutes (increased for better offline support)
     gcTime: 60 * 60 * 1000, // 1 hour cache retention
     retry: 3, // Retry failed requests 3 times
