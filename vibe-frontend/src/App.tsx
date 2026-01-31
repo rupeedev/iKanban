@@ -76,6 +76,11 @@ const AdminFlaggedUsers = lazy(() =>
     default: m.AdminFlaggedUsers,
   }))
 );
+const AdminConfiguration = lazy(() =>
+  import('@/pages/admin/AdminConfiguration').then((m) => ({
+    default: m.AdminConfiguration,
+  }))
+);
 
 // Lazy load superadmin pages for code splitting (IKA-302)
 const SuperadminLayout = lazy(() =>
@@ -339,6 +344,7 @@ function AppContent() {
                   <Route path="permissions" element={<AdminPermissions />} />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="flagged-users" element={<AdminFlaggedUsers />} />
+                  <Route path="configuration" element={<AdminConfiguration />} />
                 </Route>
                 {/* Superadmin panel routes - lazy loaded (IKA-302) */}
                 <Route element={<SuperadminRoute />}>
