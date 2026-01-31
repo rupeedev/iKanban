@@ -154,7 +154,7 @@ pub struct AdminFeatureToggle {
 // Configuration Types
 // =============================================================================
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AdminConfiguration {
     pub app_name: String,
     pub default_language: String,

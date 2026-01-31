@@ -32,13 +32,12 @@ import {
   Loader2,
   Save,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import {
   useAdminConfiguration,
   useAdminConfigurationMutations,
 } from '@/hooks/useAdmin';
-import { AdminConfiguration } from '@/lib/api';
+import type { AdminConfiguration } from '@/lib/api';
 import { toast } from 'sonner';
 
 function ConfigSkeleton() {
