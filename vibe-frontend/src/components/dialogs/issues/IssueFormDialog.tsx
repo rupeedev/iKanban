@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -144,6 +145,18 @@ const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(
     const { projects } = useProjects();
     const team = teamId ? teamsById[teamId] : null;
 
+    // Fetch team-specific projects if teamId is provided
+    const { data: teamProjects = [] } = useQuery({
+      queryKey: ['teamProjects', teamId],
+      queryFn: () => (teamId ? teamsApi.getProjects(teamId) : Promise.resolve([])),
+      enabled: !!teamId,
+    });
+
+    // Use team-specific projects if available, otherwise fall back to all projects
+    const availableProjects = useMemo(() => {
+      return teamId && teamProjects.length > 0 ? teamProjects : projects;
+    }, [teamId, teamProjects, projects]);
+
     // Form state
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -162,7 +175,7 @@ const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(
     const selectedStatus =
       STATUSES.find((s) => s.value === status) || STATUSES[0];
     const selectedProject = projectId
-      ? projects.find((p) => p.id === projectId)
+      ? availableProjects.find((p) => p.id === projectId)
       : null;
 
     const handleSubmit = useCallback(async () => {
@@ -395,7 +408,7 @@ const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(
                     No project
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  {projects.map((p) => (
+                  {availableProjects.map((p) => (
                     <DropdownMenuItem
                       key={p.id}
                       onClick={() => setProjectId(p.id)}
