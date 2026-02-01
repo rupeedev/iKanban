@@ -1,13 +1,16 @@
-name: Deploy Frontend
+name: Deploy Frontend (DISABLED - Using Vercel)
 
 on:
-  push:
-    branches: [ "main" ]
-    paths:
-      - "vibe-frontend/**"
-      - "shared/**"
-      - ".github/workflows/deploy-frontend.yml"
+  # DISABLED: Frontend is now deployed to Vercel, not Railway
+  # To re-enable: uncomment the push trigger below
+  # push:
+  #   branches: [ "main" ]
+  #   paths:
+  #     - "vibe-frontend/**"
+  #     - "shared/**"
+  #     - ".github/workflows/deploy-frontend.yml"
   workflow_dispatch:
+    # Keep manual trigger available for testing
 
 env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_USER }}/ikanban-frontend
