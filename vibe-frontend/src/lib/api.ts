@@ -249,6 +249,15 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 // Helper to build full API URL
 const buildApiUrl = (path: string): string => {
+  // IKA-354: Fix for Vercel env var typo (scholar.com -> scho1ar.com)
+  // If we are on Vercel (hostname check), FORCE the correct production URL
+  if (
+    typeof window !== 'undefined' &&
+    window.location.hostname.includes('vercel.app')
+  ) {
+    return `https://api.scho1ar.com${path}`;
+  }
+
   if (API_BASE_URL) {
     return `${API_BASE_URL}${path}`;
   }

@@ -9,7 +9,6 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import posthog from 'posthog-js';
 import { PostHogProvider } from 'posthog-js/react';
 import { ClerkProvider } from '@clerk/clerk-react';
-import { AuthInitializer } from '@/components/auth/AuthInitializer';
 import { createIndexedDBPersister } from '@/lib/indexedDBPersister';
 import { ConnectionProvider } from '@/contexts/ConnectionContext';
 import { SyncQueueProvider } from '@/contexts/SyncQueueContext';
@@ -21,7 +20,7 @@ const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 if (!CLERK_PUBLISHABLE_KEY) {
   console.warn(
     'Clerk publishable key not set. Authentication will be disabled. ' +
-      'To enable, copy frontend/.env.local.example to frontend/.env.local and add your key.'
+    'To enable, copy frontend/.env.local.example to frontend/.env.local and add your key.'
   );
 }
 
@@ -81,18 +80,13 @@ const persistOptions = {
 
 // Render app with optional ClerkProvider wrapper
 // Props to indicate if Clerk auth is enabled
-interface AppWithProvidersProps {
-  withClerkAuth?: boolean;
-}
-
-const AppWithProviders = ({ withClerkAuth = false }: AppWithProvidersProps) => (
+const AppWithProviders = () => (
   <React.StrictMode>
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={persistOptions}
     >
-      {/* AuthInitializer must be inside QueryClientProvider since it uses useQueryClient */}
-      {withClerkAuth && <AuthInitializer />}
+      {/* AuthInitializer moved to App.tsx inside UserSystemProvider */}
       <ConnectionProvider>
         <SyncQueueProvider>
           <PostHogProvider client={posthog}>
@@ -114,7 +108,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
     >
-      <AppWithProviders withClerkAuth />
+      <AppWithProviders />
     </ClerkProvider>
   ) : (
     <AppWithProviders />

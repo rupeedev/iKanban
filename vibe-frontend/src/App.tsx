@@ -125,6 +125,7 @@ import { SidebarProvider } from './contexts/SidebarContext';
 import { GlobalKeyboardShortcuts } from '@/components/layout/GlobalKeyboardShortcuts';
 import { UsageLimitProvider } from '@/contexts/UsageLimitContext';
 import { GlobalLimitBanner } from '@/components/subscription';
+import { AuthInitializer } from '@/components/auth/AuthInitializer';
 import NiceModal from '@ebay/nice-modal-react';
 
 function AppContent() {
@@ -441,6 +442,7 @@ function App() {
                 >
                   <NiceModal.Provider>
                     <UsageLimitProvider>
+                      <AuthInitializer />
                       <AppContent />
                     </UsageLimitProvider>
                   </NiceModal.Provider>
