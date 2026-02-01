@@ -152,9 +152,9 @@ const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(
       enabled: !!teamId,
     });
 
-    // Use team-specific projects if available, otherwise fall back to all projects
+    // Use team-specific projects only when teamId is provided, never fall back to all projects
     const availableProjects = useMemo(() => {
-      return teamId && teamProjects.length > 0 ? teamProjects : projects;
+      return teamId ? teamProjects : projects;
     }, [teamId, teamProjects, projects]);
 
     // Form state
