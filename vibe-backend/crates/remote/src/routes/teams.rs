@@ -593,7 +593,10 @@ async fn create_team_issue(
     Json(payload): Json<CreateTeamIssueRequest>,
 ) -> Result<Json<ApiResponse<TeamIssue>>, ErrorResponse> {
     let pool = state.pool();
+    let start_time = std::time::Instant::now();
 
+    // 1. Get team by ID or slug
+    let get_team_start = std::time::Instant::now();
     let team = TeamRepository::get_by_id_or_slug(pool, &team_id)
         .await
         .map_err(|error| {
@@ -601,8 +604,10 @@ async fn create_team_issue(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to get team")
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "team not found"))?;
+    tracing::debug!(duration_ms = get_team_start.elapsed().as_millis(), "get_team");
 
-    // Verify user has access to the team's workspace
+    // 2. Verify user has access to the team's workspace
+    let get_workspace_start = std::time::Instant::now();
     if let Some(workspace_id) =
         TeamRepository::workspace_id(pool, team.id)
             .await
@@ -613,8 +618,10 @@ async fn create_team_issue(
     {
         ensure_member_access(pool, workspace_id, ctx.user.id).await?;
     }
+    tracing::debug!(duration_ms = get_workspace_start.elapsed().as_millis(), "verify_workspace_access");
 
-    // Verify the project belongs to this team
+    // 3. Verify the project belongs to this team
+    let get_projects_start = std::time::Instant::now();
     let team_projects = TeamRepository::get_project_ids(pool, team.id)
         .await
         .map_err(|error| {
@@ -624,6 +631,7 @@ async fn create_team_issue(
                 "failed to verify project",
             )
         })?;
+    tracing::debug!(duration_ms = get_projects_start.elapsed().as_millis(), project_count = team_projects.len(), "get_team_projects");
 
     if !team_projects.contains(&payload.project_id) {
         return Err(ErrorResponse::new(
@@ -642,12 +650,15 @@ async fn create_team_issue(
         parent_id: payload.parent_id,
     };
 
+    // 4. Create the issue
+    let create_issue_start = std::time::Instant::now();
     let issue = TeamRepository::create_issue(pool, team.id, payload.project_id, create_data)
         .await
         .map_err(|error| {
             tracing::error!(?error, %team_id, "failed to create team issue");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to create issue")
         })?;
+    tracing::debug!(duration_ms = create_issue_start.elapsed().as_millis(), "create_issue_db");
 
     tracing::info!(
         team_id = %team.id,
@@ -656,7 +667,8 @@ async fn create_team_issue(
         "created team issue"
     );
 
-    // Send notification to assignee if assigned on creation (fire and forget)
+    // 5. Send notification to assignee if assigned on creation (fire and forget)
+    let notify_start = std::time::Instant::now();
     if let Some(assignee_id) = payload.assignee_id
         && let Err(e) = notifications::notify_task_assigned(
             pool,
@@ -671,9 +683,19 @@ async fn create_team_issue(
     {
         tracing::warn!(
             ?e,
+            duration_ms = notify_start.elapsed().as_millis(),
             "failed to send task_assigned notification for team issue"
         );
+    } else {
+        tracing::debug!(duration_ms = notify_start.elapsed().as_millis(), "send_notification");
     }
+
+    tracing::info!(
+        total_duration_ms = start_time.elapsed().as_millis(),
+        team_id = %team.id,
+        issue_id = %issue.id,
+        "create_team_issue_completed"
+    );
 
     Ok(ApiResponse::success(issue))
 }
