@@ -126,10 +126,50 @@ curl -s -X PUT "https://api.scho1ar.com/api/tasks/{id}" \
 | **Local CLI** | `WORKFLOW.md` + `/ikanban-fullstack-dev` skill | Can spawn subagents for parallel validation |
 | **GitHub Actions** | `GITHUB-AGENT-WORKFLOW.md` | Single-agent, sequential validation, no merge to main |
 
-**GitHub Agent Rules:**
-- Create feature branch, push changes
-- NEVER merge to main (let PR process handle it)
+**Local CLI Workflow (Claude Code):**
+- Create feature branch: `git checkout -b <fix|feature>/IKA-___-<name>`
+- Make commit(s) to feature branch (do NOT push feature branch)
+- Merge to main: `git checkout main && git merge <feature-branch>`
+- Push to main: `git push origin main`
+- Delete feature branch: `git branch -d <feature-branch> && git push origin --delete <feature-branch>`
+
+**GitHub Actions Agent Rules:**
+- Create feature branch, push changes, create PR
+- NEVER merge to main (let GitHub PR process handle it)
 - Deployment triggers automatically on main merge
+
+### Git Workflow for Local Claude Code
+
+**DO NOT push feature branches to remote.** Follow this exact sequence:
+
+```bash
+# 1. Create feature branch (locally only)
+git checkout -b fix/IKA-354-feature-name
+
+# 2. Make changes, commit (only on feature branch)
+git add .
+git commit -m "fix: Description"
+
+# 3. Validate with linter
+pnpm lint
+cargo check
+
+# 4. Switch to main and merge
+git checkout main
+git merge fix/IKA-354-feature-name
+
+# 5. Push main (not the feature branch)
+git push origin main
+
+# 6. Delete feature branch (local + remote)
+git branch -d fix/IKA-354-feature-name
+git push origin --delete fix/IKA-354-feature-name
+```
+
+**Why no feature branch push?**
+- Reduces clutter in GitHub (no PR needed for local CLI work)
+- Automatic deployment triggers on main push
+- Faster feedback loop
 
 ### Quick Reference Files (READ when coding)
 
@@ -296,7 +336,7 @@ When `/full-stack-dev` is invoked, follow all 8 phases in order:
 | 4 | Implementation | Code + lint + type check |
 | 5 | Write Tests | Playwright tests in vibe-testing |
 | 6 | Run Tests | All tests must pass |
-| 7 | Git Merge | Push, merge to main, cleanup branch |
+| 7 | Git Merge & Push | Commit to feature branch → merge to main → push main → delete feature branch |
 | 8 | Task Done | Add summary comment, then mark done |
 
 ## Task Management
